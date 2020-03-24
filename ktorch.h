@@ -111,11 +111,11 @@ enum class Cast:char {
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
- avgpool3d,      batchnorm,       batchnorm1d,     batchnorm2d,     batchnorm3d,
+ avgpool3d,      batchnorm1d,     batchnorm2d,     batchnorm3d,
  bilinear,       cat,             celu,            conv1d,          conv2d,
  conv3d,         convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d,
  drop,           drop2d,          drop3d,          elu,             embed,
- embedbag,       expand,          fadrop,          fdrop,           flatten,
+ embedbag,       expand,          fadrop,          flatten,
  fmaxpool2d,     fmaxpool3d,      fold,            gelu,            glu,
  groupnorm,      gru,             hardshrink,      hardtanh,        identity,
  instancenorm1d, instancenorm2d,  instancenorm3d,  layernorm,       leakyrelu,
@@ -292,6 +292,9 @@ bool xlong(K,J&,J*&);
 bool xlong(K,J,J&,J*&);
 bool xdouble(K,double&);
 bool xdouble(K,J,double&);
+bool xdouble(K,J&,double *&);
+bool xdouble(K,J,J&,double *&);
+
 bool xdict(K);
 bool xdict(K,J);
 bool xstate(K);
@@ -589,7 +592,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Cast>,95> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,93> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -601,7 +604,6 @@ typedef struct {
   std::make_tuple(cs("avgpool1d"),       Cast::avgpool1d),
   std::make_tuple(cs("avgpool2d"),       Cast::avgpool2d),
   std::make_tuple(cs("avgpool3d"),       Cast::avgpool3d),
-  std::make_tuple(cs("batchnorm"),       Cast::batchnorm),
   std::make_tuple(cs("batchnorm1d"),     Cast::batchnorm1d),
   std::make_tuple(cs("batchnorm2d"),     Cast::batchnorm2d),
   std::make_tuple(cs("batchnorm3d"),     Cast::batchnorm3d),
@@ -622,7 +624,6 @@ typedef struct {
   std::make_tuple(cs("embed"),           Cast::embed),
   std::make_tuple(cs("embedbag"),        Cast::embedbag),
   std::make_tuple(cs("expand"),          Cast::expand),
-  std::make_tuple(cs("fdrop"),           Cast::fdrop),
   std::make_tuple(cs("fadrop"),          Cast::fadrop),
   std::make_tuple(cs("flatten"),         Cast::flatten),
   std::make_tuple(cs("fmaxpool2d"),      Cast::fmaxpool2d),
@@ -811,7 +812,7 @@ typedef struct {
   std::make_tuple(cs("zeroinf"),   Setting::zeroinf)
  }};
 
- std::array<std::tuple<S,Cast,double>,5> opt = {{        //optimizer: map symbol -> enum, default learning rate
+ std::array<std::tuple<S,Cast,double>,5> opt = {{        //optimizer: map symbol -> enum, default learning rate PATCH
   std::make_tuple(cs("adagrad"), Cast::adagrad, 0.010),
   std::make_tuple(cs("adam"),    Cast::adam,    0.001),
   std::make_tuple(cs("lbfgs"),   Cast::lbfgs,   1.000),

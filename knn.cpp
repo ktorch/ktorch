@@ -613,7 +613,7 @@ static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingOptions& o) {
 
 static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingBagOptions& o) {
  if       (s == Setting::mode) o.mode(embedmode(psym(p)));
- //else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
+ else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
  else AT_ERROR("Unrecognized option for ",msym(c),": ",mset(s));
 }
 
@@ -630,7 +630,7 @@ template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &
    case Setting::weight:     if(!pempty(p)) pten(p,w); break;
    case Setting::freeze:     z=mbool(p,c); break;
    case Setting::mode:       embedset(c,Setting::mode,p,o); break;
- //case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o);
+   case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o);
    default: AT_ERROR("Embedding option: ",p.k," unrecognized");
   }
 }
@@ -1812,7 +1812,6 @@ void mdefine(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nu
 void mdefine(Sequential &q,S s,S n,J i,K x,K p,K f) { 
  Cast c=msym(s);
  switch(c) {
-  // PATCH: case Cast::batchnorm:    PUSH(q,n,torch::nn::BatchNorm  (batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
   case Cast::batchnorm1d:  PUSH(q,n,torch::nn::BatchNorm1d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
   case Cast::batchnorm2d:  PUSH(q,n,torch::nn::BatchNorm2d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
   case Cast::batchnorm3d:  PUSH(q,n,torch::nn::BatchNorm3d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
@@ -1834,7 +1833,6 @@ void mdefine(Sequential &q,S s,S n,J i,K x,K p,K f) {
   case Cast::drop:         PUSH(q,n,torch::nn::Dropout(drop(x,i,c))); break;
   case Cast::drop2d:       PUSH(q,n,torch::nn::Dropout2d(drop(x,i,c))); break;
   case Cast::drop3d:       PUSH(q,n,torch::nn::Dropout3d(drop(x,i,c))); break;
- // PATCH: case Cast::fdrop:        PUSH(q,n,torch::nn::FeatureDropout(drop(x,i,c))); break;
   case Cast::adrop:        PUSH(q,n,torch::nn::AlphaDropout(drop(x,i,c))); break;
   case Cast::fadrop:       PUSH(q,n,torch::nn::FeatureAlphaDropout(drop(x,i,c))); break;
 
@@ -1947,7 +1945,6 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  if       (auto* m=g.as<torch::nn::Sequential>())        { c=Cast::sequential;
  } else if(auto* m=g.as<Join>())                         { c=Cast::join;
 
- // PATCH: } else if(auto* m=g.as<torch::nn::BatchNorm>())         { c=Cast::batchnorm;      batchnorm(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    batchnorm(a,x,m->options);
@@ -1967,7 +1964,6 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<torch::nn::Dropout>())             { c=Cast::drop;   drop(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::Dropout2d>())           { c=Cast::drop2d; drop(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::Dropout3d>())           { c=Cast::drop3d; drop(a,x,m->options);
- // PATCH: } else if(auto* m=g.as<torch::nn::FeatureDropout>())      { c=Cast::fdrop;  drop(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::AlphaDropout>())        { c=Cast::adrop;  drop(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::FeatureAlphaDropout>()) { c=Cast::fadrop; drop(a,x,m->options);
 
@@ -2271,7 +2267,7 @@ void nnfn(K x) {
 /*
 normalize -- functional form implemented, add module?
 pairwise distance & cosine similarity: in both module & functional form but forward method needs 2 input tensors
-fractional pool -- use pytorch version after fix for output ratio, also try w;indices registered as buffer?
-embeddingbag -- enable lastoffset option, forward w'defaults should work with sequential
+fractional pool -- try with indices registered as buffer?
+embeddingbag -- forward w'defaults should work with sequential
 multi-head attention -- not in 1.4, wait for patch or 1.5
 */

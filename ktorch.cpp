@@ -368,6 +368,15 @@ bool xlong(K x,J i,J &n, J *&v) {return xind(x,i) && xlong(kK(x)[i],n,v);}  // c
 bool xdouble(K x,double &f) {return (x->t == -KF) ? f=x->f,true : false;}    //check k scalar
 bool xdouble(K x,J i,double &f) {return xind(x,i) && xdouble(kK(x)[i],f);}   //check k list element
 
+bool xdouble(K x,J &n,double *&v){                                 //check for k list of doubles
+ if(x->t == KF){          n=x->n; v=kF(x); return true;            //list of doubles
+ } else if(x->t == -KF){  n=1;    v=&x->f; return true;            //scalar double ok too
+ } else if(x->t == 0 && x->n == 0) { n=0;  return true;            //empty,no type also ok
+ } else { return false;
+ }
+}
+bool xdouble(K x,J i,J &n,double *&v) {return xind(x,i) && xdouble(kK(x)[i],n,v);}  // check element of k list
+
 bool xdict(K x) {return x->t==99 && (kK(x)[0]->t==KS || (kK(x)[0]->t==0 && kK(x)[0]->n==0));}
 bool xdict(K x,J i) {return xind(x,i) && xdict(kK(x)[i]);}
 

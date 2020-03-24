@@ -135,7 +135,7 @@ static void adagrad(K x,J i,AdagradOptions& o) {
 
 static Optptr adagrad(const TensorVector& w,const AdagradOptions& a,K y) {
  auto o=std::make_shared<Adagrad>(w,a);
- auto n=osize(o->parameters());
+ auto n=o->state().size();
  if(y && n) {
 /* PATCH
   bset(n, "step_buffers", o->parameters(), o->step_buffers, y);
@@ -192,7 +192,7 @@ static void adam(K x,J i,AdamOptions& o) {
 
 static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
  auto o=std::make_shared<Adam>(w,a);
- auto n=osize(o->parameters());
+ auto n=o->state().size();
  if(y && n) {
 /* PATCH
   bset(n, "step_buffers",                o->parameters(), o->step_buffers,               y);
@@ -253,7 +253,7 @@ static void lbfgs(K x,J i,LBFGSOptions& o) {
 }
 
 static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
- auto o=std::make_shared<LBFGS>(w,a); auto n=osize(o->parameters());
+ auto o=std::make_shared<LBFGS>(w,a); auto n=o->state().size();
  if(y) {
 /* PATCH
   bset(n, "d",              o->parameters(), o->d, y);
@@ -319,7 +319,7 @@ static void rmsprop(K x,J i,RMSpropOptions& o) {
 
 static Optptr rmsprop(const TensorVector& w,const RMSpropOptions& a,K y) {
  auto o=std::make_shared<RMSprop>(w,a);
- auto n=osize(o->parameters());
+ auto n=o->state().size();
  if(y && n) {
 /* PATCH
   bset(n, "square_average_buffers", o->parameters(), o->square_average_buffers, y);
@@ -375,11 +375,10 @@ static void sgd(K x,J i,SGDOptions& o) {
 
 static Optptr sgd(const TensorVector& w,const SGDOptions& a,K y) {
  auto o=std::make_shared<SGD>(w,a);
- auto n=osize(o->parameters());
-/* PATCH
- if(y && n)
-  bset(n, "momentum_buffers", o->parameters(), o->momentum_buffers, y);
-*/
+ auto n=o->state().size();
+ if(y && n) {
+  // PATCH: bset(n, "momentum_buffers", o->parameters(), o->momentum_buffers, y);
+ }
  return o;
 }
 
@@ -521,28 +520,60 @@ KAPI kstep(K x) {
  KCATCH("step");
 }
 
+// ---------------------------------------------------------------------------------------
+// lrget - return a double list of learning rates, one per parameter group
+// lrset - set each parameter group's learning rate from scalar/list input
+// lr - function to query/set learning rate from k
+// ---------------------------------------------------------------------------------------
+static K lrget(const std::vector<torch::optim::OptimizerParamGroup>& v,Cast c) {
+ J i=0; F r; K x=ktn(KF,v.size());
+ for(auto& g:v) {
+  TORCH_CHECK(g.has_options(), "Parameter group options not defined");
+  switch(c) {
+   case Cast::adagrad: r=static_cast<const AdagradOptions&>(g.options()).lr(); break;
+   case Cast::adam:    r=static_cast<const    AdamOptions&>(g.options()).lr(); break;
+   case Cast::lbfgs:   r=static_cast<const   LBFGSOptions&>(g.options()).lr(); break;
+   case Cast::rmsprop: r=static_cast<const RMSpropOptions&>(g.options()).lr(); break;
+   case Cast::sgd:     r=static_cast<const     SGDOptions&>(g.options()).lr(); break;
+   default: AT_ERROR("Unrecognized optimizer: ",(I)c,", unable to retrieve learning rate");
+  }
+  kF(x)[i++]=r;
+ }
+ return x;
+}
+
+static void lrset(std::vector<torch::optim::OptimizerParamGroup>& v,Cast c,J n,double *lr) {
+ TORCH_CHECK(n==1 || n==v.size(),"length error: ",n," learning rates given for ",v.size()," parameter group",(v.size() !=1 ? "s" : ""));
+ int64_t i=0; double r;
+ for(auto& g:v) {
+  TORCH_CHECK(g.has_options(), "Parameter group options not defined");
+  r=(n==1) ? lr[0] : lr[i++];
+  switch(c) {
+   case Cast::adagrad: static_cast<AdagradOptions&>(g.options()).lr(r); break;
+   case Cast::adam:    static_cast<   AdamOptions&>(g.options()).lr(r); break;
+   case Cast::lbfgs:   static_cast<  LBFGSOptions&>(g.options()).lr(r); break;
+   case Cast::rmsprop: static_cast<RMSpropOptions&>(g.options()).lr(r); break;
+   case Cast::sgd:     static_cast<    SGDOptions&>(g.options()).lr(r); break;
+   default: AT_ERROR("Unrecognized optimizer: ",(I)c,", unable to set learning rate");
+  }
+ }
+}
+
 KAPI lr(K x) {
  KTRY
-  bool b=false; double r; Ktag *g;
-  TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && (b=x->n==2) && xdouble(x,1,r)),
-   "lr: unrecognized arg(s), expecting model/optimizer and optional learning rate");
+  bool b=false; J n; double *r; Ktag *g;
+  TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && (b=x->n==2) && xdouble(x,1,n,r)),
+   "lr: unrecognized arg(s), expecting model/optimizer and optional learning rate(s) to set");
   Cast c; Optimizer *o; Kmodel *m;
   switch(g->a) {
    case Class::optimizer: c=g->c; o=((Kopt*)g)->o.get(); break;
    case Class::model: m=(Kmodel*)g; c=m->oc; o=m->o.get(); break;
    default: AT_ERROR("lr not implemented for ",mapclass(g->a));
   }
-  switch(c) {
-/* PATCH
-   case Cast::adagrad: {auto& p=((Adagrad*)o)->options; if(b) p.lr(r); else r=p.lr(); break;}
-   case Cast::adam:    {auto& p=((Adam*)o)->options;    if(b) p.lr(r); else r=p.lr(); break;}
-   case Cast::lbfgs:   {auto& p=((LBFGS*)o)->options;   if(b) p.lr(r); else r=p.lr(); break;}
-   case Cast::rmsprop: {auto& p=((RMSprop*)o)->options; if(b) p.lr(r); else r=p.lr(); break;}
-   case Cast::sgd:     {auto& p=((SGD*)o)->options;     if(b) p.lr(r); else r=p.lr(); break;}
-*/
-   default: AT_ERROR("Unrecognized optimizer; ",(I)c); break;
-  }
-  return b ? (K)0 : kf(r);
+  if(b)
+   return lrset(o->param_groups(),c,n,r), (K)0;
+  else
+   return lrget(o->param_groups(),c);
  KCATCH("lr");
 }
 
