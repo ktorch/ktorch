@@ -937,6 +937,21 @@ J kfind(K k,const std::string &s) {
 
 K klist(J n,const int64_t *j) {K x=ktn(KJ,n); memcpy(kG(x),j,n*sizeof(int64_t)); return x;}
 K klist(J n,const double  *f) {K x=ktn(KF,n); memcpy(kG(x),f,n*sizeof(double));  return x;}
+K klist(J n,const c10::optional<int64_t> *j) {
+ K x=ktn(KJ,n);
+ for(J i=0;i<n;++i) kJ(x)[i] = j[i] ? j[i].value() : nj;
+ return x;
+}
+
+static bool kex(J n,const c10::optional<int64_t> *e) {
+ bool b=n>0;
+ for(I i=1;i<n;++i) {
+  if((e[i-1].has_value() != e[i].has_value()) ||
+     (e[i-1].has_value() && e[i].has_value()  && e[i-1] != e[i]))
+   return false;
+ }
+ return b;
+}
 
 template<typename T>static bool kex(J n,const T *e) {
  bool b=n>0; for(I i=1;i<n;++i) if(e[i-1]!=e[i]) return false; return b;
@@ -944,6 +959,7 @@ template<typename T>static bool kex(J n,const T *e) {
 
 K kexpand(J n,const int64_t *e) {return kex<int64_t>(n,e) ? kj(e[0]) : klist(n,e);}
 K kexpand(J n,const double  *e) {return kex<double> (n,e) ? kf(e[0]) : klist(n,e);}
+K kexpand(J n,const c10::optional<int64_t> *e) {return kex(n,e) ? kj(e[0] ? e[0].value() : nj) : klist(n,e);}
 
 // -----------------------------------------------------------------------------------------
 // addref - add a new kptr to a shared tensor/module/optimizer, incrementing reference count
@@ -1342,11 +1358,11 @@ J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:
  auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
  if(b) {
   if (s==nj)
-   g.seed();
+   g->seed();
   else
-   g.set_current_seed(s);
+   g->set_current_seed(s);
  }
- return g.current_seed();
+ return g->current_seed();
 }
 
 static K seedmap() {
@@ -1362,7 +1378,7 @@ KAPI kseed(K x) {
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
-   if(s==nj) s=at::detail::getNonDeterministicRandom();
+   if(s==nj) s=c10::detail::getNonDeterministicRandom();
    torch::manual_seed(s);
    return (K)0;
   } else if(xdev(x,d)) {          // query initial random seed for given device

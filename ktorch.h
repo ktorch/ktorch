@@ -63,6 +63,7 @@ using LongVector=std::vector<int64_t>;
 using IntArrayRef=torch::IntArrayRef;
 template<size_t D,typename T=int64_t> using ExpandingArray=torch::ExpandingArray<D,T>;
 template<size_t D,typename T=double>  using Exdouble=torch::ExpandingArray<D,T>;
+template<size_t D,typename T=int64_t> using Exoptional=torch::ExpandingArrayWithOptionalElem<D,T>;
 using ScalarType=torch::ScalarType;
 using TypeMeta=caffe2::TypeMeta;
 using TensorOptions=torch::TensorOptions;
@@ -405,8 +406,10 @@ K kdict(const TensorDict&);
 J kfind(K,const std::string&);
 K klist(J,const int64_t*);
 K klist(J,const double*);
+K klist(J,const c10::optional<int64_t>*);
 K kexpand(J,const int64_t*);
 K kexpand(J,const double*);
+K kexpand(J,const c10::optional<int64_t>*e);
 #define KEX(x) kexpand(x.size(),(*x).data())  // k list from ExpandingArray
 S objdevice(const Tensor&);
 S objdevice(const TensorVector&,S);

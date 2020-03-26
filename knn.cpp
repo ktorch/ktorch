@@ -103,8 +103,6 @@ static K mvals(bool b,J n) {
 // int64n - int64 but returns optional, i.e. nullopt if k value is null
 // mdouble - check for double(or long) from positional or name-value pair arg
 // optdouble - call mdouble() but return null if k null supplied
-// exarray - check positional or name-value args for long(s), return expanding array,  else error
-// exdouble - similar to exarray, but for double array
 // ----------------------------------------------------------------------------------------------------
 static bool mbool(K x,J i,Cast c,Setting s) {
  bool b;
@@ -156,6 +154,11 @@ static double mdouble(const Pairs& p,Cast c) {
 static c10::optional<double> optdouble(K x,J i,Cast c,Setting s) {double d=mdouble(x,i,c,s); if(d==d) return d; else return c10::nullopt;}
 static c10::optional<double> optdouble(const Pairs& p,Cast c)    {double d=mdouble(p,c);     if(d==d) return d; else return c10::nullopt;}
 
+// -------------------------------------------------------------------------------------------------
+// exarray - check positional or name-value args for long(s), return expanding array,  else error
+// exoptional - similar to exarray, for optional long(s), return expanding array with nulls
+// exdouble - similar to exarray, but for double array
+// -------------------------------------------------------------------------------------------------
 template<size_t D> ExpandingArray<D> exarray(K a,J i,Cast c,Setting s) {
  K x=kK(a)[i];
  TORCH_CHECK(x->t==-KJ || x->t==KJ, msym(c)," ",mset(s),": expected long(s), given ",kname(x->t));
@@ -173,6 +176,29 @@ template<size_t D> ExpandingArray<D> exarray(const Pairs& p,Cast c) {
   return ExpandingArray<D>(p.j);
  else
   return ExpandingArray<D>(IntArrayRef((int64_t*)kJ(p.v),p.v->n));
+}
+
+template<size_t D> Exoptional<D> exoptional(J j) {
+ return (j == nj) ? Exoptional<D>(c10::nullopt) : Exoptional<D>(j);
+}
+
+template<size_t D> Exoptional<D> exoptional(K x) {
+ auto a=Exoptional<D>(IntArrayRef((int64_t*)kJ(x),x->n));
+ for(J i=0;i<x->n;++i) if((*a)[i].value() == nj) (*a)[i]=c10::nullopt;
+ return a;
+}
+
+template<size_t D> Exoptional<D> exoptional(K a,J i,Cast c,Setting s) {
+ K x=kK(a)[i];
+ TORCH_CHECK(x->t==-KJ || x->t==KJ, msym(c)," ",mset(s),": expected long(s), given ",kname(x->t));
+ TORCH_CHECK(x->t==-KJ || x->n==D,  msym(c)," ",mset(s),": expected scalar or ",D,"-element input, given ",x->n,"-element list");
+ return x->t == -KJ ? exoptional<D>(x->j) : exoptional<D>(x);
+}
+
+template<size_t D> Exoptional<D> exoptional(const Pairs& p,Cast c) {
+ TORCH_CHECK(p.t==-KJ || p.t==KJ,   msym(c)," ",p.k,": expected long(s), given ",kname(p.t));
+ TORCH_CHECK(p.t==-KJ || p.v->n==D, msym(c)," ",p.k,": expected scalar or ",D,"-element input, given ",p.v->n,"-element list");
+ return p.t == -KJ ? exoptional<D>(p.j) : exoptional<D>(p.v);
 }
 
 template<size_t D> Exdouble<D> exdouble(K a,J i,Cast c,Setting s) {
@@ -965,20 +991,26 @@ template<size_t D,typename M> static void avgpool(bool a,K x,const M* m) {
  if(a || o.divisor_override().has_value())               OPTION(x, divisor,  kj(o.divisor_override() ? o.divisor_override().value() : nj));
 }
 
-// ------------------------------------------------------------------------------------
-//  adaptive pooling - process args, return dictionary of options, call functional form
-// ------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// adaptive pooling - process args, return dictionary of options, call functional form
+// adapt - multiple versions to handle expanding array(1d) vs array of optionals(2,3d)
+// ---------------------------------------------------------------------------------------
+template<size_t D> void adapt(ExpandingArray<D>& a,K x,J i,Cast c)        {a=exarray<D>(x,i,c,Setting::size);}
+template<size_t D> void adapt(ExpandingArray<D>& a,const Pairs& p,Cast c) {a=exarray<D>(p,c);}
+template<size_t D> void adapt(Exoptional<D>& a,K x,J i,Cast c)        {a=exoptional<D>(x,i,c,Setting::size);}
+template<size_t D> void adapt(Exoptional<D>& a,const Pairs& p,Cast c) {a=exoptional<D>(p,c);}
+
 template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  T o(0); bool sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
-    case 0: o.output_size(exarray<D>(x,i+j,c,Setting::size)); sz=true; break;
+    case 0: adapt<D>(o.output_size(),x,i+j,c); sz=true; break;
     default: AT_ERROR(msym(c),": 1 positional argument expected, ",n," given");
   }
  }
  while(xpair(p))
   switch(mset(p.k)) {
-   case Setting::size: o.output_size(exarray<D>(p,c)); sz=true; break;
+   case Setting::size: adapt<D>(o.output_size(),p,c); sz=true; break;
    default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no output size given");

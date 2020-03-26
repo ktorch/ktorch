@@ -44,6 +44,12 @@ KAPI sgdtest(K x) {
  return (K)0;
 }
 */
+KAPI ex1(K x) {
+ KTRY
+  //torch::ExpandingArrayWithOptionalElem<3>(a);
+  return(K)0;
+ KCATCH("ex1");
+}
 
 K parmstate(Cast c,const torch::optim::OptimizerParamState& p) {
  K x=xD(ktn(KS,0),ktn(0,0));
@@ -98,7 +104,7 @@ K parmstate(Cast c,const torch::optim::OptimizerParamState& p) {
 KAPI o1(K x) {
  KTRY
   auto m=torch::nn::Linear(1,2);
-  auto o=torch::optim::Adagrad(m->parameters(),.025);
+  auto o=torch::optim::Adam(m->parameters(),.025);
   auto x=torch::randn({5,1});
   auto y=torch::randn({5,2});
   auto yhat=m->forward(x);
@@ -117,25 +123,20 @@ KAPI o1(K x) {
   o.zero_grad();
   o.step();
   auto& s=o.state();
+  J i; K v=ktn(0,3), *k=kK(v);
+  for(i=0; i<v->n; ++i) kK(v)[i]=ktn(i<2 ? KJ : 0, 0);
+  i=-1;
   for(auto& g:o.param_groups()) {
-   std::cerr << "param group\n";
-   std::cerr << "has options: " << g.has_options() << "\n";
+   i++;
    for(auto& p:g.params()) {
-    std::cerr << "param\n";
-    std::cerr << p << "\n";
-    J j=(intptr_t) p.unsafeGetTensorImpl();
-    std::cerr << "j: " << j << "\n";
-    return parmstate(Cast::adagrad, *s[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+    auto* t=p.unsafeGetTensorImpl();
+    J j=(intptr_t)t;
+    ja(&k[0], &j);
+    ja(&k[1], &i);
+    jk(&k[2], parmstate(Cast::adam, *s[c10::guts::to_string(t)]));
    }
   }
-  std::cerr << "state size: " << s.size() << "\n";
-  for(auto& m:o.state()) {
-   auto s=static_cast<const torch::optim::AdagradParamState&>(*m.second);
-   std::cerr << m.first << "\n";
-   std::cerr << s.step() << "\n";
-   std::cerr << s.sum() << "\n";
-  }
-  return (K)0;
+  return v;
  KCATCH("otest");
 }
 
