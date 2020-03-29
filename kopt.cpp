@@ -252,10 +252,11 @@ static void lbfgs(K x,J i,LBFGSOptions& o) {
   }
 }
 
-/* PATCH
 static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
- auto o=std::make_shared<LBFGS>(w,a); auto n=o->state().size();
+ auto o=std::make_shared<LBFGS>(w,a);
+ //auto n=o->state().size();
  if(y) {
+/* PATCH
   bset(n, "d",              o->parameters(), o->d, y);
   bset(n, "t",              o->parameters(), o->t, y);
   bset(n, "H_diag",         o->parameters(), o->H_diag, y);
@@ -263,10 +264,10 @@ static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
   bset(n, "prev_loss",      o->parameters(), o->prev_loss, y);
   bset(n, "old_dirs",       o->parameters(), o->old_dirs, y);
   bset(n, "old_stps",       o->parameters(), o->old_stps, y);
+*/
  }
  return o;
 }
-*/
 
 static K lbfgs(bool a,double r,LBFGS* v) { //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); LBFGSOptions d(r); auto& o=static_cast<LBFGSOptions&>(v->defaults());
@@ -432,7 +433,7 @@ static K optinit(S s,K x,K y) {
  switch(c) {
   case Cast::adagrad: {auto a=AdagradOptions(r); adagrad(x,i,a); o=adagrad(w,a,y); break;}
   case Cast::adam:    {auto a=AdamOptions(r);    adam(x,i,a);    o=adam(w,a,y);    break;}
-  // PATCH: case Cast::lbfgs:   {auto a=LBFGSOptions(r);   lbfgs(x,i,a);   o=lbfgs(w,a,y);   break;}
+  case Cast::lbfgs:   {auto a=LBFGSOptions(r);   lbfgs(x,i,a);   o=lbfgs(w,a,y);   break;}
   case Cast::rmsprop: {auto a=RMSpropOptions(r); rmsprop(x,i,a); o=rmsprop(w,a,y); break;}
   case Cast::sgd:     {auto a=SGDOptions(r);     sgd(x,i,a);     o=sgd(w,a,y);     break;}
   default: AT_ERROR("Unrecognized optimizer: ",s); break;

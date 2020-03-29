@@ -159,7 +159,7 @@ static c10::optional<double> optdouble(const Pairs& p,Cast c)    {double d=mdoub
 // exoptional - similar to exarray, for optional long(s), return expanding array with nulls
 // exdouble - similar to exarray, but for double array
 // -------------------------------------------------------------------------------------------------
-template<size_t D> ExpandingArray<D> exarray(K a,J i,Cast c,Setting s) {
+template<size_t D> static ExpandingArray<D> exarray(K a,J i,Cast c,Setting s) {
  K x=kK(a)[i];
  TORCH_CHECK(x->t==-KJ || x->t==KJ, msym(c)," ",mset(s),": expected long(s), given ",kname(x->t));
  TORCH_CHECK(x->t==-KJ || x->n==D,  msym(c)," ",mset(s),": expected scalar or ",D,"-element input, given ",x->n,"-element list");
@@ -169,7 +169,7 @@ template<size_t D> ExpandingArray<D> exarray(K a,J i,Cast c,Setting s) {
   return ExpandingArray<D>(IntArrayRef((int64_t*)kJ(x),x->n));
 }
 
-template<size_t D> ExpandingArray<D> exarray(const Pairs& p,Cast c) {
+template<size_t D> static ExpandingArray<D> exarray(const Pairs& p,Cast c) {
  TORCH_CHECK(p.t==-KJ || p.t==KJ,   msym(c)," ",p.k,": expected long(s), given ",kname(p.t));
  TORCH_CHECK(p.t==-KJ || p.v->n==D, msym(c)," ",p.k,": expected scalar or ",D,"-element input, given ",p.v->n,"-element list");
  if(p.t==-KJ)
@@ -178,30 +178,30 @@ template<size_t D> ExpandingArray<D> exarray(const Pairs& p,Cast c) {
   return ExpandingArray<D>(IntArrayRef((int64_t*)kJ(p.v),p.v->n));
 }
 
-template<size_t D> Exoptional<D> exoptional(J j) {
+template<size_t D> static Exoptional<D> exoptional(J j) {
  return (j == nj) ? Exoptional<D>(c10::nullopt) : Exoptional<D>(j);
 }
 
-template<size_t D> Exoptional<D> exoptional(K x) {
+template<size_t D> static Exoptional<D> exoptional(K x) {
  auto a=Exoptional<D>(IntArrayRef((int64_t*)kJ(x),x->n));
  for(J i=0;i<x->n;++i) if((*a)[i].value() == nj) (*a)[i]=c10::nullopt;
  return a;
 }
 
-template<size_t D> Exoptional<D> exoptional(K a,J i,Cast c,Setting s) {
+template<size_t D> static Exoptional<D> exoptional(K a,J i,Cast c,Setting s) {
  K x=kK(a)[i];
  TORCH_CHECK(x->t==-KJ || x->t==KJ, msym(c)," ",mset(s),": expected long(s), given ",kname(x->t));
  TORCH_CHECK(x->t==-KJ || x->n==D,  msym(c)," ",mset(s),": expected scalar or ",D,"-element input, given ",x->n,"-element list");
  return x->t == -KJ ? exoptional<D>(x->j) : exoptional<D>(x);
 }
 
-template<size_t D> Exoptional<D> exoptional(const Pairs& p,Cast c) {
+template<size_t D> static Exoptional<D> exoptional(const Pairs& p,Cast c) {
  TORCH_CHECK(p.t==-KJ || p.t==KJ,   msym(c)," ",p.k,": expected long(s), given ",kname(p.t));
  TORCH_CHECK(p.t==-KJ || p.v->n==D, msym(c)," ",p.k,": expected scalar or ",D,"-element input, given ",p.v->n,"-element list");
  return p.t == -KJ ? exoptional<D>(p.j) : exoptional<D>(p.v);
 }
 
-template<size_t D> Exdouble<D> exdouble(K a,J i,Cast c,Setting s) {
+template<size_t D> static Exdouble<D> exdouble(K a,J i,Cast c,Setting s) {
  K x=kK(a)[i];
  TORCH_CHECK(x->t==-KF || x->t==KF, msym(c)," ",mset(s),": expected double(s), given ",kname(x->t));
  TORCH_CHECK(x->t==-KF || x->n==D,  msym(c)," ",mset(s),": expected scalar or ",D,"-element input, given ",x->n,"-element list");
@@ -211,7 +211,7 @@ template<size_t D> Exdouble<D> exdouble(K a,J i,Cast c,Setting s) {
   return Exdouble<D>(torch::ArrayRef<double>(kF(x),x->n));
 }
 
-template<size_t D> Exdouble<D> exdouble(const Pairs& p,Cast c) {
+template<size_t D> static Exdouble<D> exdouble(const Pairs& p,Cast c) {
  TORCH_CHECK(p.t==-KF || p.t==KF,   msym(c)," ",p.k,": expected double(s), given ",kname(p.t));
  TORCH_CHECK(p.t==-KF || p.v->n==D, msym(c)," ",p.k,": expected scalar or ",D,"-element input, given ",p.v->n,"-element list");
  if(p.t==-KF)
@@ -995,10 +995,13 @@ template<size_t D,typename M> static void avgpool(bool a,K x,const M* m) {
 // adaptive pooling - process args, return dictionary of options, call functional form
 // adapt - multiple versions to handle expanding array(1d) vs array of optionals(2,3d)
 // ---------------------------------------------------------------------------------------
-template<size_t D> void adapt(ExpandingArray<D>& a,K x,J i,Cast c)        {a=exarray<D>(x,i,c,Setting::size);}
-template<size_t D> void adapt(ExpandingArray<D>& a,const Pairs& p,Cast c) {a=exarray<D>(p,c);}
-template<size_t D> void adapt(Exoptional<D>& a,K x,J i,Cast c)        {a=exoptional<D>(x,i,c,Setting::size);}
-template<size_t D> void adapt(Exoptional<D>& a,const Pairs& p,Cast c) {a=exoptional<D>(p,c);}
+template<size_t D> static void adapt(ExpandingArray<D>& a,K x,J i,Cast c)        {a=exarray<D>(x,i,c,Setting::size);}
+template<size_t D> static void adapt(ExpandingArray<D>& a,const Pairs& p,Cast c) {a=exarray<D>(p,c);}
+template<size_t D> static void adapt(Exoptional<D>& a,K x,J i,Cast c)        {a=exoptional<D>(x,i,c,Setting::size);}
+template<size_t D> static void adapt(Exoptional<D>& a,const Pairs& p,Cast c) {a=exoptional<D>(p,c);}
+
+template<size_t D> static bool adapt(ExpandingArray<D>& a) {for(auto &v:*a) if(v != nj) return true; return false;}
+template<size_t D> static bool adapt(Exoptional<D>& a)     {for(auto &v:*a) if(v)       return true; return false;}
 
 template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  T o(0); bool sz=false; Pairs p; J n=xargc(x,i,p);
@@ -1014,6 +1017,7 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
    default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no output size given");
+ TORCH_CHECK(adapt(o.output_size()), msym(c),": no output size");
  return o;
 }
 
@@ -1805,10 +1809,129 @@ static void getsize(bool a,K x,const SizeOptions& o) {
 }
 
 // ----------------------------------------------------------------------------------------------------
-// mparms - set parameters/buffers in a defined module from k values in dictionary with matching names
-// mdefine - define module and add to a sequence, reading options (and sometimes parms/buffers) from k
+// anymodule - define module from supplied options, return in generic AnyModule container
 // ----------------------------------------------------------------------------------------------------
-void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
+AnyModule anymodule(K x,J i,Cast c) {
+ switch(c) {
+  case Cast::batchnorm1d:  return AnyModule(torch::nn::BatchNorm1d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
+  case Cast::batchnorm2d:  return AnyModule(torch::nn::BatchNorm2d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
+  case Cast::batchnorm3d:  return AnyModule(torch::nn::BatchNorm3d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
+
+  case Cast::instancenorm1d:  return AnyModule(torch::nn::InstanceNorm1d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
+  case Cast::instancenorm2d:  return AnyModule(torch::nn::InstanceNorm2d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
+  case Cast::instancenorm3d:  return AnyModule(torch::nn::InstanceNorm3d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
+
+  case Cast::groupnorm:  return AnyModule(torch::nn::GroupNorm(groupnorm(x,i,c)));
+  case Cast::layernorm:  return AnyModule(torch::nn::LayerNorm(layernorm(x,i,c)));
+  case Cast::localnorm:  return AnyModule(torch::nn::LocalResponseNorm(localnorm<torch::nn::LocalResponseNormOptions>(x,i,c)));
+  case Cast::crossmap2d: return AnyModule(torch::nn::CrossMapLRN2d(localnorm<torch::nn::CrossMapLRN2dOptions>(x,i,c)));
+
+  case Cast::embed:        return AnyModule(embed(x,i,c));
+  case Cast::embedbag:     return AnyModule(embedbag(x,i,c));
+  case Cast::linear:       return AnyModule(torch::nn::Linear(linear(x,i,c)));
+  case Cast::bilinear:     return AnyModule(torch::nn::Bilinear(bilinear(x,i,c)));
+
+  case Cast::drop:         return AnyModule(torch::nn::Dropout(drop(x,i,c)));
+  case Cast::drop2d:       return AnyModule(torch::nn::Dropout2d(drop(x,i,c)));
+  case Cast::drop3d:       return AnyModule(torch::nn::Dropout3d(drop(x,i,c)));
+  case Cast::adrop:        return AnyModule(torch::nn::AlphaDropout(drop(x,i,c)));
+  case Cast::fadrop:       return AnyModule(torch::nn::FeatureAlphaDropout(drop(x,i,c)));
+
+  case Cast::conv1d:       return AnyModule(torch::nn::Conv1d(conv<1>(x,i,c)));
+  case Cast::conv2d:       return AnyModule(torch::nn::Conv2d(conv<2>(x,i,c)));
+  case Cast::conv3d:       return AnyModule(torch::nn::Conv3d(conv<3>(x,i,c)));
+
+  case Cast::convtranspose1d:  return AnyModule(ConvTranspose1d(convtran<1>(x,i,c)));
+  case Cast::convtranspose2d:  return AnyModule(ConvTranspose2d(convtran<2>(x,i,c)));
+  case Cast::convtranspose3d:  return AnyModule(ConvTranspose3d(convtran<3>(x,i,c)));
+
+  case Cast::fold:         return AnyModule(torch::nn::Fold(fold(x,i,c)));
+  case Cast::unfold:       return AnyModule(torch::nn::Unfold(unfold(x,i,c)));
+
+  case Cast::maxpool1d:    return AnyModule(torch::nn::MaxPool1d(maxpool<1>(x,i,c)));
+  case Cast::maxpool2d:    return AnyModule(torch::nn::MaxPool2d(maxpool<2>(x,i,c)));
+  case Cast::maxpool3d:    return AnyModule(torch::nn::MaxPool3d(maxpool<3>(x,i,c)));
+
+  case Cast::avgpool1d:    return AnyModule(torch::nn::AvgPool1d(avgpool<1>(x,i,c)));
+  case Cast::avgpool2d:    return AnyModule(torch::nn::AvgPool2d(avgpool<2>(x,i,c)));
+  case Cast::avgpool3d:    return AnyModule(torch::nn::AvgPool3d(avgpool<3>(x,i,c)));
+
+  case Cast::adaptmax1d:   return AnyModule(torch::nn::AdaptiveMaxPool1d(adapt<1,torch::nn::AdaptiveMaxPool1dOptions>(x,i,c)));
+  case Cast::adaptmax2d:   return AnyModule(torch::nn::AdaptiveMaxPool2d(adapt<2,torch::nn::AdaptiveMaxPool2dOptions>(x,i,c)));
+  case Cast::adaptmax3d:   return AnyModule(torch::nn::AdaptiveMaxPool3d(adapt<3,torch::nn::AdaptiveMaxPool3dOptions>(x,i,c)));
+
+  case Cast::adaptavg1d:   return AnyModule(torch::nn::AdaptiveAvgPool1d(adapt<1,torch::nn::AdaptiveAvgPool1dOptions>(x,i,c)));
+  case Cast::adaptavg2d:   return AnyModule(torch::nn::AdaptiveAvgPool2d(adapt<2,torch::nn::AdaptiveAvgPool2dOptions>(x,i,c)));
+  case Cast::adaptavg3d:   return AnyModule(torch::nn::AdaptiveAvgPool3d(adapt<3,torch::nn::AdaptiveAvgPool3dOptions>(x,i,c)));
+
+  case Cast::fmaxpool2d:   return AnyModule(torch::nn::FractionalMaxPool2d(fpool<2>(x,i,c)));
+  case Cast::fmaxpool3d:   return AnyModule(torch::nn::FractionalMaxPool3d(fpool<3>(x,i,c)));
+
+  case Cast::lppool1d:     return AnyModule(torch::nn::LPPool1d(lppool<1>(x,i,c)));
+  case Cast::lppool2d:     return AnyModule(torch::nn::LPPool2d(lppool<2>(x,i,c)));
+
+  case Cast::pad:          return AnyModule(Pad(pad(x,i,c)));
+  case Cast::pad1d:        return AnyModule(torch::nn::ConstantPad1d(cpad<1,torch::nn::ConstantPad1dOptions>(x,i,c)));
+  case Cast::pad2d:        return AnyModule(torch::nn::ConstantPad2d(cpad<2,torch::nn::ConstantPad2dOptions>(x,i,c)));
+  case Cast::pad3d:        return AnyModule(torch::nn::ConstantPad3d(cpad<3,torch::nn::ConstantPad3dOptions>(x,i,c)));
+  case Cast::reflect1d:    return AnyModule(torch::nn::ReflectionPad1d(npad<1,torch::nn::ReflectionPad1dOptions>(x,i,c)));
+  case Cast::reflect2d:    return AnyModule(torch::nn::ReflectionPad2d(npad<2,torch::nn::ReflectionPad2dOptions>(x,i,c)));
+  case Cast::replicate1d:  return AnyModule(torch::nn::ReplicationPad1d(npad<1,torch::nn::ReplicationPad1dOptions>(x,i,c)));
+  case Cast::replicate2d:  return AnyModule(torch::nn::ReplicationPad2d(npad<2,torch::nn::ReplicationPad2dOptions>(x,i,c)));
+  case Cast::replicate3d:  return AnyModule(torch::nn::ReplicationPad3d(npad<3,torch::nn::ReplicationPad3dOptions>(x,i,c)));
+  case Cast::zeropad2d:    return AnyModule(torch::nn::ZeroPad2d(npad<2,torch::nn::ZeroPad2dOptions>(x,i,c)));
+
+  case Cast::rnn:          return AnyModule((rnn<torch::nn::RNN, torch::nn::RNNOptions> (c,x,i)));
+  case Cast::gru:          return AnyModule((rnn<torch::nn::GRU, torch::nn::GRUOptions> (c,x,i)));
+  case Cast::lstm:         return AnyModule((rnn<torch::nn::LSTM,torch::nn::LSTMOptions>(c,x,i)));
+
+  case Cast::identity:     noarg(c,x,i); return AnyModule(torch::nn::Identity());
+  case Cast::logsigmoid:   noarg(c,x,i); return AnyModule(torch::nn::LogSigmoid());
+  case Cast::sigmoid:      noarg(c,x,i); return AnyModule(torch::nn::Sigmoid());
+  case Cast::softsign:     noarg(c,x,i); return AnyModule(torch::nn::Softsign());
+  case Cast::softmax2d:    noarg(c,x,i); return AnyModule(torch::nn::Softmax2d());
+  case Cast::tanh:         noarg(c,x,i); return AnyModule(torch::nn::Tanh());
+  case Cast::tanhshrink:   noarg(c,x,i); return AnyModule(torch::nn::Tanhshrink());
+  case Cast::gelu:         noarg(c,x,i); return AnyModule(torch::nn::GELU());
+
+  case Cast::relu:         return AnyModule( torch::nn::ReLU(inplace(x,i,c)));
+  case Cast::relu6:        return AnyModule(torch::nn::ReLU6(inplace(x,i,c)));
+  case Cast::selu:         return AnyModule( torch::nn::SELU(inplace(x,i,c)));
+
+  case Cast::softmax:      return AnyModule(torch::nn::Softmax(dim(x,i,c)));
+  case Cast::softmin:      return AnyModule(torch::nn::Softmin(dim(x,i,c)));
+  case Cast::logsoftmax:   return AnyModule(torch::nn::LogSoftmax(dim(x,i,c)));
+  case Cast::flatten:      return AnyModule(torch::nn::Flatten(flatten(x,i)));
+
+  case Cast::squeeze:      return AnyModule(Squeeze(squeeze(x,i,c)));
+  case Cast::unsqueeze:    return AnyModule(Unsqueeze(squeeze(x,i,c)));
+  case Cast::expand:       return AnyModule(Expand(getsize(x,i,c)));
+  case Cast::reshape:      return AnyModule(Reshape(getsize(x,i,c)));
+  case Cast::cat:          return AnyModule(Cat(dim(x,i,c)));
+
+  case Cast::elu:          return AnyModule(torch::nn::ELU (alpha<torch::nn::ELUOptions> (x,i,c)));
+  case Cast::celu:         return AnyModule(torch::nn::CELU(alpha<torch::nn::CELUOptions>(x,i,c)));
+  case Cast::leakyrelu:    return AnyModule(torch::nn::LeakyReLU(slope(x,i,c)));
+  case Cast::glu:          return AnyModule(torch::nn::GLU(dim(x,i,c)));
+  case Cast::hardshrink:   return AnyModule(torch::nn::Hardshrink(lambda(x,i,c)));
+  case Cast::softshrink:   return AnyModule(torch::nn::Softshrink(lambda(x,i,c)));
+  case Cast::prelu:        return AnyModule(torch::nn::PReLU(prelu(x,i,c)));
+  case Cast::rrelu:        return AnyModule(torch::nn::RReLU(rrelu(x,i,c)));
+  case Cast::hardtanh:     return AnyModule(torch::nn::Hardtanh(hardtanh(x,i,c)));
+  case Cast::softplus:     return AnyModule(torch::nn::Softplus(softplus(x,i,c)));
+  case Cast::threshold:    return AnyModule(torch::nn::Threshold(threshold(x,i,c)));
+
+  case Cast::pairwise:     return AnyModule(torch::nn::PairwiseDistance(pairwise(x,i,c)));
+  case Cast::similar:      return AnyModule(torch::nn::CosineSimilarity(similar(x,i,c)));
+  default: AT_ERROR("Unrecognized module: ",(I)c);
+ }
+}
+
+// ----------------------------------------------------------------------------------------------------
+// mparms - set parameters/buffers in a defined module from k values in dictionary with matching names
+// pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
+// ----------------------------------------------------------------------------------------------------
+static void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
  for(auto &a:p ? m.named_parameters() : m.named_buffers()) {
   J i=kfind(k,a.key());
@@ -1833,136 +1956,19 @@ void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m f
  }
 }
 
-void mparms(S s,Sequential &q,K p,K f) {
- J i=q->size()-1;
- if(p) mparms(s,*q[i],p,true);
- if(f) mparms(s,*q[i],f,false);
-}
-
-//s:type, n:name(optional), i:offset into x, x:options(list/dictionary), p:parms, f:buffers
-void mdefine(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nullptr);
-void mdefine(Sequential &q,S s,S n,J i,K x,K p,K f) { 
+void pushback(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nullptr);
+void pushback(Sequential &q,S s,S n,        J i,   K x,        K p,        K f)  {
  Cast c=msym(s);
- switch(c) {
-  case Cast::batchnorm1d:  PUSH(q,n,torch::nn::BatchNorm1d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
-  case Cast::batchnorm2d:  PUSH(q,n,torch::nn::BatchNorm2d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
-  case Cast::batchnorm3d:  PUSH(q,n,torch::nn::BatchNorm3d(batchnorm<torch::nn::BatchNormOptions>(x,i,c))); break;
-
-  case Cast::instancenorm1d:  PUSH(q,n,torch::nn::InstanceNorm1d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c))); break;
-  case Cast::instancenorm2d:  PUSH(q,n,torch::nn::InstanceNorm2d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c))); break;
-  case Cast::instancenorm3d:  PUSH(q,n,torch::nn::InstanceNorm3d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c))); break;
-
-  case Cast::groupnorm:  PUSH(q,n,torch::nn::GroupNorm(groupnorm(x,i,c))); break;
-  case Cast::layernorm:  PUSH(q,n,torch::nn::LayerNorm(layernorm(x,i,c))); break;
-  case Cast::localnorm:  PUSH(q,n,torch::nn::LocalResponseNorm(localnorm<torch::nn::LocalResponseNormOptions>(x,i,c))); break;
-  case Cast::crossmap2d: PUSH(q,n,torch::nn::CrossMapLRN2d(localnorm<torch::nn::CrossMapLRN2dOptions>(x,i,c))); break;
-
-  case Cast::embed:        PUSH(q,n,embed(x,i,c)); break;
-  case Cast::embedbag:     PUSH(q,n,embedbag(x,i,c)); break;
-  case Cast::linear:       PUSH(q,n,torch::nn::Linear(linear(x,i,c))); break;
-  case Cast::bilinear:     PUSH(q,n,torch::nn::Bilinear(bilinear(x,i,c))); break;
-
-  case Cast::drop:         PUSH(q,n,torch::nn::Dropout(drop(x,i,c))); break;
-  case Cast::drop2d:       PUSH(q,n,torch::nn::Dropout2d(drop(x,i,c))); break;
-  case Cast::drop3d:       PUSH(q,n,torch::nn::Dropout3d(drop(x,i,c))); break;
-  case Cast::adrop:        PUSH(q,n,torch::nn::AlphaDropout(drop(x,i,c))); break;
-  case Cast::fadrop:       PUSH(q,n,torch::nn::FeatureAlphaDropout(drop(x,i,c))); break;
-
-  case Cast::conv1d:       PUSH(q,n,torch::nn::Conv1d(conv<1>(x,i,c))); break;
-  case Cast::conv2d:       PUSH(q,n,torch::nn::Conv2d(conv<2>(x,i,c))); break;
-  case Cast::conv3d:       PUSH(q,n,torch::nn::Conv3d(conv<3>(x,i,c))); break;
-
-  case Cast::convtranspose1d:  PUSH(q,n,ConvTranspose1d(convtran<1>(x,i,c))); break;
-  case Cast::convtranspose2d:  PUSH(q,n,ConvTranspose2d(convtran<2>(x,i,c))); break;
-  case Cast::convtranspose3d:  PUSH(q,n,ConvTranspose3d(convtran<3>(x,i,c))); break;
-
-  case Cast::fold:         PUSH(q,n,torch::nn::Fold(fold(x,i,c))); break;
-  case Cast::unfold:       PUSH(q,n,torch::nn::Unfold(unfold(x,i,c))); break;
-
-  case Cast::maxpool1d:    PUSH(q,n,torch::nn::MaxPool1d(maxpool<1>(x,i,c))); break;
-  case Cast::maxpool2d:    PUSH(q,n,torch::nn::MaxPool2d(maxpool<2>(x,i,c))); break;
-  case Cast::maxpool3d:    PUSH(q,n,torch::nn::MaxPool3d(maxpool<3>(x,i,c))); break;
-
-  case Cast::avgpool1d:    PUSH(q,n,torch::nn::AvgPool1d(avgpool<1>(x,i,c))); break;
-  case Cast::avgpool2d:    PUSH(q,n,torch::nn::AvgPool2d(avgpool<2>(x,i,c))); break;
-  case Cast::avgpool3d:    PUSH(q,n,torch::nn::AvgPool3d(avgpool<3>(x,i,c))); break;
-
-  case Cast::adaptmax1d:   PUSH(q,n,torch::nn::AdaptiveMaxPool1d(adapt<1,torch::nn::AdaptiveMaxPool1dOptions>(x,i,c))); break;
-  case Cast::adaptmax2d:   PUSH(q,n,torch::nn::AdaptiveMaxPool2d(adapt<2,torch::nn::AdaptiveMaxPool2dOptions>(x,i,c))); break;
-  case Cast::adaptmax3d:   PUSH(q,n,torch::nn::AdaptiveMaxPool3d(adapt<3,torch::nn::AdaptiveMaxPool3dOptions>(x,i,c))); break;
-
-  case Cast::adaptavg1d:   PUSH(q,n,torch::nn::AdaptiveAvgPool1d(adapt<1,torch::nn::AdaptiveAvgPool1dOptions>(x,i,c))); break;
-  case Cast::adaptavg2d:   PUSH(q,n,torch::nn::AdaptiveAvgPool2d(adapt<2,torch::nn::AdaptiveAvgPool2dOptions>(x,i,c))); break;
-  case Cast::adaptavg3d:   PUSH(q,n,torch::nn::AdaptiveAvgPool3d(adapt<3,torch::nn::AdaptiveAvgPool3dOptions>(x,i,c))); break;
-
-  case Cast::fmaxpool2d:   PUSH(q,n,torch::nn::FractionalMaxPool2d(fpool<2>(x,i,c))); break;
-  case Cast::fmaxpool3d:   PUSH(q,n,torch::nn::FractionalMaxPool3d(fpool<3>(x,i,c))); break;
-
-  case Cast::lppool1d:     PUSH(q,n,torch::nn::LPPool1d(lppool<1>(x,i,c))); break;
-  case Cast::lppool2d:     PUSH(q,n,torch::nn::LPPool2d(lppool<2>(x,i,c))); break;
-
-  case Cast::pad:          PUSH(q,n,Pad(pad(x,i,c))); break;
-  case Cast::pad1d:        PUSH(q,n,torch::nn::ConstantPad1d(cpad<1,torch::nn::ConstantPad1dOptions>(x,i,c))); break;
-  case Cast::pad2d:        PUSH(q,n,torch::nn::ConstantPad2d(cpad<2,torch::nn::ConstantPad2dOptions>(x,i,c))); break;
-  case Cast::pad3d:        PUSH(q,n,torch::nn::ConstantPad3d(cpad<3,torch::nn::ConstantPad3dOptions>(x,i,c))); break;
-  case Cast::reflect1d:    PUSH(q,n,torch::nn::ReflectionPad1d(npad<1,torch::nn::ReflectionPad1dOptions>(x,i,c))); break;
-  case Cast::reflect2d:    PUSH(q,n,torch::nn::ReflectionPad2d(npad<2,torch::nn::ReflectionPad2dOptions>(x,i,c))); break;
-  case Cast::replicate1d:  PUSH(q,n,torch::nn::ReplicationPad1d(npad<1,torch::nn::ReplicationPad1dOptions>(x,i,c))); break;
-  case Cast::replicate2d:  PUSH(q,n,torch::nn::ReplicationPad2d(npad<2,torch::nn::ReplicationPad2dOptions>(x,i,c))); break;
-  case Cast::replicate3d:  PUSH(q,n,torch::nn::ReplicationPad3d(npad<3,torch::nn::ReplicationPad3dOptions>(x,i,c))); break;
-  case Cast::zeropad2d:    PUSH(q,n,torch::nn::ZeroPad2d(npad<2,torch::nn::ZeroPad2dOptions>(x,i,c))); break;
-
-  case Cast::rnn:          PUSH(q,n,(rnn<torch::nn::RNN, torch::nn::RNNOptions> (c,x,i))); break;
-  case Cast::gru:          PUSH(q,n,(rnn<torch::nn::GRU, torch::nn::GRUOptions> (c,x,i))); break;
-  case Cast::lstm:         PUSH(q,n,(rnn<torch::nn::LSTM,torch::nn::LSTMOptions>(c,x,i))); break;
-
-  case Cast::identity:     noarg(c,x,i); PUSH(q,n,torch::nn::Identity()); break;
-  case Cast::logsigmoid:   noarg(c,x,i); PUSH(q,n,torch::nn::LogSigmoid()); break;
-  case Cast::sigmoid:      noarg(c,x,i); PUSH(q,n,torch::nn::Sigmoid()); break;
-  case Cast::softsign:     noarg(c,x,i); PUSH(q,n,torch::nn::Softsign()); break;
-  case Cast::softmax2d:    noarg(c,x,i); PUSH(q,n,torch::nn::Softmax2d()); break;
-  case Cast::tanh:         noarg(c,x,i); PUSH(q,n,torch::nn::Tanh()); break;
-  case Cast::tanhshrink:   noarg(c,x,i); PUSH(q,n,torch::nn::Tanhshrink()); break;
-  case Cast::gelu:         noarg(c,x,i); PUSH(q,n,torch::nn::GELU()); break;
-
-  case Cast::relu:         PUSH(q,n, torch::nn::ReLU(inplace(x,i,c))); break;
-  case Cast::relu6:        PUSH(q,n,torch::nn::ReLU6(inplace(x,i,c))); break;
-  case Cast::selu:         PUSH(q,n, torch::nn::SELU(inplace(x,i,c))); break;
-
-  case Cast::softmax:      PUSH(q,n,torch::nn::Softmax(dim(x,i,c))); break;
-  case Cast::softmin:      PUSH(q,n,torch::nn::Softmin(dim(x,i,c))); break;
-  case Cast::logsoftmax:   PUSH(q,n,torch::nn::LogSoftmax(dim(x,i,c))); break;
-  case Cast::flatten:      PUSH(q,n,torch::nn::Flatten(flatten(x,i))); break;
-
-  case Cast::squeeze:      PUSH(q,n,Squeeze(squeeze(x,i,c))); break;
-  case Cast::unsqueeze:    PUSH(q,n,Unsqueeze(squeeze(x,i,c))); break;
-  case Cast::expand:       PUSH(q,n,Expand(getsize(x,i,c))); break;
-  case Cast::reshape:      PUSH(q,n,Reshape(getsize(x,i,c))); break;
-  case Cast::cat:          PUSH(q,n,Cat(dim(x,i,c))); break;
-
-  case Cast::elu:          PUSH(q,n,torch::nn::ELU (alpha<torch::nn::ELUOptions> (x,i,c))); break;
-  case Cast::celu:         PUSH(q,n,torch::nn::CELU(alpha<torch::nn::CELUOptions>(x,i,c))); break;
-  case Cast::leakyrelu:    PUSH(q,n,torch::nn::LeakyReLU(slope(x,i,c))); break;
-  case Cast::glu:          PUSH(q,n,torch::nn::GLU(dim(x,i,c))); break;
-  case Cast::hardshrink:   PUSH(q,n,torch::nn::Hardshrink(lambda(x,i,c))); break;
-  case Cast::softshrink:   PUSH(q,n,torch::nn::Softshrink(lambda(x,i,c))); break;
-  case Cast::prelu:        PUSH(q,n,torch::nn::PReLU(prelu(x,i,c))); break;
-  case Cast::rrelu:        PUSH(q,n,torch::nn::RReLU(rrelu(x,i,c))); break;
-  case Cast::hardtanh:     PUSH(q,n,torch::nn::Hardtanh(hardtanh(x,i,c))); break;
-  case Cast::softplus:     PUSH(q,n,torch::nn::Softplus(softplus(x,i,c))); break;
-  case Cast::threshold:    PUSH(q,n,torch::nn::Threshold(threshold(x,i,c))); break;
-
-  case Cast::pairwise:     PUSH(q,n,torch::nn::PairwiseDistance(pairwise(x,i,c))); break;
-  case Cast::similar:      PUSH(q,n,torch::nn::CosineSimilarity(similar(x,i,c))); break;
-  default: AT_ERROR("Unrecognized module: ",s); break;
- }
- if(p || f) mparms(s,q,p,f);  // set parms/buffers if k dictionaries supplied
+ auto m=anymodule(x,i,c);           // define module, return in generic container
+ if(p) mparms(s,*m.ptr(),p,true);   // add parameter values if supplied
+ if(f) mparms(s,*m.ptr(),f,false);  // add any buffers supplied
+ n ? q->push_back(std::string(n),m) : q->push_back(m);
 }
 
-void mdefine(Sequential &q,K x) { // define modules from k table of options or full state
+void pushback(Sequential &q,K x) { // add modules to sequential from k table of options or full state
  J n=x->t==99 ? 0 : xlen(x);
  for(J i=98-x->t;i<n;++i)
-   mdefine(q,statemodule(x,i),statename(x,i),-1,stateoptions(x,i),stateparms(x,i),statebuffers(x,i));
+   pushback(q,statemodule(x,i),statename(x,i),-1,stateoptions(x,i),stateparms(x,i),statebuffers(x,i));
 }
 
 // --------------------------------------------------------------------------------------------
@@ -2173,12 +2179,12 @@ void margs(Sequential& q,K x,J i) {
  S s=nullptr,nm=nullptr;
  if(xsym(x,s) || xsym(x,i,s)) {  // x is single sym, or 1st part of arg list is sym
   if(xsym(x,i+1,nm)) i++;        // increment offset if 2nd elem is sym for name
-  mdefine(q,s,nm,i+1,x);         // add a single module to sequential
+  pushback(q,s,nm,i+1,x);        // add a single module to sequential
  } else if(x->t == KS) {         // if sym vector, i.e. module type & name
   if(x->n==1 || x->n==2) {       // only 1 or 2 symbols expected
    s=kS(x)[0];                   // set module type
    if(x->n==2) nm=kS(x)[1];      // and name, if supplied
-   mdefine(q,s,nm,x->n,x);       // add a module from sym(s)
+   pushback(q,s,nm,x->n,x);      // add a module from sym(s)
   } else {
    AT_ERROR("Unable to process list of ",x->n," symbols");
   }
@@ -2202,7 +2208,7 @@ KAPI seq(K x) {
   } else if(p && x->n==2 && xseq(x,1,u)) {
     return q->extend(*u), (K)0;
   } else if(xstate(x) || (p && x->n==2 && xstate(x,1))) {
-   return mdefine(q,p ? kK(x)[1] : x), p ? (K)0 : kseq(q);
+   return pushback(q,p ? kK(x)[1] : x), p ? (K)0 : kseq(q);
   } else {
    return margs(q,x,p), p ? (K)0 : kseq(q);
   }
