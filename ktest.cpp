@@ -341,10 +341,6 @@ KAPI testjoin(K x) {
 }
 
 /////////////////////////////////////////////////////////////////////////
-static S msym(Cast c) {
- for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized module: ",(I)c);
-}
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  AT_ERROR("Unrecognized module: ",s);
@@ -352,23 +348,9 @@ static Cast msym(S s) {
 
 std::tuple<Cast,K> mopt(bool,const Module&);
 
-bool container(Cast c) {
- switch(c) {
-  case Cast::sequential:
-  case Cast::join:
-   return true;
-  default: return false;
- }
-}
-
-K mkeys(bool b) {
- K x=ktn(KS, b ? 6 : 4); J i=0;
- for(auto& m:env().mstate) {
-  kS(x)[i++]=std::get<0>(m);
-  if(i==x->n) break;
- }
- return x;
-}
+bool container(Cast);
+K mkeys(bool);
+K mget(bool a,bool b,const char* s,const Module& m);
 
 /*
 addchild:{[p;v;nm] -2 $[count p; string[p],"->pushback(",string[` sv v,nm],")"; "creating container: ",string v]}
@@ -437,49 +419,6 @@ KAPI mdef(K x) {
  KCATCH("mdef");
 }
 
-void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
- Cast c; K o,*k=kK(x); std::tie(c,o)=mopt(a,m);
- if(t) {
-  ja(&k[0], &d);
-  js(&k[1], msym(c));
-  js(&k[2], cs(s));
-  jk(&k[3], o);
-  if(x->n == 6)
-   jk(&k[4], kdict(m.named_parameters(false))),
-   jk(&k[5], kdict(m.named_buffers(false)));
-  for(auto& i:m.named_children())
-   mget(a,d+1,i.key().c_str(),t,*i.value(),x);
- } else {
-  TORCH_CHECK(!m.children().size(), msym(c), ": unexpected child module(s)");
-  k[0]=kj(d);
-  k[1]=ks(msym(c));
-  k[2]=ks(cs(s));
-  k[3]=o;
-  if(x->n == 6)
-   k[4]=kdict(m.named_parameters(false)),
-   k[5]=kdict(m.named_buffers(false));
- }
-}
-
-K mget(bool a,bool b,Cast c,const Module& m) {
- K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
- if(container(c)) {
-  for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
-  mget(a,0,"",true,m,v);
-  return xT(xD(k,v));
- } else {
-  mget(a,0,"",false,m,v);
-  return xD(k,v);
- }
-}
-
-KAPI testdepth(K x) {
- KTRY
-  Kmodule *m=xmodule(x);
-  TORCH_CHECK(m, "not a module");
-  return mget(true,false,m->c,*(m->m.ptr()));
- KCATCH("testdepth");
-}
 void margs(Sequential& q,K x,J i);
 
 KAPI kjoin(K x) {
@@ -516,7 +455,7 @@ KAPI join1(K x) {
   j->push_back("empty",Sequential());
   j->push_back("cat",AnyModule(Cat(1)));
   for(auto& c:q->named_modules()) std::cerr << "child: " <<  c.key() << "\n";
-  return mget(true,true,Cast::sequential,*q);
+  return mget(true,true,"",*q);
   //Cast c; K o; std::tie(c,o)=mopt(true,*AnyModule(q).ptr());
   //return o;
  KCATCH("join1");

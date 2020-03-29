@@ -47,6 +47,7 @@ template<> void rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o,torch::nn:
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
+// container - given module/module cast, return true if container module
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
@@ -68,32 +69,35 @@ static Setting mset(S s) {
  AT_ERROR("Unrecognized option: ",s);
 }
 
+bool container(Cast c) {
+ switch(c) {
+  case Cast::sequential:
+  case Cast::join:
+   return true;
+  default: return false;
+ }
+}
+
+bool container(const Module& m) {
+ if       (m.as<torch::nn::Sequential>()) { return true;
+ } else if(m.as<Join>())                  { return true;
+ } else                                   { return false;
+ }
+}
+
 // ------------------------------------------------------------------------------------------
-// mkeys - initialize keys for dict/table of module state: `module`name`options`parms`buffers
-// mvals - initialize corresponding k values for state dictionary or table
+// mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
+// 
 // ------------------------------------------------------------------------------------------
-static K mkeys(bool b) { // b:true if including class, parms & buffers
- if(b) return statekeys();
- K x=ktn(KS,3);
- for(auto &m:env().state) {
-       if(std::get<1>(m)==State::module)  kS(x)[0]=std::get<0>(m);
-  else if(std::get<1>(m)==State::name)    kS(x)[1]=std::get<0>(m);
-  else if(std::get<1>(m)==State::options){kS(x)[2]=std::get<0>(m); break;}
+K mkeys(bool b) {
+ K x=ktn(KS, b ? 6 : 4); J i=0;
+ for(auto& m:env().mstate) {
+  kS(x)[i++]=std::get<0>(m);
+  if(i==x->n) break;
  }
  return x;
 }
 
-static K mvals(bool b,J n) {
- K x=ktn(0,b ? 6 : 3);
- if(n<0) {
-  if(b) kK(x)[0]=kc('m');
- } else {
-  if(b) kK(x)[0]=kp((S)std::string(n,'m').data());
-  for(J i=b;i<x->n;++i) kK(x)[i]=ktn(i<(2+b) ? KS : 0,n);
- }
- return x;
-}
- 
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
@@ -2096,33 +2100,44 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  return std::make_tuple(c,x);
 }
 
-void mget(const char* s,const Module &m,bool a,K &v,J i) {
- //s:name in sequence, m:type-erased module, a:true for all options, v:array for values, i:i'th row of table result
- bool b=v->n==6; Cast c; K x;
- std::tie(c,x)=mopt(a,m);
- if(i<0) {
-  kK(v)[b]=ks(msym(c));  // module 
-  kK(v)[b+1]=ks(cs(s));  // name
-  kK(v)[b+2]=x;          // dictionary of options
-  if(b) {
-   kK(v)[4]=kdict(m.named_parameters());
-   kK(v)[5]=kdict(m.named_buffers());
-  }
- } else {                         // fill in i-th table row
-  kS(kK(v)[b])[i]=cs(msym(c));    // module
-  kS(kK(v)[b+1])[i]=cs(s);        // name
-  kK(kK(v)[b+2])[i]=x;            // dictionary of options
-  if(b) {
-   kK(kK(v)[4])[i]=kdict(m.named_parameters());
-   kK(kK(v)[5])[i]=kdict(m.named_buffers());
-  }
+void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
+ Cast c; K o,*k=kK(x); std::tie(c,o)=mopt(a,m);
+ if(t) {
+  ja(&k[0], &d);
+  js(&k[1], msym(c));
+  js(&k[2], cs(s));
+  jk(&k[3], o);
+  if(x->n == 6)
+   jk(&k[4], kdict(m.named_parameters(false))),
+   jk(&k[5], kdict(m.named_buffers(false)));
+  for(auto& i:m.named_children())
+   mget(a,d+1,i.key().c_str(),t,*i.value(),x);
+ } else {
+  TORCH_CHECK(!m.children().size(), msym(c), ": unexpected child module(s)");
+  k[0]=kj(d);
+  k[1]=ks(msym(c));
+  k[2]=ks(cs(s));
+  k[3]=o;
+  if(x->n == 6)
+   k[4]=kdict(m.named_parameters(false)),
+   k[5]=kdict(m.named_buffers(false));
+ }
+}
+
+K mget(bool a,bool b,const char* s,const Module& m) {
+ K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
+ if(container(m)) {
+  for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
+  mget(a,0,s,true,m,v);
+  return xT(xD(k,v));
+ } else {
+  mget(a,0,s,false,m,v);
+  return xD(k,v);
  }
 }
 
 K mtable(const Sequential& q,bool a,bool b) {
- J i=0; K k=mkeys(b),v=mvals(b,q->size());
- for(const auto&c:q->named_children()) mget(c.key().c_str(),*c.value(),a,v,i++);
- return xT(xD(k,v));
+ return mget(a,b,"",*q);
 }
 
 // --------------------------------------------------------------------------------------
@@ -2146,13 +2161,11 @@ static K mchild(bool a,J i,S s,const Sequential &q) {
  if(s) {
   return tchild(s,*q->children()[i]);
  } else {
-  K k=mkeys(true),v=mvals(true,-1);
   //direct access by index[0] fails to pick up name(?)
   //const auto& c=q->named_children()[i];
   //mget(c.key().c_str(),*c.value(),a,v,-1);
   const auto& c=q->named_children();
-  mget(c.keys()[i].c_str(),*c.values()[i],a,v,-1);
-  return xD(k,v);
+  return mget(a,true,c.keys()[i].c_str(),*c.values()[i]);
  }
 }
 
@@ -2161,9 +2174,7 @@ static K mchild(bool a,S s1,S s2,const Sequential &q) {
  if(s2) {
   return tchild(s2,*m);
  } else {
-  K k=mkeys(true),v=mvals(true,-1);
-  mget(s1,*m,a,v,-1);
-  return xD(k,v);
+  return mget(a,true,s1,*m);
  }
 }
 
