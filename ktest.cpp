@@ -44,6 +44,7 @@ KAPI sgdtest(K x) {
  return (K)0;
 }
 */
+
 KAPI knull(K x) {
  K r=ktn(0,0);
  std::cerr << "count of r: " << r->n << "\n";
@@ -341,6 +342,29 @@ KAPI testjoin(K x) {
 }
 
 /////////////////////////////////////////////////////////////////////////
+using Container=c10::variant<Sequential,Join>;
+
+void pushback(Container& q,const AnyModule& a) {
+ auto i=q.index();
+ switch(i) {
+  case 0:  c10::get<0>(q)->push_back(a); break;
+  case 1:  c10::get<1>(q)->push_back(a); break;
+  default: AT_ERROR("Unrecognized container, index: ",i);
+ }
+}
+
+KAPI contain(K x) {
+ KTRY
+  torch::nn::Linear m(1,2);
+  auto r=torch::nn::ReLU();
+  Container q{Sequential()};
+  pushback(q,AnyModule(m));
+  pushback(q,AnyModule(r));
+  std::cerr << c10::get<0>(q) << "\n";
+  return (K)0;
+ KCATCH("contain");
+}
+
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  AT_ERROR("Unrecognized module: ",s);
@@ -403,13 +427,15 @@ K mput(K x) {
  mput1(x);
  std::stack<Module*> p;
  //p.push(torch::nn::Linear(1,2).get());
+ Sequential q;
  torch::nn::Linear l(1,2);
+ p.push(q.get());
  p.push(l.get());
  Reshape r(std::vector<int64_t>{1,1,2});
  p.push(r.get());
  std::cerr << *p.top() << "\n";
- p.pop();
- std::cerr << *p.top() << "\n";
+ p.pop(); std::cerr << *p.top() << "\n";
+ p.pop(); std::cerr << *p.top() << "\n";
  return (K)0;
 }
 
@@ -471,7 +497,7 @@ void addchild(const std::stack<Container>& c,const AnyModule& a) {
  }
 }
 
-KAPI contain(K x) {
+KAPI contain1(K x) {
  KTRY
   std::stack<Container> p;
   AnyModule a;

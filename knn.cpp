@@ -47,6 +47,7 @@ template<> void rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o,torch::nn:
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
+// mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
 // container - given module/module cast, return true if container module
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
@@ -69,6 +70,15 @@ static Setting mset(S s) {
  AT_ERROR("Unrecognized option: ",s);
 }
 
+K mkeys(bool b) {
+ K x=ktn(KS, b ? 6 : 4); J i=0;
+ for(auto& m:env().mstate) {
+  kS(x)[i++]=std::get<0>(m);
+  if(i==x->n) break;
+ }
+ return x;
+}
+
 bool container(Cast c) {
  switch(c) {
   case Cast::sequential:
@@ -83,19 +93,6 @@ bool container(const Module& m) {
  } else if(m.as<Join>())                  { return true;
  } else                                   { return false;
  }
-}
-
-// ------------------------------------------------------------------------------------------
-// mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
-// 
-// ------------------------------------------------------------------------------------------
-K mkeys(bool b) {
- K x=ktn(KS, b ? 6 : 4); J i=0;
- for(auto& m:env().mstate) {
-  kS(x)[i++]=std::get<0>(m);
-  if(i==x->n) break;
- }
- return x;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -412,8 +409,10 @@ KAPI Normalize(K x) {
 // --------------------------------------------------------------------------------------
 static torch::nn::detail::conv_padding_mode_t convpad(S s) {
  switch(emap(s)) {
-  case Enum::zeros:    return torch::kZeros;
-  case Enum::circular: return torch::kCircular;
+  case Enum::zeros:     return torch::kZeros;
+  case Enum::reflect:   return torch::kReflect;
+  case Enum::replicate: return torch::kReplicate;
+  case Enum::circular:  return torch::kCircular;
   default: AT_ERROR("unrecognized padding mode: ",s); break;
  }
 }
@@ -1845,9 +1844,9 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::conv2d:       return AnyModule(torch::nn::Conv2d(conv<2>(x,i,c)));
   case Cast::conv3d:       return AnyModule(torch::nn::Conv3d(conv<3>(x,i,c)));
 
-  case Cast::convtranspose1d:  return AnyModule(ConvTranspose1d(convtran<1>(x,i,c)));
-  case Cast::convtranspose2d:  return AnyModule(ConvTranspose2d(convtran<2>(x,i,c)));
-  case Cast::convtranspose3d:  return AnyModule(ConvTranspose3d(convtran<3>(x,i,c)));
+  case Cast::convtranspose1d:  return AnyModule(torch::nn::ConvTranspose1d(convtran<1>(x,i,c)));
+  case Cast::convtranspose2d:  return AnyModule(torch::nn::ConvTranspose2d(convtran<2>(x,i,c)));
+  case Cast::convtranspose3d:  return AnyModule(torch::nn::ConvTranspose3d(convtran<3>(x,i,c)));
 
   case Cast::fold:         return AnyModule(torch::nn::Fold(fold(x,i,c)));
   case Cast::unfold:       return AnyModule(torch::nn::Unfold(unfold(x,i,c)));
