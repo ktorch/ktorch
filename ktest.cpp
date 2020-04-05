@@ -263,13 +263,13 @@ SeqResult f(J a,Tensor x) { if(a) return x; else return 2.5;}
 
 KAPI ftest2(K x) {
  KTRY
-  Sequential q; Join j; Tensor a,b; bool p;
+  Sequential q; SeqJoin j; Tensor a,b;
   j->push_back(Sequential());
   j->push_back(Sequential());
   j->push_back(AnyModule(Cat(0)));
   q->push_back(j);
   q->push_back(Reshape(std::vector<int64_t>{1,1,-1}));
-  p=xtenpair(x,a,b);
+  xtenpair(x,a,b);
   std::cerr << a << "\n";
   std::cerr << b << "\n";
   return kget(q->forward(a,b));
@@ -289,10 +289,10 @@ KAPI nameany(K x) {
  auto m=torch::nn::NamedAnyModule("",torch::nn::Linear(1,2));
  std::cerr << m.name() << "\n";
  //Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
- auto q1=Sequence(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
+ auto q1=SeqNest(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
  auto a=torch::nn::AnyModule(q1.ptr());
  std::cerr << q1 << "\n";
- std::cerr<<  a.get<Sequence>() << "\n";
+ std::cerr<<  a.get<SeqNest>() << "\n";
 /*
  auto a=torch::nn::NamedAnyModule("sequence",q1);
  auto a=torch::nn::NamedAnyModule("sequence",q1);
@@ -330,36 +330,129 @@ KAPI testjoin(K x) {
   Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
   Sequential q2=nullptr;
   Cat c(1);
-  Join m;
+  SeqJoin m;
   m->push_back(q1);
   m->push_back(q2);
   m->push_back(AnyModule(c));
   std::cerr << "qy empty: " << m->qy.is_empty() << "\n";
   std::cerr << m << "\n";
   testprint(0,"",*m);
-  return kmodule(Cast::join,AnyModule(m));
+  return kmodule(Cast::seqjoin,AnyModule(m));
  KCATCH("testjoin");
 }
 
 /////////////////////////////////////////////////////////////////////////
-using Container=c10::variant<Sequential,Join>;
+template <class... Fs> struct overload;
 
-void pushback(Container& q,const AnyModule& a) {
- auto i=q.index();
- switch(i) {
-  case 0:  c10::get<0>(q)->push_back(a); break;
-  case 1:  c10::get<1>(q)->push_back(a); break;
-  default: AT_ERROR("Unrecognized container, index: ",i);
+template <class F0, class... Frest> struct overload<F0, Frest...> : F0, overload<Frest...> {
+    overload(F0 f0, Frest... rest) : F0(f0), overload<Frest...>(rest...) {}
+    using F0::operator();
+    using overload<Frest...>::operator();
+};
+
+template <class F0> struct overload<F0> : F0 {
+    overload(F0 f0) : F0(f0) {}
+    using F0::operator();
+};
+
+template <class... Fs> auto make_overload(Fs... fs) {
+    return overload<Fs...>(fs...);
+}
+
+//template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
+//template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
+
+using Layer=c10::variant<Sequential,SeqNest,SeqJoin,AnyModule,NamedAnyModule>;
+enum class Layers {sequential,seqnest,seqjoin,any,anyname};
+
+KAPI lerr(K x) {
+ KTRY
+  Layer q{SeqJoin()};
+  try {
+   c10::get<Sequential>(q);
+  } catch(...) {
+   AT_ERROR("Not a sequential");
+  }
+  return(K)0;
+ KCATCH("layer cast error");
+}
+
+void addchild(Layer& q,const AnyModule& a) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  c10::get<Sequential>(q)->push_back(a); break;
+  case (size_t)Layers::seqnest:     c10::get<SeqNest>   (q)->push_back(a); break;
+  case (size_t)Layers::seqjoin:     c10::get<SeqJoin>   (q)->push_back(a); break;
+  default: AT_ERROR("Unrecognized container: unable to add child module");
  }
 }
+
+Module& moduleref(Layer& q) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  return *c10::get<Sequential>(q).ptr(); break;
+  case (size_t)Layers::seqnest:     return *c10::get<SeqNest>   (q).ptr(); break;
+  case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>   (q).ptr(); break;
+  case (size_t)Layers::any:         return *c10::get<AnyModule> (q).ptr(); break;
+  case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule> (q).module().ptr(); break;
+  default: AT_ERROR("Unrecognized layer: unable to get module reference");
+ }
+}
+
+template<typename Q> Tensor layerfwd(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined())
+  return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
+ else
+  return q->forward(x);
+}
+
+Tensor layerfwd(AnyModule& a,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined())
+  return z.defined() ? a.forward(x,y,z) : a.forward(x,y);
+ else
+  return a.forward(x);
+}
+
+Tensor layerfwd(SeqJoin& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ TORCH_CHECK(x.defined() && y.defined(), "seqjoin: expects two tensors, x & y");
+ TORCH_CHECK(!z.defined(), "seqjoin: unexpected 3rd tensor supplied");
+ return q->forward(x,y);
+}
+
+Tensor layerfwd(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  return layerfwd(c10::get<Sequential>(q),x,y,z);
+  case (size_t)Layers::seqnest:     return layerfwd(c10::get<SeqNest>   (q),x,y,z);
+  case (size_t)Layers::seqjoin:     return layerfwd(c10::get<SeqJoin>   (q),x,y,z);
+  case (size_t)Layers::any:         return layerfwd(c10::get<AnyModule> (q),x,y,z);
+  case (size_t)Layers::anyname:     return layerfwd(c10::get<NamedAnyModule> (q).module(),x,y,z);
+  default: AT_ERROR("Unrecognized layer: unable to run forward calculation");
+ }
+}
+
+void addchild2(Layer& q,const AnyModule& a) {
+ c10::visit(
+  make_overload(
+   [&a](auto& q)        {q->push_back(a);},
+   [](AnyModule& q)     {AT_ERROR("Cannot add child layer");},
+   [](NamedAnyModule& q){AT_ERROR("Cannot add child layer");}), q);
+}
+
+Module& mref(const Layer& q) {
+ return c10::visit(
+         make_overload(
+          [](const auto& q)          ->Module& {return *q.ptr();},
+          [](const NamedAnyModule& q)->Module& {return *q.module().ptr();}), q);
+}
+
+//Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
 
 KAPI contain(K x) {
  KTRY
   torch::nn::Linear m(1,2);
   auto r=torch::nn::ReLU();
-  Container q{Sequential()};
-  pushback(q,AnyModule(m));
-  pushback(q,AnyModule(r));
+  const auto a=AnyModule(m);
+  Layer q{Sequential()};
+  addchild(q,AnyModule(m));
+  addchild(q,AnyModule(r));
   std::cerr << c10::get<0>(q) << "\n";
   return (K)0;
  KCATCH("contain");
@@ -392,7 +485,7 @@ void pushback(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=n
 
 void mput1(K x) {
  J d,pd=0,n=x->t==99 ? 0 : xlen(x); std::stack<Module*> p;
- Sequential q,Q; Module *m; AnyModule a; Cast c;
+ Sequential q,Q; AnyModule a; Cast c;
  for(J i=98-x->t;i<n;++i) {
   c=msym(statemodule(x,i));
   d=statedepth(x,i);
@@ -400,14 +493,13 @@ void mput1(K x) {
    p.push(q.get());
   else if(d<pd)
    p.pop();
-  m=p.top();
   if(container(c)) {
    std::cerr << "container: " << statemodule(x,i) << "\n";
    if(i==0) {
     p.push(q.get());
    } else { 
-    if(c==Cast::join) {
-     Join j;
+    if(c==Cast::seqjoin) {
+     SeqJoin j;
      p.push(j.get());
     } else if (c==Cast::sequential) {
      Sequential q;
@@ -456,7 +548,7 @@ KAPI kjoin(K x) {
   if(!xseq(x,1,qy)) margs(qy,kK(x)[1],0);
   margs(qc,kK(x)[2],0);
   auto& m=access_private::modules_(*qc);
-  Join a;
+  SeqJoin a;
   a->push_back(qx);
   a->push_back(qy);
   a->push_back(m[0]);
@@ -473,8 +565,8 @@ KAPI kjoin(K x) {
 
 KAPI join1(K x) {
  KTRY
-  Sequence q;
-  Join j;  // j=nullptr;
+  SeqNest q;
+  SeqJoin j;  // j=nullptr;
   q->push_back("xy",j);
   Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
   j->push_back("zshape",q1);
@@ -487,22 +579,21 @@ KAPI join1(K x) {
  KCATCH("join1");
 }
 
-using Container=c10::variant<Sequential, Join>;
-void addchild(const std::stack<Container>& c,const AnyModule& a) {
+void addchild(const std::stack<Layer>& c,const AnyModule& a) {
  auto& p=c.top();
  switch(p.index()) {
   case 0: std::cerr << *c10::get<Sequential>(p).ptr() << "\n"; break;
-  case 1: std::cerr << *c10::get<Join>(p).ptr() << "\n"; break;
+  case 1: std::cerr << *c10::get<SeqJoin>(p).ptr() << "\n"; break;
   default: break;
  }
 }
 
 KAPI contain1(K x) {
  KTRY
-  std::stack<Container> p;
+  std::stack<Layer> p;
   AnyModule a;
   Sequential q;
-  Join j;
+  SeqJoin j;
   p.push(q);
   p.push(j);
   addchild(p,a);
@@ -519,7 +610,7 @@ KAPI stest(K x) {
  std::cerr << m.size() << "\n";
  m.push_back(a);
  std::cerr << m.size() << "\n";
- (*q).register_module("test",m[0].ptr());
+ q->register_module("test",m[0].ptr());
  std::cerr << q << "\n";
  return(K)0;
 }

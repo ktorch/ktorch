@@ -544,7 +544,7 @@ static K lrget(const std::vector<torch::optim::OptimizerParamGroup>& v,Cast c) {
 }
 
 static void lrset(std::vector<torch::optim::OptimizerParamGroup>& v,Cast c,J n,double *lr) {
- TORCH_CHECK(n==1 || n==v.size(),"length error: ",n," learning rates given for ",v.size()," parameter group",(v.size() !=1 ? "s" : ""));
+ TORCH_CHECK(n==1 || (unsigned)n==v.size(),"length error: ",n," learning rates given for ",v.size()," parameter group",(v.size() !=1 ? "s" : ""));
  int64_t i=0; double r;
  for(auto& g:v) {
   TORCH_CHECK(g.has_options(), "Parameter group options not defined");

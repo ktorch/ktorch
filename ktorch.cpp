@@ -264,15 +264,14 @@ static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:req
 
 static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/table, j:row (-1 if dict)
  J i=statefind(e,x);
- if(i<0)
-  return nullptr;
-  K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
-  if(x->t == 99) j=i;
-  TORCH_CHECK(!v->t, statekey(e),": expected dictionary, given ",kname(v));
-  TORCH_CHECK(-1<j && j<v->n, statekey(e),"[",j,"] index beyond ",v->n,"-row table");
-  v=kK(v)[j];
-  TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
-  return v;
+ if(i<0) return nullptr;
+ K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
+ if(x->t == 99) j=i;
+ TORCH_CHECK(!v->t, statekey(e),": expected dictionary, given ",kname(v));
+ TORCH_CHECK(-1<j && j<v->n, statekey(e),"[",j,"] index beyond ",v->n,"-row table");
+ v=kK(v)[j];
+ TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
+ return v;
 }
 
 // --------------------------------------------

@@ -70,6 +70,7 @@ using TensorOptions=torch::TensorOptions;
 using TensorList=torch::TensorList;
 using Module=torch::nn::Module;
 using AnyModule=torch::nn::AnyModule;
+using NamedAnyModule=torch::nn::NamedAnyModule;
 using Sequential=torch::nn::Sequential;
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
@@ -106,9 +107,9 @@ enum class Class:char {
 
 enum class Cast:char {
  undefined=0, 
- tensor,          model,        // basic structures
-
- sequential,      join,         // container modules
+ tensor,  model,                    // basic structures
+ sequential, seqnest, seqjoin,      // container modules
+ any,        anyname,               // generic modules
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
@@ -595,7 +596,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Cast>,93> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,94> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -642,7 +643,6 @@ typedef struct {
   std::make_tuple(cs("instancenorm1d"),  Cast::instancenorm1d),
   std::make_tuple(cs("instancenorm2d"),  Cast::instancenorm2d),
   std::make_tuple(cs("instancenorm3d"),  Cast::instancenorm3d),
-  std::make_tuple(cs("join"),            Cast::join),
   std::make_tuple(cs("layernorm"),       Cast::layernorm),
   std::make_tuple(cs("leakyrelu"),       Cast::leakyrelu),
   std::make_tuple(cs("linear"),          Cast::linear),
@@ -673,6 +673,8 @@ typedef struct {
   std::make_tuple(cs("rnn"),             Cast::rnn),
   std::make_tuple(cs("rrelu"),           Cast::rrelu),
   std::make_tuple(cs("selu"),            Cast::selu),
+  std::make_tuple(cs("seqjoin"),         Cast::seqjoin),
+  std::make_tuple(cs("seqnest"),         Cast::seqnest),
   std::make_tuple(cs("sequential"),      Cast::sequential),
   std::make_tuple(cs("sigmoid"),         Cast::sigmoid),
   std::make_tuple(cs("similar"),         Cast::similar),

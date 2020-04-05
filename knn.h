@@ -1,4 +1,10 @@
 #pragma once
+
+#ifdef __clang__
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"    // FORWARD_HAS_DEFAULT_ARGS
+#endif
+
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
 // --------------------------------------------------------------------------
@@ -130,13 +136,13 @@ TORCH_MODULE(Cat);
 
 
 // --------------------------------------------------------------------------------------------------
-// Join - define sequential modules for inputs x & y with layer for joining the output of each module
+// SeqJoin - define sequential modules for inputs x & y w'layer for joining the output of each module
 // --------------------------------------------------------------------------------------------------
-class TORCH_API JoinImpl : public torch::nn::Cloneable<JoinImpl> {
+class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  public:
- JoinImpl() = default;
+ SeqJoinImpl() = default;
  void reset() override {}
- void pretty_print(std::ostream& s) const override {s << "Join";}
+ void pretty_print(std::ostream& s) const override {s << "SeqJoin";}
 
  void push_back(torch::nn::Sequential q) {
   push_back(children().size()==0 ? "qx" : "qy", q);
@@ -171,17 +177,27 @@ class TORCH_API JoinImpl : public torch::nn::Cloneable<JoinImpl> {
  Sequential qy = nullptr;
  AnyModule  join;
 };
-TORCH_MODULE(Join);
+TORCH_MODULE(SeqJoin);
 
-// -----------------------------------------------------------------------------------------
-// Sequence - derived from Sequential to accept nested sequentials 
-//          - no templatized forward result means can also be stored as an AnyModule
-// -----------------------------------------------------------------------------------------
-struct TORCH_API SequenceImpl : public torch::nn::SequentialImpl {
+// ----------------------------------------------------------------------------------
+// SeqNest - derived from Sequential to allow nested sequentials 
+//         - no templatized forward result means can be stored as an AnyModule
+//         - forward method accepts up to three tensors x,y,z w'y & z optional
+// ---------------------------------------------------------------------------------
+struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
   using SequentialImpl::SequentialImpl;
 
-  torch::Tensor forward(const torch::Tensor& x) {
+  torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
+   if(y.defined())
+    return z.defined() ? SequentialImpl::forward(x,y,z) : SequentialImpl::forward(x,y);
+   else
     return SequentialImpl::forward(x);
   }
+ protected:
+  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
 };
-TORCH_MODULE(Sequence);
+TORCH_MODULE(SeqNest);
+
+#ifdef __clang__
+# pragma clang diagnostic pop
+#endif

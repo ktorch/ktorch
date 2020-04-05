@@ -82,7 +82,8 @@ K mkeys(bool b) {
 bool container(Cast c) {
  switch(c) {
   case Cast::sequential:
-  case Cast::join:
+  case Cast::seqnest:
+  case Cast::seqjoin:
    return true;
   default: return false;
  }
@@ -90,7 +91,8 @@ bool container(Cast c) {
 
 bool container(const Module& m) {
  if       (m.as<torch::nn::Sequential>()) { return true;
- } else if(m.as<Join>())                  { return true;
+ } else if(m.as<SeqNest>())               { return true;
+ } else if(m.as<SeqJoin>())               { return true;
  } else                                   { return false;
  }
 }
@@ -1812,7 +1814,7 @@ static void getsize(bool a,K x,const SizeOptions& o) {
 }
 
 // ----------------------------------------------------------------------------------------------------
-// anymodule - define module from supplied options, return in generic AnyModule container
+// anymodule - define module from supplied options, return as generic AnyModule 
 // ----------------------------------------------------------------------------------------------------
 AnyModule anymodule(K x,J i,Cast c) {
  switch(c) {
@@ -1983,8 +1985,9 @@ void pushback(Sequential &q,K x) { // add modules to sequential from k table of 
 // --------------------------------------------------------------------------------------------
 std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
  Cast c=Cast::undefined; K x=xD(ktn(KS,0),ktn(0,0));
- if       (auto* m=g.as<torch::nn::Sequential>())        { c=Cast::sequential;
- } else if(auto* m=g.as<Join>())                         { c=Cast::join;
+ if       (g.as<torch::nn::Sequential>())        { c=Cast::sequential;
+ } else if(g.as<SeqNest>())                      { c=Cast::seqnest;
+ } else if(g.as<SeqJoin>())                      { c=Cast::seqjoin;
 
  } else if(auto* m=g.as<torch::nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
