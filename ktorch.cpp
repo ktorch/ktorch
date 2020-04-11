@@ -225,7 +225,7 @@ static J statelong(State e,bool r,K x,J j) { //e:enum, e.g. State::depth, r:requ
   } else {
    v=kK(v)[i];
    TORCH_CHECK(v->t==-KJ, statekey(e),": expected long, given ",kname(v));
-   return kK(v)[i]->j;
+   return v->j;
   }
  } else if(x->t==98) {
   K v=kK(kK(x->k)[1])[i];

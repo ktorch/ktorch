@@ -362,10 +362,7 @@ template <class... Fs> auto make_overload(Fs... fs) {
 //template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
-using Layer=c10::variant<Sequential,SeqNest,SeqJoin,AnyModule,NamedAnyModule>;
-enum class Layers {sequential,seqnest,seqjoin,any,anyname};
-
-KAPI lerr(K x) {
+KAPI layererror(K x) {
  KTRY
   Layer q{SeqJoin()};
   try {
@@ -377,16 +374,47 @@ KAPI lerr(K x) {
  KCATCH("layer cast error");
 }
 
-void addchild(Layer& q,const AnyModule& a) {
+// ------------------------------------------------------------------------------------
+// layerseq - add Sequential child to existing parent, on SeqJoin currently implemented
+// layerany - add AnyModule child to existing parent container w'optional name
+// layerchild - add a child module to container layer, e.g. sequential
+// layermodule - return a reference to underlying module (to retrieve options & parms)
+// layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
+// ------------------------------------------------------------------------------------
+template<typename Q,typename A>
+void layerpush(Q& q,const A& a,const char* s) {
+ if(s) q->push_back(s,a); else q->push_back(a);
+}
+
+void layerseq(Layer& q,const Sequential& a,const char* nm) {
  switch(q.index()) {
-  case (size_t)Layers::sequential:  c10::get<Sequential>(q)->push_back(a); break;
-  case (size_t)Layers::seqnest:     c10::get<SeqNest>   (q)->push_back(a); break;
-  case (size_t)Layers::seqjoin:     c10::get<SeqJoin>   (q)->push_back(a); break;
-  default: AT_ERROR("Unrecognized container: unable to add child module");
+  case (size_t)Layers::seqjoin: layerpush(c10::get<SeqJoin>(q),a,nm); break;
+  default: AT_ERROR("Container unable to add sequential layer");
  }
 }
 
-Module& moduleref(Layer& q) {
+void layerany(Layer& q,const AnyModule& a,const char* nm) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential: layerpush(c10::get<Sequential>(q), a, nm); break;
+  case (size_t)Layers::seqnest:    layerpush(c10::get<SeqNest>(q),    a, nm); break;
+  case (size_t)Layers::seqjoin:    layerpush(c10::get<SeqJoin>(q),    a, nm); break;
+  default: AT_ERROR("Unrecognized container: unable to add child layer");
+ }
+}
+
+void layerchild(Layer& q,const Layer& a,const char* nm) {
+ switch(a.index()) {
+  case (size_t)Layers::any:        layerany(q, c10::get<AnyModule>(a), nm); break;
+  case (size_t)Layers::anyname:   {const auto& m=c10::get<NamedAnyModule>(a);
+                                   layerany(q, m.module(), m.name().c_str()); break;}
+  case (size_t)Layers::seqnest:    layerany(q, AnyModule(c10::get<SeqNest>(a)), nm); break;
+  case (size_t)Layers::seqjoin:    layerany(q, AnyModule(c10::get<SeqJoin>(a)), nm); break;
+  case (size_t)Layers::sequential: layerseq(q, c10::get<Sequential>(a), nm); break;
+  default: AT_ERROR("Unrecognized child layer");
+ }
+}
+
+Module& layermodule(const Layer& q) {
  switch(q.index()) {
   case (size_t)Layers::sequential:  return *c10::get<Sequential>(q).ptr(); break;
   case (size_t)Layers::seqnest:     return *c10::get<SeqNest>   (q).ptr(); break;
@@ -397,33 +425,29 @@ Module& moduleref(Layer& q) {
  }
 }
 
-template<typename Q> Tensor layerfwd(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
- if(y.defined())
-  return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
- else
-  return q->forward(x);
+template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
+ else            return q->forward(x);
 }
 
-Tensor layerfwd(AnyModule& a,const Tensor& x,const Tensor& y,const Tensor& z) {
- if(y.defined())
-  return z.defined() ? a.forward(x,y,z) : a.forward(x,y);
- else
-  return a.forward(x);
+Tensor layerforward(AnyModule& a,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined()) return z.defined() ? a.forward(x,y,z) : a.forward(x,y);
+ else            return a.forward(x);
 }
 
-Tensor layerfwd(SeqJoin& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+Tensor layerforward(SeqJoin& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  TORCH_CHECK(x.defined() && y.defined(), "seqjoin: expects two tensors, x & y");
  TORCH_CHECK(!z.defined(), "seqjoin: unexpected 3rd tensor supplied");
  return q->forward(x,y);
 }
 
-Tensor layerfwd(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  switch(q.index()) {
-  case (size_t)Layers::sequential:  return layerfwd(c10::get<Sequential>(q),x,y,z);
-  case (size_t)Layers::seqnest:     return layerfwd(c10::get<SeqNest>   (q),x,y,z);
-  case (size_t)Layers::seqjoin:     return layerfwd(c10::get<SeqJoin>   (q),x,y,z);
-  case (size_t)Layers::any:         return layerfwd(c10::get<AnyModule> (q),x,y,z);
-  case (size_t)Layers::anyname:     return layerfwd(c10::get<NamedAnyModule> (q).module(),x,y,z);
+  case (size_t)Layers::sequential:  return layerforward(c10::get<Sequential>(q),x,y,z);
+  case (size_t)Layers::seqnest:     return layerforward(c10::get<SeqNest>   (q),x,y,z);
+  case (size_t)Layers::seqjoin:     return layerforward(c10::get<SeqJoin>   (q),x,y,z);
+  case (size_t)Layers::any:         return layerforward(c10::get<AnyModule> (q),x,y,z);
+  case (size_t)Layers::anyname:     return layerforward(c10::get<NamedAnyModule> (q).module(),x,y,z);
   default: AT_ERROR("Unrecognized layer: unable to run forward calculation");
  }
 }
@@ -444,19 +468,6 @@ Module& mref(const Layer& q) {
 }
 
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
-
-KAPI contain(K x) {
- KTRY
-  torch::nn::Linear m(1,2);
-  auto r=torch::nn::ReLU();
-  const auto a=AnyModule(m);
-  Layer q{Sequential()};
-  addchild(q,AnyModule(m));
-  addchild(q,AnyModule(r));
-  std::cerr << c10::get<0>(q) << "\n";
-  return (K)0;
- KCATCH("contain");
-}
 
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
@@ -481,60 +492,54 @@ void mput(int64_t pd, int64_t d, Cast c, std::string n) {
 }
 */
 
-void pushback(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nullptr);
+Layer makecontainer(Cast c) {
+ switch(c) {
+  case Cast::sequential:  return Sequential();
+  case Cast::seqnest:     return SeqNest();
+  case Cast::seqjoin:     return SeqJoin();
+  default: AT_ERROR("Unrecognized container: ", (I)c);
+ }
+}
 
-void mput1(K x) {
- J d,pd=0,n=x->t==99 ? 0 : xlen(x); std::stack<Module*> p;
- Sequential q,Q; AnyModule a; Cast c;
+AnyModule anymodule(K x,J i,Cast c);
+void mparms(S s,Module &m,K x,bool p);
+
+Layer mput1(K x) {
+ J pd=-1,n=x->t==99 ? 0 : xlen(x); std::stack<Layer> p;
  for(J i=98-x->t;i<n;++i) {
-  c=msym(statemodule(x,i));
-  d=statedepth(x,i);
-  if(i==0)     
-   p.push(q.get());
-  else if(d<pd)
-   p.pop();
+  S s=statemodule(x,i), nm=statename(x,i); Cast c=msym(s); J d=statedepth(x,i);
+  K op=stateoptions(x,i), pa=stateparms(x,i), bf=statebuffers(x,i);
+  if(d<pd) p.pop();
   if(container(c)) {
-   std::cerr << "container: " << statemodule(x,i) << "\n";
-   if(i==0) {
-    p.push(q.get());
-   } else { 
-    if(c==Cast::seqjoin) {
-     SeqJoin j;
-     p.push(j.get());
-    } else if (c==Cast::sequential) {
-     Sequential q;
-     p.push(q.get());
-    }
-   }
+   //TORCH_CHECK(!op && !pa && !bf, "No options,parameters or buffers expected for container layer");
+   auto a=makecontainer(c);
+   if(p.size())
+    layerchild(p.top(),a,nm);
+   if(d>pd)
+    p.push(a);
   } else {
-   pushback(Q, statemodule(x,i), statename(x,i), -1, stateoptions(x,i), stateparms(x,i), statebuffers(x,i));
-   //*Q[Q->size()-1];
+   auto a=anymodule(op, -1, c);
+   if(pa) mparms(s,*a.ptr(),pa,true);
+   if(bf) mparms(s,*a.ptr(),bf,true);
+   if(p.size())
+    layerany(p.top(),a,nm);
+   else if(n<2)
+    p.push(a);
+   else
+    AT_ERROR(n," layers given, but no container layer");
   }
   pd=d;
  }
- std::cerr << Q << "\n";
+ while(p.size()>1) p.pop();
+ TORCH_CHECK(p.size(), "No container layer for network");
+ return p.top();
 }
 
-K mput(K x) {
- mput1(x);
- std::stack<Module*> p;
- //p.push(torch::nn::Linear(1,2).get());
- Sequential q;
- torch::nn::Linear l(1,2);
- p.push(q.get());
- p.push(l.get());
- Reshape r(std::vector<int64_t>{1,1,2});
- p.push(r.get());
- std::cerr << *p.top() << "\n";
- p.pop(); std::cerr << *p.top() << "\n";
- p.pop(); std::cerr << *p.top() << "\n";
- return (K)0;
-}
-
-KAPI mdef(K x) {
+KAPI mput(K x) {
  KTRY
-  return mput(x);
- KCATCH("mdef");
+  auto m=mput1(x);
+  return mget(true,true,"",layermodule(m));
+ KCATCH("mput");
 }
 
 void margs(Sequential& q,K x,J i);
@@ -572,35 +577,10 @@ KAPI join1(K x) {
   j->push_back("zshape",q1);
   j->push_back("empty",Sequential());
   j->push_back("cat",AnyModule(Cat(1)));
-  for(auto& c:q->named_modules()) std::cerr << "child: " <<  c.key() << "\n";
   return mget(true,true,"",*q);
   //Cast c; K o; std::tie(c,o)=mopt(true,*AnyModule(q).ptr());
   //return o;
  KCATCH("join1");
-}
-
-void addchild(const std::stack<Layer>& c,const AnyModule& a) {
- auto& p=c.top();
- switch(p.index()) {
-  case 0: std::cerr << *c10::get<Sequential>(p).ptr() << "\n"; break;
-  case 1: std::cerr << *c10::get<SeqJoin>(p).ptr() << "\n"; break;
-  default: break;
- }
-}
-
-KAPI contain1(K x) {
- KTRY
-  std::stack<Layer> p;
-  AnyModule a;
-  Sequential q;
-  SeqJoin j;
-  p.push(q);
-  p.push(j);
-  addchild(p,a);
-  p.pop();
-  addchild(p,a);
-  return (K)0;
- KCATCH("container");
 }
 
 KAPI stest(K x) {

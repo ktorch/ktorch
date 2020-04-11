@@ -68,13 +68,14 @@ using ScalarType=torch::ScalarType;
 using TypeMeta=caffe2::TypeMeta;
 using TensorOptions=torch::TensorOptions;
 using TensorList=torch::TensorList;
+
 using Module=torch::nn::Module;
 using AnyModule=torch::nn::AnyModule;
 using NamedAnyModule=torch::nn::NamedAnyModule;
 using Sequential=torch::nn::Sequential;
+
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
-//PATCH: using LossClosureOptimizer=torch::optim::LossClosureOptimizer;
 using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
 using at::detail::computeStorageSize;
 

@@ -198,6 +198,12 @@ struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
 };
 TORCH_MODULE(SeqNest);
 
+// ---------------------------------------------------------------------------
+// Layer - variant to hold different layer types, containers & generic modules
+// ---------------------------------------------------------------------------
+using Layer=c10::variant<Sequential,SeqNest,SeqJoin,AnyModule,NamedAnyModule>;
+enum class Layers {sequential,seqnest,seqjoin,any,anyname};
+
 #ifdef __clang__
 # pragma clang diagnostic pop
 #endif

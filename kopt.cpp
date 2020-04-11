@@ -188,9 +188,14 @@ static void adam(K x,J i,AdamOptions& o) {
    case Setting::amsgrad: o.amsgrad(pbool(p)); break;
    default: AT_ERROR("Unrecognized option: ",p.k," for Adagrad optimization"); break;
   }
+  std::cerr << "Resetting beta1 = 0.5\n";
+  //o.betas({0.5, 0.999});
+  o.betas(std::make_tuple(0.5, 0.999));
+  std::cerr << "beta1: " << std::get<0>(o.betas()) << "\n";
 }
 
 static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
+ std::cerr << "beta1: " << std::get<0>(a.betas()) << "\n";
  auto o=std::make_shared<Adam>(w,a);
  auto n=o->state().size();
  if(y && n) {
@@ -207,10 +212,9 @@ static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
 static K adam(bool a,double r,Adam* v) { //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); AdamOptions d(r); auto& o=static_cast<AdamOptions&>(v->defaults());
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
-/* PATCH
- if(a || d.beta1()        != o.beta1())        OPTSET(x, beta1,   kf(o.beta1()));
- if(a || d.beta2()        != o.beta2())        OPTSET(x, beta2,   kf(o.beta2()));
-*/
+ // PATCH
+ if(a || std::get<0>(d.betas()) != std::get<0>(o.betas()))     OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
+ if(a || std::get<1>(d.betas()) != std::get<1>(o.betas()))     OPTSET(x, beta2,   kf(std::get<1>(o.betas())));
  if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,   kf(o.weight_decay()));
  if(a || d.eps()          != o.eps())          OPTSET(x, eps,     kf(o.eps()));
  if(a || d.amsgrad()      != o.amsgrad())      OPTSET(x, amsgrad, kb(o.amsgrad()));

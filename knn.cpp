@@ -1936,7 +1936,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 // mparms - set parameters/buffers in a defined module from k values in dictionary with matching names
 // pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
 // ----------------------------------------------------------------------------------------------------
-static void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
+void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
  for(auto &a:p ? m.named_parameters() : m.named_buffers()) {
   J i=kfind(k,a.key());
