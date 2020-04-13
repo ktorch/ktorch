@@ -542,8 +542,7 @@ S tensorsym(const Tensor& t,Attr a) {
   case Attr::dtype:    return optsym(t.dtype());
   case Attr::layout:   return optsym(t.layout());
   case Attr::gradient: return optsym(t.requires_grad());
-  case Attr::gradfn:   return (S)(torch::autograd::as_variable_ref(t).grad_fn() ?
-                                  torch::autograd::as_variable_ref(t).grad_fn()->name().c_str() : "");
+  case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
   default: AT_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -552,7 +551,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
  switch(a) {
   case Attr::coalesced:  return t.is_sparse() ? t.is_coalesced() : false;
   case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
-  case Attr::leaf:       return torch::autograd::as_variable_ref(t).is_leaf();
+  case Attr::leaf:       return t.is_leaf();
   case Attr::pinned:     return t.is_pinned();
   default: AT_ERROR(mapattr(a),": not implemented for tensors");
  }

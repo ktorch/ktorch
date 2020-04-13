@@ -1938,7 +1938,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 // ----------------------------------------------------------------------------------------------------
 void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
- for(auto &a:p ? m.named_parameters() : m.named_buffers()) {
+ for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
   J i=kfind(k,a.key());
   if(i<0) {
    AT_ERROR("Unable to find ",s,(p ? " parameter" : " buffer"),": ",a.key());

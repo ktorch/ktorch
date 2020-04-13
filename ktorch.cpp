@@ -1354,14 +1354,14 @@ KAPI config(K x) {
 // -----------------------------------------------------------------------------------
 J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
  torch::DeviceGuard dg(d);
- auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
+ auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
  if(b) {
   if (s==nj)
-   g->seed();
+   g.seed();
   else
-   g->set_current_seed(s);
+   g.set_current_seed(s);
  }
- return g->current_seed();
+ return g.current_seed();
 }
 
 static K seedmap() {

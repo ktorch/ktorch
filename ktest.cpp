@@ -505,34 +505,34 @@ AnyModule anymodule(K x,J i,Cast c);
 void mparms(S s,Module &m,K x,bool p);
 
 Layer mput1(K x) {
- J pd=-1,n=x->t==99 ? 0 : xlen(x); std::stack<Layer> p;
+ J pd=-1,n=x->t==99 ? 0 : xlen(x); std::stack<Layer> q;
  for(J i=98-x->t;i<n;++i) {
   S s=statemodule(x,i), nm=statename(x,i); Cast c=msym(s); J d=statedepth(x,i);
-  K op=stateoptions(x,i), pa=stateparms(x,i), bf=statebuffers(x,i);
-  if(d<pd) p.pop();
+  K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i);
+  if(d<pd) q.pop();
   if(container(c)) {
-   //TORCH_CHECK(!op && !pa && !bf, "No options,parameters or buffers expected for container layer");
+   //TORCH_CHECK(!o && !p && !f, "No options,parameters or buffers expected for container layer");
    auto a=makecontainer(c);
-   if(p.size())
-    layerchild(p.top(),a,nm);
+   if(q.size())
+    layerchild(q.top(),a,nm);
    if(d>pd)
-    p.push(a);
+    q.push(a);
   } else {
-   auto a=anymodule(op, -1, c);
-   if(pa) mparms(s,*a.ptr(),pa,true);
-   if(bf) mparms(s,*a.ptr(),bf,true);
-   if(p.size())
-    layerany(p.top(),a,nm);
+   auto a=anymodule(o, -1, c);
+   if(p) mparms(s,*a.ptr(),p,true);
+   if(f) mparms(s,*a.ptr(),f,false);
+   if(q.size())
+    layerany(q.top(),a,nm);
    else if(n<2)
-    p.push(a);
+    q.push(a);
    else
     AT_ERROR(n," layers given, but no container layer");
   }
   pd=d;
  }
- while(p.size()>1) p.pop();
- TORCH_CHECK(p.size(), "No container layer for network");
- return p.top();
+ while(q.size()>1) q.pop();
+ TORCH_CHECK(q.size(), "No container layer for network");
+ return q.top();
 }
 
 KAPI mput(K x) {
@@ -540,6 +540,31 @@ KAPI mput(K x) {
   auto m=mput1(x);
   return mget(true,true,"",layermodule(m));
  KCATCH("mput");
+}
+
+void parse1(J d,S& s,K x) {
+ switch(x->t) {
+  case 0:
+   for(J i=0;i<x->n;++i) {
+    parse1(d+1,s,kK(x)[i]);
+   }
+   break;
+  case -KS: s=x->s;
+   std::cerr << d << ": " << (s ? s : "") << "\n";
+   break;
+  case  KS: if(x->n>0) s=kS(x)[0];
+   std::cerr << d << ": " << (s ? s : "") << "\n";
+   break;
+  default: std::cerr << kname(x) << ","; break;
+ }
+}
+
+KAPI mparse(K x) {
+ KTRY
+  S s=(S)"";
+  parse1(0,s,x);
+  return (K)0;
+ KCATCH("mparse");
 }
 
 void margs(Sequential& q,K x,J i);
@@ -572,11 +597,14 @@ KAPI join1(K x) {
  KTRY
   SeqNest q;
   SeqJoin j;  // j=nullptr;
-  q->push_back("xy",j);
+  q->push_back("xy", j);
   Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
   j->push_back("zshape",q1);
   j->push_back("empty",Sequential());
   j->push_back("cat",AnyModule(Cat(1)));
+  q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
+  q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
+  q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
   return mget(true,true,"",*q);
   //Cast c; K o; std::tie(c,o)=mopt(true,*AnyModule(q).ptr());
   //return o;
