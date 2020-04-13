@@ -897,9 +897,9 @@ void psize(const Pairs& p,J d,double *a) {
 void pten(const Pairs& p,Tensor &t) {
  switch(p.t) {
   case 0: if(!(xten(p.v,t))) t=kput(p.v); break;
-  case -KB: t=torch::full({},Scalar(p.b)).to(maptype(KB)); break;
-  case -KJ: t=torch::full({},Scalar((int64_t)p.j)).to(maptype(KJ)); break;
-  case -KF: t=torch::full({},Scalar(p.f)).to(maptype(KF)); break;
+  case -KB: t=torch::full({},Scalar(p.b),maptype(KB)); break;
+  case -KJ: t=torch::full({},Scalar((int64_t)p.j),maptype(KJ)); break;
+  case -KF: t=torch::full({},Scalar(p.f),maptype(KF)); break;
   case KB:
   case KH:
   case KI:

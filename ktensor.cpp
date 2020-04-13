@@ -116,10 +116,8 @@ K kten3(bool p,Tensor& a,Tensor& b,Tensor& c) {  // p:true if returning tensor p
 // ---------------------------------------------------------------------------------------
 void kputscalar(K x,Tensor &t) {
  Scalar s;
- if(xscalar(x,s))
-  t=torch::full({},s).to(maptype(x->t));
- else
-  AT_ERROR("Unable to translate k ",kname(x->t)," to scalar tensor");
+ TORCH_CHECK(xscalar(x,s), "Unable to translate k ",kname(x->t)," to scalar tensor");
+ t=torch::full({},s,maptype(x->t));
 }
 
 static void kdepth(K x,I i,H k,Ksize &s){
