@@ -154,7 +154,7 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
   else if(children().size()==1)
    qy=register_module(s,std::move(q));
   else
-   AT_ERROR("both sequential layers already defined");
+   AT_ERROR("seqjoin: both sequential layers already defined");
  }
 
  void push_back(torch::nn::AnyModule a) {
@@ -162,14 +162,14 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  }
 
  void push_back(std::string s,torch::nn::AnyModule a) {
-  TORCH_CHECK(children().size()==2, "Both sequential layers must be defined first");
-  TORCH_CHECK(join.is_empty(), "join layer already defined");
+  TORCH_CHECK(children().size()==2, "seqjoin: both sequential layers must be defined first");
+  TORCH_CHECK(join.is_empty(), "seqjoin: join layer already defined");
   join=std::move(a);
   register_module(s,join.ptr());
  }
 
  Tensor forward(const Tensor& x,const Tensor& y) {
-  TORCH_CHECK(!join.is_empty(), "join layer not defined");
+  TORCH_CHECK(!join.is_empty(), "seqjoin: join layer not defined");
   return join.forward(qx.is_empty() || !qx->children().size() ? x : qx->forward(x),
                       qy.is_empty() || !qy->children().size() ? y : qy->forward(y));
  }

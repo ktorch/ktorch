@@ -469,6 +469,11 @@ Module& mref(const Layer& q) {
 
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
 
+static S msym(Cast c) {
+ for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
+ AT_ERROR("Unrecognized module: ",(I)c);
+}
+
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  AT_ERROR("Unrecognized module: ",s);
@@ -542,28 +547,89 @@ KAPI mput(K x) {
  KCATCH("mput");
 }
 
-void parse1(J d,S& s,K x) {
+void addcontainer(Cast c,S nm,std::stack<Layer>& q) {
+ auto a=makecontainer(c);
+ if(q.size())
+  layerchild(q.top(),a,nm);
+ q.push(a);  // if nm, how to name root container..use NamedAnyModule?  (must decipher later..?)
+}
+
+void addlayer(K x,J i,Cast c,S nm,std::stack<Layer>& q) {
+ auto a=anymodule(x,i,c);
+ if(q.size())
+  layerchild(q.top(),a,nm);
+ else
+  q.push(a);  // only one is ok, but next layer can't be added(?)
+}
+
+void xerror(const char* s,K x) {
+ if(x->t) {
+  AT_ERROR(s, kname(x));
+ } else {
+  switch(x->n) {
+   case 0:  AT_ERROR(s, "empty list");
+   case 1:  AT_ERROR(s, "1-element list containing ", kname(x));
+   case 2:  AT_ERROR(s, "2-element list containing ", kname(kK(x)[0]), " and ", kname(kK(x)[1]));
+   default: AT_ERROR(s, x->n, "-element list containing ", kname(kK(x)[0]), ", ", kname(kK(x)[1]),", ..");
+  }
+ }
+}
+
+void parse1(J d,K x,std::stack<Layer>& q) {
+ S s,nm; Cast c; AnyModule a;
  switch(x->t) {
   case 0:
-   for(J i=0;i<x->n;++i) {
-    parse1(d+1,s,kK(x)[i]);
+   if(x->n) {
+    if(kK(x)[0]->t==-KS) {
+     c=msym(kK(x)[0]->s);
+     nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
+     std::cerr << d << ": " << msym(c); 
+     if(container(c)) {
+      std::cerr << " (container)\n";
+      addcontainer(c,nm,q);
+      for(J i=1;i<x->n;++i)
+        parse1(d+1,kK(x)[i],q);
+      if(q.size()>1)
+       q.pop();
+     } else {
+      std::cerr << " (layer)\n";
+      addlayer(x, nm ? 2 : 1, c, nm, q);
+     }
+    } else {
+     xerror("Unrecognized layer: ", x);
+    }
    }
    break;
-  case -KS: s=x->s;
-   std::cerr << d << ": " << (s ? s : "") << "\n";
+  case -KS: 
+  case  KS:
+   TORCH_CHECK(x->t==-KS || x->n>0,"Unrecognized layer argument: empty symbol list");
+   if(x->t==-KS) {
+    s=x->s; nm=nullptr;
+   } else {
+    s=kS(x)[0]; nm=(x->n>1) ? kS(x)[1] : nullptr;
+   }
+   c=msym(s);
+   std::cerr << d << ": " << s << " (symbol)\n";
+   if(container(c)) {
+    addcontainer(c,nm,q);
+    if(q.size()>1)
+      q.pop();
+   } else {
+    addlayer(x, nm ? 2 : 1, c, nm, q);
+   }
    break;
-  case  KS: if(x->n>0) s=kS(x)[0];
-   std::cerr << d << ": " << (s ? s : "") << "\n";
-   break;
-  default: std::cerr << kname(x) << ","; break;
+  default:
+   AT_ERROR("Unrecognized layer arg(s), expecting general list or symbols, given ",kname(x));
  }
 }
 
 KAPI mparse(K x) {
  KTRY
-  S s=(S)"";
-  parse1(0,s,x);
-  return (K)0;
+ std::stack<Layer> q;
+  parse1(0,x,q);
+  TORCH_CHECK(q.size()==1, "Unexpected stack size: ",q.size()," after defining layer(s)");
+  std::cerr << layermodule(q.top()) << "\n";
+  return mget(true,true,"",layermodule(q.top()));
  KCATCH("mparse");
 }
 
