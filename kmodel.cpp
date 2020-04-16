@@ -1,5 +1,4 @@
 #include "ktorch.h"
-#include "knn.h"
 
 // -------------------------------------------------------------------------------------------
 // modelpart - parse args from k to define sequential, loss & optimizer modules

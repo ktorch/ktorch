@@ -1,11 +1,7 @@
 #include "ktorch.h"
-#include "knn.h"
 
 // append a module option to a k dictionary given dict,name & value
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
-
-// append a module with name if not null (method needs `std::string` ??)
-#define PUSH(q,n,m) n ? q->push_back(std::string(n),m) : q->push_back(m)
 
 // ----------------------------------------------------------------------------
 // kseq - allocate an object to store a pointer to a sequential module

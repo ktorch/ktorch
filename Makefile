@@ -17,9 +17,8 @@ lib := ktorch.so
 src := ktorch.cpp ktensor.cpp kmath.cpp knn.cpp kloss.cpp kopt.cpp kmodel.cpp ktest.cpp
 
 all: $(lib)
-*.o: k.h ktorch.h
+*.o: k.h ktorch.h knn.h
 kloss.o: kloss.h
-knn.o kmodel.o ktest.o: knn.h
 
 $(lib): $(subst .cpp,.o,$(src))
 	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)

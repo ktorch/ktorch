@@ -1,6 +1,5 @@
 #include <stack>
 #include "ktorch.h"
-#include "knn.h"
 #include "private.h"
 
 #ifdef __clang__
@@ -44,6 +43,19 @@ KAPI sgdtest(K x) {
  return (K)0;
 }
 */
+
+void xerror(const char* s,K x) {
+ if(x->t) {
+  AT_ERROR(s, kname(x));
+ } else {
+  switch(x->n) {
+   case 0:  AT_ERROR(s, "empty list");
+   case 1:  AT_ERROR(s, "1-element list containing ", kname(x));
+   case 2:  AT_ERROR(s, "2-element list containing ", kname(kK(x)[0]), " and ", kname(kK(x)[1]));
+   default: AT_ERROR(s, x->n, "-element list containing ", kname(kK(x)[0]), ", ", kname(kK(x)[1]),", ..");
+  }
+ }
+}
 
 KAPI knull(K x) {
  K r=ktn(0,0);
@@ -558,21 +570,10 @@ void addlayer(K x,J i,Cast c,S nm,std::stack<Layer>& q) {
  auto a=anymodule(x,i,c);
  if(q.size())
   layerchild(q.top(),a,nm);
+ //else if(nm)
+ // q.push(NamedAnyModule(nm,*a.ptr()));
  else
   q.push(a);  // only one is ok, but next layer can't be added(?)
-}
-
-void xerror(const char* s,K x) {
- if(x->t) {
-  AT_ERROR(s, kname(x));
- } else {
-  switch(x->n) {
-   case 0:  AT_ERROR(s, "empty list");
-   case 1:  AT_ERROR(s, "1-element list containing ", kname(x));
-   case 2:  AT_ERROR(s, "2-element list containing ", kname(kK(x)[0]), " and ", kname(kK(x)[1]));
-   default: AT_ERROR(s, x->n, "-element list containing ", kname(kK(x)[0]), ", ", kname(kK(x)[1]),", ..");
-  }
- }
 }
 
 void parse1(J d,K x,std::stack<Layer>& q) {
@@ -583,33 +584,29 @@ void parse1(J d,K x,std::stack<Layer>& q) {
     if(kK(x)[0]->t==-KS) {
      c=msym(kK(x)[0]->s);
      nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
-     std::cerr << d << ": " << msym(c); 
      if(container(c)) {
-      std::cerr << " (container)\n";
       addcontainer(c,nm,q);
       for(J i=1;i<x->n;++i)
         parse1(d+1,kK(x)[i],q);
       if(q.size()>1)
        q.pop();
      } else {
-      std::cerr << " (layer)\n";
       addlayer(x, nm ? 2 : 1, c, nm, q);
      }
     } else {
-     xerror("Unrecognized layer: ", x);
+     AT_ERROR("Unrecognized layer at depth ", d,", expecting symbol as first arg, given ", kname(kK(x)[0]));
     }
    }
    break;
   case -KS: 
   case  KS:
-   TORCH_CHECK(x->t==-KS || x->n>0,"Unrecognized layer argument: empty symbol list");
+   TORCH_CHECK(x->t==-KS || x->n>0,"Unrecognized layer at depth ", d, ", empty symbol list");
    if(x->t==-KS) {
     s=x->s; nm=nullptr;
    } else {
     s=kS(x)[0]; nm=(x->n>1) ? kS(x)[1] : nullptr;
    }
    c=msym(s);
-   std::cerr << d << ": " << s << " (symbol)\n";
    if(container(c)) {
     addcontainer(c,nm,q);
     if(q.size()>1)
@@ -619,7 +616,7 @@ void parse1(J d,K x,std::stack<Layer>& q) {
    }
    break;
   default:
-   AT_ERROR("Unrecognized layer arg(s), expecting general list or symbols, given ",kname(x));
+   AT_ERROR("Unrecognized layer at depth ", d, ", expecting general list or symbols, given ",kname(x));
  }
 }
 

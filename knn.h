@@ -168,14 +168,14 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
   register_module(s,join.ptr());
  }
 
- Tensor forward(const Tensor& x,const Tensor& y) {
+ torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y) {
   TORCH_CHECK(!join.is_empty(), "seqjoin: join layer not defined");
   return join.forward(qx.is_empty() || !qx->children().size() ? x : qx->forward(x),
                       qy.is_empty() || !qy->children().size() ? y : qy->forward(y));
  }
- Sequential qx = nullptr;
- Sequential qy = nullptr;
- AnyModule  join;
+ torch::nn::Sequential qx = nullptr;
+ torch::nn::Sequential qy = nullptr;
+ torch::nn::AnyModule  join;
 };
 TORCH_MODULE(SeqJoin);
 
@@ -201,7 +201,12 @@ TORCH_MODULE(SeqNest);
 // ---------------------------------------------------------------------------
 // Layer - variant to hold different layer types, containers & generic modules
 // ---------------------------------------------------------------------------
-using Layer=c10::variant<Sequential,SeqNest,SeqJoin,AnyModule,NamedAnyModule>;
+using Layer=c10::variant<torch::nn::Sequential,
+                         SeqNest,
+                         SeqJoin,
+                         torch::nn::AnyModule,
+                         torch::nn::NamedAnyModule>;
+
 enum class Layers {sequential,seqnest,seqjoin,any,anyname};
 
 #ifdef __clang__

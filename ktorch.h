@@ -17,6 +17,7 @@
 #undef xs
 
 #include "torch/torch.h"
+#include "knn.h"
 
 #ifdef __clang__
 # pragma clang diagnostic pop
