@@ -4,7 +4,7 @@
 # pragma clang diagnostic push
 # pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"                   // k.h warning
 # pragma GCC diagnostic ignored "-Wnested-anon-types"                      // k.h warning
-# pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"    // ATen.h VA_ARG warning
+# pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"    // ATen.h VA_ARG warning, FORWARD_HAS_DEFAULT_ARGS
 #elif defined __GNUC__
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wpedantic"
@@ -16,6 +16,7 @@
 #undef Z
 #undef xs
 
+#include <stack>
 #include "torch/torch.h"
 #include "knn.h"
 
@@ -75,6 +76,13 @@ using AnyModule=torch::nn::AnyModule;
 using NamedAnyModule=torch::nn::NamedAnyModule;
 using Sequential=torch::nn::Sequential;
 
+using Layer=c10::variant<torch::nn::Sequential,
+                         SeqNest,
+                         SeqJoin,
+                         torch::nn::AnyModule,
+                         torch::nn::NamedAnyModule>;
+enum class Layers {sequential,seqnest,seqjoin,any,anyname};
+
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
 using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
@@ -101,6 +109,7 @@ enum class Class:char {
  tensor,
  vector,
  module,
+ layer,
  sequential,
  loss,
  optimizer,
@@ -218,6 +227,12 @@ struct TORCH_API Kseq : public Ktag {
  Kseq(const Sequential& x) : q(std::move(x)) {a=Class::sequential; c=Cast::sequential;}
 };
 
+struct TORCH_API Klayer : public Ktag {
+ Layer l;
+ std::string s; // store name of main container layer (child layers already allow for user-specified name)
+ Klayer(Cast x,const Layer& y,const std::string z={}) : l(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
+};
+
 struct TORCH_API Kmodule : public Ktag {
  Kmodule(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
@@ -250,13 +265,17 @@ bool xptr(K,J);
 Ktag* xtag(K);
 Ktag* xtag(K,J);
 
+bool null(const char*);
+bool null(const J);
 bool match(const Scalar&,const Scalar&);
 K kscalar(const Scalar&);
+
 J xlen(K);
 J xlen(K,J);
 const char* kname(Ktype);
 const char* kname(K);
 const char* kname(K,J);
+
 J ksizeof(Ktype);
 Ktype maptype(TypeMeta);
 TypeMeta maptype(Ktype);
@@ -326,6 +345,8 @@ bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
 Kmodule* xmodule(K);
 Kmodule* xmodule(K,J);
+Klayer* xlayer(K);
+Klayer* xlayer(K,J);
 bool xseq(K,Sequential&);
 bool xseq(K,J,Sequential&);
 Sequential* xseq(K);
@@ -403,6 +424,7 @@ S& optsym(const bool&);
 K optkey();
 K optval(const TensorOptions &o,K x,J i=-1);
 K optmap(const TensorOptions&);
+K kout(K);
 K kcast(Ktype,K);
 K kbool(K);
 K kdict(const TensorDict&);
@@ -467,7 +489,7 @@ torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
 void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
 void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
-K kmodule(Cast,const AnyModule&);
+K klayer(Cast c,const Layer& m,S s=nullptr);
 K kseq(const Sequential&);
 K seqto(Kseq*,const TensorOptions&,bool);
 K mtable(const Sequential& q,bool a,bool b=true);
@@ -549,10 +571,11 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Class>,7> kclass = {{
+ std::array<std::tuple<S,Class>,8> kclass = {{
   std::make_tuple(cs("tensor"),     Class::tensor),          
   std::make_tuple(cs("vector"),     Class::vector),
   std::make_tuple(cs("module"),     Class::module),
+  std::make_tuple(cs("layer"),      Class::layer),
   std::make_tuple(cs("sequential"), Class::sequential),
   std::make_tuple(cs("loss"),       Class::loss),
   std::make_tuple(cs("optimizer"),  Class::optimizer),

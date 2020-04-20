@@ -1,10 +1,5 @@
 #pragma once
 
-#ifdef __clang__
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"    // FORWARD_HAS_DEFAULT_ARGS
-#endif
-
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
 // --------------------------------------------------------------------------
@@ -197,18 +192,3 @@ struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
   FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
 };
 TORCH_MODULE(SeqNest);
-
-// ---------------------------------------------------------------------------
-// Layer - variant to hold different layer types, containers & generic modules
-// ---------------------------------------------------------------------------
-using Layer=c10::variant<torch::nn::Sequential,
-                         SeqNest,
-                         SeqJoin,
-                         torch::nn::AnyModule,
-                         torch::nn::NamedAnyModule>;
-
-enum class Layers {sequential,seqnest,seqjoin,any,anyname};
-
-#ifdef __clang__
-# pragma clang diagnostic pop
-#endif

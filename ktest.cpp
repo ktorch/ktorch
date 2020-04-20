@@ -1,4 +1,3 @@
-#include <stack>
 #include "ktorch.h"
 #include "private.h"
 
@@ -11,7 +10,46 @@
 #endif
 
 ACCESS_PRIVATE_FIELD(torch::nn::SequentialImpl, std::vector<AnyModule>, modules_)
-// PATCH ACCESS_PRIVATE_FIELD(torch::optim::SGD, int64_t, iteration_)
+ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, std::string,          name_)
+ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
+
+NamedAnyModule named(const std::string& s,const AnyModule& a) {
+ auto m=NamedAnyModule(s,torch::nn::Identity());
+ m.module() = a;
+ return m;
+}
+
+KAPI stringtest(K x) {
+ std::string s;
+ std::cerr << "size: " << s.size() << "\n";
+ return kj(s.size());
+}
+
+KAPI anyname(K x) {
+ auto a=torch::nn::NamedAnyModule("fc", torch::nn::Linear(1,2));
+ std::cerr <<  "Name: " << access_private::name_(a) << "\n";
+ auto q=Sequential({a});
+ std::cerr << q << "\n";
+ if(true) {
+  //auto a=torch::nn::AnyModule(torch::nn::Linear(1,2));
+  auto a=torch::nn::AnyModule(torch::nn::Linear(50,784));
+  //auto m=torch::nn::NamedAnyModule("fc", a);
+  auto m=named("fc", a);
+  auto q=Sequential({m});
+  std::cerr << q << "\n";
+  /*
+  auto q1=Sequential(a);
+  auto q2=Sequential({NamedAnyModule("fc",a)});
+  Sequential q3;
+  auto n=NamedAnyModule("fc",a);
+  q3->push_back(n.name(),n.module());
+  std::cerr << q1 << "\n";
+  std::cerr << q2 << "\n";
+  */
+ }
+ //torch::nn::NamedAnyModule m=nullptr;
+ return (K)0;
+}
 
 #ifdef __clang__
 # pragma clang diagnostic pop
@@ -337,22 +375,6 @@ void testprint(int64_t d,const std::string s,const Module& m) {
   }
 }
 
-KAPI testjoin(K x) {
- KTRY
-  Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
-  Sequential q2=nullptr;
-  Cat c(1);
-  SeqJoin m;
-  m->push_back(q1);
-  m->push_back(q2);
-  m->push_back(AnyModule(c));
-  std::cerr << "qy empty: " << m->qy.is_empty() << "\n";
-  std::cerr << m << "\n";
-  testprint(0,"",*m);
-  return kmodule(Cast::seqjoin,AnyModule(m));
- KCATCH("testjoin");
-}
-
 /////////////////////////////////////////////////////////////////////////
 template <class... Fs> struct overload;
 
@@ -392,6 +414,7 @@ KAPI layererror(K x) {
 // layerchild - add a child module to container layer, e.g. sequential
 // layermodule - return a reference to underlying module (to retrieve options & parms)
 // layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
+// layername - given k layer ptr, return name or nullptr if none
 // ------------------------------------------------------------------------------------
 template<typename Q,typename A>
 void layerpush(Q& q,const A& a,const char* s) {
@@ -464,6 +487,10 @@ Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  }
 }
 
+const std::string& layername(Klayer* x) {
+ return x->l.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->l).name() : x->s;
+}
+ 
 void addchild2(Layer& q,const AnyModule& a) {
  c10::visit(
   make_overload(
@@ -498,15 +525,14 @@ K mkeys(bool);
 K mget(bool a,bool b,const char* s,const Module& m);
 
 /*
+K mget(bool a,bool b,Layer* x) {
+ mget(a,b,layername(x),layermodule(x);
+}
+*/
+
+/*
 addchild:{[p;v;nm] -2 $[count p; string[p],"->pushback(",string[` sv v,nm],")"; "creating container: ",string v]}
 {[p;pd;d;v;nm] if[d<pd;p:pop p]; addchild[first p;v;nm]; $[container[v] & d>pd;push[p]` sv v,nm;p]}
-
-void mput(int64_t pd, int64_t d, Cast c, std::string n) {
-  if(d<pd) p.pop();
-  p.top()->push_back(name, AnyModule);
-  if(container(c) && d>pd)
-   p.push(ContainerModule);
-}
 */
 
 Layer makecontainer(Cast c) {
@@ -521,7 +547,7 @@ Layer makecontainer(Cast c) {
 AnyModule anymodule(K x,J i,Cast c);
 void mparms(S s,Module &m,K x,bool p);
 
-Layer mput1(K x) {
+Layer mputdict(K x) {
  J pd=-1,n=x->t==99 ? 0 : xlen(x); std::stack<Layer> q;
  for(J i=98-x->t;i<n;++i) {
   S s=statemodule(x,i), nm=statename(x,i); Cast c=msym(s); J d=statedepth(x,i);
@@ -552,11 +578,11 @@ Layer mput1(K x) {
  return q.top();
 }
 
-KAPI mput(K x) {
+KAPI net(K x) {
  KTRY
-  auto m=mput1(x);
+  auto m=mputdict(x);
   return mget(true,true,"",layermodule(m));
- KCATCH("mput");
+ KCATCH("layer");
 }
 
 void addcontainer(Cast c,S nm,std::stack<Layer>& q) {
@@ -566,24 +592,51 @@ void addcontainer(Cast c,S nm,std::stack<Layer>& q) {
  q.push(a);  // if nm, how to name root container..use NamedAnyModule?  (must decipher later..?)
 }
 
-void addlayer(K x,J i,Cast c,S nm,std::stack<Layer>& q) {
+void addchild(K x,J i,Cast c,S nm,std::stack<Layer>& q) {
  auto a=anymodule(x,i,c);
  if(q.size())
   layerchild(q.top(),a,nm);
- //else if(nm)
- // q.push(NamedAnyModule(nm,*a.ptr()));
+ else if(nm)
+  q.push(NamedAnyModule(nm,a));
  else
   q.push(a);  // only one is ok, but next layer can't be added(?)
 }
 
-void parse1(J d,K x,std::stack<Layer>& q) {
- S s,nm; Cast c; AnyModule a;
+S parse1(J,K,std::stack<Layer>&);
+
+void addlayer(J d,S s,S nm,K x,std::stack<Layer>& q) {
+ Cast c=msym(s);
+ if(container(c)) {
+  auto a=makecontainer(c);
+  if(q.size())
+   layerchild(q.top(),a,nm);
+  if(x && x->n>1) {
+   q.push(a);
+   for(J i=1;i<x->n;++i) parse1(d+1,kK(x)[i],q);
+   if(q.size()>1) q.pop();
+  } else if(!q.size()) {
+   q.push(a);
+  }
+ } else {
+  auto a=anymodule(x, null(nm) ? 1 : 2, c);
+  if(q.size())
+   layerchild(q.top(),a,nm);
+  else if(nm)
+   q.push(NamedAnyModule(nm,a));
+  else
+   q.push(a);
+ }
+}
+
+S parse1(J d,K x,std::stack<Layer>& q) {
+ S s,nm=nullptr; Cast c;
+ kout(x);
  switch(x->t) {
   case 0:
    if(x->n) {
     if(kK(x)[0]->t==-KS) {
-     c=msym(kK(x)[0]->s);
-     nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
+     s=kK(x)[0]->s, nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
+     c=msym(s);
      if(container(c)) {
       addcontainer(c,nm,q);
       for(J i=1;i<x->n;++i)
@@ -591,7 +644,7 @@ void parse1(J d,K x,std::stack<Layer>& q) {
       if(q.size()>1)
        q.pop();
      } else {
-      addlayer(x, nm ? 2 : 1, c, nm, q);
+      addchild(x, nm ? 2 : 1, c, nm, q);
      }
     } else {
      AT_ERROR("Unrecognized layer at depth ", d,", expecting symbol as first arg, given ", kname(kK(x)[0]));
@@ -601,32 +654,34 @@ void parse1(J d,K x,std::stack<Layer>& q) {
   case -KS: 
   case  KS:
    TORCH_CHECK(x->t==-KS || x->n>0,"Unrecognized layer at depth ", d, ", empty symbol list");
-   if(x->t==-KS) {
-    s=x->s; nm=nullptr;
-   } else {
-    s=kS(x)[0]; nm=(x->n>1) ? kS(x)[1] : nullptr;
-   }
+   if(x->t==-KS)
+    s=x->s, nm=nullptr;
+   else
+    s=kS(x)[0], nm=(x->n>1) ? kS(x)[1] : nullptr;
    c=msym(s);
    if(container(c)) {
     addcontainer(c,nm,q);
     if(q.size()>1)
       q.pop();
    } else {
-    addlayer(x, nm ? 2 : 1, c, nm, q);
+    addchild(x, nm ? 2 : 1, c, nm, q);
    }
    break;
   default:
    AT_ERROR("Unrecognized layer at depth ", d, ", expecting general list or symbols, given ",kname(x));
  }
+ return nm;
 }
 
 KAPI mparse(K x) {
  KTRY
  std::stack<Layer> q;
-  parse1(0,x,q);
+  S nm=parse1(0,x,q);
   TORCH_CHECK(q.size()==1, "Unexpected stack size: ",q.size()," after defining layer(s)");
+  //return klayer(c, q.top(), nm);
+  std::cerr << nm << "\n";
   std::cerr << layermodule(q.top()) << "\n";
-  return mget(true,true,"",layermodule(q.top()));
+  return mget(true,true,nm,layermodule(q.top()));
  KCATCH("mparse");
 }
 

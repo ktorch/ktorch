@@ -4,10 +4,11 @@
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 
 // ----------------------------------------------------------------------------
+// klayer - allocate an object to store a pointer to a layer
 // kseq - allocate an object to store a pointer to a sequential module
 // seqto - given sequential module & options, change device/data type
 // ----------------------------------------------------------------------------
-K kmodule(Cast c,const AnyModule& m) {return kptr(new Kmodule(Class::module,c,m));}
+K klayer(Cast c,const Layer& m,S s) {return kptr(s ? new Klayer(c,m,s) : new Klayer(c,m));}
 
 K kseq(const Sequential& q) {return kptr(new Kseq(q));}
 
@@ -136,8 +137,8 @@ static int64_t int64(const Pairs& p,Cast c) {
  return p.j;
 }
 
-static c10::optional<int64_t> int64n(K x,J i,Cast c,Setting s) {auto n=int64(x,i,c,s); if(n==nj) return c10::nullopt; else return n;}
-static c10::optional<int64_t> int64n(const Pairs& p,Cast c)    {auto n=int64(p,c);     if(n==nj) return c10::nullopt; else return n;}
+static c10::optional<int64_t> int64n(K x,J i,Cast c,Setting s) {auto n=int64(x,i,c,s); if(null(n)) return c10::nullopt; else return n;}
+static c10::optional<int64_t> int64n(const Pairs& p,Cast c)    {auto n=int64(p,c);     if(null(n)) return c10::nullopt; else return n;}
 
 static double mdouble(K x,J i,Cast c,Setting s) {
  double f;
@@ -178,12 +179,12 @@ template<size_t D> static ExpandingArray<D> exarray(const Pairs& p,Cast c) {
 }
 
 template<size_t D> static Exoptional<D> exoptional(J j) {
- return (j == nj) ? Exoptional<D>(c10::nullopt) : Exoptional<D>(j);
+ return null(j) ? Exoptional<D>(c10::nullopt) : Exoptional<D>(j);
 }
 
 template<size_t D> static Exoptional<D> exoptional(K x) {
  auto a=Exoptional<D>(IntArrayRef((int64_t*)kJ(x),x->n));
- for(J i=0;i<x->n;++i) if((*a)[i].value() == nj) (*a)[i]=c10::nullopt;
+ for(J i=0;i<x->n;++i) if(null((*a)[i].value())) (*a)[i]=c10::nullopt;
  return a;
 }
 
@@ -1408,7 +1409,7 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) {
    case Setting::type: s=ptype(p); break;
    default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
   }
- if(d==nj) 
+ if(null(d)) 
   AT_ERROR("specify the dimension along which ",msym(c)," will be computed");
 }
 
@@ -2122,7 +2123,8 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
  }
 }
 
-K mget(bool a,bool b,const char* s,const Module& m) {
+K mget(bool a,bool b,const char* s,const Module& m) {  
+// a-true for all options else non-defaults, b-true for full state w'parms & buffers, s-name
  K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
  if(container(m)) {
   for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);

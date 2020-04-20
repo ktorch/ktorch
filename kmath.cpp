@@ -507,7 +507,7 @@ KAPI Mean(K x) {
     return kresult(p, torch::mean(t,s));
   } else if(xsize(x,1,d) &&
     (n==2 ||                                       // (input;dim)
-    (xtype(x,2,s) &&  n==3)||                      // (imput;dim;type)
+    (xtype(x,2,s) &&  n==3)||                      // (input;dim;type)
     (xbool(x,2,k) && (n==3 ||                      // (input;dim;keepdim)
                      (n==4 && xtype(x,3,s)))))) {  // (input;dim;keepdim;type)
    if(!(p=xten(x,0,t))) t=kput(x,0);
@@ -1135,7 +1135,7 @@ KAPI Unique(K x) {
    AT_ERROR("unique expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
             "(input;sort flag;indices flag;counts flag;dimension)");
   }
-  std::tie(u,i,c)=(d==nj) ? torch::_unique2(t,bs,bi,bc) : torch::unique_dim(t,d,bs,bi,bc);
+  std::tie(u,i,c)=null(d) ? torch::_unique2(t,bs,bi,bc) : torch::unique_dim(t,d,bs,bi,bc);
   return uniqres(p,bi,bc,u,i,c);
  KCATCH("unique");
 }
@@ -1156,7 +1156,7 @@ KAPI Uniquec(K x) {
    AT_ERROR("unique consecutive expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
             "(input;indices flag;counts flag;dimension)");
   }
-  std::tie(u,i,c)=torch::unique_consecutive(t,bi,bc,(d==nj) ? torch::nullopt : torch::make_optional(d));
+  std::tie(u,i,c)=torch::unique_consecutive(t,bi,bc,null(d) ? torch::nullopt : torch::make_optional(d));
   return uniqres(p,bi,bc,u,i,c);
  KCATCH("unique consecutive");
 }

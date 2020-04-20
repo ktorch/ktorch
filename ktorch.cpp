@@ -46,16 +46,13 @@ bool xhelp(K x,S &s) {
 }
 
 // ------------------------------------------------------------------------------------------
+// null - true if null for given tyoe
 // match - return true if scalars match (check long/double value)
 // kscalar - return k double/long from torch scalar
-// xlen - 1 if scalar else x->n for lists, no. of table rows or dictionary elements
-// mapclass - map class enum to symbol
-// kname - string from k data type or object
-// ksizeof - given k type, return size of element, e.g. KF -> 8
-// maptype - map k data type to/from torch type
-// mapattr - make attr enum to symbol
-// emap - map sym -> enum (enum used to pick variant member, e.g. torch::kMean)
 // ------------------------------------------------------------------------------------------
+bool null(const char* x) { return x && strlen(x);}
+bool null(const J x)     { return x == nj; }
+
 bool match(const Scalar &x,const Scalar &y) {
  if(x.isIntegral(false)) {
   if(y.isIntegral(false))
@@ -77,6 +74,11 @@ K kscalar(const Scalar &s) {
  AT_ERROR("Unexpected scalar type(s), neither integral or floating point, cannot convert");
 }
 
+// ------------------------------------------------------------------------------------------
+// xlen - 1 if scalar else x->n for lists, no. of table rows or dictionary elements
+// mapclass - map class enum to symbol
+// kname - string from k data type or object
+// ------------------------------------------------------------------------------------------
 J xlen(K x) {
  if(x->t < 0 || x->t > 99) return 1;
  else if(x->t < 98)        return x->n;
@@ -143,6 +145,12 @@ const char* kname(Ktype k) {
 const char* kname(K x) {return xptr(x) ? mapclass(xtag(x)->a) : kname(x->t);}
 const char* kname(K x,J i) {return xind(x,i) ? kname(kK(x)[i]) : kname(x);}
  
+// ------------------------------------------------------------------------------------------
+// ksizeof - given k type, return size of element, e.g. KF -> 8
+// maptype - map k data type to/from torch type
+// mapattr - make attr enum to symbol
+// emap - map sym -> enum (enum used to pick variant member, e.g. torch::kMean)
+// ------------------------------------------------------------------------------------------
 J ksizeof(Ktype k) {
  switch(k) {
   case KE: return sizeof(E);
@@ -477,6 +485,7 @@ bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
  
 // ------------------------------------------------------------------------------------------------------
 // xmodule - check arg(s) for allocated module pointer
+// xlayer - check arg(s) for allocated layer pointer
 // xseq - check arg(s) for allocated sequential module, return boolean/pointer
 // xloss - check arg(s) for allocated loss module
 // xoptim - check arg(s) for allocated optimizer pointer
@@ -484,6 +493,8 @@ bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
 // ------------------------------------------------------------------------------------------------------
 Kmodule* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Kmodule*)g : nullptr;}
 Kmodule* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
+Klayer* xlayer(K x) {auto* g=xtag(x); return (g && g->a==Class::layer) ? (Klayer*)g : nullptr;}
+Klayer* xlayer(K x,J i) {return xind(x,i) ? xlayer(kK(x)[i]) : nullptr;}
 
 bool xseq(K x,Sequential &q) {
  if(auto* a=xtag(x))
@@ -911,14 +922,11 @@ void pten(const Pairs& p,Tensor &t) {
 }
 
 // -----------------------------------------------------------------------------------------
+// kout - output k value via "0N!"
 // kcast - given data type and array, cast and return, i.e. 1h$x
 // kbool - cast k value to boolean
-// kdict - tensor dictionary to k dictionary of names -> tensor values
-// kfind - given list of symbols, find index of matching string, return -1 if not found
-// klist - return k value from count and long/double pointer
-// kex - true if given list is one unique value
-// kexpand - given element count & data ptr from expanding array return scalar or list
 // -----------------------------------------------------------------------------------------
+K kout(K x) {return k(0,(S)"0N!",r1(x),0);}
 K kcast(Ktype t,K x) {return k(0,(S)"$",kh(t),r1(x),0);}
 K kbool(K x) {return kcast(1,x);}
 
@@ -928,6 +936,13 @@ K kdict(const TensorDict &d) {
  return x;
 }
 
+// -----------------------------------------------------------------------------------------
+// kdict - tensor dictionary to k dictionary of names -> tensor values
+// kfind - given list of symbols, find index of matching string, return -1 if not found
+// klist - return k value from count and long/double pointer
+// kex - true if given list is one unique value
+// kexpand - given element count & data ptr from expanding array return scalar or list
+// -----------------------------------------------------------------------------------------
 J kfind(K k,const std::string &s) {
  if(k->t != KS) AT_ERROR("Unable to look up `",s," in ",kname(k->t),", expecting symbols");
  for(J i=0; i<k->n; ++i) if(!s.compare(kS(k)[i])) return i;
@@ -1356,7 +1371,7 @@ J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:
  torch::DeviceGuard dg(d);
  auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
  if(b) {
-  if (s==nj)
+  if(null(s))
    g.seed();
   else
    g.set_current_seed(s);
@@ -1377,7 +1392,7 @@ KAPI kseed(K x) {
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
-   if(s==nj) s=c10::detail::getNonDeterministicRandom();
+   if(null(s)) s=c10::detail::getNonDeterministicRandom();
    torch::manual_seed(s);
    return (K)0;
   } else if(xdev(x,d)) {          // query initial random seed for given device

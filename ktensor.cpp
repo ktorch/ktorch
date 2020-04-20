@@ -481,13 +481,13 @@ K ksqueeze(K x,bool a,const char* s) {
   } else if((xint64(x,1,d) && (x->n==2 || (x->n==3 && xbool(x,2,b)))) || (xbool(x,1,b) && x->n==2)) {
    TORCH_CHECK(a || d != nj, s," requires 2nd arg specifying dimension to add");
    if((t=xten(x,0))) {
-    if(!a)         return b ? t->unsqueeze_(d),(K)0 : kten(t->unsqueeze(d));
-    else if(d==nj) return b ? t->squeeze_(),   (K)0 : kten(t->squeeze());
-    else           return b ? t->squeeze_(d),  (K)0 : kten(t->squeeze(d));
+    if(!a)           return b ? t->unsqueeze_(d),(K)0 : kten(t->unsqueeze(d));
+    else if(null(d)) return b ? t->squeeze_(),   (K)0 : kten(t->squeeze());
+    else             return b ? t->squeeze_(d),  (K)0 : kten(t->squeeze(d));
    } else {
-    if(!a)         return kget(kput(x,0).unsqueeze(d));
-    else if(d==nj) return kget(kput(x,0).squeeze());
-    else           return kget(kput(x,0).squeeze(d));
+    if(!a)           return kget(kput(x,0).unsqueeze(d));
+    else if(null(d)) return kget(kput(x,0).squeeze());
+    else             return kget(kput(x,0).squeeze(d));
    }
   } else if(a) {
    return kget(kput(x).squeeze());
