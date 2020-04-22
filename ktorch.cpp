@@ -270,7 +270,7 @@ static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:req
  }
 }
 
-static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/table, j:row (-1 if dict)
+static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/table, j:row (if table)
  J i=statefind(e,x);
  if(i<0) return nullptr;
  K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
@@ -1368,8 +1368,10 @@ KAPI config(K x) {
 // kseed - k interface to query/set device seed or query/reset seed for all devices
 // -----------------------------------------------------------------------------------
 J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
+ return 0;
  torch::DeviceGuard dg(d);
- auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
+ auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU); // version 1.5
+ //auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);  // version 1.6
  if(b) {
   if(null(s))
    g.seed();
@@ -1392,7 +1394,8 @@ KAPI kseed(K x) {
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
-   if(null(s)) s=c10::detail::getNonDeterministicRandom();
+   if(null(s)) s=at::detail::getNonDeterministicRandom();  // version 1.5
+   //if(null(s)) s=c10::detail::getNonDeterministicRandom(); // version 1.6
    torch::manual_seed(s);
    return (K)0;
   } else if(xdev(x,d)) {          // query initial random seed for given device

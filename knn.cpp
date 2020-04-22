@@ -94,6 +94,91 @@ bool container(const Module& m) {
  }
 }
 
+// ------------------------------------------------------------------------------------
+// layerseq - add Sequential to existing parent, only SeqJoin currently implemented
+// layerany - add AnyModule child to existing parent container w'optional name
+// layerchild - add a child module to container layer, e.g. sequential
+// ------------------------------------------------------------------------------------
+template<typename Q,typename A>
+static void layerpush(Q& q,const A& a,const char* s) {
+ if(s) q->push_back(s,a); else q->push_back(a);
+}
+
+static void layerseq(Layer& q,const Sequential& a,const char* s) {
+ switch(q.index()) {
+  case (size_t)Layers::seqjoin: layerpush(c10::get<SeqJoin>(q),a,s); break;
+  default: AT_ERROR("Container unable to add sequential layer");
+ }
+}
+
+void layerany(Layer& q,const AnyModule& a,const char* s) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential: layerpush(c10::get<Sequential>(q), a, s); break;
+  case (size_t)Layers::seqnest:    layerpush(c10::get<SeqNest>(q),    a, s); break;
+  case (size_t)Layers::seqjoin:    layerpush(c10::get<SeqJoin>(q),    a, s); break;
+  default: AT_ERROR("Unrecognized container: unable to add child layer");
+ }
+}
+
+void layerchild(Layer& q,const Layer& a,const char* s) {
+ switch(a.index()) {
+  case (size_t)Layers::any:        layerany(q, c10::get<AnyModule>(a), s); break;
+  case (size_t)Layers::anyname:   {const auto& m=c10::get<NamedAnyModule>(a);
+                                   layerany(q, m.module(), m.name().c_str()); break;}
+  case (size_t)Layers::seqnest:    layerany(q, AnyModule(c10::get<SeqNest>(a)), s); break;
+  case (size_t)Layers::seqjoin:    layerany(q, AnyModule(c10::get<SeqJoin>(a)), s); break;
+  case (size_t)Layers::sequential: layerseq(q, c10::get<Sequential>(a), s); break;
+  default: AT_ERROR("Unrecognized child layer");
+ }
+}
+
+// ------------------------------------------------------------------------------------
+// layername - given k layer ptr, return name or nullptr if none
+// layermodule - return a reference to underlying module (to retrieve options & parms)
+// layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
+// ------------------------------------------------------------------------------------
+S layername(Klayer* x) {
+ return const_cast<char*>((x->l.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->l).name() : x->s).c_str());
+}
+
+Module& layermodule(const Layer& q) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  return *c10::get<Sequential>(q).ptr(); break;
+  case (size_t)Layers::seqnest:     return *c10::get<SeqNest>   (q).ptr(); break;
+  case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>   (q).ptr(); break;
+  case (size_t)Layers::any:         return *c10::get<AnyModule> (q).ptr(); break;
+  case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule> (q).module().ptr(); break;
+  default: AT_ERROR("Unrecognized layer: unable to get module reference");
+ }
+}
+
+template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
+ else            return q->forward(x);
+}
+
+Tensor layerforward(AnyModule& a,const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(y.defined()) return z.defined() ? a.forward(x,y,z) : a.forward(x,y);
+ else            return a.forward(x);
+}
+
+Tensor layerforward(SeqJoin& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ TORCH_CHECK(x.defined() && y.defined(), "seqjoin: expects two tensors, x & y");
+ TORCH_CHECK(!z.defined(), "seqjoin: unexpected 3rd tensor supplied");
+ return q->forward(x,y);
+}
+
+Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  return layerforward(c10::get<Sequential>(q),x,y,z);
+  case (size_t)Layers::seqnest:     return layerforward(c10::get<SeqNest>   (q),x,y,z);
+  case (size_t)Layers::seqjoin:     return layerforward(c10::get<SeqJoin>   (q),x,y,z);
+  case (size_t)Layers::any:         return layerforward(c10::get<AnyModule> (q),x,y,z);
+  case (size_t)Layers::anyname:     return layerforward(c10::get<NamedAnyModule> (q).module(),x,y,z);
+  default: AT_ERROR("Unrecognized layer: unable to run forward calculation");
+ }
+}
+
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
@@ -2226,6 +2311,19 @@ KAPI seq(K x) {
  KCATCH("Sequential module");
 }
 
+KAPI layer(K x) {
+ KTRY
+  bool a=env().alloptions; Klayer* l=nullptr;
+  if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
+   return mget(a,false,layername(l),layermodule(l->l));
+  } else if(xstate(x) || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
+   return (K)0;
+  } else {
+   AT_ERROR("nyi");
+  }
+ KCATCH("layer");
+}
+
 K mstate(K x) {
  bool a=env().alloptions; S s1=nullptr,s2=nullptr; J i; Sequential q;
  if(xseq(x,q) || (xbool(x,1,a) && x->n==2 && xseq(x,0,q))) {
@@ -2264,6 +2362,7 @@ K seqattr(const Sequential& q,Ktype k,Attr a) {
 // ----------------------------------
 void nnfn(K x) {
  fn(x, "seq",        KFN(seq), 1);            // api function for module create/query
+ fn(x, "layer",      KFN(layer), 1);          // api function for layer create/query
  fn(x, "adaptavg1d", KFN(adaptavg1d),  1);    // functional form of modules/activations
  fn(x, "adaptavg2d", KFN(adaptavg2d),  1);
  fn(x, "adaptavg3d", KFN(adaptavg3d),  1);
