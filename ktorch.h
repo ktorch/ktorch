@@ -492,7 +492,7 @@ void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 K klayer(Cast c,const Layer& m,S s=nullptr);
 K kseq(const Sequential&);
 K seqto(Kseq*,const TensorOptions&,bool);
-K mtable(const Sequential& q,bool a,bool b=true);
+K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K seqattr(const Sequential&,Ktype,Attr);
 void nnfn(K);

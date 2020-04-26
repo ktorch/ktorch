@@ -45,7 +45,6 @@ template<> void rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o,torch::nn:
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
 // mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
-// container - given module/module cast, return true if container module
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
@@ -76,6 +75,18 @@ K mkeys(bool b) {
  return x;
 }
 
+// -----------------------------------------------------------------------------------
+// named - patch for version 1.5 w'private constructor, moved public in 1.6
+// -----------------------------------------------------------------------------------
+static NamedAnyModule named(const std::string& s,const AnyModule& a) {
+ auto m=NamedAnyModule(s,torch::nn::Identity());
+ m.module() = a;
+ return m;
+}
+
+// -----------------------------------------------------------------------------------
+// container - given module/module cast, return true if container module
+// -----------------------------------------------------------------------------------
 bool container(Cast c) {
  switch(c) {
   case Cast::sequential:
@@ -94,10 +105,19 @@ bool container(const Module& m) {
  }
 }
 
+Layer makecontainer(Cast c) {
+ switch(c) {
+  case Cast::sequential:  return Sequential();
+  case Cast::seqnest:     return SeqNest();
+  case Cast::seqjoin:     return SeqJoin();
+  default: AT_ERROR("Unrecognized container: ", (I)c);
+ }
+}
+
 // ------------------------------------------------------------------------------------
 // layerseq - add Sequential to existing parent, only SeqJoin currently implemented
 // layerany - add AnyModule child to existing parent container w'optional name
-// layerchild - add a child module to container layer, e.g. sequential
+// layerchild - add a child module to parent container layer, e.g. sequential
 // ------------------------------------------------------------------------------------
 template<typename Q,typename A>
 static void layerpush(Q& q,const A& a,const char* s) {
@@ -2014,25 +2034,20 @@ AnyModule anymodule(K x,J i,Cast c) {
  }
 }
 
-// ----------------------------------------------------------------------------------------------------
-// mparms - set parameters/buffers in a defined module from k values in dictionary with matching names
-// pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
-// ----------------------------------------------------------------------------------------------------
-void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
+// -------------------------------------------------------------------------------------------------
+// layerparms - set module parameters/buffers from k values in dictionary with matching names
+// layeradd - add a child layer to existing parent or push single layer to layer stack
+// -------------------------------------------------------------------------------------------------
+static void layerparms(Cast c,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
  for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
   J i=kfind(k,a.key());
-  if(i<0) {
-   AT_ERROR("Unable to find ",s,(p ? " parameter" : " buffer"),": ",a.key());
-   break;
-  }
+  TORCH_CHECK(i>-1, msym(c), ": unable to find ",(p ? " parameter" : " buffer"),": ",a.key());
   Tensor t=v->t ? V[i] : kput(kK(v)[i]);
   if(a.value().defined()) {
    torch::NoGradGuard g;
-   if(a.value().dtype() != t.dtype())
-    AT_ERROR("Type mismatch: ",s,(p ? " parameter " : " buffer "),a.key()," is ",a.value().dtype(),", input is ",t.dtype());
-   if(!a.value().is_same_size(t))
-    AT_ERROR("Size mismatch: ",s,(p ? " parameter " : " buffer "),a.key()," is ",a.value().sizes(),", input is ",t.sizes());
+   TORCH_CHECK(a.value().dtype() == t.dtype(), msym(c), ": type mismatch, ", a.key(), " is ", a.value().dtype(), ", input is ", t.dtype());
+   TORCH_CHECK(a.value().is_same_size(t),      msym(c), ": size mismatch, ", a.key(), " is ", a.value().sizes(), ", input is ", t.sizes());
    if (a.value().device() != t.device())
     a.value().set_data(t);
    else
@@ -2043,12 +2058,61 @@ void mparms(S s,Module &m,K x,bool p) { // set named parms/buffers in module m f
  }
 }
 
+void layerparms(Cast c,Module &m,K p,K f) {
+ if(p) layerparms(c,m,p,true);   // if parms dictionary, set module parms from k dictionary
+ if(f) layerparms(c,m,f,false);  // if buffers defined,  set buffers from k dictionary
+}
+
+static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p=nullptr,K f=nullptr);
+static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
+ auto a=anymodule(x,i,c);             // create module from cast, options & offset
+ if(p||f) layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
+ if(q.size()) {               
+  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add layer without parent/container layer");
+  layerany(q.top(),a,nm);     
+ } else {
+  if(nm) q.push(named(nm,a));       
+  else   q.push(a);          
+ }
+}
+
+// -------------------------------------------------------------------------------------------------
+// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
+// -------------------------------------------------------------------------------------------------
+K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
+ K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 0 : xlen(x); std::stack<Layer> q;
+ for(J i=98-x->t;i<n;++i) {
+  s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
+  K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers
+  c=msym(s);                                                     // get module enumeration
+  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth of ",d," below expected minimum of ",q.size() ? 1 : 0);
+  TORCH_CHECK(d <= q.size(),          msym(c), ": depth of ",d," above expected maximum of ",q.size());
+  while(q.size()>d) q.pop();
+  if(container(c)) {
+   TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
+   TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
+   TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
+   auto a=makecontainer(c);
+   if(q.size()) layerchild(q.top(),a,nm);
+   q.push(a);
+  } else {
+   layeradd(c,nm,q,o,-1,p,f);
+  }
+  if(i<1)
+   z=klayer(c, q.top(), nm);
+ }
+ TORCH_CHECK(z, "no layer defined");
+ return z;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
+// ----------------------------------------------------------------------------------------------------
 void pushback(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nullptr);
 void pushback(Sequential &q,S s,S n,        J i,   K x,        K p,        K f)  {
  Cast c=msym(s);
  auto m=anymodule(x,i,c);           // define module, return in generic container
- if(p) mparms(s,*m.ptr(),p,true);   // add parameter values if supplied
- if(f) mparms(s,*m.ptr(),f,false);  // add any buffers supplied
+ layerparms(c,*m.ptr(),p,f);
  n ? q->push_back(std::string(n),m) : q->push_back(m);
 }
 
@@ -2059,13 +2123,9 @@ void pushback(Sequential &q,K x) { // add modules to sequential from k table of 
 }
 
 // --------------------------------------------------------------------------------------------
-//  functions to extract module settings and state -> q dictionary/table
+// layeropt - given module, cast at runtime to known type and extract options as k dictionary
 // --------------------------------------------------------------------------------------------
-// mopt - given module, cast at runtime to known type and extract options as k dictionary
-// mget - extract module options and, optionally, parameters & buffers to k array
-// mtable - extract child modules and return as k table, one row per module
-// --------------------------------------------------------------------------------------------
-std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
+std::tuple<Cast,K> layeropt(bool a,const Module& g) { //a:all options returned if true, else only non-default
  Cast c=Cast::undefined; K x=xD(ktn(KS,0),ktn(0,0));
  if       (g.as<torch::nn::Sequential>())        { c=Cast::sequential;
  } else if(g.as<SeqNest>())                      { c=Cast::seqnest;
@@ -2184,8 +2244,11 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  return std::make_tuple(c,x);
 }
 
-void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
- Cast c; K o,*k=kK(x); std::tie(c,o)=mopt(a,m);
+// --------------------------------------------------------------------------------------------
+// layerget - extract module options and, optionally, parameters & buffers to k array
+// --------------------------------------------------------------------------------------------
+void layerget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
+ Cast c; K o,*k=kK(x); std::tie(c,o)=layeropt(a,m);
  if(t) {
   ja(&k[0], &d);
   js(&k[1], msym(c));
@@ -2195,7 +2258,7 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
    jk(&k[4], kdict(m.named_parameters(false))),
    jk(&k[5], kdict(m.named_buffers(false)));
   for(auto& i:m.named_children())
-   mget(a,d+1,i.key().c_str(),t,*i.value(),x);
+   layerget(a,d+1,i.key().c_str(),t,*i.value(),x);
  } else {
   TORCH_CHECK(!m.children().size(), msym(c), ": unexpected child module(s)");
   k[0]=kj(d);
@@ -2208,21 +2271,17 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
  }
 }
 
-K mget(bool a,bool b,const char* s,const Module& m) {  
+K layerget(bool a,bool b,const char* s,const Module& m) {  
 // a-true for all options else non-defaults, b-true for full state w'parms & buffers, s-name
  K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
  if(container(m)) {
   for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
-  mget(a,0,s,true,m,v);
+  layerget(a,0,s,true,m,v);
   return xT(xD(k,v));
  } else {
-  mget(a,0,s,false,m,v);
+  layerget(a,0,s,false,m,v);
   return xD(k,v);
  }
-}
-
-K mtable(const Sequential& q,bool a,bool b) {
- return mget(a,b,"",*q);
 }
 
 // --------------------------------------------------------------------------------------
@@ -2248,9 +2307,9 @@ static K mchild(bool a,J i,S s,const Sequential &q) {
  } else {
   //direct access by index[0] fails to pick up name(?)
   //const auto& c=q->named_children()[i];
-  //mget(c.key().c_str(),*c.value(),a,v,-1);
+  //layerget(c.key().c_str(),*c.value(),a,v,-1);
   const auto& c=q->named_children();
-  return mget(a,true,c.keys()[i].c_str(),*c.values()[i]);
+  return layerget(a,true,c.keys()[i].c_str(),*c.values()[i]);
  }
 }
 
@@ -2259,7 +2318,7 @@ static K mchild(bool a,S s1,S s2,const Sequential &q) {
  if(s2) {
   return tchild(s2,*m);
  } else {
-  return mget(a,true,s1,*m);
+  return layerget(a,true,s1,*m);
  }
 }
 
@@ -2300,7 +2359,7 @@ KAPI seq(K x) {
   if(xempty(x)) {
    return kseq(q);
   } else if(xseq(x,q) || (p && x->n==2 && xbool(x,1,a))) {
-   return mtable(q,a,false);
+   return layerget(a,false,"",*q);
   } else if(p && x->n==2 && xseq(x,1,u)) {
     return q->extend(*u), (K)0;
   } else if(xstate(x) || (p && x->n==2 && xstate(x,1))) {
@@ -2315,9 +2374,9 @@ KAPI layer(K x) {
  KTRY
   bool a=env().alloptions; Klayer* l=nullptr;
   if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
-   return mget(a,false,layername(l),layermodule(l->l));
-  } else if(xstate(x) || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
-   return (K)0;
+   return layerget(a,false,layername(l),layermodule(l->l));
+  } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
+   return layertable(x);
   } else {
    AT_ERROR("nyi");
   }
@@ -2327,7 +2386,7 @@ KAPI layer(K x) {
 K mstate(K x) {
  bool a=env().alloptions; S s1=nullptr,s2=nullptr; J i; Sequential q;
  if(xseq(x,q) || (xbool(x,1,a) && x->n==2 && xseq(x,0,q))) {
-  return mtable(q,a);
+  return layerget(a,true,"",*q);
  } else if(xseq(x,0,q)
    && (xsym(x,1,s1) || xlong(x,1,i)) 
    && (x->n==2 || (x->n==3 && (xsym(x,2,s2) || xbool(x,2,a))))) {

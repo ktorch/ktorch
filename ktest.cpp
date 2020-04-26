@@ -14,7 +14,7 @@ ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, std::string,          name_)
 ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
 
 // named - required for version 1.5 where constructor w'AnyModule is private, public in version 1.6
-NamedAnyModule named(const std::string& s,const AnyModule& a) { 
+static NamedAnyModule named(const std::string& s,const AnyModule& a) { 
  auto m=NamedAnyModule(s,torch::nn::Identity());
  m.module() = a;
  return m;
@@ -387,112 +387,80 @@ static Cast msym(S s) {
 std::tuple<Cast,K> mopt(bool,const Module&);
 
 bool container(Cast);
+bool container(const Module&);
 K mkeys(bool);
-K mget(bool a,bool b,const char* s,const Module& m);
-
-/*
-K mget(bool a,bool b,Layer* x) {
- mget(a,b,layername(x),layermodule(x);
-}
-*/
+K layerget(bool a,bool b,const char* s,const Module& m);
+Layer makecontainer(Cast);
+AnyModule anymodule(K,J,Cast);
+void layerparms(Cast c,Module &m,K p,K f);
 
 /*
 addchild:{[p;v;nm] -2 $[count p; string[p],"->pushback(",string[` sv v,nm],")"; "creating container: ",string v]}
 {[p;pd;d;v;nm] if[d<pd;p:pop p]; addchild[first p;v;nm]; $[container[v] & d>pd;push[p]` sv v,nm;p]}
 */
 
-Layer makecontainer(Cast c) {
- switch(c) {
-  case Cast::sequential:  return Sequential();
-  case Cast::seqnest:     return SeqNest();
-  case Cast::seqjoin:     return SeqJoin();
-  default: AT_ERROR("Unrecognized container: ", (I)c);
- }
-}
 
-AnyModule anymodule(K x,J i,Cast c);
-void mparms(S s,Module &m,K x,bool p);
-
-K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
- K z; S s,nm; Cast c; J pd=-1,n=x->t==99 ? 0 : xlen(x); std::stack<Layer> q;
- for(J i=98-x->t;i<n;++i) {
-  s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
-  K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers
-  c=msym(s);                                                     // get module enumeration
-  if(d<pd) q.pop();                                              // if depth decreasing, drop latest container
-  if(container(c)) {
-   TORCH_CHECK(o ? !xlen(o) : true, msym(c), ": no options expected");
-   TORCH_CHECK(p ? !xlen(p) : true, msym(c), ": no parameters expected");
-   TORCH_CHECK(f ? !xlen(f) : true, msym(c), ": no buffers expected");
-   auto a=makecontainer(c);
-   if(q.size())
-    layerchild(q.top(),a,nm);
-   if(d>pd)
-    q.push(a);
-  } else {
-   auto a=anymodule(o, -1, c);
-   if(p) mparms(s,*a.ptr(),p,true);
-   if(f) mparms(s,*a.ptr(),f,false);
-   if(q.size())
-    layerany(q.top(),a,nm);
-   else if(n<2)
-    q.push(a);
-   else
-    AT_ERROR(n," layers given, but no container layer");
-  }
-  pd=d;
-  if(i<1)
-   z=klayer(c, q.top(), nm);
- }
- return z;
-}
-
-KAPI net(K x) {
- KTRY
-  return layertable(x);
- KCATCH("layer");
-}
-
-void addcontainer(Cast c,S nm,std::stack<Layer>& q) {
+static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
+static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
+ TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
+ TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
+ TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
  auto a=makecontainer(c);
  if(q.size())
   layerchild(q.top(),a,nm);
- q.push(a);  // if nm, how to name root container..use NamedAnyModule?  (must decipher later..?)
+ q.push(a);
 }
 
-void addchild(K x,J i,Cast c,S nm,std::stack<Layer>& q) {
- auto a=anymodule(x,i,c);
- if(q.size())
-  layerchild(q.top(),a,nm);
- else if(nm)
-  q.push(named(nm,a));  // q.push(NamedAnyModule(nm,a)); // version 1.6
- else
-  q.push(a);  // only one is ok, but next layer can't be added(?)
+static void layeradd(Cast c,S nm,std::stack<Layer>& q,K o,J i,K p=nullptr,K f=nullptr);
+static void layeradd(Cast c,S nm,std::stack<Layer>& q,K o,J i,K p,K f) {
+ auto a=anymodule(o,i,c);
+ if(p||f)
+  layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
+ if(q.size()) {
+  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add layer without parent/container layer");
+  layerany(q.top(),a,nm);
+ } else {
+  if(nm) q.push(named(nm,a));
+  else   q.push(a);
+ }
 }
 
-S layerparse(J,K,std::stack<Layer>&);
+bool layersym(K x,S &s,S& nm) {
+ bool b=true; nm=nullptr;
+ if(x->t==-KS) {
+  s=x->s;
+ } else if(x->t==KS && x->n>0) {
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(x->t==0 && x->n>0 && kK(x)[0]->t==-KS) {
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  b=false;
+ }
+ if(b && null(nm)) nm=nullptr; // empty string -> nullptr
+ return b;
+}
 
-void addlayer(J d,S s,S nm,K x,std::stack<Layer>& q) {
- Cast c=msym(s);
- if(container(c)) {
-  auto a=makecontainer(c);
-  if(q.size())
-   layerchild(q.top(),a,nm);
-  if(x && x->n>1) {
-   q.push(a);
-   for(J i=1;i<x->n;++i) layerparse(d+1,kK(x)[i],q);
-   if(q.size()>1) q.pop();
-  } else if(!q.size()) {
-   q.push(a);
+
+void layerparse2(J d,K x,std::stack<Layer>& q) {
+ S s,nm=nullptr; Cast c; Klayer* l;
+ if((l=xlayer(x))) {
+  AT_ERROR("layer ptr nyi");
+ } else if((l=xlayer(x,0))) {
+  AT_ERROR("layer ptr and more..nyi");
+ } else if(layersym(x,s,nm)) {
+  c=msym(s);
+  if(container(c)) {
+   layerparent(c,nm,q);
+   if(!x->t)
+    for(J i=1;i<x->n;++i)
+     layerparse2(d+1,kK(x)[i],q);
+  } else {
+   layeradd(c,nm,q,x,nm ? 2 : 1);
   }
  } else {
-  auto a=anymodule(x, null(nm) ? 1 : 2, c);
-  if(q.size())
-   layerchild(q.top(),a,nm);
-  else if(nm)
-   q.push(named(nm,a)); // q.push(NamedAnyModule(nm,a)); // version 1.6
-  else
-   q.push(a);
+   AT_ERROR("unable to figure out arg at depth ",d,", last layer: xx? ", kname(x));
  }
 }
 
@@ -506,13 +474,13 @@ S layerparse(J d,K x,std::stack<Layer>& q) {
      s=kK(x)[0]->s, nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
      c=msym(s);
      if(container(c)) {
-      addcontainer(c,nm,q);
+      layerparent(c,nm,q);
       for(J i=1;i<x->n;++i)
         layerparse(d+1,kK(x)[i],q);
       if(q.size()>1)
        q.pop();
      } else {
-      addchild(x, nm ? 2 : 1, c, nm, q);
+      layeradd(c,nm,q,x,nm ? 2 : 1);
      }
     } else {
      AT_ERROR("Unrecognized layer at depth ", d,", expecting symbol as first arg, given ", kname(kK(x)[0]));
@@ -528,11 +496,11 @@ S layerparse(J d,K x,std::stack<Layer>& q) {
     s=kS(x)[0], nm=(x->n>1) ? kS(x)[1] : nullptr;
    c=msym(s);
    if(container(c)) {
-    addcontainer(c,nm,q);
+    layerparent(c,nm,q);
     if(q.size()>1)
       q.pop();
    } else {
-    addchild(x, nm ? 2 : 1, c, nm, q);
+    layeradd(c,nm,q,x,nm ? 2 : 1);
    }
    break;
   default:
@@ -549,7 +517,7 @@ KAPI mparse(K x) {
   std::cerr << nm << "\n";
   std::cerr << layermodule(q.top()) << "\n";
   return klayer(Cast::sequential, q.top(), nm);
-  //return mget(true,true,nm,layermodule(q.top()));
+  //return layerget(true,true,nm,layermodule(q.top()));
  KCATCH("mparse");
 }
 
@@ -565,10 +533,25 @@ KAPI join1(K x) {
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
-  return mget(true,true,"",*q);
-  //Cast c; K o; std::tie(c,o)=mopt(true,*AnyModule(q).ptr());
-  //return o;
+  return layerget(true,true,"",*q);
  KCATCH("join1");
+}
+
+KAPI join2(K x) {
+ KTRY
+  SeqNest q;
+  SeqJoin j;  // j=nullptr;
+  q->push_back("xy", j);
+  Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
+  j->push_back("zshape",q1);
+  Sequential q2=Sequential(torch::nn::Identity());
+  j->push_back("identity",q2);
+  j->push_back("cat",AnyModule(Cat(1)));
+  q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
+  q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
+  q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
+  return layerget(true,true,"",*q);
+ KCATCH("join2");
 }
 
 KAPI stest(K x) {
