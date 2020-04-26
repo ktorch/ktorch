@@ -425,45 +425,6 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K o,J i,K p,K f) {
  }
 }
 
-bool layersym(K x,S &s,S& nm) {
- bool b=true; nm=nullptr;
- if(x->t==-KS) {
-  s=x->s;
- } else if(x->t==KS && x->n>0) {
-  s=kS(x)[0];
-  if(x->n>1) nm=kS(x)[1];
- } else if(x->t==0 && x->n>0 && kK(x)[0]->t==-KS) {
-  s=kK(x)[0]->s;
-  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
- } else {
-  b=false;
- }
- if(b && null(nm)) nm=nullptr; // empty string -> nullptr
- return b;
-}
-
-
-void layerparse2(J d,K x,std::stack<Layer>& q) {
- S s,nm=nullptr; Cast c; Klayer* l;
- if((l=xlayer(x))) {
-  AT_ERROR("layer ptr nyi");
- } else if((l=xlayer(x,0))) {
-  AT_ERROR("layer ptr and more..nyi");
- } else if(layersym(x,s,nm)) {
-  c=msym(s);
-  if(container(c)) {
-   layerparent(c,nm,q);
-   if(!x->t)
-    for(J i=1;i<x->n;++i)
-     layerparse2(d+1,kK(x)[i],q);
-  } else {
-   layeradd(c,nm,q,x,nm ? 2 : 1);
-  }
- } else {
-   AT_ERROR("unable to figure out arg at depth ",d,", last layer: xx? ", kname(x));
- }
-}
-
 S layerparse(J d,K x,std::stack<Layer>& q) {
  S s,nm=nullptr; Cast c;
  kout(x);

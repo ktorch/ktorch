@@ -2036,7 +2036,6 @@ AnyModule anymodule(K x,J i,Cast c) {
 
 // -------------------------------------------------------------------------------------------------
 // layerparms - set module parameters/buffers from k values in dictionary with matching names
-// layeradd - add a child layer to existing parent or push single layer to layer stack
 // -------------------------------------------------------------------------------------------------
 static void layerparms(Cast c,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
@@ -2063,6 +2062,22 @@ void layerparms(Cast c,Module &m,K p,K f) {
  if(f) layerparms(c,m,f,false);  // if buffers defined,  set buffers from k dictionary
 }
 
+// -------------------------------------------------------------------------------------------------
+// layerparent - create parent container, add to any previous parent layer, push on stack
+// layeradd - add a child layer to existing parent or push single layer to stack
+// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
+// -------------------------------------------------------------------------------------------------
+static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
+static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
+ TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
+ TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
+ TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
+ auto a=makecontainer(c);
+ if(q.size())
+  layerchild(q.top(),a,nm);
+ q.push(a);
+}
+
 static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p=nullptr,K f=nullptr);
 static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
  auto a=anymodule(x,i,c);             // create module from cast, options & offset
@@ -2076,34 +2091,69 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
  }
 }
 
-// -------------------------------------------------------------------------------------------------
-// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
-// -------------------------------------------------------------------------------------------------
 K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
- K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 0 : xlen(x); std::stack<Layer> q;
- for(J i=98-x->t;i<n;++i) {
+ K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 1 : xlen(x); std::stack<Layer> q;
+ for(J i=0;i<n;++i) {
   s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
   K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers
   c=msym(s);                                                     // get module enumeration
-  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth of ",d," below expected minimum of ",q.size() ? 1 : 0);
-  TORCH_CHECK(d <= q.size(),          msym(c), ": depth of ",d," above expected maximum of ",q.size());
+  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
+  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
   while(q.size()>d) q.pop();
   if(container(c)) {
-   TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
-   TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
-   TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
-   auto a=makecontainer(c);
-   if(q.size()) layerchild(q.top(),a,nm);
-   q.push(a);
+   layerparent(c,nm,q,o,p,f);
   } else {
    layeradd(c,nm,q,o,-1,p,f);
   }
-  if(i<1)
+  if(!i)
    z=klayer(c, q.top(), nm);
  }
- TORCH_CHECK(z, "no layer defined");
  return z;
 }
+
+static bool layersym(K x,S& s,S& nm) {
+ bool b=true; nm=nullptr;
+ if(x->t==-KS) {
+  s=x->s;
+ } else if(x->t==KS && x->n>0) {
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(x->t==0 && x->n>0 && kK(x)[0]->t==-KS) {
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  b=false;
+ }
+ if(null(nm))
+  nm=nullptr;  // empty strings -> nullptr
+ return b;
+}
+
+static K layerparse(J d,K x,std::stack<Layer>& q) {
+ S s,nm=nullptr; Cast c; Klayer* l;
+ if((l=xlayer(x))) {
+  AT_ERROR("layer ptr nyi");
+ } else if((l=xlayer(x,0))) {
+  AT_ERROR("layer ptr and more..nyi");
+ } else if(layersym(x,s,nm)) {
+  c=msym(s);
+  if(container(c)) {
+   layerparent(c,nm,q);
+   if(!x->t)
+    for(J i=1;i<x->n;++i)
+     layerparse(d+1,kK(x)[i],q);
+   if(q.size()>1)
+    q.pop();
+  } else {
+   layeradd(c,nm,q,x,nm ? 2 : 1);
+  }
+ } else {
+   AT_ERROR("unable to figure out arg at depth ",d,", last layer: xx? ", kname(x));
+ }
+ return q.size() ? klayer(c, q.top(), nm) : nullptr;
+}
+
+static K layerparse(K x) {std::stack<Layer> q; return layerparse(0,x,q);}
 
 // ----------------------------------------------------------------------------------------------------
 // pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
@@ -2378,7 +2428,7 @@ KAPI layer(K x) {
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else {
-   AT_ERROR("nyi");
+   return layerparse(x);
   }
  KCATCH("layer");
 }

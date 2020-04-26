@@ -46,11 +46,11 @@ bool xhelp(K x,S &s) {
 }
 
 // ------------------------------------------------------------------------------------------
-// null - true if null for given tyoe
+// null - true if null for given type
 // match - return true if scalars match (check long/double value)
 // kscalar - return k double/long from torch scalar
 // ------------------------------------------------------------------------------------------
-bool null(const char* x) { return x && strlen(x);}
+bool null(const char* x) { return !x || !strlen(x);}
 bool null(const J x)     { return x == nj; }
 
 bool match(const Scalar &x,const Scalar &y) {
