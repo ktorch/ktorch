@@ -7,11 +7,11 @@
 // modeltable - state dictionary -> table w'rows for sequential module, loss & optimizer
 // model - create model from sequential, loss & optimizer modules or retrieve input options
 // -------------------------------------------------------------------------------------------
-static void modelpart(K x,J i,Kseq*& q,Kmodule*& l,Kopt*& o) {
+static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
   switch(g ? g->a : Class::undefined) {
-   case Class::sequential: q=(Kseq*)g;  break;
+   case Class::layer:      q=(Klayer*)g;  break;
    case Class::loss:       l=(Kmodule*)g; break;
    case Class::optimizer:  o=(Kopt*)g;  break;
    default: AT_ERROR("model arg[",i,"] unrecognized: ",
@@ -30,7 +30,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, layerget(a,b,"",*m->q), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
+ return xD(modelkeys(), knk(3, layerget(a,b,"",layermodule(m->q)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -57,7 +57,7 @@ KAPI modeltable(K x) {
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
-  Kseq *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
+  Klayer *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
   TORCH_CHECK(!x->t, "model not implemented for ",kname(x->t));
   if((m=xmodel(x)) || (x->n==2 && xbool(x,1,a) && (m=xmodel(x,0)))) {
    return modelstate(a,false,m);
@@ -80,17 +80,17 @@ KAPI model(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// mforward - return tensor from running sequential forward calcs on input(s)
+// mforward - return tensor from running forward calcs on input(s)
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(sequential(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
-Tensor mforward(Kmodel *m,const Tensor& x) {return m->q->forward(x);}
+Tensor mforward(Kmodel *m,const Tensor& x) {return layerforward(m->q,x);}
 Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
 
 K mbackward(K a) {
  Kmodel *m; Tensor *x,*y,r;
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
-  r=losswt(m->lc,m->l,m->q->forward(*x),*y);
+  r=losswt(m->lc,m->l,layerforward(m->q,*x),*y);
  } else {
   AT_ERROR("backward expects (model; inputs; targets)");
  }
@@ -186,7 +186,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=g->q->forward(*z);
+  Tensor gx=layerforward(g->q,*z);
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   optstep(d);
@@ -220,6 +220,26 @@ static Tensor evalfwd(Sequential& q,Tensor& x,int64_t w) {
  return y;
 }
 
+static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
+ auto m=layermodule(q);
+ bool b=m.is_training(); Tensor y;
+ if(b) m.train(false);                // turn off training mode
+ if(w) {                               // if batches of window size w
+  auto n=maxsize(x);                   // get maxsize
+  TensorVector r;
+  for(int64_t i=0; i<n; i+=w) {        // batches of w
+   subset(x,0,i,w,n);
+   r.emplace_back(layerforward(q,x));  // accumulate forward calcs
+  }
+  subset(x,0,0,n,n);                   // restore size of inputs
+  y=torch::cat(r);                     // and join batch results
+ } else {
+  y=layerforward(q,x);                 // no batching, run forward on full inputs
+ }
+ if(b) m.train(true);
+ return y;
+}
+
 // --------------------------------------------------------------------------------------------
 //  metric  - map k symbol to metric, e.g. `accuracy -> Metric::accuracy
 //          - calculate single metric given model, vector of inputs/targets, tensor of fwd calc
@@ -244,8 +264,8 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
  }
 }
 
-static K metrics(Sequential *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
- Tensor y=evalfwd(q ? *q : m->q, v[0], w);
+static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
+ Tensor y=evalfwd(q ? q->q : m->q, v[0], w);
  if(s) {
   if(s->t == -KS) {
    return kresult(b, metric(metric(s->s),m,v,y));
@@ -268,7 +288,7 @@ static K metrics(Sequential *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
 KAPI evaluate(K x) {
  KTRY
   torch::NoGradGuard g;
-  Sequential *q=xseq(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
+  Klayer *q=xlayer(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
   TORCH_CHECK(q || m, "evaluate: expects (model/sequential; vector/tensor(s)/array(s);optional args..)\n"
                       "          optional args: (batch size; tensor flag; metric(s))");
   J n=x->n; K s=nullptr;
@@ -287,24 +307,27 @@ KAPI evaluate(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// xseq - given tag, returns sequential reference or error
+// xlayer - given tag, returns layer or error
+// xmodule - given tag, returns module or error
 // training - query/set training flag given model or sequential module
 // -------------------------------------------------------------------------------------------
-Sequential& xseq(Ktag *g) {
+Layer& xlayer(Ktag *g) {
  switch(g->a) {
-  case Class::sequential: return ((Kseq*)g)->q;
-  case Class::model:      return ((Kmodel*)g)->q;
-  default: AT_ERROR("Unable to retrieve sequential model from ",mapclass(g->a));
+  case Class::layer: return ((Klayer*)g)->q;
+  case Class::model: return ((Kmodel*)g)->q;
+  default: AT_ERROR("Unable to retrieve layers from ",mapclass(g->a));
  }
 }
+
+Module& xmodule(Ktag *g) {return layermodule(xlayer(g));}
 
 KAPI training(K x) {
  KTRY
   bool b; Ktag *g;
   TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && x->n==2 && xbool(x,1,b)),
-              "training: unrecognized arg(s), expects sequential module or model and optional flag");
-  auto& q=xseq(g);
-  return (x->n==2) ? q->train(b),(K)0 : kb(q->is_training());
+              "training: unrecognized arg(s), expects module layer(s) or model and optional flag");
+  auto& m=xmodule(g);
+  return (x->n==2) ? m.train(b),(K)0 : kb(m.is_training());
  KCATCH("training");
 }
 

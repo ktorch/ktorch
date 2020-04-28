@@ -922,10 +922,21 @@ void pten(const Pairs& p,Tensor &t) {
 }
 
 // -----------------------------------------------------------------------------------------
+// kstring - return string representation of k value
 // kout - output k value via "0N!"
 // kcast - given data type and array, cast and return, i.e. 1h$x
 // kbool - cast k value to boolean
 // -----------------------------------------------------------------------------------------
+std::string kstring(K x) {
+ std::string s;
+ K a=k(0,(S)".Q.s1",r1(x),0);
+ if(a && a->t==KC) {
+  s.assign((S)kC(a),a->n);
+  r0(a);
+ }
+ return s;
+}
+
 K kout(K x) {return k(0,(S)"0N!",r1(x),0);}
 K kcast(Ktype t,K x) {return k(0,(S)"$",kh(t),r1(x),0);}
 K kbool(K x) {return kcast(1,x);}
@@ -987,6 +998,7 @@ KAPI addref(K x) {
   switch(g->a) {
    case Class::tensor:     return kten(((Kten*)g)->t);
    case Class::sequential: return kseq(((Kseq*)g)->q);
+   case Class::layer:      return klayer(g->c,((Klayer*)g)->q,(S)((Klayer*)g)->s.c_str());
    case Class::loss:       return kloss(g->c,((Kmodule*)g)->m);
    case Class::optimizer:  return  kopt(g->c,   ((Kopt*)g)->o);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
@@ -1029,9 +1041,10 @@ static S objdevice(Ktag *g) {
  switch(g->a) {
   case Class::tensor:     return objdevice(((Kten*)g)->t);
   case Class::vector:     return objdevice(((Kvec*)g)->v, s);
+  case Class::layer:      return objdevice(layermodule(g).parameters(), s);
   case Class::sequential: return objdevice(((Kseq*)g)->q->parameters(), s);
   case Class::optimizer:  return objdevice(((Kopt*)g)->o->parameters(), s);
-  case Class::model:      return objdevice(((Kmodel*)g)->q->parameters(), s);
+  case Class::model:      return objdevice(layermodule(g).parameters(), s);
   case Class::loss:       return objdevice(((Kmodule*)g)->m.ptr()->buffers(), s);
   default: return s;
  }
@@ -1041,23 +1054,26 @@ static K objsize(Ktag *g) {
  switch(g->a) {
   case Class::tensor:     return tensorsize(((Kten*)g)->t, Attr::size);
   case Class::vector:     return kj(((Kvec*)g)->v.size());
+  case Class::layer:
+  case Class::model:      return kj(layermodule(g).modules().size());
   case Class::sequential: return kj(((Kseq*)g)->q->modules(false).size());
   case Class::optimizer:  return kj(((Kopt*)g)->o->size());
-  case Class::model:      return kj(((Kmodel*)g)->q->modules(false).size());
   default: return ktn(0,0);
  }
 }
 
+//static J objbytes(const Storage &s) {return s.size()*s.itemsize();}
 static J objnum(const Tensor &t) {return t.is_sparse() ? t.numel() : t.storage().size();}
 static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
-static J objnum(const Sequential &q) {return objnum(q->parameters());}
+static J objnum(const Module &m) {return objnum(m.parameters());}
 
 static J objnum(Ktag *g) {
  switch(g->a) {
   case Class::tensor:     {auto& a=((Kten*)g)->t; return objnum(a);}
   case Class::vector:     {auto& a=((Kvec*)g)->v; return objnum(a);}
-  case Class::sequential: {auto& a=((Kseq*)g)->q; return objnum(a);}
-  case Class::model:      {auto* a=(Kmodel*)g; return objnum(a->q);}
+  case Class::layer:
+  case Class::model:      return objnum(layermodule(g));
+  case Class::sequential: {auto& a=((Kseq*)g)->q; return objnum(*a);}
   default: return nj;
  }
 }
@@ -1120,6 +1136,7 @@ KAPI to(K x) {
    switch(g->a) {
     case Class::tensor:     return tento((Kten*)g,o,a,b);
     case Class::vector:     return vecto((Kvec*)g,o,a);
+    case Class::layer:      return layerto((Klayer*)g,o,a);
     case Class::sequential: return seqto((Kseq*)g,o,a);
     case Class::loss:       return lossto((Kmodule*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
@@ -1169,10 +1186,10 @@ KAPI zerograd(K x) {
 KAPI forward(K x) {
  KTRY
   Ktag *g;
-  TORCH_CHECK((g=xtag(x,0)), "forward expects a sequential module or full model as first arg");
+  TORCH_CHECK((g=xtag(x,0)), "forward expects layer(s) or full model as first arg");
   switch(g->a) {
-   case Class::sequential: return seqforward(  ((Kseq*)g)->q,x);
-   case Class::model:      return seqforward(((Kmodel*)g)->q,x);
+   case Class::layer:      return layerforward(((Klayer*)g)->q,x);
+   case Class::model:      return layerforward(((Kmodel*)g)->q,x);
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
   return (K)0;

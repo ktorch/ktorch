@@ -76,12 +76,8 @@ using AnyModule=torch::nn::AnyModule;
 using NamedAnyModule=torch::nn::NamedAnyModule;
 using Sequential=torch::nn::Sequential;
 
-using Layer=c10::variant<torch::nn::Sequential,
-                         SeqNest,
-                         SeqJoin,
-                         torch::nn::AnyModule,
-                         torch::nn::NamedAnyModule>;
-enum class Layers {sequential,seqnest,seqjoin,any,anyname};
+using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule, NamedAnyModule>;
+enum class Layers       {sequential, seqnest, seqjoin, any,       anyname};
 
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
@@ -228,9 +224,9 @@ struct TORCH_API Kseq : public Ktag {
 };
 
 struct TORCH_API Klayer : public Ktag {
- Layer l;
+ Layer q;       // name of single module or container of many modules, e.g. Sequential
  std::string s; // store name of main container layer (child layers already allow for user-specified name)
- Klayer(Cast x,const Layer& y,const std::string z={}) : l(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
+ Klayer(Cast x,const Layer& y,const std::string z={}) : q(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
 };
 
 struct TORCH_API Kmodule : public Ktag {
@@ -248,10 +244,10 @@ struct TORCH_API Kopt : public Ktag {
 struct TORCH_API Kmodel : public Ktag {
  Cast lc;          // loss fn
  Cast oc;          // optimizer
- Sequential q;     // sequential module
+ Layer q;          // layer(s), e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Kseq *x,Kmodule *y,Kopt *z) : lc(y->c),oc(z->c),q(x->q),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ Kmodel(Klayer *x,Kmodule *y,Kopt *z) : lc(y->c),oc(z->c),q(x->q),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
 };
 
 S krrbuf(const char *);
@@ -424,6 +420,7 @@ S& optsym(const bool&);
 K optkey();
 K optval(const TensorOptions &o,K x,J i=-1);
 K optmap(const TensorOptions&);
+std::string kstring(K);
 K kout(K);
 K kcast(Ktype,K);
 K kbool(K);
@@ -490,10 +487,17 @@ void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
 void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
 K klayer(Cast c,const Layer& m,S s=nullptr);
+K layerto(Klayer*,const TensorOptions&,bool);
+Module& layermodule(const Layer&);
+Module& layermodule(Klayer*);
+Module& layermodule(Ktag*);
 K kseq(const Sequential&);
 K seqto(Kseq*,const TensorOptions&,bool);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
+K layerforward(Layer&,K);
+Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
+
 K seqattr(const Sequential&,Ktype,Attr);
 void nnfn(K);
 K mstate(K);

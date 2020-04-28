@@ -20,6 +20,15 @@ K seqto(Kseq* q,const TensorOptions& o,bool a) {
  return (K)0;
 }
 
+K layerto(Klayer* x,const TensorOptions& o,bool a) {
+ auto s=torch::typeMetaToScalarType(o.dtype());
+ auto& m=layermodule(x->q);
+ if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
+ else if(o.has_device())             m.to(o.device(),a);
+ else                                m.to(s,a);
+ return (K)0;
+}
+
 // --------------------------------------------------------------------------------------------
 // enum<-rnnfn(sym)    match symbol to enum for activation function
 // sym<-rnnfn(options) return symbol matching activation fn, else null (e.g. for gru/lstm)
@@ -158,7 +167,7 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 // layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
 // ------------------------------------------------------------------------------------
 S layername(Klayer* x) {
- return const_cast<char*>((x->l.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->l).name() : x->s).c_str());
+ return const_cast<char*>((x->q.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->q).name() : x->s).c_str());
 }
 
 Module& layermodule(const Layer& q) {
@@ -171,6 +180,9 @@ Module& layermodule(const Layer& q) {
   default: AT_ERROR("Unrecognized layer: unable to get module reference");
  }
 }
+
+Module& layermodule(Klayer* x) {return layermodule(x->q);}
+Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->q);}
 
 template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
@@ -197,6 +209,15 @@ Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
   case (size_t)Layers::anyname:     return layerforward(c10::get<NamedAnyModule> (q).module(),x,y,z);
   default: AT_ERROR("Unrecognized layer: unable to run forward calculation");
  }
+}
+
+K layerforward(Layer& q,K a) {
+ Tensor x,y,z;
+ TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: model/layer(s) & up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
+ if(!xten(a,1,x))            x=kput(a,1);
+ if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
+ if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
+ return kten(layerforward(q,x,y,z));
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2065,7 +2086,7 @@ void layerparms(Cast c,Module &m,K p,K f) {
 // -------------------------------------------------------------------------------------------------
 // layerparent - create parent container, add to any previous parent layer, push on stack
 // layeradd - add a child layer to existing parent or push single layer to stack
-// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
+// layersym - parse module and optional name symbol from k arg, return true if found
 // -------------------------------------------------------------------------------------------------
 static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
 static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
@@ -2091,6 +2112,64 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
  }
 }
 
+static bool layersym(K x,S& s,S& nm) {
+ bool b=false; nm=nullptr;
+ if(x->t == -KS) {                   // if layer is a symbol scalar, e.g. `sequential or `relu
+  b=true, s=x->s;                    
+ } else if(x->t==KS && x->n>0) {     // else layer is a non-empty symbol vector
+  b=true, s=kS(x)[0];                // module type is 1st symbol
+  if(x->n>1) nm=kS(x)[1];            // user-defined name if 2nd symbol given, e.g. `sequential`root
+ } else if(x->t==0 && x->n>0) {      // layer is general list
+  if(kK(x)[0]->t == -KS) {           // if 1st element is symbol, e.g. (`linear;50;784)
+   b=true, s=kK(x)[0]->s;
+   if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s; // if 2nd element is name, e.g. (`linear;`fc;50;784)
+  } else if(kK(x)[0]->t == KS) {     // else 1st element is symbol vector, e.g. `sequential`root
+   b=layersym(kK(x)[0],s,nm);
+  }
+ }
+ if(null(nm)) nm=nullptr;  // empty strings -> nullptr
+ return b;
+}
+
+// -------------------------------------------------------------------------------------------------
+// layererror - throw error w'clues to depth, previous layer, arg(s) that gave parser trouble
+// layerparse - attempt to parse k symbols/lists/nested lists to build layer(s)
+// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
+// -------------------------------------------------------------------------------------------------
+static void layererror(J d,K x,std::stack<Layer>& q) {
+ auto n=q.size() ? layermodule(q.top()).modules().size() : 0;
+ if(n)
+  AT_ERROR("unrecognized arg(s) at depth ",d,", after ",n," layer",(n==1 ? "\n" : "s\n"),kstring(x));
+ else
+  AT_ERROR("unrecognized arg(s) for initial layer,\n",kstring(x));
+}
+
+static K layerparse(J d,K x,std::stack<Layer>& q) {
+ S s,nm=nullptr; Cast c=Cast::undefined; Klayer* l;
+ if((l=xlayer(x))) {
+  AT_ERROR("layer ptr nyi");
+ } else if((l=xlayer(x,0))) {
+  AT_ERROR("layer ptr and more..nyi");
+ } else if(layersym(x,s,nm)) {
+  c=msym(s);
+  if(container(c)) {
+   layerparent(c,nm,q);
+   if(!x->t)
+    for(J i=1;i<x->n;++i)
+     layerparse(d+1,kK(x)[i],q);
+   if(q.size()>1)
+    q.pop();
+  } else {
+   layeradd(c,nm,q,x,nm ? 2 : 1);
+  }
+ } else {
+  layererror(d,x,q);
+ }
+ return (!d && q.size()) ? klayer(c, q.top(), nm) : nullptr;
+}
+
+static K layerparse(K x) {std::stack<Layer> q; return layerparse(0,x,q);}
+
 K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
  K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 1 : xlen(x); std::stack<Layer> q;
  for(J i=0;i<n;++i) {
@@ -2110,50 +2189,6 @@ K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to 
  }
  return z;
 }
-
-static bool layersym(K x,S& s,S& nm) {
- bool b=true; nm=nullptr;
- if(x->t==-KS) {
-  s=x->s;
- } else if(x->t==KS && x->n>0) {
-  s=kS(x)[0];
-  if(x->n>1) nm=kS(x)[1];
- } else if(x->t==0 && x->n>0 && kK(x)[0]->t==-KS) {
-  s=kK(x)[0]->s;
-  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
- } else {
-  b=false;
- }
- if(null(nm))
-  nm=nullptr;  // empty strings -> nullptr
- return b;
-}
-
-static K layerparse(J d,K x,std::stack<Layer>& q) {
- S s,nm=nullptr; Cast c; Klayer* l;
- if((l=xlayer(x))) {
-  AT_ERROR("layer ptr nyi");
- } else if((l=xlayer(x,0))) {
-  AT_ERROR("layer ptr and more..nyi");
- } else if(layersym(x,s,nm)) {
-  c=msym(s);
-  if(container(c)) {
-   layerparent(c,nm,q);
-   if(!x->t)
-    for(J i=1;i<x->n;++i)
-     layerparse(d+1,kK(x)[i],q);
-   if(q.size()>1)
-    q.pop();
-  } else {
-   layeradd(c,nm,q,x,nm ? 2 : 1);
-  }
- } else {
-   AT_ERROR("unable to figure out arg at depth ",d,", last layer: xx? ", kname(x));
- }
- return q.size() ? klayer(c, q.top(), nm) : nullptr;
-}
-
-static K layerparse(K x) {std::stack<Layer> q; return layerparse(0,x,q);}
 
 // ----------------------------------------------------------------------------------------------------
 // pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
@@ -2424,7 +2459,7 @@ KAPI layer(K x) {
  KTRY
   bool a=env().alloptions; Klayer* l=nullptr;
   if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
-   return layerget(a,false,layername(l),layermodule(l->l));
+   return layerget(a,false,layername(l),layermodule(l->q));
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else {

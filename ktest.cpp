@@ -20,6 +20,11 @@ static NamedAnyModule named(const std::string& s,const AnyModule& a) {
  return m;
 }
 
+KAPI show(K x) {
+ std::cerr << kstring(x);
+ return (K)0;
+}
+
 KAPI stringtest(K x) {
  std::string s;
  std::cerr << "size: " << s.size() << "\n";
