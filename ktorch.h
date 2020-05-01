@@ -218,11 +218,6 @@ struct TORCH_API Kvec : public Ktag {
  Kvec(const TensorVector& x) : v(std::move(x)) {a=Class::vector; c=Cast::tensor;}
 };
 
-struct TORCH_API Kseq : public Ktag {
- Sequential q;
- Kseq(const Sequential& x) : q(std::move(x)) {a=Class::sequential; c=Cast::sequential;}
-};
-
 struct TORCH_API Klayer : public Ktag {
  Layer q;       // name of single module or container of many modules, e.g. Sequential
  std::string s; // store name of main container layer (child layers already allow for user-specified name)
@@ -343,10 +338,6 @@ Kmodule* xmodule(K);
 Kmodule* xmodule(K,J);
 Klayer* xlayer(K);
 Klayer* xlayer(K,J);
-bool xseq(K,Sequential&);
-bool xseq(K,J,Sequential&);
-Sequential* xseq(K);
-Sequential* xseq(K,J);
 Kmodule* xloss(K);
 Kmodule* xloss(K,J);
 Kopt* xoptim(K);
@@ -492,7 +483,6 @@ Module& layermodule(const Layer&);
 Module& layermodule(Klayer*);
 Module& layermodule(Ktag*);
 K kseq(const Sequential&);
-K seqto(Kseq*,const TensorOptions&,bool);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);
@@ -500,7 +490,7 @@ Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z=
 
 K seqattr(const Sequential&,Ktype,Attr);
 void nnfn(K);
-K mstate(K);
+//K mstate(K);
 
 // loss functions:
 K kloss(Cast,const AnyModule&);

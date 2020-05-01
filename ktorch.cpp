@@ -486,7 +486,6 @@ bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
 // ------------------------------------------------------------------------------------------------------
 // xmodule - check arg(s) for allocated module pointer
 // xlayer - check arg(s) for allocated layer pointer
-// xseq - check arg(s) for allocated sequential module, return boolean/pointer
 // xloss - check arg(s) for allocated loss module
 // xoptim - check arg(s) for allocated optimizer pointer
 // xmodel - check arg(s) for allocated model pointer (module, loss & optimizer)
@@ -495,23 +494,6 @@ Kmodule* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Kmo
 Kmodule* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
 Klayer* xlayer(K x) {auto* g=xtag(x); return (g && g->a==Class::layer) ? (Klayer*)g : nullptr;}
 Klayer* xlayer(K x,J i) {return xind(x,i) ? xlayer(kK(x)[i]) : nullptr;}
-
-bool xseq(K x,Sequential &q) {
- if(auto* a=xtag(x))
-  if(a->a==Class::sequential && a->c==Cast::sequential) 
-   return q=((Kseq*)a)->q, true;
- return false;
-}
-
-Sequential* xseq(K x) {
- if(auto* a=xtag(x))
-  if(a->a==Class::sequential && a->c==Cast::sequential)
-   return &((Kseq*)a)->q;
- return nullptr;
-}
-
-bool xseq(K x,J i,Sequential& s) {return xind(x,i) && xseq(kK(x)[i],s);}
-Sequential* xseq(K x,J i) {return xind(x,i) ? xseq(kK(x)[i]) : nullptr;}
 
 Kmodule* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kmodule*)g : nullptr;}
 Kmodule* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
@@ -997,7 +979,6 @@ KAPI addref(K x) {
   TORCH_CHECK(g, "addref not implemented for ",kname(x->t));
   switch(g->a) {
    case Class::tensor:     return kten(((Kten*)g)->t);
-   case Class::sequential: return kseq(((Kseq*)g)->q);
    case Class::layer:      return klayer(g->c,((Klayer*)g)->q,(S)((Klayer*)g)->s.c_str());
    case Class::loss:       return kloss(g->c,((Kmodule*)g)->m);
    case Class::optimizer:  return  kopt(g->c,   ((Kopt*)g)->o);
@@ -1031,6 +1012,7 @@ KAPI Kfree(K x){
 // objdevice - return tensor device, or first device found if object w'multiple tensors
 // objsize - size vector of tensor, else count of parameters/modules
 // objnum - number of elements in tensor's underlying storage or sum across tensors
+// objbytes - bytes allocated in tensor's storage or sum acress tensors/parms/buffers
 // kobj - k api fn returns table of ptr,object,device,dtype,size,number of elements
 // -----------------------------------------------------------------------------------------
 S objdevice(const Tensor& t) {return tensorsym(t,Attr::device);}
@@ -1042,7 +1024,6 @@ static S objdevice(Ktag *g) {
   case Class::tensor:     return objdevice(((Kten*)g)->t);
   case Class::vector:     return objdevice(((Kvec*)g)->v, s);
   case Class::layer:      return objdevice(layermodule(g).parameters(), s);
-  case Class::sequential: return objdevice(((Kseq*)g)->q->parameters(), s);
   case Class::optimizer:  return objdevice(((Kopt*)g)->o->parameters(), s);
   case Class::model:      return objdevice(layermodule(g).parameters(), s);
   case Class::loss:       return objdevice(((Kmodule*)g)->m.ptr()->buffers(), s);
@@ -1056,14 +1037,12 @@ static K objsize(Ktag *g) {
   case Class::vector:     return kj(((Kvec*)g)->v.size());
   case Class::layer:
   case Class::model:      return kj(layermodule(g).modules().size());
-  case Class::sequential: return kj(((Kseq*)g)->q->modules(false).size());
   case Class::optimizer:  return kj(((Kopt*)g)->o->size());
   default: return ktn(0,0);
  }
 }
 
-//static J objbytes(const Storage &s) {return s.size()*s.itemsize();}
-static J objnum(const Tensor &t) {return t.is_sparse() ? t.numel() : t.storage().size();}
+static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : t.storage().size();}
 static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 static J objnum(const Module &m) {return objnum(m.parameters());}
 
@@ -1073,21 +1052,37 @@ static J objnum(Ktag *g) {
   case Class::vector:     {auto& a=((Kvec*)g)->v; return objnum(a);}
   case Class::layer:
   case Class::model:      return objnum(layermodule(g));
-  case Class::sequential: {auto& a=((Kseq*)g)->q; return objnum(*a);}
   default: return nj;
  }
 }
 
+static J objbytes(const Storage &s) {return s.size()*s.itemsize();}
+static J objbytes(const Tensor &t) {return t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage());}
+static J objbytes(const TensorVector &v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+static J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
+
+static J objbytes(Ktag *g) {
+ switch(g->a) {
+  case Class::tensor:     {auto& a=((Kten*)g)->t; return objbytes(a);}
+  case Class::vector:     {auto& a=((Kvec*)g)->v; return objbytes(a);}
+  case Class::layer:
+  case Class::model:      return objbytes(layermodule(g));
+  default: return nj;
+ }
+}
+
+
 KAPI kobj(K x) {
  KTRY
   TORCH_CHECK(xempty(x), "obj: empty arg expected");
-  K k=ktn(KS,6),v=ktn(0,6); auto n=pointer().size(); size_t i=0;
-  kS(k)[0]=cs("ptr");     kK(v)[0]=ktn(0,n);
-  kS(k)[1]=cs("obj");     kK(v)[1]=ktn(KS,n);
-  kS(k)[2]=cs("device");  kK(v)[2]=ktn(KS,n);
-  kS(k)[3]=cs("dtype");   kK(v)[3]=ktn(KS,n);
-  kS(k)[4]=cs("size");    kK(v)[4]=ktn(0,n);
-  kS(k)[5]=cs("storage"); kK(v)[5]=ktn(KJ,n);
+  K k=ktn(KS,7),v=ktn(0,7); auto n=pointer().size(); size_t i=0;
+  kS(k)[0]=cs("ptr");      kK(v)[0]=ktn(0,n);
+  kS(k)[1]=cs("obj");      kK(v)[1]=ktn(KS,n);
+  kS(k)[2]=cs("device");   kK(v)[2]=ktn(KS,n);
+  kS(k)[3]=cs("dtype");    kK(v)[3]=ktn(KS,n);
+  kS(k)[4]=cs("size");     kK(v)[4]=ktn(0,n);
+  kS(k)[5]=cs("elements"); kK(v)[5]=ktn(KJ,n);
+  kS(k)[6]=cs("bytes");    kK(v)[6]=ktn(KJ,n);
   for(auto j:pointer()) {
    auto *g=(Ktag*)j;
    kK(kK(v)[0])[i] = knk(1,kj(j));
@@ -1096,6 +1091,7 @@ KAPI kobj(K x) {
    kS(kK(v)[3])[i] = g->a == Class::tensor ? tensorsym(((Kten*)g)->t, Attr::dtype)  : cs("");
    kK(kK(v)[4])[i] = objsize(g);
    kJ(kK(v)[5])[i] = objnum(g);
+   kJ(kK(v)[6])[i] = objbytes(g);
    ++i;
   }
   return xT(xD(k,v));
@@ -1113,7 +1109,7 @@ KAPI kstate(K x) {
   if(!((g=xtag(x)) || (g=xtag(x,0))))
    AT_ERROR("state expects a pointer to previously allocated module, optimizer or loss function");
   switch(g->a) {
-   case Class::sequential: return mstate(x);
+   //case Class::sequential: return mstate(x);
    case Class::loss:       return lossdict(g,x);
    case Class::optimizer:  return optstate(g,x);
    case Class::model:      return modelstate(g,x);
@@ -1137,7 +1133,6 @@ KAPI to(K x) {
     case Class::tensor:     return tento((Kten*)g,o,a,b);
     case Class::vector:     return vecto((Kvec*)g,o,a);
     case Class::layer:      return layerto((Klayer*)g,o,a);
-    case Class::sequential: return seqto((Kseq*)g,o,a);
     case Class::loss:       return lossto((Kmodule*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
    }
@@ -1174,7 +1169,6 @@ KAPI zerograd(K x) {
   switch(g->a) {
    case Class::tensor:     f(((Kten*)g)->t); break;
    case Class::vector:     for(auto& t:((Kvec*)g)->v) f(t); break;
-   case Class::sequential: ((Kseq*)g)->q->zero_grad(); break;
    case Class::optimizer:  ((Kopt*)g)->o->zero_grad(); break;
    case Class::model:      ((Kmodel*)g)->o->zero_grad(); break;
    default: AT_ERROR("zerograd not implemented for ",mapclass(g->a));
@@ -1438,7 +1432,6 @@ static K attr(K x,Ktype k,Attr a) {
    case Class::vector:     return  vectorattr(((Kvec*)g)->v,k,a);
    case Class::loss:       return lossattr(((Kmodule*)g)->m,k,a);
    case Class::optimizer:  return     optattr(((Kopt*)g)->o,k,a);
-   case Class::sequential: return     seqattr(((Kseq*)g)->q,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }
  KCATCH("attr");

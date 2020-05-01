@@ -54,6 +54,8 @@ K kget(const Tensor &t) {
  Tensor c;
  if(t.dtype()==torch::kHalf)
   c=t.toType(torch::kFloat).contiguous().toBackend(torch::Backend::CPU);
+ else if (t.layout()==torch::kSparse)
+  c=t.to_dense().toBackend(torch::Backend::CPU);
  else
   c=t.contiguous().toBackend(torch::Backend::CPU);
  I j=c.dim()-1; const int64_t *s=c.sizes().data();  // dimension & sizes at each dim
@@ -305,6 +307,8 @@ static K tensorput(K x) {
  } else {
   if(!o.has_dtype()) 
    o=o.dtype(t.dtype()); //if no explicit data type given, use k type
+  if(o.layout()==torch::kSparse)
+   t=t.to_sparse();
   t=t.to(o.device(),o.dtype()).set_requires_grad(o.requires_grad());
   return kten(t);
  }

@@ -5,20 +5,9 @@
 
 // ----------------------------------------------------------------------------
 // klayer - allocate an object to store a pointer to a layer
-// kseq - allocate an object to store a pointer to a sequential module
-// seqto - given sequential module & options, change device/data type
+// layerto - given layer & options, change device/data type
 // ----------------------------------------------------------------------------
 K klayer(Cast c,const Layer& m,S s) {return kptr(s ? new Klayer(c,m,s) : new Klayer(c,m));}
-
-K kseq(const Sequential& q) {return kptr(new Kseq(q));}
-
-K seqto(Kseq* q,const TensorOptions& o,bool a) {
- auto s=torch::typeMetaToScalarType(o.dtype());
- if(o.has_device() && o.has_dtype()) q->q->to(o.device(),s,a);
- else if(o.has_device())             q->q->to(o.device(),a);
- else                                q->q->to(s,a);
- return (K)0;
-}
 
 K layerto(Klayer* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
@@ -2438,6 +2427,7 @@ void margs(Sequential& q,K x,J i) {
  }
 }
 
+/*
 KAPI seq(K x) {
  KTRY
   Sequential q,u; bool a=env().alloptions,p=xseq(x,0,q);
@@ -2454,6 +2444,7 @@ KAPI seq(K x) {
   }
  KCATCH("Sequential module");
 }
+*/
 
 KAPI layer(K x) {
  KTRY
@@ -2468,6 +2459,7 @@ KAPI layer(K x) {
  KCATCH("layer");
 }
 
+/*
 K mstate(K x) {
  bool a=env().alloptions; S s1=nullptr,s2=nullptr; J i; Sequential q;
  if(xseq(x,q) || (xbool(x,1,a) && x->n==2 && xseq(x,0,q))) {
@@ -2480,6 +2472,7 @@ K mstate(K x) {
   return KERR("Unexpected arg(s) for module state");
  }
 }
+*/
 
 K seqforward(Sequential& q,K a) {
  Tensor *x,*y;
@@ -2505,7 +2498,6 @@ K seqattr(const Sequential& q,Ktype k,Attr a) {
 // module fns defined in k namespace
 // ----------------------------------
 void nnfn(K x) {
- fn(x, "seq",        KFN(seq), 1);            // api function for module create/query
  fn(x, "layer",      KFN(layer), 1);          // api function for layer create/query
  fn(x, "adaptavg1d", KFN(adaptavg1d),  1);    // functional form of modules/activations
  fn(x, "adaptavg2d", KFN(adaptavg2d),  1);

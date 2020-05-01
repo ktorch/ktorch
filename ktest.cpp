@@ -9,9 +9,27 @@
 # pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
+ACCESS_PRIVATE_FIELD(torch::nn::Module, c10::optional<std::string>, name_)
 ACCESS_PRIVATE_FIELD(torch::nn::SequentialImpl, std::vector<AnyModule>, modules_)
 ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, std::string,          name_)
 ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
+
+c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
+
+KAPI mname(K x) {
+ if(x->t == -KS) {
+  torch::nn::Linear m(1,2);
+  auto& s=modulename(*m);
+  std::cerr << "name defined: " << s.has_value() << "\n";
+  s=x->s;
+  std::cerr << "name defined: " << s.has_value() << "\n";
+  std::cerr << m->name() << "\n";
+  std::cerr << m << "\n";
+  Sequential q(m);
+  std::cerr << q << "\n";
+ }
+ return (K)0;
+}
 
 // named - required for version 1.5 where constructor w'AnyModule is private, public in version 1.6
 static NamedAnyModule named(const std::string& s,const AnyModule& a) { 
@@ -20,15 +38,24 @@ static NamedAnyModule named(const std::string& s,const AnyModule& a) {
  return m;
 }
 
-KAPI show(K x) {
- std::cerr << kstring(x);
+KAPI layerlist(K x) {
+ Klayer *q;
+ if((q=xlayer(x))) {
+  auto& m=layermodule(q->q);
+  std::cerr << "named modules: \n";
+  for(auto& a:m.named_modules())
+   std::cerr << a.key() << "\n";
+  std::cerr << "\nmodules: \n";
+  for(auto& a:m.modules())
+   std::cerr << *a << "\n";
+  std::cerr << "\nparameters: \n";
+  for(auto& a:m.named_parameters())
+   std::cerr << a.key() << "\n";
+  std::cerr << "\nbuffers: \n";
+  for(auto& a:m.named_buffers())
+   std::cerr << a.key() << "\n";
+ }
  return (K)0;
-}
-
-KAPI stringtest(K x) {
- std::string s;
- std::cerr << "size: " << s.size() << "\n";
- return kj(s.size());
 }
 
 #ifdef __clang__
@@ -557,8 +584,8 @@ KAPI ksizes(K x) {
  std::cerr << "Kten:    " << sizeof(Kten) << "\n";
  std::cerr << "Kvec:    " << sizeof(Kvec) << "\n";
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
+ std::cerr << "Klayer:  " << sizeof(Klayer) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
- std::cerr << "Kseq:    " << sizeof(Kseq) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
  return (K)0;
 }
