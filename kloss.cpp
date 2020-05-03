@@ -634,21 +634,10 @@ static K lossopt(bool a,Cast c,AnyModule& m) {
 }
 
 K lossdict(bool a,bool b,Cast c,AnyModule &m) {
- //a:true if all options, b:true if full state
- K k,v;
- if(b) {
-  k=statekeys(); v=ktn(0,k->n);
-  kK(v)[0]=kc('l');   //class="l" for loss
-  kK(v)[2]=ks((S)""); //empty user-defined name
-  kK(v)[4]=ktn(0,0);  //empty parms
-  kK(v)[5]=ktn(0,0);  //and buffers
- } else {
-  k=ktn(KS,2),v=ktn(0,2);
-  kS(k)[0]=statekey(State::module);
-  kS(k)[1]=statekey(State::options);
- }
- kK(v)[b ? 1 : 0]=ks(lmap(c));
- kK(v)[b ? 3 : 1]=lossopt(a,c,m);
+ //a:true if all options, b:true if full state (currently unreferenced, no parms/buffers for loss functions)
+ K k=ktn(KS,2),v=ktn(0,2);
+ kS(k)[0]=statekey(State::module);   kK(v)[0]=ks(lmap(c));
+ kS(k)[1]=statekey(State::options);  kK(v)[1]=lossopt(a,c,m);
  return xD(k,v);
 }
 
@@ -692,7 +681,7 @@ K lossto(Kmodule* l,const TensorOptions& o,bool a) {
 
 KAPI loss(K x) {
  KTRY
-  S s; bool a=env().alloptions; Kmodule *l;
+  S s; bool a=env().alloptions; Kmodule *l; Kmodel *m;
   if(xsyms(x,s) || xsym(x,0,s)) {
    Cast c=lmap(s);
    return kloss(c, lossinit(c,x,1));
@@ -703,6 +692,8 @@ KAPI loss(K x) {
    return lossdict(a,false,l->c,l->m); //given allocated loss ptr or ptr w'boolean, return options
   } else if((l=xloss(x,0)) && x->n>1) {
    return lossfwd(l->c,l->m,x); //else, run forward calculation w'loss and input,target,..
+  } else if((m=xmodel(x))) {
+   return kloss(m->lc,m->l);
   } else {
    AT_ERROR("Unrecognized arg(s)");
   }

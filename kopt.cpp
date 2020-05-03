@@ -455,18 +455,12 @@ K optstate(bool a,bool b,Cast c,Optimizer *o) {
   case Cast::sgd:     {auto m=(SGD*)o;     x=sgd(a,r,m);     if(b) y=sgd(m);     break;}
   default: AT_ERROR("Unrecognized optimizer; ",(I)c); break;
  }
+ k=ktn(KS,2+b),v=ktn(0,2+b);
+ kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(s);
+ kS(k)[1]=statekey(State::options); kK(v)[1]=x;
  if(b) {
-  k=statekeys(); v=ktn(0,k->n);
-  kK(v)[0]=kc('o');   //class="o" for optimizer
-  kK(v)[2]=ks((S)""); //no user-defined name
-  kK(v)[4]=ktn(0,0);  //empty parms
-  kK(v)[5]=y;         //retrieved optimizer buffers
- } else {
-  k=ktn(KS,2),v=ktn(0,2);
-  kS(k)[0]=statekey(State::module), kS(k)[1]=statekey(State::options);
+  kS(k)[2]=statekey(State::buffers); kK(v)[2]=y;
  }
- kK(v)[b ? 1 : 0]=ks(s);
- kK(v)[b ? 3 : 1]=x;
  return xD(k,v);
 }
 
@@ -487,7 +481,7 @@ K optstate(Ktag *g,K x) {
 // ---------------------------------------------------------------------------------------
 KAPI opt(K x) {
  KTRY
-  bool a=env().alloptions; S s; Kopt *o;
+  bool a=env().alloptions; S s; Kopt *o; Kmodel *m;
   if(xsym(x,s) || (xsym(x,0,s) && (xptr(x,1) || xempty(x,1)))) {
    return optinit(s,x);
   } else if(xdict(x)) {
@@ -499,6 +493,8 @@ KAPI opt(K x) {
    return optstate(a,false,o->c,o->get());
   } else if((o=xoptim(x,0)) && xptr(x,1) && x->n==2) {
    return o->get()->add_parameters(optparms(x,1)), (K)0;
+  } else if((m=xmodel(x))) {
+   return kopt(m->oc,m->o);
   } else {
    AT_ERROR("Unrecognized optimizer arg(s)");
   }

@@ -275,7 +275,6 @@ S mapattr(Attr);
 Enum emap(S);
 
 S statekey(State);
-K statekeys();
 J statefind(State,K);
 J statedepth(K x,J j=-1);
 S statemodule(K x,J j=-1);
@@ -490,7 +489,6 @@ Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z=
 
 K seqattr(const Sequential&,Ktype,Attr);
 void nnfn(K);
-//K mstate(K);
 
 // loss functions:
 K kloss(Cast,const AnyModule&);
@@ -781,16 +779,7 @@ typedef struct {
   std::make_tuple(cs("weight"),     Setting::weight)
  }};
 
- std::array<std::tuple<S,State>,6> state = {{         //state dictionary keys: map symbol -> enum
-  std::make_tuple(cs("class"),   State::Class),
-  std::make_tuple(cs("module"),  State::module),
-  std::make_tuple(cs("name"),    State::name),
-  std::make_tuple(cs("options"), State::options),
-  std::make_tuple(cs("parms"),   State::parms),
-  std::make_tuple(cs("buffers"), State::buffers)
- }};
-
- std::array<std::tuple<S,State>,6> mstate = {{        //module state dictionary keys: map symbol -> enum
+ std::array<std::tuple<S,State>,6> state = {{        //module state dictionary keys: map symbol -> enum
   std::make_tuple(cs("depth"),   State::depth),
   std::make_tuple(cs("module"),  State::module),
   std::make_tuple(cs("name"),    State::name),

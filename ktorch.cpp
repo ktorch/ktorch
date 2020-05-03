@@ -193,23 +193,14 @@ Enum emap(S s) {
 
 // ------------------------------------------------------------------------------------------
 // statekey - map from state attribute enumeration to symbol, e.g. State::parms -> `parms
-// statekeys - return dictionary keys for full state: class,module,name,options,parms,buffers
 // statefind - search dictionary keys/table colums for symbol matching given enumeration
 // statelong - search dict/table for long value
 // statesym - given dict/table defining module(s), find symbols for module else null
 // statedict - given enumeration, return k dictionary stored at matching key/col else null
 // ------------------------------------------------------------------------------------------
 S statekey(State e) {
- for(auto &m:env().state) if(e==std::get<1>(m)) return std::get<0>(m);
- for(auto &m:env().mstate)if(e==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized module attribute: ",(I)e);
-}
-
-K statekeys() {
- K x=ktn(KS,env().state.size());
- for(auto &m:env().state)
-  kS(x)[(J)std::get<1>(m)]=std::get<0>(m);
- return x;
+ for(auto &m:env().state)if(e==std::get<1>(m)) return std::get<0>(m);
+ AT_ERROR("Unrecognized state attribute: ",(I)e);
 }
 
 J statefind(State e,K x) {
@@ -1018,26 +1009,28 @@ KAPI Kfree(K x){
 S objdevice(const Tensor& t) {return tensorsym(t,Attr::device);}
 S objdevice(const TensorVector& v,S s) {return v.size() ? objdevice(v[0]) : s;}
 
-static S objdevice(Ktag *g) {
+static S objdevice(Ktag *x) {
  S s=cs("");
- switch(g->a) {
-  case Class::tensor:     return objdevice(((Kten*)g)->t);
-  case Class::vector:     return objdevice(((Kvec*)g)->v, s);
-  case Class::layer:      return objdevice(layermodule(g).parameters(), s);
-  case Class::optimizer:  return objdevice(((Kopt*)g)->o->parameters(), s);
-  case Class::model:      return objdevice(layermodule(g).parameters(), s);
-  case Class::loss:       return objdevice(((Kmodule*)g)->m.ptr()->buffers(), s);
+ switch(x->a) {
+  case Class::tensor:     return objdevice(((Kten*)x)->t);
+  case Class::vector:     return objdevice(((Kvec*)x)->v, s);
+  case Class::layer:      return objdevice(layermodule(x).parameters(), s);
+  case Class::optimizer:  return objdevice(((Kopt*)x)->o->parameters(), s);
+  case Class::model:      return objdevice(layermodule(x).parameters(), s);
+  case Class::loss:       return objdevice(((Kmodule*)x)->m.ptr()->buffers(), s);
   default: return s;
  }
 }
 
-static K objsize(Ktag *g) {
- switch(g->a) {
-  case Class::tensor:     return tensorsize(((Kten*)g)->t, Attr::size);
-  case Class::vector:     return kj(((Kvec*)g)->v.size());
+static J objsize(Kopt *x) {J n=0; for(const auto& a:x->o->param_groups()) n+=a.params().size(); return n;}
+
+static K objsize(Ktag *x) {
+ switch(x->a) {
+  case Class::tensor:     return tensorsize(((Kten*)x)->t, Attr::size);
+  case Class::vector:     return kj(((Kvec*)x)->v.size());
   case Class::layer:
-  case Class::model:      return kj(layermodule(g).modules().size());
-  case Class::optimizer:  return kj(((Kopt*)g)->o->size());
+  case Class::model:      return kj(layermodule(x).modules().size());
+  case Class::optimizer:  return kj(objsize((Kopt*)x));
   default: return ktn(0,0);
  }
 }
@@ -1046,12 +1039,12 @@ static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : t.
 static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 static J objnum(const Module &m) {return objnum(m.parameters());}
 
-static J objnum(Ktag *g) {
- switch(g->a) {
-  case Class::tensor:     {auto& a=((Kten*)g)->t; return objnum(a);}
-  case Class::vector:     {auto& a=((Kvec*)g)->v; return objnum(a);}
+static J objnum(Ktag *x) {
+ switch(x->a) {
+  case Class::tensor:     {auto& a=((Kten*)x)->t; return objnum(a);}
+  case Class::vector:     {auto& a=((Kvec*)x)->v; return objnum(a);}
   case Class::layer:
-  case Class::model:      return objnum(layermodule(g));
+  case Class::model:      return objnum(layermodule(x));
   default: return nj;
  }
 }
@@ -1061,12 +1054,12 @@ static J objbytes(const Tensor &t) {return t.is_sparse() ? objbytes(t.indices())
 static J objbytes(const TensorVector &v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
 static J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
 
-static J objbytes(Ktag *g) {
- switch(g->a) {
-  case Class::tensor:     {auto& a=((Kten*)g)->t; return objbytes(a);}
-  case Class::vector:     {auto& a=((Kvec*)g)->v; return objbytes(a);}
+static J objbytes(Ktag *x) {
+ switch(x->a) {
+  case Class::tensor:     {auto& a=((Kten*)x)->t; return objbytes(a);}
+  case Class::vector:     {auto& a=((Kvec*)x)->v; return objbytes(a);}
   case Class::layer:
-  case Class::model:      return objbytes(layermodule(g));
+  case Class::model:      return objbytes(layermodule(x));
   default: return nj;
  }
 }

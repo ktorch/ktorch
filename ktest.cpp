@@ -418,101 +418,10 @@ static Cast msym(S s) {
 
 std::tuple<Cast,K> mopt(bool,const Module&);
 
-bool container(Cast);
-bool container(const Module&);
-K mkeys(bool);
-K layerget(bool a,bool b,const char* s,const Module& m);
-Layer makecontainer(Cast);
-AnyModule anymodule(K,J,Cast);
-void layerparms(Cast c,Module &m,K p,K f);
-
 /*
 addchild:{[p;v;nm] -2 $[count p; string[p],"->pushback(",string[` sv v,nm],")"; "creating container: ",string v]}
 {[p;pd;d;v;nm] if[d<pd;p:pop p]; addchild[first p;v;nm]; $[container[v] & d>pd;push[p]` sv v,nm;p]}
 */
-
-
-static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
-static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
- TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
- TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
- TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
- auto a=makecontainer(c);
- if(q.size())
-  layerchild(q.top(),a,nm);
- q.push(a);
-}
-
-static void layeradd(Cast c,S nm,std::stack<Layer>& q,K o,J i,K p=nullptr,K f=nullptr);
-static void layeradd(Cast c,S nm,std::stack<Layer>& q,K o,J i,K p,K f) {
- auto a=anymodule(o,i,c);
- if(p||f)
-  layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
- if(q.size()) {
-  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add layer without parent/container layer");
-  layerany(q.top(),a,nm);
- } else {
-  if(nm) q.push(named(nm,a));
-  else   q.push(a);
- }
-}
-
-S layerparse(J d,K x,std::stack<Layer>& q) {
- S s,nm=nullptr; Cast c;
- kout(x);
- switch(x->t) {
-  case 0:
-   if(x->n) {
-    if(kK(x)[0]->t==-KS) {
-     s=kK(x)[0]->s, nm=(x->n>1 && kK(x)[1]->t==-KS) ? kK(x)[1]->s : nullptr;
-     c=msym(s);
-     if(container(c)) {
-      layerparent(c,nm,q);
-      for(J i=1;i<x->n;++i)
-        layerparse(d+1,kK(x)[i],q);
-      if(q.size()>1)
-       q.pop();
-     } else {
-      layeradd(c,nm,q,x,nm ? 2 : 1);
-     }
-    } else {
-     AT_ERROR("Unrecognized layer at depth ", d,", expecting symbol as first arg, given ", kname(kK(x)[0]));
-    }
-   }
-   break;
-  case -KS: 
-  case  KS:
-   TORCH_CHECK(x->t==-KS || x->n>0,"Unrecognized layer at depth ", d, ", empty symbol list");
-   if(x->t==-KS)
-    s=x->s, nm=nullptr;
-   else
-    s=kS(x)[0], nm=(x->n>1) ? kS(x)[1] : nullptr;
-   c=msym(s);
-   if(container(c)) {
-    layerparent(c,nm,q);
-    if(q.size()>1)
-      q.pop();
-   } else {
-    layeradd(c,nm,q,x,nm ? 2 : 1);
-   }
-   break;
-  default:
-   AT_ERROR("Unrecognized layer at depth ", d, ", expecting general list or symbols, given ",kname(x));
- }
- return nm;
-}
-
-KAPI mparse(K x) {
- KTRY
- std::stack<Layer> q;
-  S nm=layerparse(0,x,q);
-  TORCH_CHECK(q.size()==1, "Unexpected stack size: ",q.size()," after defining layer(s)");
-  std::cerr << nm << "\n";
-  std::cerr << layermodule(q.top()) << "\n";
-  return klayer(Cast::sequential, q.top(), nm);
-  //return layerget(true,true,nm,layermodule(q.top()));
- KCATCH("mparse");
-}
 
 KAPI join1(K x) {
  KTRY
@@ -545,18 +454,6 @@ KAPI join2(K x) {
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
   return layerget(true,true,"",*q);
  KCATCH("join2");
-}
-
-KAPI stest(K x) {
- auto a=AnyModule(torch::nn::Linear(2,3));
- Sequential q;
- auto& m=access_private::modules_(*q);
- std::cerr << m.size() << "\n";
- m.push_back(a);
- std::cerr << m.size() << "\n";
- q->register_module("test",m[0].ptr());
- std::cerr << q << "\n";
- return(K)0;
 }
 
 static K metrics(K x) {return (x->t==KS || x->t==-KS) ? x : nullptr;}
