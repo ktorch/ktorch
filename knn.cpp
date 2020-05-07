@@ -2111,11 +2111,11 @@ void layerparms(Cast c,Module &m,K p,K f) {
  if(f) layerparms(c,m,f,false);  // if buffers defined,  set buffers from k dictionary
 }
 
-// -------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 // layerparent - create parent container, add to any previous parent layer, push on stack
 // layeradd - add a child layer to existing parent or push single layer to stack
-// layersym - parse module and optional name symbol from k arg, return true if found
-// -------------------------------------------------------------------------------------------------
+// layersym - parse module and optional name symbol from k arg(s), throw error if not found
+// -----------------------------------------------------------------------------------------
 static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
 static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
  TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
@@ -2139,23 +2139,21 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
  }
 }
 
-static bool layersym(K x,K& y,S& s,S& nm) {
- bool b=false; nm=nullptr; y=x;
- if(x->t == -KS) {                   // if layer is a symbol scalar, e.g. `sequential or `relu
-  b=true, s=x->s;
- } else if(x->t==KS && x->n>0) {     // else layer is a non-empty symbol vector
-  b=true, s=kS(x)[0];                // module type is 1st symbol
-  if(x->n>1) nm=kS(x)[1];            // user-defined name if 2nd symbol given, e.g. `sequential`root
- } else if(x->t==0 && x->n>0) {      // layer is general list
-//  if(kK(x)[0]->t == -KS) {           // if 1st element is symbol, e.g. (`linear;50;784)
-//   b=true, s=kK(x)[0]->s;
-//   if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s; // if 2nd element is name, e.g. (`linear;`fc;50;784)
-//  } else {
-   b=layersym(kK(x)[0],y,s,nm);
-//  }
+static void layersym(K x,S& s,S& nm) {
+ if(x->t == -KS) {
+  s=x->s;
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0, "module: empty symbol list");
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(!x->t) {
+  TORCH_CHECK(x->n>0, "module: empty list");
+  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
  }
- if(null(nm)) nm=nullptr;  // empty strings -> nullptr
- return b;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -2172,29 +2170,19 @@ static void layererror(J d,K x,std::stack<Layer>& q) {
 }
 
 static K layerparse(J d,K x,std::stack<Layer>& q) {
- S s,nm=nullptr; K y=nullptr; Cast c=Cast::undefined; Klayer* l;
- if((l=xlayer(x))) {
-  AT_ERROR("layer ptr nyi");
- } else if((l=xlayer(x,0))) {
-  AT_ERROR("layer ptr and more..nyi");
- } else if(layersym(x,y,s,nm)) {
-  c=msym(s);
-  if(container(c)) {
-   noarg(c,y,nm ? 2 : 1);
-   layerparent(c,nm,q);
-   if(!x->t)
-    for(J i=1;i<x->n;++i)
-     layerparse(d+1,kK(x)[i],q);
-   if(q.size()>1)
-    q.pop();
-  } else {
-   layeradd(c,nm,q,y,nm ? 2 : 1);
-  }
- } else {
-  std::cerr << "Y: " << (y ? kstring(y) : "(nullptr)") << "\n";
-  layererror(d,x,q);
- }
- return (!d && q.size()) ? klayer(c, q.top(), nm) : nullptr;
+ S s,nm=nullptr; K y=x->t || !x->n ? x : kK(x)[0], z=nullptr;
+ while(q.size()>d) q.pop();
+ layersym(y,s,nm); Cast c=msym(s);
+ if(container(c))
+  layerparent(c,nm,q);
+ else
+  layeradd(c,nm,q,y,nm ? 2 : 1);
+ if(!x->t) 
+  for(size_t i=1;i<x->n;i++) 
+   layerparse(d+1,kK(x)[i],q);
+ if(!d)
+  z=klayer(c, q.top(), nm);
+ return z;
 }
 
 static K layerparse(K x) {std::stack<Layer> q; return layerparse(0,x,q);}
@@ -2208,11 +2196,10 @@ K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to 
   TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
   TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
   while(q.size()>d) q.pop();
-  if(container(c)) {
+  if(container(c))
    layerparent(c,nm,q,o,p,f);
-  } else {
+  else
    layeradd(c,nm,q,o,-1,p,f);
-  }
   if(!i)
    z=klayer(c, q.top(), nm);
  }
