@@ -11,7 +11,7 @@ K klayer(Cast c,const Layer& m,S s) {return kptr(s ? new Klayer(c,m,s) : new Kla
 
 K layerto(Klayer* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
- auto& m=layermodule(x->q);
+ auto& m=layermodule(x->m);
  if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
  else if(o.has_device())             m.to(o.device(),a);
  else                                m.to(s,a);
@@ -80,6 +80,45 @@ static NamedAnyModule named(const std::string& s,const AnyModule& a) {
  auto m=NamedAnyModule(s,torch::nn::Identity());
  m.module() = a;
  return m;
+}
+
+// -----------------------------------------------------------------------------------
+// seqlist - enlist x, only allow symbol scalar allowed
+// seq - convenience function to enlist all but 1st arg to build sequential arg list
+// -----------------------------------------------------------------------------------
+static K seqlist(K x) {
+ K r; r1(x);
+ if(x->t<0) {
+  TORCH_CHECK(x->t == -KS, "scalar expected to be a symbol, given a ",kname(x));
+  r=ktn(KS,1), kS(r)[0]=x->s;
+ } else {
+  r=knk(1,x);
+ }
+ return r;
+}
+
+KAPI seq(K x) {
+ KTRY
+  r1(x); K r;
+  if(x->t<0) {
+   TORCH_CHECK(x->t==-KS, "seq: expecting module symbol, given ",kname(x),", ",kstring(x));
+   r=x;
+  } else if(x->t>0) {
+   TORCH_CHECK(x->t==KS, "seq: expecting module symbols, given ",kname(x),", ",kstring(x));
+   TORCH_CHECK(x->n>0,   "seq: expecting at least one module symbol, given  empty list");
+   r=ktn(0,x->n); kK(r)[0]=ks(kS(x)[0]);
+   for(J i=1;i<x->n;++i) {
+    kK(r)[i]=ktn(KS,1); kS(kK(r)[i])[0]=kS(x)[i];
+   }
+  } else {
+   TORCH_CHECK(x->n>0, "seq: empty list");
+   r=ktn(0,x->n);
+   kK(r)[0]=kK(x)[0];
+   for(J i=1;i<x->n;++i)
+    kK(r)[i]=seqlist(kK(x)[i]);
+  }
+  return r;
+ KCATCH("seq");
 }
 
 // -----------------------------------------------------------------------------------
@@ -156,7 +195,7 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 // layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
 // ------------------------------------------------------------------------------------
 S layername(Klayer* x) {
- return const_cast<char*>((x->q.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->q).name() : x->s).c_str());
+ return const_cast<char*>((x->m.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->m).name() : x->s).c_str());
 }
 
 Module& layermodule(const Layer& q) {
@@ -170,8 +209,8 @@ Module& layermodule(const Layer& q) {
  }
 }
 
-Module& layermodule(Klayer* x) {return layermodule(x->q);}
-Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->q);}
+Module& layermodule(Klayer* x) {return layermodule(x->m);}
+Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->m);}
 
 template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
@@ -1371,7 +1410,7 @@ template<typename M> static void npad(K x,const M* m) {
 // ------------------------------------------------------------------------------------
 // noarg:  activation fns w'out args, logsigmoid,sigmoid,softsign,tanh,tanhshrink
 // ------------------------------------------------------------------------------------
-static void noarg(Cast c,K x,J i) {if(!xnone(x,i))AT_ERROR(msym(c),": no arguments expected");}
+static void noarg(Cast c,K x,J i) {TORCH_CHECK(xnone(x,i), msym(c), ": no arguments expected, ", kstring(x));}
 
 using Ft = Tensor (*)(const Tensor&);
 static K noarg(const char* s,Ft f, K x) {
@@ -2082,10 +2121,9 @@ static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
  TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
  TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
- auto a=parent(c);
- if(q.size())
-  layerchild(q.top(),a,nm);
- q.push(a);
+ auto a=parent(c);                       // create parent module
+ if(q.size()) layerchild(q.top(),a,nm);  // add to previous parent, if any
+ q.push(a);                              // add new parent container to stack
 }
 
 static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p=nullptr,K f=nullptr);
@@ -2093,7 +2131,7 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
  auto a=anymodule(x,i,c);             // create module from cast, options & offset
  if(p||f) layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
  if(q.size()) {               
-  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add layer without parent/container layer");
+  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add without a parent/container layer");
   layerany(q.top(),a,nm);     
  } else {
   if(nm) q.push(named(nm,a));       
@@ -2102,20 +2140,19 @@ static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
 }
 
 static bool layersym(K x,K& y,S& s,S& nm) {
- bool b=false; nm=nullptr;
+ bool b=false; nm=nullptr; y=x;
  if(x->t == -KS) {                   // if layer is a symbol scalar, e.g. `sequential or `relu
-  b=true, s=x->s, y=x;                    
+  b=true, s=x->s;
  } else if(x->t==KS && x->n>0) {     // else layer is a non-empty symbol vector
-  b=true, s=kS(x)[0], y=x;           // module type is 1st symbol
+  b=true, s=kS(x)[0];                // module type is 1st symbol
   if(x->n>1) nm=kS(x)[1];            // user-defined name if 2nd symbol given, e.g. `sequential`root
  } else if(x->t==0 && x->n>0) {      // layer is general list
-  if(kK(x)[0]->t == -KS) {           // if 1st element is symbol, e.g. (`linear;50;784)
-   y=x;
-   b=true, s=kK(x)[0]->s;
-   if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s; // if 2nd element is name, e.g. (`linear;`fc;50;784)
-  } else if(kK(x)[0]->t == KS) {     // else 1st element is symbol vector, e.g. `sequential`root
+//  if(kK(x)[0]->t == -KS) {           // if 1st element is symbol, e.g. (`linear;50;784)
+//   b=true, s=kK(x)[0]->s;
+//   if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s; // if 2nd element is name, e.g. (`linear;`fc;50;784)
+//  } else {
    b=layersym(kK(x)[0],y,s,nm);
-  }
+//  }
  }
  if(null(nm)) nm=nullptr;  // empty strings -> nullptr
  return b;
@@ -2143,7 +2180,7 @@ static K layerparse(J d,K x,std::stack<Layer>& q) {
  } else if(layersym(x,y,s,nm)) {
   c=msym(s);
   if(container(c)) {
-   std::cerr << "PARENT: " << (y ? kstring(y) : "(nullptr)") << "\n";
+   noarg(c,y,nm ? 2 : 1);
    layerparent(c,nm,q);
    if(!x->t)
     for(J i=1;i<x->n;++i)
@@ -2151,8 +2188,7 @@ static K layerparse(J d,K x,std::stack<Layer>& q) {
    if(q.size()>1)
     q.pop();
   } else {
-   std::cerr << "LAYER: " << (y ? kstring(y) : "(nullptr)") << "\n";
-   layeradd(c,nm,q,x,nm ? 2 : 1);
+   layeradd(c,nm,q,y,nm ? 2 : 1);
   }
  } else {
   std::cerr << "Y: " << (y ? kstring(y) : "(nullptr)") << "\n";
@@ -2454,7 +2490,7 @@ KAPI layer(K x) {
  KTRY
   bool a=env().alloptions; Klayer* l=nullptr; Kmodel *m;
   if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
-   return layerget(a,false,layername(l),layermodule(l->q));
+   return layerget(a,false,layername(l),layermodule(l->m));
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else if((m=xmodel(x))) {
@@ -2504,7 +2540,8 @@ K seqattr(const Sequential& q,Ktype k,Attr a) {
 // module fns defined in k namespace
 // ----------------------------------
 void nnfn(K x) {
- fn(x, "layer",      KFN(layer), 1);          // api function for layer create/query
+ fn(x, "seq",        KFN(seq),         1);    // convenience fn for sequential layers
+ fn(x, "layer",      KFN(layer),       1);    // api function for layer create/query
  fn(x, "adaptavg1d", KFN(adaptavg1d),  1);    // functional form of modules/activations
  fn(x, "adaptavg2d", KFN(adaptavg2d),  1);
  fn(x, "adaptavg3d", KFN(adaptavg3d),  1);

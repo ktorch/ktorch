@@ -64,7 +64,7 @@ KAPI model(K x) {
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->q=q->q;              // reassign model's sequential module
+    if(q) m->q=q->m;              // reassign model's sequential module
     if(l) m->lc=l->c, m->l=l->m;  // loss function
     if(o) m->oc=o->c, m->o=o->o;  // optimizer
     modelfree(x,1);
@@ -201,29 +201,10 @@ KAPI ganstep(K a) {
 // --------------------------------------------------------------------------------------------
 // evalfwd - forward calc on given sequential module and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
-static Tensor evalfwd(Sequential& q,Tensor& x,int64_t w) {
- bool b=q->is_training(); Tensor y;
- if(b) q->train(false);                // turn off training mode
- if(w) {                               // if batches of window size w
-  auto n=maxsize(x);                   // get maxsize
-  TensorVector r;
-  for(int64_t i=0; i<n; i+=w) {        // batches of w
-   subset(x,0,i,w,n);
-   r.emplace_back(q->forward(x));      // accumulate forward calcs
-  }
-  subset(x,0,0,n,n);                   // restore size of inputs
-  y=torch::cat(r);                     // and join batch results
- } else {
-  y=q->forward(x);                     // no batching, run forward on full inputs
- }
- if(b) q->train(true);
- return y;
-}
-
 static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
  auto m=layermodule(q);
  bool b=m.is_training(); Tensor y;
- if(b) m.train(false);                // turn off training mode
+ if(b) m.train(false);                 // turn off training mode
  if(w) {                               // if batches of window size w
   auto n=maxsize(x);                   // get maxsize
   TensorVector r;
@@ -265,7 +246,7 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
 }
 
 static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
- Tensor y=evalfwd(q ? q->q : m->q, v[0], w);
+ Tensor y=evalfwd(q ? q->m : m->q, v[0], w);
  if(s) {
   if(s->t == -KS) {
    return kresult(b, metric(metric(s->s),m,v,y));
@@ -313,7 +294,7 @@ KAPI evaluate(K x) {
 // -------------------------------------------------------------------------------------------
 Layer& xlayer(Ktag *g) {
  switch(g->a) {
-  case Class::layer: return ((Klayer*)g)->q;
+  case Class::layer: return ((Klayer*)g)->m;
   case Class::model: return ((Kmodel*)g)->q;
   default: AT_ERROR("Unable to retrieve layers from ",mapclass(g->a));
  }

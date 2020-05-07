@@ -219,9 +219,9 @@ struct TORCH_API Kvec : public Ktag {
 };
 
 struct TORCH_API Klayer : public Ktag {
- Layer q;       // name of single module or container of many modules, e.g. Sequential
+ Layer m;       // name of single module or container of many modules, e.g. Sequential
  std::string s; // store name of main container layer (child layers already allow for user-specified name)
- Klayer(Cast x,const Layer& y,const std::string z={}) : q(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
+ Klayer(Cast x,const Layer& y,const std::string z={}) : m(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
 };
 
 struct TORCH_API Kmodule : public Ktag {
@@ -242,7 +242,7 @@ struct TORCH_API Kmodel : public Ktag {
  Layer q;          // layer(s), e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Klayer *x,Kmodule *y,Kopt *z) : lc(y->c),oc(z->c),q(x->q),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ Kmodel(Klayer *x,Kmodule *y,Kopt *z) : lc(y->c),oc(z->c),q(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
 };
 
 S krrbuf(const char *);
@@ -481,7 +481,6 @@ K layerto(Klayer*,const TensorOptions&,bool);
 Module& layermodule(const Layer&);
 Module& layermodule(Klayer*);
 Module& layermodule(Ktag*);
-K kseq(const Sequential&);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);

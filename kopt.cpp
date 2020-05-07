@@ -414,7 +414,7 @@ static K sgd(SGD* v) {  //return internal buffer state as k dictionary
 // ---------------------------------------------------------------------------------------
 static TensorVector optparms(K x,J i) {
  if(auto *a=xlayer(x,i))
-  return layermodule(a->q).parameters();
+  return layermodule(a->m).parameters();
  else if(auto *a=xvec(x,i))
   return *a;
  else if(auto *a=xten(x,i))

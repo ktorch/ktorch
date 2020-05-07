@@ -970,7 +970,7 @@ KAPI addref(K x) {
   TORCH_CHECK(g, "addref not implemented for ",kname(x->t));
   switch(g->a) {
    case Class::tensor:     return kten(((Kten*)g)->t);
-   case Class::layer:      return klayer(g->c,((Klayer*)g)->q,(S)((Klayer*)g)->s.c_str());
+   case Class::layer:      return klayer(g->c,((Klayer*)g)->m,(S)((Klayer*)g)->s.c_str());
    case Class::loss:       return kloss(g->c,((Kmodule*)g)->m);
    case Class::optimizer:  return  kopt(g->c,   ((Kopt*)g)->o);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
@@ -1175,7 +1175,7 @@ KAPI forward(K x) {
   Ktag *g;
   TORCH_CHECK((g=xtag(x,0)), "forward expects layer(s) or full model as first arg");
   switch(g->a) {
-   case Class::layer:      return layerforward(((Klayer*)g)->q,x);
+   case Class::layer:      return layerforward(((Klayer*)g)->m,x);
    case Class::model:      return layerforward(((Kmodel*)g)->q,x);
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
