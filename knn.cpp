@@ -83,7 +83,7 @@ static NamedAnyModule named(const std::string& s,const AnyModule& a) {
 }
 
 // -----------------------------------------------------------------------------------
-// seqlist - enlist x, only allow symbol scalar allowed
+// seqlist - enlist x, only allow symbol scalar
 // seq - convenience function to enlist all but 1st arg to build sequential arg list
 // -----------------------------------------------------------------------------------
 static K seqlist(K x) {
@@ -135,11 +135,10 @@ static bool container(Cast c) {
 }
 
 static bool container(const Module& m) {
- if       (m.as<torch::nn::Sequential>()) { return true;
- } else if(m.as<SeqNest>())               { return true;
- } else if(m.as<SeqJoin>())               { return true;
- } else                                   { return false;
- }
+ if       (m.as<torch::nn::Sequential>()) return true;
+ else if(m.as<SeqNest>())                 return true;
+ else if(m.as<SeqJoin>())                 return true;
+ else                                     return false;
 }
 
 static Layer parent(Cast c) {
@@ -150,6 +149,15 @@ static Layer parent(Cast c) {
   default: AT_ERROR("Unrecognized container: ", (I)c);
  }
 }
+
+/*
+static Layer parent(const Module& m) {
+ if     (auto* a=m.as<torch::nn::Sequential>()) return Layer(*a);
+ else if(auto* a=m.as<SeqNest>())               return Layer(*a);
+ else if(auto* a=m.as<SeqJoin>())               return Layer(*a);
+ else AT_ERROR("unable to create parent layer from ",m.name());
+}
+*/
 
 // ------------------------------------------------------------------------------------
 // layerpush - invoke push_back method w'optional name on container layers
@@ -2116,8 +2124,8 @@ void layerparms(Cast c,Module &m,K p,K f) {
 // layeradd - add a child layer to existing parent or push single layer to stack
 // layersym - parse module and optional name symbol from k arg(s), throw error if not found
 // -----------------------------------------------------------------------------------------
-static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o=nullptr,K p=nullptr,K f=nullptr);
-static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
+static void layerparent(Cast c,S nm,Layerstack& q,K o=nullptr,K p=nullptr,K f=nullptr);
+static void layerparent(Cast c,S nm,Layerstack& q,K o,K p,K f) {
  TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
  TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
@@ -2126,8 +2134,8 @@ static void layerparent(Cast c,S nm,std::stack<Layer>& q,K o,K p,K f) {
  q.push(a);                              // add new parent container to stack
 }
 
-static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p=nullptr,K f=nullptr);
-static void layeradd(Cast c,S nm,std::stack<Layer>& q,K x,J i,K p,K f) {
+static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p=nullptr,K f=nullptr);
+static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p,K f) {
  auto a=anymodule(x,i,c);             // create module from cast, options & offset
  if(p||f) layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
  if(q.size()) {               
@@ -2161,7 +2169,7 @@ static void layersym(K x,S& s,S& nm) {
 // layerparse - attempt to parse k symbols/lists/nested lists to build layer(s)
 // layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
 // -------------------------------------------------------------------------------------------------
-static void layererror(J d,K x,std::stack<Layer>& q) {
+static void layererror(J d,K x,Layerstack& q) {
  auto n=q.size() ? layermodule(q.top()).modules().size() : 0;
  if(n)
   AT_ERROR("unrecognized arg(s) at depth ",d,", after ",n," layer",(n==1 ? "\n" : "s\n"),kstring(x));
@@ -2169,7 +2177,7 @@ static void layererror(J d,K x,std::stack<Layer>& q) {
   AT_ERROR("unrecognized arg(s) for initial layer,\n",kstring(x));
 }
 
-static K layerparse(J d,K x,std::stack<Layer>& q) {
+static K layerparse(J d,K x,Layerstack& q) {
  S s,nm=nullptr; K y=x->t || !x->n ? x : kK(x)[0], z=nullptr;
  while(q.size()>d) q.pop();
  layersym(y,s,nm); Cast c=msym(s);
@@ -2177,18 +2185,18 @@ static K layerparse(J d,K x,std::stack<Layer>& q) {
   layerparent(c,nm,q);
  else
   layeradd(c,nm,q,y,nm ? 2 : 1);
+ if(!d)
+  z=klayer(c, q.top(), nm);
  if(!x->t) 
   for(size_t i=1;i<x->n;i++) 
    layerparse(d+1,kK(x)[i],q);
- if(!d)
-  z=klayer(c, q.top(), nm);
  return z;
 }
 
-static K layerparse(K x) {std::stack<Layer> q; return layerparse(0,x,q);}
+static K layerparse(K x) {Layerstack q; return layerparse(0,x,q);}
 
 K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
- K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 1 : xlen(x); std::stack<Layer> q;
+ K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 1 : xlen(x); Layerstack q;
  for(J i=0;i<n;++i) {
   s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
   K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers

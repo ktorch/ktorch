@@ -16,6 +16,153 @@ ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
 
 c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
 
+// TORCH_CHECK(!x->t, "depth-value: expecting list(s) of (depth;value) pairs, ", kstring(x));
+
+// ----------------------------------------------------
+// xdv - return -1,0,n for scalar,no match,list length
+// dvn - xdv api
+// ----------------------------------------------------
+static J xdv(K x) {
+ if(x->t) {
+  return 0;
+ } else if(x->n==2 && kK(x)[0]->t == -KJ) {
+  return -1;
+ } else {
+  for(J i=0;i<x->n;++i)
+   if(-1 != xdv(kK(x)[i])) return 0;
+  return x->n;
+ }
+}
+
+KAPI dvn(K x) {
+ return kj(xdv(x));
+}
+
+// ----------------------------------------------------
+// dv1
+// dv
+// ----------------------------------------------------
+static K dv1(J d,K x,K z) {
+ K y=x->t || !x->n ? x : kK(x)[0];
+ if(y->t == -KS)
+  y=ks(y->s);                      // create a new symbol from given scalar
+ else if(y->t == KS && y->n == 1)
+  y=ks(kS(y)[0]);                  // create a new symbol from 1-element symbol vector
+ else
+  r1(y);                           // else, increment reference count for use directly
+ z=jk(&z,knk(2, kj(d), y));
+ if(!x->t)                         // add depth,value pairs from nested list
+  for(size_t i=1;i<x->n;i++)
+   z=dv1(d+1,kK(x)[i],z);
+ return z;
+}
+
+KAPI dv(K x) {
+ KTRY
+  return dv1(0,x,ktn(0,0));
+ KCATCH("dv");
+}
+
+// ----------------------------------------------------
+// tree fns..
+// ----------------------------------------------------
+static J dvd(K x,J i,J n) {return kK(kK(x)[i])[0]->j - n;}
+static K dvv(K x,J i)     {return kK(kK(x)[i])[1];}
+
+static K enlist(K x) {
+ K r; r1(x);
+ if(x->t<0) {
+  TORCH_CHECK(x->t == -KS, "scalar expected to be a symbol, given a ",kname(x));
+  r=ktn(KS,1), kS(r)[0]=x->s;
+ } else {
+  r=knk(1,x);
+ }
+ return r;
+}
+
+static K tree1(K x,J i,J j,J n) {
+ K z=knk(0,0);
+ if(i==j) {
+  std::cerr << "enlist(" << kstring(dvv(x,i)) << ")\n";
+  //z=jk(&z, enlist(dvv(x,i)));
+  K v=dvv(x,i);
+  if(v->t == -KS) {
+   K r=ktn(KS,1); kS(r)[0]=v->s;
+   z=r;
+  } else {
+   r1(v);
+   z=jk(&z,v);
+  }
+ } else {
+  std::cerr << kstring(dvv(x,i)) << "\n";
+  K v=dvv(x,i); r1(v);
+  z=jk(&z,v);
+  J k=i+1;
+  for(i=k;i<=j;++i) {
+   if(i>k && dvd(x,i,n)==1) {
+    K v=tree1(x,k,i-1,n+1);
+    z=jk(&z,v);
+    k=i;
+   }
+   if(i==j) {
+    K v=tree1(x,k,j,n+1);
+    z=jk(&z,v);
+   }
+  }
+ }
+ return z;
+}
+
+KAPI tree(K x) {
+ KTRY
+  return tree1(x,0,x->n-1,0);
+ KCATCH("tree");
+}
+
+
+static bool container(const Module& m) {
+ if       (m.as<torch::nn::Sequential>()) return true;
+ else if(m.as<SeqNest>())                 return true;
+ else if(m.as<SeqJoin>())                 return true;
+ else                                     return false;
+}
+
+static Layer parent(const Module& m) {
+ if     (auto* a=m.as<torch::nn::Sequential>()) return Sequential(*a);
+ else if(auto* a=m.as<SeqNest>())               return SeqNest(*a);
+ else if(auto* a=m.as<SeqJoin>())               return SeqJoin(*a);
+ else AT_ERROR("unable to create parent layer from ",m.name());
+}
+
+void layerstack(J d,const Module& m,Layerstack& q) {
+ while(q.size()>d) q.pop();
+ std::cerr << "depth: " << d <<  " stack size(" << q.size() << ")";
+ if(q.size())
+  std::cerr << "parent: " << layermodule(q.top()).name() << "\n";
+ else
+  std::cerr << "\n";
+ if(container(m)) {
+  q.push(parent(m));
+  for(auto& i:m.children())
+   layerstack(d+1,*i,q);
+ } else {
+  if(!q.size())
+   std::cerr << "empty stack\n";
+  else
+   std::cerr << "child: " << m.name() << "\n";
+ }
+}
+
+KAPI kstack(K x) {
+ KTRY
+  Klayer *l=xlayer(x);
+  TORCH_CHECK(l, "not a module");
+  Layerstack q;
+  layerstack(0, layermodule(l), q);
+  return kj(q.size());
+ KCATCH("stack");
+}
+
 KAPI mname(K x) {
  if(x->t == -KS) {
   torch::nn::Linear m(1,2);
@@ -29,6 +176,15 @@ KAPI mname(K x) {
   std::cerr << q << "\n";
  }
  return (K)0;
+}
+
+KAPI dvflag(K x) {
+ if(!x->t && x->n==2 && kK(x)[0]->t==-7) {
+  K y=kK(x)[1];
+  return kb(y->t==-KS || (y->t==KS && y->n==2) || (!y->t && y->n>1 && kK(y)[0]->t==-KS) ? true : false);
+ } else {
+  return kb(false);
+ }
 }
 
 static S msym(Cast c) {

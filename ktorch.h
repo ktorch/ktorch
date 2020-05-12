@@ -78,6 +78,7 @@ using Sequential=torch::nn::Sequential;
 
 using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule, NamedAnyModule>;
 enum class Layers       {sequential, seqnest, seqjoin, any,       anyname};
+using Layerstack=std::stack<Layer>;
 
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
