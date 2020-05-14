@@ -894,12 +894,13 @@ void pten(const Pairs& p,Tensor &t) {
  }
 }
 
-// -----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // kstring - return string representation of k value
 // kout - output k value via "0N!"
 // kcast - given data type and array, cast and return, i.e. 1h$x
 // kbool - cast k value to boolean
-// -----------------------------------------------------------------------------------------
+// kdict - tensor dictionary to k dictionary of names -> tensor values
+// ----------------------------------------------------------------------
 std::string kstring(K x) {
  std::string s;
  K a=k(0,(S)".Q.s1",r1(x),0);
@@ -921,7 +922,6 @@ K kdict(const TensorDict &d) {
 }
 
 // -----------------------------------------------------------------------------------------
-// kdict - tensor dictionary to k dictionary of names -> tensor values
 // kfind - given list of symbols, find index of matching string, return -1 if not found
 // klist - return k value from count and long/double pointer
 // kex - true if given list is one unique value
@@ -958,6 +958,86 @@ template<typename T>static bool kex(J n,const T *e) {
 K kexpand(J n,const int64_t *e) {return kex<int64_t>(n,e) ? kj(e[0]) : klist(n,e);}
 K kexpand(J n,const double  *e) {return kex<double> (n,e) ? kf(e[0]) : klist(n,e);}
 K kexpand(J n,const c10::optional<int64_t> *e) {return kex(n,e) ? kj(e[0] ? e[0].value() : nj) : klist(n,e);}
+
+// ---------------------------------------------------------------
+// dvt - recursive fn to convert nested tree to (depth;value)
+// dv - k api fn convert nested tree -> (depth;value) pairs
+// ---------------------------------------------------------------
+static K dvt(J d,K x,K z) {
+ K y=x->t || !x->n ? x : kK(x)[0];
+ if(y->t == -KS)                   
+  y=ks(y->s);                      // create a new symbol from given scalar
+ else if(y->t == KS && y->n == 1)  
+  y=ks(kS(y)[0]);                  // create a new symbol from 1-element symbol vector
+ else
+  r1(y);                           // else, increment reference count for use directly
+ z=jk(&z,knk(2, kj(d), y));        
+ if(!x->t)                         // add depth,value pairs from nested list
+  for(size_t i=1;i<x->n;i++)
+   z=dvt(d+1,kK(x)[i],z);
+ return z;
+}
+
+KAPI dv(K x) {
+ KTRY
+  return dvt(0,x,ktn(0,0));
+ KCATCH("dv");
+}
+
+// ---------------------------------------------------------------------------------------------
+// xdv - return 0 if not recognized as (depth;value) format, -1 for single pair, n-list of pairs
+// dve - return x value not recognized as (depth;value)
+// dvd - return depth minus factor for i'th depth-value arg
+// dvv - return i'th value from depth-value scalar/list
+// tdv - recursive fn to convert depth-value scalar/list to nested tree representation
+// tree - k api function to take depth-value pairs and return nested tree representation
+// ---------------------------------------------------------------------------------------------
+static J xdv(K x) {
+ if(x->t) {
+  return 0;
+ } else if(x->n==2 && kK(x)[0]->t == -KJ) {
+  return -1;
+ } else {
+  for(J i=0;i<x->n;++i)
+   if(-1 != xdv(kK(x)[i])) return 0;
+  return x->n;
+ }
+}
+
+static K dve(K x) { 
+ if(!x->t && x->n>0 && !xmixed(x,2)) {
+  for(J i=0;i<x->n;++i)
+   if(!xdv(kK(x)[i])) return kK(x)[i];
+ }
+ return x;
+}
+
+static J dvd(K x,J i,J n) {return kK(i<0 ? x : kK(x)[i])[0]->j - n;}
+static K dvv(K x,J i)     {return kK(i<0 ? x : kK(x)[i])[1];}
+
+static K tdv(K x,J i,J j,J n) {
+ K v=dvv(x,i), z=ktn(i==j && v->t==-KS ? KS : 0,1);
+ if(z->t) kS(z)[0]=v->s;
+ else     kK(z)[0]=r1(v);
+ J k=i+1;
+ for(i=k;i<=j;++i) {
+  if(i>k && dvd(x,i,n)==1) {
+   z=jk(&z,tdv(x,k,i-1,n+1)); k=i;
+  }
+  if(i==j)
+   z=jk(&z,tdv(x,k,j,n+1));
+ }
+ return z;
+}
+
+KAPI tree(K x) {
+ KTRY
+  J n=xdv(x);
+  TORCH_CHECK(n, "unable to parse (value;depth): ", kstring(dve(x)));
+  if(n==-1) return tdv(x, -1,     -1, 0);
+  else      return tdv(x,  0, x->n-1, 0);
+ KCATCH("tree");
+}
 
 // -----------------------------------------------------------------------------------------
 // addref - add a new kptr to a shared tensor/module/optimizer, incrementing reference count
@@ -1514,6 +1594,8 @@ void fn(K x,const char* s,void *f,I n){dictadd(x,s,dl(f,n));}
 
 KAPI fns(K x){
  x=xD(ktn(KS,0),ktn(0,0));
+ fn(x, "dv",          KFN(dv),          1);
+ fn(x, "tree",        KFN(tree),        1);
  fn(x, "addref",      KFN(addref),      1);
  fn(x, "free",        KFN(Kfree),       1);
  fn(x, "obj",         KFN(kobj),        1);
