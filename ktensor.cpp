@@ -515,8 +515,8 @@ KAPI unsqueeze(K x) {return ksqueeze(x, false, "unsqueeze");}
 // ----------------------------------------------------------------------------------------------
 static J storlong(const Storage& s,Attr a) {
  switch(a) {
-  case Attr::elementsize: return s.elementSize();
-  case Attr::size:        return s.size();
+  case Attr::elementsize: return s.dtype().itemsize();
+  case Attr::size:        return s.nbytes() / s.dtype().itemsize();
   case Attr::ptr:         return (intptr_t)s.data();
   case Attr::ref:         return s.use_count();
   default: AT_ERROR(mapattr(a),": not implemented for storage");
@@ -624,8 +624,8 @@ KAPI options(K x) {
 // ------------------------------------------------------------------------------------------------
 K stordata(const Storage& s) {
  TORCH_CHECK(s.device().is_cpu(), "Cannot copy CUDA storage via memcpy");
- K x=ktn(maptype(s.dtype()),s.size());
- memcpy(kG(x),s.data(),s.capacity());
+ K x=ktn(maptype(s.dtype()),s.nbytes() / s.dtype().itemsize());
+ memcpy(kG(x),s.data(),s.nbytes());
  return x;
 }
 
@@ -757,9 +757,10 @@ void subset(TensorVector& v,int64_t d,int64_t i,int64_t w,int64_t n) {
 }
 
 void setsafe(Tensor& t,const Storage& s,int64_t i,const IntArrayRef& sz,const IntArrayRef& st) {
- TORCH_CHECK(s.size()>=i+computeStorageSize(sz,st), 
-            "size ",sz," and stride ",st," require total of ",computeStorageSize(sz,st),
-            " plus offset of ",i," exceeds storage size of ",s.size());
+ TORCH_CHECK(s.nbytes()>=i+at::detail::computeStorageNbytes(sz,st,1), 
+            "size ",sz," and stride ",st," require total of ",
+             at::detail::computeStorageNbytes(sz,st,1),
+            " plus offset of ",i," exceeds storage size of ",s.nbytes()/s.dtype().itemsize());
  t.set_(s,i,sz,st);
 }
 
@@ -916,7 +917,7 @@ std::vector<int64_t> newsize(const Tensor& t,int64_t d,int64_t n) {
 int64_t maxsize(const Tensor& t,int64_t d) {
  int64_t n=1;
  for(auto i:t.sizes()) n*=i;
- return t.size(d)*t.storage().size()/n;
+ return t.size(d)*t.storage().nbytes()/(n*t.storage().dtype().itemsize());
 }
 
 int64_t maxsize(const TensorVector& v,int64_t d) {

@@ -12,7 +12,9 @@
 
 #define KXVER 3
 #include "k.h"
+#undef P
 #undef R
+#undef U
 #undef Z
 #undef xs
 
@@ -83,7 +85,6 @@ using Layerstack=std::stack<Layer>;
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
 using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
-using at::detail::computeStorageSize;
 
 typedef struct {
  Ktype a = 0;  // type: 1-dict, 2-list of pairs, 3-general list, 4-sym list

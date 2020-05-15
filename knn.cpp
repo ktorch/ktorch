@@ -87,22 +87,22 @@ static NamedAnyModule named(const std::string& s,const AnyModule& a) {
 // seq - convenience function to enlist all but 1st arg to build sequential arg list
 // -----------------------------------------------------------------------------------
 static K seqlist(K x) {
- K r; r1(x);
+ K r;
  if(x->t<0) {
   TORCH_CHECK(x->t == -KS, "scalar expected to be a symbol, given a ",kname(x));
   r=ktn(KS,1), kS(r)[0]=x->s;
  } else {
-  r=knk(1,x);
+  r=knk(1,r1(x));
  }
  return r;
 }
 
 KAPI seq(K x) {
  KTRY
-  r1(x); K r;
+  K r;
   if(x->t<0) {
    TORCH_CHECK(x->t==-KS, "seq: expecting module symbol, given ",kname(x),", ",kstring(x));
-   r=x;
+   r=r1(x);
   } else if(x->t>0) {
    TORCH_CHECK(x->t==KS, "seq: expecting module symbols, given ",kname(x),", ",kstring(x));
    TORCH_CHECK(x->n>0,   "seq: expecting at least one module symbol, given  empty list");
@@ -113,7 +113,7 @@ KAPI seq(K x) {
   } else {
    TORCH_CHECK(x->n>0, "seq: empty list");
    r=ktn(0,x->n);
-   kK(r)[0]=kK(x)[0];
+   kK(r)[0]=r1(kK(x)[0]);
    for(J i=1;i<x->n;++i)
     kK(r)[i]=seqlist(kK(x)[i]);
   }

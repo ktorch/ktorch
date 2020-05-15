@@ -1080,6 +1080,10 @@ KAPI Kfree(K x){
 }
 
 // -----------------------------------------------------------------------------------------
+// storsize - storage up to version 1.5 tracked element count and size, now tracks bytes
+// -----------------------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------------------
 // objdevice - return tensor device, or first device found if object w'multiple tensors
 // objsize - size vector of tensor, else count of parameters/modules
 // objnum - number of elements in tensor's underlying storage or sum across tensors
@@ -1115,7 +1119,8 @@ static K objsize(Ktag *x) {
  }
 }
 
-static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : t.storage().size();}
+static J objnum(const Storage &s) {return s.nbytes() / s.dtype().itemsize();}
+static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : objnum(t.storage());}
 static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 static J objnum(const Module &m) {return objnum(m.parameters());}
 
@@ -1129,7 +1134,7 @@ static J objnum(Ktag *x) {
  }
 }
 
-static J objbytes(const Storage &s) {return s.size()*s.itemsize();}
+static J objbytes(const Storage &s) {return s.nbytes();}
 static J objbytes(const Tensor &t) {return t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage());}
 static J objbytes(const TensorVector &v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
 static J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
@@ -1454,8 +1459,8 @@ KAPI config(K x) {
 J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
  return 0;
  torch::DeviceGuard dg(d);
- auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU); // version 1.5
- //auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);  // version 1.6
+ // PATCH auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU); // version 1.5
+ auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);  // version 1.6
  if(b) {
   if(null(s))
    g.seed();
@@ -1478,8 +1483,8 @@ KAPI kseed(K x) {
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
-   if(null(s)) s=at::detail::getNonDeterministicRandom();  // version 1.5
-   //if(null(s)) s=c10::detail::getNonDeterministicRandom(); // version 1.6
+   // PATCH if(null(s)) s=at::detail::getNonDeterministicRandom();  // version 1.5
+   if(null(s)) s=c10::detail::getNonDeterministicRandom(); // version 1.6
    torch::manual_seed(s);
    return (K)0;
   } else if(xdev(x,d)) {          // query initial random seed for given device

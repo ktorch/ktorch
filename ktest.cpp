@@ -139,20 +139,6 @@ KAPI dtest(K x) {
 }
 */
 
-/* PATCH
-KAPI sgdtest(K x) {
- auto a=torch::optim::SGDOptions(.01);
- TensorVector v;
- auto o=torch::optim::SGD(v,a);
- std::cerr << o.iteration() << "\n";
- std::cerr << access_private::iteration_(o) << "\n";
- access_private::iteration_(o)=2;
- std::cerr << o.iteration() << "\n";
- std::cerr << access_private::iteration_(o) << "\n";
- return (K)0;
-}
-*/
-
 void xerror(const char* s,K x) {
  if(x->t) {
   AT_ERROR(s, kname(x));
