@@ -17,7 +17,8 @@ lib := ktorch.so
 src := ktorch.cpp ktensor.cpp kmath.cpp knn.cpp kloss.cpp kopt.cpp kmodel.cpp ktest.cpp
 
 all: $(lib)
-*.o: k.h ktorch.h knn.h
+*.o: k.h ktorch.h knn.h private.h
+ktorch.o: stb_image_write.h
 kloss.o: kloss.h
 
 $(lib): $(subst .cpp,.o,$(src))

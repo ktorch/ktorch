@@ -21,6 +21,7 @@
 #include <stack>
 #include "torch/torch.h"
 #include "knn.h"
+#include "private.h"
 
 #ifdef __clang__
 # pragma clang diagnostic pop
@@ -222,8 +223,7 @@ struct TORCH_API Kvec : public Ktag {
 
 struct TORCH_API Klayer : public Ktag {
  Layer m;       // name of single module or container of many modules, e.g. Sequential
- std::string s; // store name of main container layer (child layers already allow for user-specified name)
- Klayer(Cast x,const Layer& y,const std::string z={}) : m(std::move(y)),s(std::move(z)) {a=Class::layer; c=x;}
+ Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::layer; c=x;}
 };
 
 struct TORCH_API Kmodule : public Ktag {
@@ -425,6 +425,8 @@ K kexpand(J,const int64_t*);
 K kexpand(J,const double*);
 K kexpand(J,const c10::optional<int64_t>*e);
 #define KEX(x) kexpand(x.size(),(*x).data())  // k list from ExpandingArray
+J xdv(K);
+
 S objdevice(const Tensor&);
 S objdevice(const TensorVector&,S);
 bool kfree(K);
@@ -478,11 +480,13 @@ torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
 void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
 void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
-K klayer(Cast c,const Layer& m,S s=nullptr);
+
+K klayer(Cast,const Layer&);
 K layerto(Klayer*,const TensorOptions&,bool);
 Module& layermodule(const Layer&);
 Module& layermodule(Klayer*);
 Module& layermodule(Ktag*);
+c10::optional<std::string>& modulename(Module&);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);

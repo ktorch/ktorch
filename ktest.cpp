@@ -1,5 +1,4 @@
 #include "ktorch.h"
-#include "private.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -9,12 +8,9 @@
 # pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-ACCESS_PRIVATE_FIELD(torch::nn::Module, c10::optional<std::string>, name_)
 ACCESS_PRIVATE_FIELD(torch::nn::SequentialImpl, std::vector<AnyModule>, modules_)
 ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, std::string,          name_)
 ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
-
-c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
 
 // TORCH_CHECK(!x->t, "depth-value: expecting list(s) of (depth;value) pairs, ", kstring(x));
 
@@ -70,19 +66,18 @@ KAPI mname(K x) {
   std::cerr << "name defined: " << s.has_value() << "\n";
   std::cerr << m->name() << "\n";
   std::cerr << m << "\n";
+/*
   Sequential q(m);
+  std::cerr << q << "\n";
+  Sequential qn({{*s,m}});
+  std::cerr << qn << "\n";
+*/
+  //auto q=s ? Sequential({{*s,m}}) : Sequential(m);
+  Sequential q;
+  s ? q->push_back(*s,AnyModule(m)) : q->push_back(m);
   std::cerr << q << "\n";
  }
  return (K)0;
-}
-
-KAPI dvflag(K x) {
- if(!x->t && x->n==2 && kK(x)[0]->t==-7) {
-  K y=kK(x)[1];
-  return kb(y->t==-KS || (y->t==KS && y->n==2) || (!y->t && y->n>1 && kK(y)[0]->t==-KS) ? true : false);
- } else {
-  return kb(false);
- }
 }
 
 static S msym(Cast c) {
@@ -436,7 +431,6 @@ template <class... Fs> auto make_overload(Fs... fs) {
 
 void layerchild(Layer& q,const Layer& a,const char* nm);
 void layerany(Layer& q,const AnyModule& a,const char* s);
-const std::string& layername(Klayer* x);
 Module& layermodule(const Layer& q);
 
 void addchild2(Layer& q,const AnyModule& a) {

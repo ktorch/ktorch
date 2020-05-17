@@ -1,5 +1,9 @@
 #include "ktorch.h"
 
+// access private name_ element of torch::nn::Module
+ACCESS_PRIVATE_FIELD(torch::nn::Module, c10::optional<std::string>, name_)
+c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
+
 // append a module option to a k dictionary given dict,name & value
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 
@@ -7,7 +11,7 @@
 // klayer - allocate an object to store a pointer to a layer
 // layerto - given layer & options, change device/data type
 // ----------------------------------------------------------------------------
-K klayer(Cast c,const Layer& m,S s) {return kptr(s ? new Klayer(c,m,s) : new Klayer(c,m));}
+K klayer(Cast c,const Layer& m) {return kptr(new Klayer(c,m));}
 
 K layerto(Klayer* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
@@ -71,15 +75,6 @@ K mkeys(bool b) {
   if(i==x->n) break;
  }
  return x;
-}
-
-// -----------------------------------------------------------------------------------
-// named - patch for version 1.5 w'private constructor, moved public in 1.6
-// -----------------------------------------------------------------------------------
-static NamedAnyModule named(const std::string& s,const AnyModule& a) {
- auto m=NamedAnyModule(s,torch::nn::Identity());
- m.module() = a;
- return m;
 }
 
 // -----------------------------------------------------------------------------------
@@ -198,14 +193,10 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 }
 
 // ------------------------------------------------------------------------------------
-// layername - given k layer ptr, return name or nullptr if none
 // layermodule - return a reference to underlying module (to retrieve options & parms)
+// layername - given k layer ptr, return name or nullptr if none
 // layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
 // ------------------------------------------------------------------------------------
-S layername(Klayer* x) {
- return const_cast<char*>((x->m.index()==(size_t)Layers::anyname ? c10::get<NamedAnyModule>(x->m).name() : x->s).c_str());
-}
-
 Module& layermodule(const Layer& q) {
  switch(q.index()) {
   case (size_t)Layers::sequential:  return *c10::get<Sequential>(q).ptr(); break;
@@ -219,6 +210,15 @@ Module& layermodule(const Layer& q) {
 
 Module& layermodule(Klayer* x) {return layermodule(x->m);}
 Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->m);}
+
+S layername(Klayer* x) {
+ if(x->m.index()==(size_t)Layers::anyname) {
+   return const_cast<char*>(c10::get<NamedAnyModule>(x->m).name().c_str());
+ } else {
+  auto& s=modulename(layermodule(x));
+  return const_cast<char*>(s ? (*s).c_str() : nullptr);
+ }
+}
 
 template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
@@ -2130,6 +2130,7 @@ static void layerparent(Cast c,S nm,Layerstack& q,K o,K p,K f) {
  TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
  auto a=parent(c);                       // create parent module
+ if(nm) modulename(layermodule(a))=nm;   // add name if supplied
  if(q.size()) layerchild(q.top(),a,nm);  // add to previous parent, if any
  q.push(a);                              // add new parent container to stack
 }
@@ -2142,7 +2143,7 @@ static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p,K f) {
   TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add without a parent/container layer");
   layerany(q.top(),a,nm);     
  } else {
-  if(nm) q.push(named(nm,a));       
+  if(nm) q.push(NamedAnyModule(nm,a));       
   else   q.push(a);          
  }
 }
@@ -2186,7 +2187,7 @@ static K layerparse(J d,K x,Layerstack& q) {
  else
   layeradd(c,nm,q,y,nm ? 2 : 1);
  if(!d)
-  z=klayer(c, q.top(), nm);
+  z=klayer(c, q.top());
  if(!x->t) 
   for(size_t i=1;i<x->n;i++) 
    layerparse(d+1,kK(x)[i],q);
@@ -2209,7 +2210,7 @@ K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to 
   else
    layeradd(c,nm,q,o,-1,p,f);
   if(!i)
-   z=klayer(c, q.top(), nm);
+   z=klayer(c, q.top());
  }
  return z;
 }
@@ -2358,6 +2359,7 @@ std::tuple<Cast,K> layeropt(bool a,const Module& g) { //a:all options returned i
 // --------------------------------------------------------------------------------------------
 void layerget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
  Cast c; K o,*k=kK(x); std::tie(c,o)=layeropt(a,m);
+ if(!s) s="";
  if(t) {
   ja(&k[0], &d);
   js(&k[1], msym(c));
@@ -2490,6 +2492,8 @@ KAPI layer(K x) {
    return layertable(x);
   } else if((m=xmodel(x))) {
    AT_ERROR("module ptr from model nyi");
+  } else if(xdv(x)) {
+   AT_ERROR("depth-value pairs nyi");
   } else {
    return layerparse(x);
   }

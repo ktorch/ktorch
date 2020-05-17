@@ -992,7 +992,7 @@ KAPI dv(K x) {
 // tdv - recursive fn to convert depth-value scalar/list to nested tree representation
 // tree - k api function to take depth-value pairs and return nested tree representation
 // ---------------------------------------------------------------------------------------------
-static J xdv(K x) {
+J xdv(K x) {
  if(x->t) {
   return 0;
  } else if(x->n==2 && kK(x)[0]->t == -KJ) {
@@ -1050,7 +1050,7 @@ KAPI addref(K x) {
   TORCH_CHECK(g, "addref not implemented for ",kname(x->t));
   switch(g->a) {
    case Class::tensor:     return kten(((Kten*)g)->t);
-   case Class::layer:      return klayer(g->c,((Klayer*)g)->m,(S)((Klayer*)g)->s.c_str());
+   case Class::layer:      return klayer(g->c,((Klayer*)g)->m);
    case Class::loss:       return kloss(g->c,((Kmodule*)g)->m);
    case Class::optimizer:  return  kopt(g->c,   ((Kopt*)g)->o);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
