@@ -30,7 +30,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, layerget(a,b,"",layermodule(m->q)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
+ return xD(modelkeys(), knk(3, layerget(a,b,"",layermodule(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -64,7 +64,7 @@ KAPI model(K x) {
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->q=q->m;              // reassign model's sequential module
+    if(q) m->m=q->m;              // reassign model's sequential module
     if(l) m->lc=l->c, m->l=l->m;  // loss function
     if(o) m->oc=o->c, m->o=o->o;  // optimizer
     modelfree(x,1);
@@ -84,13 +84,13 @@ KAPI model(K x) {
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(sequential(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
-Tensor mforward(Kmodel *m,const Tensor& x) {return layerforward(m->q,x);}
+Tensor mforward(Kmodel *m,const Tensor& x) {return layerforward(m->m,x);}
 Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
 
 K mbackward(K a) {
  Kmodel *m; Tensor *x,*y,r;
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
-  r=losswt(m->lc,m->l,layerforward(m->q,*x),*y);
+  r=losswt(m->lc,m->l,layerforward(m->m,*x),*y);
  } else {
   AT_ERROR("backward expects (model; inputs; targets)");
  }
@@ -186,7 +186,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=layerforward(g->q,*z);
+  Tensor gx=layerforward(g->m,*z);
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   optstep(d);
@@ -246,7 +246,7 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
 }
 
 static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
- Tensor y=evalfwd(q ? q->m : m->q, v[0], w);
+ Tensor y=evalfwd(q ? q->m : m->m, v[0], w);
  if(s) {
   if(s->t == -KS) {
    return kresult(b, metric(metric(s->s),m,v,y));
@@ -295,7 +295,7 @@ KAPI evaluate(K x) {
 Layer& xlayer(Ktag *g) {
  switch(g->a) {
   case Class::layer: return ((Klayer*)g)->m;
-  case Class::model: return ((Kmodel*)g)->q;
+  case Class::model: return ((Kmodel*)g)->m;
   default: AT_ERROR("Unable to retrieve layers from ",mapclass(g->a));
  }
 }

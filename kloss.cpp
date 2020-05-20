@@ -701,10 +701,11 @@ KAPI loss(K x) {
 }
 
 K lossattr(const AnyModule& m,Ktype k,Attr a) {
+ const auto& p=m.ptr();
  switch(a) {
-  case Attr::ref:     return kj(m.ptr().use_count()-1);
-  case Attr::ptr:     return kj((intptr_t)m.ptr().get());
-  case Attr::device:  return ks(objdevice(m.ptr()->buffers(), optsym(torch::Device(torch::kCPU))));
+  case Attr::ref:     return kj(p.use_count()-1);
+  case Attr::ptr:     return kj((intptr_t)p.get());
+  case Attr::device:  return ks(objdevice(p->buffers(), optsym(torch::Device(torch::kCPU))));
   default: AT_ERROR(mapattr(a),": not implemented for loss modules");
  }
 }

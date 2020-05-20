@@ -1,102 +1,5 @@
 #include "ktorch.h"
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#elif defined __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-
-ACCESS_PRIVATE_FIELD(torch::nn::SequentialImpl, std::vector<AnyModule>, modules_)
-ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, std::string,          name_)
-ACCESS_PRIVATE_FIELD(torch::nn::NamedAnyModule, torch::nn::AnyModule, module_)
-
-// TORCH_CHECK(!x->t, "depth-value: expecting list(s) of (depth;value) pairs, ", kstring(x));
-
-static bool container(const Module& m) {
- if       (m.as<torch::nn::Sequential>()) return true;
- else if(m.as<SeqNest>())                 return true;
- else if(m.as<SeqJoin>())                 return true;
- else                                     return false;
-}
-
-static Layer parent(const Module& m) {
- if     (auto* a=m.as<torch::nn::Sequential>()) return Sequential(*a);
- else if(auto* a=m.as<SeqNest>())               return SeqNest(*a);
- else if(auto* a=m.as<SeqJoin>())               return SeqJoin(*a);
- else AT_ERROR("unable to create parent layer from ",m.name());
-}
-
-void layerstack(J d,const Module& m,Layerstack& q) {
- while(q.size()>d) q.pop();
- std::cerr << "depth: " << d <<  " stack size(" << q.size() << ")";
- if(q.size())
-  std::cerr << "parent: " << layermodule(q.top()).name() << "\n";
- else
-  std::cerr << "\n";
- if(container(m)) {
-  q.push(parent(m));
-  for(auto& i:m.children())
-   layerstack(d+1,*i,q);
- } else {
-  if(!q.size())
-   std::cerr << "empty stack\n";
-  else
-   std::cerr << "child: " << m.name() << "\n";
- }
-}
-
-KAPI kstack(K x) {
- KTRY
-  Klayer *l=xlayer(x);
-  TORCH_CHECK(l, "not a module");
-  Layerstack q;
-  layerstack(0, layermodule(l), q);
-  return kj(q.size());
- KCATCH("stack");
-}
-
-KAPI mname(K x) {
- if(x->t == -KS) {
-  torch::nn::Linear m(1,2);
-  auto& s=modulename(*m);
-  std::cerr << "name defined: " << s.has_value() << "\n";
-  s=x->s;
-  std::cerr << "name defined: " << s.has_value() << "\n";
-  std::cerr << m->name() << "\n";
-  std::cerr << m << "\n";
-/*
-  Sequential q(m);
-  std::cerr << q << "\n";
-  Sequential qn({{*s,m}});
-  std::cerr << qn << "\n";
-*/
-  //auto q=s ? Sequential({{*s,m}}) : Sequential(m);
-  Sequential q;
-  s ? q->push_back(*s,AnyModule(m)) : q->push_back(m);
-  std::cerr << q << "\n";
- }
- return (K)0;
-}
-
-static S msym(Cast c) {
- for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized module: ",(I)c);
-}
-
-static Cast msym(S s) {
- for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("Unrecognized module: ",s);
-}
-
-// named - required for version 1.5 where constructor w'AnyModule is private, public in version 1.6
-static NamedAnyModule named(const std::string& s,const AnyModule& a) { 
- auto m=NamedAnyModule(s,torch::nn::Identity());
- m.module() = a;
- return m;
-}
-
 KAPI layerlist(K x) {
  Klayer *q;
  if((q=xlayer(x))) {
@@ -116,12 +19,6 @@ KAPI layerlist(K x) {
  }
  return (K)0;
 }
-
-#ifdef __clang__
-# pragma clang diagnostic pop
-#elif defined __GNUC__
-# pragma GCC diagnostic pop
-#endif
 
 #define OPTION(x,k,v) dictadd(x, lset(Setting::k), v)
 

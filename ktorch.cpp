@@ -987,7 +987,7 @@ KAPI dv(K x) {
 // ---------------------------------------------------------------------------------------------
 // xdv - return 0 if not recognized as (depth;value) format, -1 for single pair, n-list of pairs
 // dve - return x value not recognized as (depth;value)
-// dvd - return depth minus factor for i'th depth-value arg
+// dvd - return depth for i'th depth-value arg
 // dvv - return i'th value from depth-value scalar/list
 // tdv - recursive fn to convert depth-value scalar/list to nested tree representation
 // tree - k api function to take depth-value pairs and return nested tree representation
@@ -1012,8 +1012,8 @@ static K dve(K x) {
  return x;
 }
 
-static J dvd(K x,J i,J n) {return kK(i<0 ? x : kK(x)[i])[0]->j - n;}
-static K dvv(K x,J i)     {return kK(i<0 ? x : kK(x)[i])[1];}
+static J dvd(K x,J i) {return kK(i<0 ? x : kK(x)[i])[0]->j;}
+static K dvv(K x,J i) {return kK(i<0 ? x : kK(x)[i])[1];}
 
 static K tdv(K x,J i,J j,J n) {
  K v=dvv(x,i), z=ktn(i==j && v->t==-KS ? KS : 0,1);
@@ -1021,7 +1021,7 @@ static K tdv(K x,J i,J j,J n) {
  else     kK(z)[0]=r1(v);
  J k=i+1;
  for(i=k;i<=j;++i) {
-  if(i>k && dvd(x,i,n)==1) {
+  if(i>k && dvd(x,i)-n==1) {
    z=jk(&z,tdv(x,k,i-1,n+1)); k=i;
   }
   if(i==j)
@@ -1261,7 +1261,7 @@ KAPI forward(K x) {
   TORCH_CHECK((g=xtag(x,0)), "forward expects layer(s) or full model as first arg");
   switch(g->a) {
    case Class::layer:      return layerforward(((Klayer*)g)->m,x);
-   case Class::model:      return layerforward(((Kmodel*)g)->q,x);
+   case Class::model:      return layerforward(((Kmodel*)g)->m,x);
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
   return (K)0;
@@ -1506,10 +1506,11 @@ static K attr(K x,Ktype k,Attr a) {
   auto* g=xtag(x);
   TORCH_CHECK(g, mapattr(a),": unrecognized arg(s) - ",kname(x->t));
   switch(g->a) {
-   case Class::tensor:     return  tensorattr(((Kten*)g)->t,k,a);
-   case Class::vector:     return  vectorattr(((Kvec*)g)->v,k,a);
+   case Class::tensor:     return tensorattr(((Kten*)g)->t,k,a);
+   case Class::vector:     return vectorattr(((Kvec*)g)->v,k,a);
+   case Class::layer:      return layerattr(((Klayer*)g)->m,k,a);
    case Class::loss:       return lossattr(((Kmodule*)g)->m,k,a);
-   case Class::optimizer:  return     optattr(((Kopt*)g)->o,k,a);
+   case Class::optimizer:  return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }
  KCATCH("attr");

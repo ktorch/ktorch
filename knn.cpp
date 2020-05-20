@@ -1,7 +1,5 @@
 #include "ktorch.h"
 
-// access private name_ element of torch::nn::Module
-ACCESS_PRIVATE_FIELD(torch::nn::Module, c10::optional<std::string>, name_)
 c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
 
 // append a module option to a k dictionary given dict,name & value
@@ -130,12 +128,17 @@ static bool container(Cast c) {
 }
 
 static bool container(const Module& m) {
- if       (m.as<torch::nn::Sequential>()) return true;
- else if(m.as<SeqNest>())                 return true;
- else if(m.as<SeqJoin>())                 return true;
- else                                     return false;
+ if     (m.as<Sequential>()) return true;
+ else if(m.as<SeqNest>())    return true;
+ else if(m.as<SeqJoin>())    return true;
+ else                        return false;
 }
 
+// -----------------------------------------------------------------------------------------------
+// parent - given type, return new, empty container module
+//        - also, given generic module, convert back into Layer variant (for stack)
+// layerstack - given overall container layer, populate stack of all intermediate container layers
+// -----------------------------------------------------------------------------------------------
 static Layer parent(Cast c) {
  switch(c) {
   case Cast::sequential:  return Sequential();
@@ -145,14 +148,21 @@ static Layer parent(Cast c) {
  }
 }
 
-/*
-static Layer parent(const Module& m) {
- if     (auto* a=m.as<torch::nn::Sequential>()) return Layer(*a);
- else if(auto* a=m.as<SeqNest>())               return Layer(*a);
- else if(auto* a=m.as<SeqJoin>())               return Layer(*a);
+static Layer parent(Module& m) {
+ if     (m.as<Sequential>()) return Sequential(std::dynamic_pointer_cast<torch::nn::SequentialImpl>(m.shared_from_this()));
+ else if(m.as<SeqNest>())    return SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
+ else if(m.as<SeqJoin>())    return SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
  else AT_ERROR("unable to create parent layer from ",m.name());
 }
-*/
+
+static void layerstack(J d,Module& m,Layerstack& q) {
+ while(q.size()>d) q.pop();
+ if(container(m)) {
+  q.push(parent(m));
+  for(auto& i:m.children())
+   layerstack(d+1,*i,q);
+ }
+}
 
 // ------------------------------------------------------------------------------------
 // layerpush - invoke push_back method w'optional name on container layers
@@ -193,32 +203,36 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 }
 
 // ------------------------------------------------------------------------------------
+// layerptr - shared pointer to generic module from layer variant
 // layermodule - return a reference to underlying module (to retrieve options & parms)
-// layername - given k layer ptr, return name or nullptr if none
+// layername - given k layer ptr or layer variant, return name or nullptr if none
 // layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
 // ------------------------------------------------------------------------------------
-Module& layermodule(const Layer& q) {
+std::shared_ptr<Module> layerptr(const Layer& q) {
  switch(q.index()) {
-  case (size_t)Layers::sequential:  return *c10::get<Sequential>(q).ptr(); break;
-  case (size_t)Layers::seqnest:     return *c10::get<SeqNest>   (q).ptr(); break;
-  case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>   (q).ptr(); break;
-  case (size_t)Layers::any:         return *c10::get<AnyModule> (q).ptr(); break;
-  case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule> (q).module().ptr(); break;
-  default: AT_ERROR("Unrecognized layer: unable to get module reference");
+  case (size_t)Layers::sequential:  return c10::get<Sequential>(q).ptr(); break;
+  case (size_t)Layers::seqnest:     return c10::get<SeqNest>   (q).ptr(); break;
+  case (size_t)Layers::seqjoin:     return c10::get<SeqJoin>   (q).ptr(); break;
+  case (size_t)Layers::any:         return c10::get<AnyModule> (q).ptr(); break;
+  case (size_t)Layers::anyname:     return c10::get<NamedAnyModule> (q).module().ptr(); break;
+  default: AT_ERROR("Unrecognized layer: unable to get module pointer");
  }
 }
 
+Module& layermodule(const Layer& q) {return *layerptr(q);}
 Module& layermodule(Klayer* x) {return layermodule(x->m);}
 Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->m);}
 
-S layername(Klayer* x) {
- if(x->m.index()==(size_t)Layers::anyname) {
-   return const_cast<char*>(c10::get<NamedAnyModule>(x->m).name().c_str());
+S layername(const Layer& m) {
+ if(m.index()==(size_t)Layers::anyname) {
+   return const_cast<char*>(c10::get<NamedAnyModule>(m).name().c_str());
  } else {
-  auto& s=modulename(layermodule(x));
+  auto& s=modulename(layermodule(m));
   return const_cast<char*>(s ? (*s).c_str() : nullptr);
  }
 }
+
+S layername(Klayer* x) {return layername(x->m);}
 
 template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
@@ -254,6 +268,17 @@ K layerforward(Layer& q,K a) {
  if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
  if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
  return kten(layerforward(q,x,y,z));
+}
+
+// ---------------------------------------------------------------------------------------
+// layerattr - return requested attribute of given layer
+// ---------------------------------------------------------------------------------------
+K layerattr(const Layer& l,Ktype k,Attr a) {
+ switch(a) {
+  case Attr::ptr: return kj((intptr_t)layerptr(l).get());
+  case Attr::ref: return kj(layerptr(l).use_count()-1);
+  default: AT_ERROR(mapattr(a),": not implemented for module");
+ }
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2120,10 +2145,15 @@ void layerparms(Cast c,Module &m,K p,K f) {
 }
 
 // -----------------------------------------------------------------------------------------
-// layerparent - create parent container, add to any previous parent layer, push on stack
+// layerparent - create container if needed, add to any previous parent layer, push on stack
 // layeradd - add a child layer to existing parent or push single layer to stack
 // layersym - parse module and optional name symbol from k arg(s), throw error if not found
 // -----------------------------------------------------------------------------------------
+static void layerparent(const Layer& a,S s,Layerstack& q) {
+ if(q.size()) layerchild(q.top(),a,s);  // add to previous parent, if any
+ q.push(a);                             // add new parent container to stack
+}
+
 static void layerparent(Cast c,S nm,Layerstack& q,K o=nullptr,K p=nullptr,K f=nullptr);
 static void layerparent(Cast c,S nm,Layerstack& q,K o,K p,K f) {
  TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
@@ -2131,21 +2161,24 @@ static void layerparent(Cast c,S nm,Layerstack& q,K o,K p,K f) {
  TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
  auto a=parent(c);                       // create parent module
  if(nm) modulename(layermodule(a))=nm;   // add name if supplied
- if(q.size()) layerchild(q.top(),a,nm);  // add to previous parent, if any
- q.push(a);                              // add new parent container to stack
+ layerparent(a,nm,q);                    // add to any previous parent, push on stack
+}
+
+static void layeradd(const AnyModule& a,Cast c,S s,Layerstack& q) {
+ if(q.size()) {
+  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add without a parent/container layer");
+  layerany(q.top(),a,s);
+ } else {
+  if(s) q.push(NamedAnyModule(s,a));
+  else  q.push(a);
+ }
 }
 
 static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p=nullptr,K f=nullptr);
 static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p,K f) {
  auto a=anymodule(x,i,c);             // create module from cast, options & offset
  if(p||f) layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
- if(q.size()) {               
-  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add without a parent/container layer");
-  layerany(q.top(),a,nm);     
- } else {
-  if(nm) q.push(NamedAnyModule(nm,a));       
-  else   q.push(a);          
- }
+ layeradd(a,c,nm,q);                  // add to immediate parent container on stack
 }
 
 static void layersym(K x,S& s,S& nm) {
@@ -2168,7 +2201,6 @@ static void layersym(K x,S& s,S& nm) {
 // -------------------------------------------------------------------------------------------------
 // layererror - throw error w'clues to depth, previous layer, arg(s) that gave parser trouble
 // layerparse - attempt to parse k symbols/lists/nested lists to build layer(s)
-// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
 // -------------------------------------------------------------------------------------------------
 static void layererror(J d,K x,Layerstack& q) {
  auto n=q.size() ? layermodule(q.top()).modules().size() : 0;
@@ -2196,15 +2228,23 @@ static K layerparse(J d,K x,Layerstack& q) {
 
 static K layerparse(K x) {Layerstack q; return layerparse(0,x,q);}
 
+// -------------------------------------------------------------------------------------------------
+// layerdepth - check given depth, must be non-zero if stack populated, no greater than stack size
+// layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
+// -------------------------------------------------------------------------------------------------
+void layerdepth(Cast c,J d,Layerstack& q) {
+ TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
+ TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
+ while(q.size()>d) q.pop();
+}
+
 K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
  K z=nullptr; S s,nm; Cast c; J n=x->t==99 ? 1 : xlen(x); Layerstack q;
  for(J i=0;i<n;++i) {
   s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
   K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers
   c=msym(s);                                                     // get module enumeration
-  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
-  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
-  while(q.size()>d) q.pop();
+  layerdepth(c,d,q);                                             // check depth, trim stack if depth lower
   if(container(c))
    layerparent(c,nm,q,o,p,f);
   else
@@ -2215,31 +2255,63 @@ K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to 
  return z;
 }
 
-// ----------------------------------------------------------------------------------------------------
-// pushback - define modules, reset parameter/buffer values from a previous state, add to sequential
-// ----------------------------------------------------------------------------------------------------
-void pushback(Sequential &q,S s,S n=nullptr,J i=-1,K x=nullptr,K p=nullptr,K f=nullptr);
-void pushback(Sequential &q,S s,S n,        J i,   K x,        K p,        K f)  {
- Cast c=msym(s);
- auto m=anymodule(x,i,c);           // define module, return in generic container
- layerparms(c,*m.ptr(),p,f);
- n ? q->push_back(std::string(n),m) : q->push_back(m);
+void layerextend(Layer& a,Cast c,J d,Layerstack& q) {
+ if(d) layerdepth(c,d,q);
+ if(container(c)) {
+  layerparent(a, layername(a), q);
+ } else {
+  if(a.index()==(size_t)Layers::any) {
+   layeradd(c10::get<AnyModule>(a), c, nullptr, q);
+  } else if(a.index()==(size_t)Layers::anyname) {
+   const auto& m=c10::get<NamedAnyModule>(a);
+   layeradd(m.module(), c, (S)m.name().c_str(), q);
+  } else {
+   AT_ERROR(msym(c), ": unable to extend module");
+  }
+ }
 }
 
-void pushback(Sequential &q,K x) { // add modules to sequential from k table of options or full state
- J n=x->t==99 ? 0 : xlen(x);
- for(J i=98-x->t;i<n;++i)
-   pushback(q,statemodule(x,i),statename(x,i),-1,stateoptions(x,i),stateparms(x,i),statebuffers(x,i));
+KAPI extend(K x) {
+ KTRY
+  Klayer *a=xlayer(x,0), *b=xlayer(x,1); J d=0;
+  if(!b && xlong(x,1,d)) b=xlayer(x,2);
+  std::cerr << d << "\n";
+  TORCH_CHECK(a && b, "expecting two layer args");
+  Layerstack q; layerstack(d, layermodule(a), q);
+  layerextend(b->m,b->c,d,q);
+  kfree(b);
+  return (K)0;
+ KCATCH("extend");
 }
-
+/*
+K layerdv(K x,J n,Layerstack& q) {
+ Cast c; J d; K v; S s,nm=nullptr;
+ if(n == -1) {
+ } else if(n>0) {
+  for(J i=0;i<n;++i) {
+   d=dvd(x,i);
+   v=dvv(x,i);
+   c=dvc(v);
+   layersym(v,s,nm);
+   layerdepth(c,d,q);
+   if(container(c))
+    layerparent(c,nm,q);
+   else
+    layeradd(c,nm,q,v,nm ? 2 : 1);
+  }
+ } else {
+ }
+}
+*/
+ 
 // --------------------------------------------------------------------------------------------
 // layeropt - given module, cast at runtime to known type and extract options as k dictionary
 // --------------------------------------------------------------------------------------------
 std::tuple<Cast,K> layeropt(bool a,const Module& g) { //a:all options returned if true, else only non-default
  Cast c=Cast::undefined; K x=xD(ktn(KS,0),ktn(0,0));
- if       (g.as<torch::nn::Sequential>())        { c=Cast::sequential;
- } else if(g.as<SeqNest>())                      { c=Cast::seqnest;
- } else if(g.as<SeqJoin>())                      { c=Cast::seqjoin;
+ if       (g.as<Sequential>())  { c=Cast::sequential;
+ } else if(g.as<SeqNest>())     { c=Cast::seqnest;
+ } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
 
  } else if(auto* m=g.as<torch::nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
@@ -2436,34 +2508,8 @@ static K mchild(bool a,S s1,S s2,const Sequential &q) {
 // ------------------------------------------------------------------------------------------
 //  main api functions defined in k
 // ------------------------------------------------------------------------------------------
-// margs - helper function used to parse module creation args (if not table/dictionary)
 // seq - create/append sequential module
-// mstate - class,module,name,options,parms,buffers for module(s) or selected parm/buffer
-// seqforward - given sequential module and input, run forward calcs, return tensor to k
 // ------------------------------------------------------------------------------------------
-void margs(Sequential& q,K x,J i) {
- S s=nullptr,nm=nullptr;
- if(xsym(x,s) || xsym(x,i,s)) {  // x is single sym, or 1st part of arg list is sym
-  if(xsym(x,i+1,nm)) i++;        // increment offset if 2nd elem is sym for name
-  pushback(q,s,nm,i+1,x);        // add a single module to sequential
- } else if(x->t == KS) {         // if sym vector, i.e. module type & name
-  if(x->n==1 || x->n==2) {       // only 1 or 2 symbols expected
-   s=kS(x)[0];                   // set module type
-   if(x->n==2) nm=kS(x)[1];      // and name, if supplied
-   pushback(q,s,nm,x->n,x);      // add a module from sym(s)
-  } else {
-   AT_ERROR("Unable to process list of ",x->n," symbols");
-  }
- } else {
-  TORCH_CHECK(!x->t, "Unrecognized module arg(s): ",kname(x)," supplied");
-  K y=i ? kK(x)[i] : x;
-  if(y->t)
-   margs(q,y,0);
-  else
-   for(J j=0;j<y->n;++j) margs(q,kK(y)[j],0);
- }
-}
-
 /*
 KAPI seq(K x) {
  KTRY
@@ -2491,48 +2537,13 @@ KAPI layer(K x) {
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else if((m=xmodel(x))) {
-   AT_ERROR("module ptr from model nyi");
+   return klayer(m->mc,m->m);
   } else if(xdv(x)) {
    AT_ERROR("depth-value pairs nyi");
   } else {
    return layerparse(x);
   }
  KCATCH("layer");
-}
-
-/*
-K mstate(K x) {
- bool a=env().alloptions; S s1=nullptr,s2=nullptr; J i; Sequential q;
- if(xseq(x,q) || (xbool(x,1,a) && x->n==2 && xseq(x,0,q))) {
-  return layerget(a,true,"",*q);
- } else if(xseq(x,0,q)
-   && (xsym(x,1,s1) || xlong(x,1,i)) 
-   && (x->n==2 || (x->n==3 && (xsym(x,2,s2) || xbool(x,2,a))))) {
-  return s1 ? mchild(a,s1,s2,q) : mchild(a,i,s2,q);
- } else {
-  return KERR("Unexpected arg(s) for module state");
- }
-}
-*/
-
-K seqforward(Sequential& q,K a) {
- Tensor *x,*y;
- TORCH_CHECK(!a->t && (a->n==2 || a->n==3), "forward expects 2-3 args: model/module & input tensor/arrays, e.g. (m;x) or (m;x;y)");
- x=xten(a,1);
- if(a->n==3) y=xten(a,2);
- return kten(a->n==2 ? q->forward(x ? *x : kput(a,1))
-                     : q->forward(x ? *x : kput(a,1), y ? *y : kput(a,2)));
-}
-
-// ---------------------------------------------------------------------------------------
-// seqattr - return requested attribute of given sequential module
-// ---------------------------------------------------------------------------------------
-K seqattr(const Sequential& q,Ktype k,Attr a) {
- switch(a) {
-  case Attr::ptr:     return kj((intptr_t)q.get());
-  case Attr::ref:     return kj(q.ptr().use_count());
-  default: AT_ERROR(mapattr(a),": not implemented for sequential module");
- }
 }
 
 // ----------------------------------

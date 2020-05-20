@@ -5,9 +5,11 @@
 # pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"                   // k.h warning
 # pragma GCC diagnostic ignored "-Wnested-anon-types"                      // k.h warning
 # pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"    // ATen.h VA_ARG warning, FORWARD_HAS_DEFAULT_ARGS
+# pragma clang diagnostic ignored "-Wunused-function"                      // private.h generates 'unused function' warnings
 #elif defined __GNUC__
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wpedantic"
+# pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
 #define KXVER 3
@@ -22,6 +24,9 @@
 #include "torch/torch.h"
 #include "knn.h"
 #include "private.h"
+
+// access private name_ element of torch::nn::Module
+ACCESS_PRIVATE_FIELD(torch::nn::Module, c10::optional<std::string>, name_)
 
 #ifdef __clang__
 # pragma clang diagnostic pop
@@ -239,12 +244,13 @@ struct TORCH_API Kopt : public Ktag {
 };
 
 struct TORCH_API Kmodel : public Ktag {
- Cast lc;          // loss fn
- Cast oc;          // optimizer
- Layer q;          // layer(s), e.g. Sequential
+ Cast mc;          // type of module, typically a container module, e.g. Sequential
+ Cast lc;          // type of loss fn
+ Cast oc;          // type of optimizer
+ Layer m;          // layer(s), e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Klayer *x,Kmodule *y,Kopt *z) : lc(y->c),oc(z->c),q(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ Kmodel(Klayer *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
 };
 
 S krrbuf(const char *);
@@ -491,8 +497,7 @@ K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);
 Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
-
-K seqattr(const Sequential&,Ktype,Attr);
+K layerattr(const Layer&,Ktype,Attr);
 void nnfn(K);
 
 // loss functions:
