@@ -45,12 +45,14 @@ static S oset(Setting e) {
  AT_ERROR("Unrecognized optimizer setting: ",(I)e);
 }
 
+/*
 static size_t osize(const TensorVector& p) {
  size_t i,n=0;
  for(i=0; i<p.size(); ++i) 
   if(p.at(i).grad().defined()) n=i+1;
  return n;
 }
+*/
 
 // --------------------------------------------------------------------------------------
 // bget - find buffer (vector of longs/tensors) from dictionary given name
@@ -60,6 +62,7 @@ static size_t osize(const TensorVector& p) {
 //      - deque of tensors (LBFGS)
 //      - single tensor (LBFGS)
 // --------------------------------------------------------------------------------------
+/*
 static K bget(K x,const char* s) {
  auto i=xdict(x) ? kfind(kK(x)[0],s) : -1;
  return (i<0 || kK(x)[1]->t) ? nullptr : kK(kK(x)[1])[i];
@@ -112,6 +115,7 @@ static void bset(size_t n,const char* s,const TensorVector& p,Tensor& t,const K 
  if(!y || !y->n) return;
  t=kput(y);
 }
+*/
 
 // ----------------------------------------------------------------------------------------
 // adagrad - parse args (lr;lrdecay;wtdecay) or (..;name/val pairs/dict)

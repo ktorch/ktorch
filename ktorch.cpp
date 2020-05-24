@@ -973,7 +973,7 @@ static K dvt(J d,K x,K z) {
   r1(y);                           // else, increment reference count for use directly
  z=jk(&z,knk(2, kj(d), y));        
  if(!x->t)                         // add depth,value pairs from nested list
-  for(size_t i=1;i<x->n;i++)
+  for(J i=1;i<x->n;i++)
    z=dvt(d+1,kK(x)[i],z);
  return z;
 }

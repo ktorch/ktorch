@@ -155,7 +155,7 @@ static Layer parent(Module& m) {
  else AT_ERROR("unable to create parent layer from ",m.name());
 }
 
-static void layerstack(J d,Module& m,Layerstack& q) {
+static void layerstack(size_t d,Module& m,Layerstack& q) {
  while(q.size()>d) q.pop();
  if(container(m)) {
   q.push(parent(m));
@@ -206,7 +206,6 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 // layerptr - shared pointer to generic module from layer variant
 // layermodule - return a reference to underlying module (to retrieve options & parms)
 // layername - given k layer ptr or layer variant, return name or nullptr if none
-// layerforward - given layer, run forward calc on tensors x,y,z with y & z optional
 // ------------------------------------------------------------------------------------
 std::shared_ptr<Module> layerptr(const Layer& q) {
  switch(q.index()) {
@@ -216,6 +215,17 @@ std::shared_ptr<Module> layerptr(const Layer& q) {
   case (size_t)Layers::any:         return c10::get<AnyModule> (q).ptr(); break;
   case (size_t)Layers::anyname:     return c10::get<NamedAnyModule> (q).module().ptr(); break;
   default: AT_ERROR("Unrecognized layer: unable to get module pointer");
+ }
+}
+
+Module& layermodule2(Layer& q) {
+ switch(q.index()) {
+  case (size_t)Layers::sequential:  return *c10::get<Sequential>(q);
+  case (size_t)Layers::seqnest:     return *c10::get<SeqNest>(q);
+  case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>(q);
+  case (size_t)Layers::any:         return *c10::get<AnyModule>(q).ptr();
+  case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule>(q).module().ptr();
+  default: AT_ERROR("Unrecognized layer: unable to get module");
  }
 }
 
@@ -234,6 +244,9 @@ S layername(const Layer& m) {
 
 S layername(Klayer* x) {return layername(x->m);}
 
+// ------------------------------------------------------------------------------------
+// layerforward - given layer, run forward calc on tensor x & optional y,z
+// ------------------------------------------------------------------------------------
 template<typename Q> Tensor layerforward(Q& q,const Tensor& x,const Tensor& y,const Tensor& z) {
  if(y.defined()) return z.defined() ? q->forward(x,y,z) : q->forward(x,y);
  else            return q->forward(x);
@@ -2202,6 +2215,7 @@ static void layersym(K x,S& s,S& nm) {
 // layererror - throw error w'clues to depth, previous layer, arg(s) that gave parser trouble
 // layerparse - attempt to parse k symbols/lists/nested lists to build layer(s)
 // -------------------------------------------------------------------------------------------------
+/*
 static void layererror(J d,K x,Layerstack& q) {
  auto n=q.size() ? layermodule(q.top()).modules().size() : 0;
  if(n)
@@ -2209,8 +2223,9 @@ static void layererror(J d,K x,Layerstack& q) {
  else
   AT_ERROR("unrecognized arg(s) for initial layer,\n",kstring(x));
 }
+*/
 
-static K layerparse(J d,K x,Layerstack& q) {
+static K layerparse(size_t d,K x,Layerstack& q) {
  S s,nm=nullptr; K y=x->t || !x->n ? x : kK(x)[0], z=nullptr;
  while(q.size()>d) q.pop();
  layersym(y,s,nm); Cast c=msym(s);
@@ -2221,7 +2236,7 @@ static K layerparse(J d,K x,Layerstack& q) {
  if(!d)
   z=klayer(c, q.top());
  if(!x->t) 
-  for(size_t i=1;i<x->n;i++) 
+  for(J i=1;i<x->n;i++) 
    layerparse(d+1,kK(x)[i],q);
  return z;
 }
@@ -2232,7 +2247,7 @@ static K layerparse(K x) {Layerstack q; return layerparse(0,x,q);}
 // layerdepth - check given depth, must be non-zero if stack populated, no greater than stack size
 // layertable - create layers from table of modules w'options & depth, optional name,parms & buffers
 // -------------------------------------------------------------------------------------------------
-void layerdepth(Cast c,J d,Layerstack& q) {
+void layerdepth(Cast c,size_t d,Layerstack& q) {
  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
  while(q.size()>d) q.pop();
@@ -2275,11 +2290,10 @@ KAPI extend(K x) {
  KTRY
   Klayer *a=xlayer(x,0), *b=xlayer(x,1); J d=0;
   if(!b && xlong(x,1,d)) b=xlayer(x,2);
-  std::cerr << d << "\n";
   TORCH_CHECK(a && b, "expecting two layer args");
   Layerstack q; layerstack(d, layermodule(a), q);
   layerextend(b->m,b->c,d,q);
-  kfree(b);
+  kfree(kK(x)[x->n-1]);
   return (K)0;
  KCATCH("extend");
 }
@@ -2471,6 +2485,7 @@ K layerget(bool a,bool b,const char* s,const Module& m) {
 // tchild - extract named parameter/buffer tensor from child module in sequential
 // mchild - extract child module by index/name, return module state or individual tensor
 // --------------------------------------------------------------------------------------
+/*
 static K tchild(S s,const Module& c) {
  Tensor t;
  if(c.named_parameters().contains(s))
@@ -2504,6 +2519,7 @@ static K mchild(bool a,S s1,S s2,const Sequential &q) {
   return layerget(a,true,s1,*m);
  }
 }
+*/
 
 // ------------------------------------------------------------------------------------------
 //  main api functions defined in k

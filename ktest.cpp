@@ -1,4 +1,6 @@
 #include "ktorch.h"
+using Moduleptr=std::shared_ptr<Module>;
+using Modulestack=std::stack<Module>;
 
 KAPI layerlist(K x) {
  Klayer *q;
@@ -305,7 +307,7 @@ void testprint(int64_t d,const std::string s,const Module& m) {
   }
 }
 
-/////////////////////////////////////////////////////////////////////////
+/*
 template <class... Fs> struct overload;
 
 template <class F0, class... Frest> struct overload<F0, Frest...> : F0, overload<Frest...> {
@@ -322,13 +324,13 @@ template <class F0> struct overload<F0> : F0 {
 template <class... Fs> auto make_overload(Fs... fs) {
     return overload<Fs...>(fs...);
 }
+*/
 
 //template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
 void layerchild(Layer& q,const Layer& a,const char* nm);
 void layerany(Layer& q,const AnyModule& a,const char* s);
-Module& layermodule(const Layer& q);
 
 void addchild2(Layer& q,const AnyModule& a) {
  c10::visit(
@@ -338,11 +340,11 @@ void addchild2(Layer& q,const AnyModule& a) {
    [](NamedAnyModule& q){AT_ERROR("Cannot add child layer");}), q);
 }
 
-Module& mref(const Layer& q) {
+Module& mref(const Layer& x) {
  return c10::visit(
          make_overload(
-          [](const auto& q)          ->Module& {return *q.ptr();},
-          [](const NamedAnyModule& q)->Module& {return *q.module().ptr();}), q);
+          [](const auto& x)          ->Module& {return *x.ptr();},
+          [](const NamedAnyModule& x)->Module& {return *x.module().ptr();}), x);
 }
 
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
