@@ -27,7 +27,7 @@ K kgetscalar(const Tensor &t){
   case torch::kBool:   return kb(s.toBool());
   case torch::kByte:   return kg(s.toByte());
   case torch::kChar:   return kc(s.toChar());
-  default: AT_ERROR("Unrecognized scalar tensor type: ", t.dtype(), ", cannot return k scalar"); return (K)0;
+  default: AT_ERROR("unrecognized scalar tensor type: ", t.dtype(), ", cannot return k scalar"); return (K)0;
  }
 }
 
@@ -118,19 +118,19 @@ K kten3(bool p,Tensor& a,Tensor& b,Tensor& c) {  // p:true if returning tensor p
 // ---------------------------------------------------------------------------------------
 void kputscalar(K x,Tensor &t) {
  Scalar s;
- TORCH_CHECK(xscalar(x,s), "Unable to translate k ",kname(x->t)," to scalar tensor");
+ TORCH_CHECK(xscalar(x,s), "unable to translate k ",kname(x->t)," to scalar tensor");
  t=torch::full({},s,maptype(x->t));
 }
 
 static void kdepth(K x,I i,H k,Ksize &s){
  if(x->t < 0) {
-  AT_ERROR("Unable to map mixed array to tensor: ",kname(x->t)," encountered at depth ",i);
+  AT_ERROR("unable to map mixed array to tensor: ",kname(x->t)," encountered at depth ",i);
  } else if(k != nh) {             // if base type already encountered
   I j=s.size()-1;                 // last size index
   if(x->n != s[i]) {              // check that dimensions are consistent
-   AT_ERROR("Dimension mismatch at depth ",i,", ",s[i]," vs ",x->n);
+   AT_ERROR("dimension mismatch at depth ",i,", ",s[i]," vs ",x->n);
   } else if(x->t != (i<j ? 0 : k)) {  // check for same data type at same depth
-   AT_ERROR("Type mismatch at depth ",i,", ",kname(i<j ? 0 : k)," vs ",kname(x->t));
+   AT_ERROR("type mismatch at depth ",i,", ",kname(i<j ? 0 : k)," vs ",kname(x->t));
   }
  } else {
   s.push_back(x->n);              // no error, no base type yet, accumulate sizes
@@ -169,7 +169,7 @@ Tensor kput(K x,J i) {
  if(xind(x,i)) 
   return kput(kK(x)[i]);
  else
-  AT_ERROR("Unable to index ",kname(x->t),", element: ",i);
+  AT_ERROR("unable to index ",kname(x->t),", element: ",i);
 }
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
@@ -197,7 +197,7 @@ static void tensorlike(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:input, r:re
    else if(nx==4 && xlong(x,2,i) && xlong(x,3,j)) r=b ? torch::randint_like(t,i,j,o) : torch::randint_like(t,i,j);
    break;
   default:
-   AT_ERROR("Tensor creation via: ",x->s," not implemented with input tensor"); break;
+   AT_ERROR("tensor creation via: ",x->s," not implemented with input tensor"); break;
  }
 }
 
@@ -294,7 +294,7 @@ static K tensormode(K x,S s,Tensormode m) {
  if((in=xten(x,1,t)))            tensorlike(x,m,t,r); // input tensor is 2nd arg
  else if((out=xten(x,x->n-1,t))) tensorout(x,m,t,r);  // output tensor is final arg
  else                            tensoropt(x,m,r);    // no input/output tensor
- TORCH_CHECK(r.defined(),"Unrecognized argument(s) for tensor creation mode: ",s);
+ TORCH_CHECK(r.defined(),"unrecognized argument(s) for tensor creation mode: ",s);
  return out ? (K)0 : kten(r);
 }
 
@@ -610,7 +610,7 @@ KAPI options(K x) {
     optval(v->at(i).options(),y,i);
    return xT(xD(optkey(),y));
   } else {
-   AT_ERROR("Unrecognized arg(s) for options, expected tensor(s)");
+   AT_ERROR("unrecognized arg(s) for options, expected tensor(s)");
   }
  KCATCH("options");
 }
@@ -623,7 +623,7 @@ KAPI options(K x) {
 // tensorinfo - return dictionary of attributes given tensor and detail level 0,1,2
 // ------------------------------------------------------------------------------------------------
 K stordata(const Storage& s) {
- TORCH_CHECK(s.device().is_cpu(), "Cannot copy CUDA storage via memcpy");
+ TORCH_CHECK(s.device().is_cpu(), "cannot copy CUDA storage via memcpy");
  K x=ktn(maptype(s.dtype()),s.nbytes() / s.dtype().itemsize());
  memcpy(kG(x),s.data(),s.nbytes());
  return x;
@@ -690,9 +690,9 @@ static void vcheck(const TensorVector& v,int64_t d) {
   if(!i)
    n=t.size(d),c=t.device();
   else if(n != t.size(d))
-   AT_ERROR("Size mismatch: tensor[",i,"] size=",t.size(d),", but previous tensor(s) have size=",n," for dim ",d);
+   AT_ERROR("size mismatch: tensor[",i,"] size=",t.size(d),", but previous tensor(s) have size=",n," for dim ",d);
   else if (c != t.device())
-   AT_ERROR("Device mismatch: tensor[",i,"] is on ",t.device(),", but previous tensor(s) are on ", c);
+   AT_ERROR("device mismatch: tensor[",i,"] is on ",t.device(),", but previous tensor(s) are on ", c);
   ++i;
  }
 }
@@ -1043,9 +1043,9 @@ KAPI reset(K x,K y) {
  
 void tensorcopy(Tensor &t,const Tensor &s,bool a) {
  if(s.dtype() != t.dtype()) {
-  AT_ERROR("Unable to copy values from ",s.dtype()," tensor to ",t.dtype()," tensor");
+  AT_ERROR("unable to copy values from ",s.dtype()," tensor to ",t.dtype()," tensor");
  } else if(s.device() != t.device()) {
-  AT_ERROR("Unable to copy values across devices, from ",s.device()," to ",t.device());
+  AT_ERROR("unable to copy values across devices, from ",s.device()," to ",t.device());
  } else {
   t.resize_as_(s).copy_(s,a);
  }
@@ -1071,12 +1071,12 @@ KAPI kgrad(K x) {
  KTRY
   bool p=false; Tensor t;
   if(xten(x,t) || (p=(xten(x,0,t) && x->n==1))) {
-   if(p) return t.grad().defined() ? kten(t.grad()) : KERR("No gradient defined");
+   if(p) return t.grad().defined() ? kten(t.grad()) : KERR("no gradient defined");
    else  return t.grad().defined() ? kget(t.grad()) : (K)0;
  } else {
-  return KERR("Unexpected arg(s) for gradient, expectining tensor (enlist to return gradient ptr)");
+  return KERR("unexpected arg(s) for gradient, expectining tensor (enlist to return gradient ptr)");
  }
- KCATCH("Unable to get gradient");
+ KCATCH("unable to get gradient");
 }
 
 K tensorback(K x) {

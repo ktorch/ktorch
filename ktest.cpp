@@ -100,7 +100,7 @@ K parmstate(Cast c,const torch::optim::OptimizerParamState& p) {
    dictadd(x, "momentum",  kget(s.momentum_buffer()));
    break;
   }
-  default: AT_ERROR("Unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
+  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
  }
  return x;
 }
@@ -164,7 +164,7 @@ void parmstate(K x,Cast c,const Tensor& t,const torch::optim::OptimizerParamStat
    break;
   }
 */
-  default: AT_ERROR("Unrecognized optimizer: ",(I)c,", unable to set parameter state");
+  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to set parameter state");
  }
 }
 
@@ -336,8 +336,8 @@ void addchild2(Layer& q,const AnyModule& a) {
  c10::visit(
   make_overload(
    [&a](auto& q)        {q->push_back(a);},
-   [](AnyModule& q)     {AT_ERROR("Cannot add child layer");},
-   [](NamedAnyModule& q){AT_ERROR("Cannot add child layer");}), q);
+   [](AnyModule& q)     {AT_ERROR("cannot add child layer");},
+   [](NamedAnyModule& q){AT_ERROR("cannot add child layer");}), q);
 }
 
 Module& mref(const Layer& x) {
@@ -802,20 +802,20 @@ KAPI pairtest(K x) {
  Pairs p;
  if(xpairs(x,p) || xpairs(x,x->n-1,p)) {
   switch(p.a) {
-   case 1: std::cout << "Dictionary["; break;
-   case 2: std::cout << "Pairs["; break;
-   case 3: std::cout << "List["; break;
-   case 4: std::cout << "Symbol list["; break;
-   default: std::cout << "Unknown name,value structure["; break;
+   case 1: std::cout << "dictionary["; break;
+   case 2: std::cout << "pairs["; break;
+   case 3: std::cout << "list["; break;
+   case 4: std::cout << "symbol list["; break;
+   default: std::cout << "unknown name,value structure["; break;
   }
   std::cout << p.n << "]\n";
   while(xpair(p)) {
    switch(p.t) {
-    case -KB: std::cout << "Boolean: " << p.k << " -> " << p.b << "\n"; break;
-    case -KS: std::cout << " Symbol: " << p.k << " -> " << p.s << "\n"; break;
-    case -KJ: std::cout << "Integer: " << p.k << " -> " << p.j << "\n"; break;
-    case -KF: std::cout << " Double: " << p.k << " -> " << p.f << "\n"; break;
-    default:  std::cout << "  Other: " << p.k << " -> " << kname(p.t) << "\n"; break;
+    case -KB: std::cout << "boolean: " << p.k << " -> " << p.b << "\n"; break;
+    case -KS: std::cout << " symbol: " << p.k << " -> " << p.s << "\n"; break;
+    case -KJ: std::cout << "integer: " << p.k << " -> " << p.j << "\n"; break;
+    case -KF: std::cout << " double: " << p.k << " -> " << p.f << "\n"; break;
+    default:  std::cout << "  other: " << p.k << " -> " << kname(p.t) << "\n"; break;
    }
   }
   return kb(true);
@@ -859,12 +859,12 @@ KAPI learn(K x) {
     t.grad().zero_();
     return (K)0;
    } else {
-    return KERR("No gradient defined");
+    return KERR("no gradient defined");
    }
   } else {
-   return KERR("Unrecognized arg(s), expecting (tensor;learning rate)");
+   return KERR("unrecognized arg(s), expecting (tensor;learning rate)");
   }
- KCATCH("Error applying learning rate and gradient to tensor");
+ KCATCH("error applying learning rate and gradient to tensor");
 }
 
 bool xindex(K x,Tensor &t) {J n,*j; return xten(x,t) ? true : (xlong(x,n,j) ? t=kput(x),true : false);}
@@ -879,7 +879,7 @@ KAPI kindex(K x) {
     else if(xten(x,3,r) && x->n==4)
      return torch::index_select_out(r,t,d,i), (K)0;
   }
-  return KERR("Unrecognized arg(s), expected (tensor;dim;indices;optional output tensor)");
+  return KERR("unrecognized arg(s), expected (tensor;dim;indices;optional output tensor)");
  KCATCH("index");
 }
 
@@ -919,7 +919,7 @@ KAPI sparse(K x) {
   }
  
   return(K)0;
- KCATCH("Sparse tensor error");
+ KCATCH("sparse tensor error");
 }
 */
 

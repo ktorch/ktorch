@@ -229,7 +229,7 @@ static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
 static Metric metric(S s) {
  for(auto& m:env().metric) 
   if(std::get<0>(m)==s) return std::get<1>(m);
- AT_ERROR("Unrecognized metric: ",s);
+ AT_ERROR("unrecognized metric: ",s);
 }
 
 static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
@@ -241,7 +241,7 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
                           return mloss(m,y,v);
   case Metric::max:       return torch::argmax(y,-1);
   case Metric::out:       return y;
-  default: AT_ERROR("Unrecognized metric");
+  default: AT_ERROR("unrecognized metric");
  }
 }
 
@@ -296,7 +296,7 @@ Layer& xlayer(Ktag *g) {
  switch(g->a) {
   case Class::layer: return ((Klayer*)g)->m;
   case Class::model: return ((Kmodel*)g)->m;
-  default: AT_ERROR("Unable to retrieve layers from ",mapclass(g->a));
+  default: AT_ERROR("unable to retrieve layers from ",mapclass(g->a));
  }
 }
 

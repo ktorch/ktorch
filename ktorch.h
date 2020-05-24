@@ -256,7 +256,7 @@ struct TORCH_API Kopt : public Ktag {
  Optptr o;
  Kopt(Cast x,const Optptr& y) : o(std::move(y)) {a=Class::optimizer; c=x;}
  bool is_empty() const noexcept {return o == nullptr;}
- Optimizer* get() {TORCH_CHECK(!is_empty(), "Undefined optimizer"); return o.get();}
+ Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
 };
 
 struct TORCH_API Kmodel : public Ktag {

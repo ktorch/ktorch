@@ -28,13 +28,13 @@ K layerto(Klayer* x,const TensorOptions& o,bool a) {
 /*
 static torch::nn::RNNActivation rnnfn(S s) {
  for(auto& m:env().rnnfn) if (s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("Unrecognized rnn activiation function: ",s);
+ AT_ERROR("unrecognized rnn activiation function: ",s);
 }
 
 template<typename O> static S rnnfn(O& o) {return nullptr;}
 template<> S rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o) {
  for(auto& m:env().rnnfn) if (o.activation()==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized rnn activiation function: ",(I)o.activation());
+ AT_ERROR("unrecognized rnn activiation function: ",(I)o.activation());
 }
 
 template<typename O> static void rnnfn(O& o,torch::nn::RNNActivation f) {}
@@ -48,22 +48,22 @@ template<> void rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o,torch::nn:
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized module: ",(I)c);
+ AT_ERROR("unrecognized module: ",(I)c);
 }
 
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("Unrecognized module: ",s);
+ AT_ERROR("unrecognized module: ",s);
 }
 
 static S mset(Setting o) {
  for(auto& m:env().mset) if(o==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("Unrecognized module option: ",(I)o);
+ AT_ERROR("unrecognized module option: ",(I)o);
 }
 
 static Setting mset(S s) {
  for(auto& m:env().mset) if(s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("Unrecognized option: ",s);
+ AT_ERROR("unrecognized option: ",s);
 }
 
 K mkeys(bool b) {
@@ -144,7 +144,7 @@ static Layer parent(Cast c) {
   case Cast::sequential:  return Sequential();
   case Cast::seqnest:     return SeqNest();
   case Cast::seqjoin:     return SeqJoin();
-  default: AT_ERROR("Unrecognized container: ", (I)c);
+  default: AT_ERROR("unrecognized container: ", (I)c);
  }
 }
 
@@ -177,7 +177,7 @@ template<typename Q,typename A> static void layerpush(Q& q,const A& a,const char
 static void layerseq(Layer& q,const Sequential& a,const char* s) {
  switch(q.index()) {
   case (size_t)Layers::seqjoin: layerpush(c10::get<SeqJoin>(q),a,s); break;
-  default: AT_ERROR("Container unable to add sequential layer");
+  default: AT_ERROR("container unable to add sequential layer");
  }
 }
 
@@ -186,7 +186,7 @@ void layerany(Layer& q,const AnyModule& a,const char* s) {
   case (size_t)Layers::sequential: layerpush(c10::get<Sequential>(q), a, s); break;
   case (size_t)Layers::seqnest:    layerpush(c10::get<SeqNest>(q),    a, s); break;
   case (size_t)Layers::seqjoin:    layerpush(c10::get<SeqJoin>(q),    a, s); break;
-  default: AT_ERROR("Unrecognized container: unable to add child layer");
+  default: AT_ERROR("unrecognized container: unable to add child layer");
  }
 }
 
@@ -198,7 +198,7 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
   case (size_t)Layers::seqnest:    layerany(q, AnyModule(c10::get<SeqNest>(a)), s); break;
   case (size_t)Layers::seqjoin:    layerany(q, AnyModule(c10::get<SeqJoin>(a)), s); break;
   case (size_t)Layers::sequential: layerseq(q, c10::get<Sequential>(a), s); break;
-  default: AT_ERROR("Unrecognized child layer");
+  default: AT_ERROR("unrecognized child layer");
  }
 }
 
@@ -214,7 +214,7 @@ std::shared_ptr<Module> layerptr(const Layer& q) {
   case (size_t)Layers::seqjoin:     return c10::get<SeqJoin>   (q).ptr(); break;
   case (size_t)Layers::any:         return c10::get<AnyModule> (q).ptr(); break;
   case (size_t)Layers::anyname:     return c10::get<NamedAnyModule> (q).module().ptr(); break;
-  default: AT_ERROR("Unrecognized layer: unable to get module pointer");
+  default: AT_ERROR("unrecognized layer: unable to get module pointer");
  }
 }
 
@@ -225,7 +225,7 @@ Module& layermodule2(Layer& q) {
   case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>(q);
   case (size_t)Layers::any:         return *c10::get<AnyModule>(q).ptr();
   case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule>(q).module().ptr();
-  default: AT_ERROR("Unrecognized layer: unable to get module");
+  default: AT_ERROR("unrecognized layer: unable to get module");
  }
 }
 
@@ -270,7 +270,7 @@ Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y,const Tensor& z) {
   case (size_t)Layers::seqjoin:     return layerforward(c10::get<SeqJoin>   (q),x,y,z);
   case (size_t)Layers::any:         return layerforward(c10::get<AnyModule> (q),x,y,z);
   case (size_t)Layers::anyname:     return layerforward(c10::get<NamedAnyModule> (q).module(),x,y,z);
-  default: AT_ERROR("Unrecognized layer: unable to run forward calculation");
+  default: AT_ERROR("unrecognized layer: unable to run forward calculation");
  }
 }
 
@@ -446,7 +446,7 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
    case Setting::momentum: o.momentum(mdouble(p,c)); break;
    case Setting::affine:   o.affine(mbool(p,c)); break;
    case Setting::track:    o.track_running_stats(mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(in,msym(c),": number of input features not defined");
  return o;
@@ -481,7 +481,7 @@ template<typename O> static O localnorm(K x,J i,Cast c) {
    case Setting::alpha: o.alpha(mdouble(p,c)); break;
    case Setting::beta:  o.beta(mdouble(p,c)); break;
    case Setting::k:     b ? o.k(mdouble(p,c)) : o.k(int64(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": specify no. of neighboring channels to use for normalization");
  return o;
@@ -515,7 +515,7 @@ static torch::nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
    case Setting::channels: o.num_channels(int64(p,c)); h=true; break;
    case Setting::eps:      o.eps(mdouble(p,c)); break;
    case Setting::affine:   o.affine(mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(g, msym(c),": specify no. of groups to separate the channels into");
  TORCH_CHECK(h, msym(c),": specify no. of channels expected in input");
@@ -547,7 +547,7 @@ static torch::nn::LayerNormOptions layernorm(K x,J i,Cast c) {
    case Setting::shape:  psize(p,a); break;
    case Setting::eps:    o.eps(mdouble(p,c)); break;
    case Setting::affine: o.elementwise_affine(mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(a.size(), msym(c),": no normalized shape given");
  return o.normalized_shape(a.vec());
@@ -579,7 +579,7 @@ static torch::nn::functional::NormalizeFuncOptions normalize(K x,J i,Cast c,Tens
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    case Setting::out: if(!pempty(p)) pten(p,r);
-   default: AT_ERROR("Unrecognized option: ",p.k," for normalize");
+   default: AT_ERROR("unrecognized option: ",p.k," for normalize");
   }
  if(r.defined()) 
   o.out(r);
@@ -643,7 +643,7 @@ template<size_t D> static torch::nn::ConvOptions<D> conv(K x,J i,Cast c) {
    case Setting::groups:    o.groups      (int64(p,c));     break;
    case Setting::bias:      o.bias        (mbool(p,c));     break;
    case Setting::padmode:   o.padding_mode(convpad(mode(p,c)));   break;
-   default: AT_ERROR("Unrecognized convolution option: ",p.k); break;
+   default: AT_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c),": number of input channels not defined");
  TORCH_CHECK(out, msym(c),": number of output channels not defined");
@@ -680,7 +680,7 @@ template<size_t D> static torch::nn::ConvTransposeOptions<D> convtran(K x,J i,Ca
    case Setting::bias:      o.bias          (mbool(p,c));      break;
    case Setting::dilate:    o.dilation      (exarray<D>(p,c)); break;
    case Setting::padmode:   o.padding_mode(convpad(mode(p,c)));break;
-   default: AT_ERROR("Unrecognized convolution option: ",p.k); break;
+   default: AT_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c), ": number of input channels not defined");
  TORCH_CHECK(out, msym(c), ": number of output channels not defined");
@@ -731,7 +731,7 @@ static torch::nn::FoldOptions fold(K x,J i,Cast c) {
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
    case Setting::pad:       o.padding    (exarray<2>(p,c)); break;
    case Setting::stride:    o.stride     (exarray<2>(p,c)); break;
-   default: AT_ERROR("Unrecognized fold option: ",p.k); break;
+   default: AT_ERROR("unrecognized fold option: ",p.k); break;
   }
  TORCH_CHECK(out, msym(c),": no output size given");
  TORCH_CHECK(sz,  msym(c),": no kernel size given");
@@ -764,7 +764,7 @@ static torch::nn::UnfoldOptions unfold(K x,J i,Cast c) {
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
    case Setting::pad:       o.padding    (exarray<2>(p,c)); break;
    case Setting::stride:    o.stride     (exarray<2>(p,c)); break;
-   default: AT_ERROR("Unrecognized unfold option: ",p.k); break;
+   default: AT_ERROR("unrecognized unfold option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  return o;
@@ -806,7 +806,7 @@ static torch::nn::DropoutOptions drop(K x,J i,Cast c) {
   switch(mset(p.k)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized dropout option: ",p.k); break;
+   default: AT_ERROR("unrecognized dropout option: ",p.k); break;
   }
  return o;
 }
@@ -836,13 +836,13 @@ static torch::nn::EmbeddingBagMode embedmode(S s) {
 
 static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingOptions& o) {
  if(s == Setting::padindex) o.padding_idx(int64n(p,c));
- else AT_ERROR("Unrecognized option for ",msym(c),": ",mset(s));
+ else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingBagOptions& o) {
  if       (s == Setting::mode) o.mode(embedmode(psym(p)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
- else AT_ERROR("Unrecognized option for ",msym(c),": ",mset(s));
+ else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
 template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &z) {
@@ -859,7 +859,7 @@ template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &
    case Setting::freeze:     z=mbool(p,c); break;
    case Setting::mode:       embedset(c,Setting::mode,p,o); break;
    case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o);
-   default: AT_ERROR("Embedding option: ",p.k," unrecognized");
+   default: AT_ERROR("embedding option: ",p.k," unrecognized");
   }
 }
 
@@ -996,7 +996,7 @@ static torch::nn::LinearOptions linear(K x,J i,Cast c) {
    case Setting::in:   in=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
    case Setting::bias: b=mbool(p,c); break;
-   default: AT_ERROR("Unrecognized linear option: ",p.k); break;
+   default: AT_ERROR("unrecognized linear option: ",p.k); break;
   }
  TORCH_CHECK(in>0,  msym(c), ": positive input size required");
  TORCH_CHECK(out>0, msym(c), ": positive output size required");
@@ -1043,7 +1043,7 @@ static torch::nn::BilinearOptions bilinear(K x,J i,Cast c) {
    case Setting::in2:  in2=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
    case Setting::bias: b=mbool(p,c); break;
-   default: AT_ERROR("Unrecognized bilinear option: ",p.k); break;
+   default: AT_ERROR("unrecognized bilinear option: ",p.k); break;
   }
  TORCH_CHECK(in1>0 && in2>0, msym(c), ": positive input sizes required");
  TORCH_CHECK(out>0,          msym(c), ": positive output size required");
@@ -1079,7 +1079,7 @@ static M rnn(Cast c,K x,J k) {
  // PATCH: auto f=torch::nn::RNNActivation::ReLU;
  bool b=true,bi=false,ba=false; Pairs p; J i=-1,h=-1,l=1,n=xargc(x,k,p); double d=0.0;
  if(!((n==0 && p.n) || (xlong(x,k,i) && (n==1 || (n==2 && xlong(x,k+1,h))))))
-  AT_ERROR("Unrecognized arguments for ",msym(c)," module");
+  AT_ERROR("unrecognized arguments for ",msym(c)," module");
  // PATCH: bool r=std::is_same<M,torch::nn::RNN>::value;
  while(xpair(p))
   switch(mset(p.k)) {
@@ -1135,7 +1135,7 @@ template<size_t D> static torch::nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
    case Setting::pad:     o.padding    (exarray<D>(p,c)); break;
    case Setting::dilate:  o.dilation   (exarray<D>(p,c)); break;
    case Setting::ceiling: o.ceil_mode  (mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized max pooling option: ",p.k); break;
+   default: AT_ERROR("unrecognized max pooling option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  if(!st) o.stride(o.kernel_size());
@@ -1176,7 +1176,7 @@ template<size_t D> static torch::nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
    case Setting::ceiling: o.ceil_mode        (mbool(p,c)); break;
    case Setting::countpad:o.count_include_pad(mbool(p,c)); break;
    case Setting::divisor: o.divisor_override(int64n(p,c)); break;
-   default: AT_ERROR("Unrecognized avg pooling option: ",p.k); break;
+   default: AT_ERROR("unrecognized avg pooling option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  if(!st) o.stride(o.kernel_size());
@@ -1216,7 +1216,7 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  while(xpair(p))
   switch(mset(p.k)) {
    case Setting::size: adapt<D>(o.output_size(),p,c); sz=true; break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no output size given");
  TORCH_CHECK(adapt(o.output_size()), msym(c),": no output size");
@@ -1248,7 +1248,7 @@ template<size_t D> static torch::nn::FractionalMaxPoolOptions<D> fpool(K x,J i,C
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::outsize: if(e) o.output_size (c10::nullopt); else o.output_size(exarray  <D>(p,c)); break;
    case Setting::ratio:   if(e) o.output_ratio(c10::nullopt); else o.output_ratio(exdouble<D>(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  }
  TORCH_CHECK(sz, msym(c), ": no kernel size given");
@@ -1285,7 +1285,7 @@ template<size_t D> static torch::nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::stride:  o.stride     (exarray<D>(p,c)); st=true; break;
    case Setting::ceiling: o.ceil_mode  (mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(pw, msym(c),": no power given");
  TORCH_CHECK(sz, msym(c),": no kernel size given");
@@ -1325,7 +1325,7 @@ static K pool(K x,Cast c) {
    case Cast::fmaxpool3d: r=torch::nn::functional::fractional_max_pool3d(t ? *t : kput(x,0), fpool<3>(x,1,c)); break;
    case Cast::lppool1d:   r=torch::nn::functional::lp_pool1d(t ? *t : kput(x,0), lppool<1>(x,1,c)); break;
    case Cast::lppool2d:   r=torch::nn::functional::lp_pool2d(t ? *t : kput(x,0), lppool<2>(x,1,c)); break;
-   default: AT_ERROR("Unrecognized pooling function");
+   default: AT_ERROR("unrecognized pooling function");
   }
   return kresult(t,r);
  KCATCH("pool");
@@ -1418,7 +1418,7 @@ template<size_t D,typename M> static M cpad(K x,J i,Cast c) {
   switch(mset(p.k)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
    case Setting::value: o.value(mdouble(p,c)); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no padding sizes given");
  return o;
@@ -1443,7 +1443,7 @@ template<size_t D,typename M> static M npad(K x,J i,Cast c) {
  while(xpair(p))
   switch(mset(p.k)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no padding sizes given");
  return o;
@@ -1562,7 +1562,7 @@ static double lambda(K x,J i,Cast c) {
  if(n==1) l=mdouble(x,i,c,Setting::lambda);
  TORCH_CHECK(n<2,msym(c),": unrecognized positional option(s), expecting lambda, e.g. 0.5");
  while(xpair(p)) {
-  TORCH_CHECK(mset(p.k)==Setting::lambda,"Unrecognized option: ",p.k); l=mdouble(p,c);
+  TORCH_CHECK(mset(p.k)==Setting::lambda,"unrecognized option: ",p.k); l=mdouble(p,c);
  }
  return l;
 }
@@ -1585,7 +1585,7 @@ static int64_t dim(K x,J i,Cast c) {
  if(n==1) d=int64(x,i,c,Setting::dim);
  TORCH_CHECK(n<2, msym(c),": unrecognized positional option(s), expecting single dimension");
  while(xpair(p)) {
-  TORCH_CHECK(mset(p.k)==Setting::dim,"Unrecognized option: ",p.k); d=int64(p,c);
+  TORCH_CHECK(mset(p.k)==Setting::dim,"unrecognized option: ",p.k); d=int64(p,c);
  }
  TORCH_CHECK(d!=nj, msym(c),": no dimension given");
  return d;
@@ -1607,7 +1607,7 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) {
   switch(mset(p.k)) {
    case Setting::dim:  d=plong(p); break;
    case Setting::type: s=ptype(p); break;
-   default: AT_ERROR("Unrecognized ",msym(c)," option: ",p.k); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(null(d)) 
   AT_ERROR("specify the dimension along which ",msym(c)," will be computed");
@@ -1769,7 +1769,7 @@ static K act(K x,Cast c,const char* s) {
      case Cast::softmin:    r=torch::nn::functional::detail::softmin(t,d,s); break;
      case Cast::softmax:    r=torch::nn::functional::detail::softmax(t,d,s); break;
      case Cast::logsoftmax: r=torch::nn::functional::detail::log_softmax(t,d,s); break;
-     default: AT_ERROR("Unrecognized activation function");
+     default: AT_ERROR("unrecognized activation function");
     }
     break;
    }
@@ -1781,7 +1781,7 @@ static K act(K x,Cast c,const char* s) {
    case Cast::hardtanh:  r=torch::nn::functional::hardtanh (t,  hardtanh(a ? x : nullptr,1,c)); break;
    case Cast::softplus:  r=torch::nn::functional::softplus (t,  softplus(a ? x : nullptr,1,c)); break;
    case Cast::threshold: r=torch::nn::functional::threshold(t, threshold(a ? x : nullptr,1,c)); break;
-   default: AT_ERROR("Unrecognized activation function"); break;
+   default: AT_ERROR("unrecognized activation function"); break;
   }
   return p && r.is_same(t) ? (K)0 : kresult(p,r);
  KCATCH(s);
@@ -1859,7 +1859,7 @@ torch::nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
   switch(mset(p.k)) {
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
-   default: AT_ERROR("Unrecognized option: ",p.k," for cosine similarity distance");
+   default: AT_ERROR("unrecognized option: ",p.k," for cosine similarity distance");
   }
  return o;
 }
@@ -1884,7 +1884,7 @@ torch::nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    case Setting::keepdim: o.keepdim(mbool(p,c)); break;
-   default: AT_ERROR("Unrecognized option: ",p.k," for pairwise distance");
+   default: AT_ERROR("unrecognized option: ",p.k," for pairwise distance");
   }
  return o;
 }
@@ -1906,7 +1906,7 @@ static K distance(K x,Cast c) {
   switch(c) {
    case Cast::pairwise: r=torch::nn::functional::pairwise_distance(a ? *a : kput(x,0), b ? *b : kput(x,1), pairwise(x,2,c)); break;
    case Cast::similar:  r=torch::nn::functional::cosine_similarity(a ? *a : kput(x,0), b ? *b : kput(x,1), similar(x,2,c)); break;
-   default: AT_ERROR("Unrecognized distance function");
+   default: AT_ERROR("unrecognized distance function");
   }
   return kresult(a||b,r);
  KCATCH("distance");
@@ -2125,7 +2125,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 
   case Cast::pairwise:     return AnyModule(torch::nn::PairwiseDistance(pairwise(x,i,c)));
   case Cast::similar:      return AnyModule(torch::nn::CosineSimilarity(similar(x,i,c)));
-  default: AT_ERROR("Unrecognized module: ",(I)c);
+  default: AT_ERROR("unrecognized module: ",(I)c);
  }
 }
 
@@ -2435,7 +2435,7 @@ std::tuple<Cast,K> layeropt(bool a,const Module& g) { //a:all options returned i
 
  } else if(auto* m=g.as<torch::nn::PairwiseDistance>())  { c=Cast::pairwise; pairwise(a,x,m->options);
  } else if(auto* m=g.as<torch::nn::CosineSimilarity>())  { c=Cast::similar;  similar(a,x,m->options);
- } else { AT_ERROR("Unrecognized module: ",g.name());
+ } else { AT_ERROR("unrecognized module: ",g.name());
  }
  return std::make_tuple(c,x);
 }
@@ -2493,13 +2493,13 @@ static K tchild(S s,const Module& c) {
  else if(c.named_buffers().contains(s))
   t=c.named_buffers()[s];
  else
-  AT_ERROR("No parameter or buffer named: ",s);
+  AT_ERROR("no parameter or buffer named: ",s);
  return kget(t);
 }
 
 static K mchild(bool a,J i,S s,const Sequential &q) {
  if(i<0 || (unsigned)i>=q->size())
-  AT_ERROR("Invalid module index: ",i);
+  AT_ERROR("invalid module index: ",i);
  if(s) {
   return tchild(s,*q->children()[i]);
  } else {
@@ -2541,7 +2541,7 @@ KAPI seq(K x) {
   } else {
    return margs(q,x,p), p ? (K)0 : kseq(q);
   }
- KCATCH("Sequential module");
+ KCATCH("sequential");
 }
 */
 
