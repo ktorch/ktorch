@@ -30,7 +30,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, layerget(a,b,"",layermodule(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
+ return xD(modelkeys(), knk(3, layerget(a,b,"",mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -202,7 +202,7 @@ KAPI ganstep(K a) {
 // evalfwd - forward calc on given sequential module and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
 static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
- auto m=layermodule(q);
+ auto m=mref(q);
  bool b=m.is_training(); Tensor y;
  if(b) m.train(false);                 // turn off training mode
  if(w) {                               // if batches of window size w
@@ -300,7 +300,7 @@ Layer& xlayer(Ktag *g) {
  }
 }
 
-Module& xmodule(Ktag *g) {return layermodule(xlayer(g));}
+Module& xmodule(Ktag *g) {return mref(xlayer(g));}
 
 KAPI training(K x) {
  KTRY

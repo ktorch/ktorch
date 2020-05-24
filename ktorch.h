@@ -505,10 +505,10 @@ void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
 K klayer(Cast,const Layer&);
 K layerto(Klayer*,const TensorOptions&,bool);
-Module& layermodule(const Layer&);
-Module& layermodule(Klayer*);
-Module& layermodule(Ktag*);
-c10::optional<std::string>& modulename(Module&);
+Module& mref(const Layer&);
+Module& mref(Klayer*);
+Module& mref(Kmodel*);
+c10::optional<std::string>& mname(Module&);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);

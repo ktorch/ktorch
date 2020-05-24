@@ -1098,10 +1098,10 @@ static S objdevice(Ktag *x) {
  switch(x->a) {
   case Class::tensor:     return objdevice(((Kten*)x)->t);
   case Class::vector:     return objdevice(((Kvec*)x)->v, s);
-  case Class::layer:      return objdevice(layermodule(x).parameters(), s);
   case Class::optimizer:  return objdevice(((Kopt*)x)->o->parameters(), s);
-  case Class::model:      return objdevice(layermodule(x).parameters(), s);
   case Class::loss:       return objdevice(((Kmodule*)x)->m.ptr()->buffers(), s);
+  case Class::layer:      return objdevice(mref((Klayer*)x).parameters(), s);
+  case Class::model:      return objdevice(mref((Kmodel*)x).parameters(), s);
   default: return s;
  }
 }
@@ -1112,8 +1112,8 @@ static K objsize(Ktag *x) {
  switch(x->a) {
   case Class::tensor:     return tensorsize(((Kten*)x)->t, Attr::size);
   case Class::vector:     return kj(((Kvec*)x)->v.size());
-  case Class::layer:
-  case Class::model:      return kj(layermodule(x).modules().size());
+  case Class::layer:      return kj(mref((Klayer*)x).modules().size());
+  case Class::model:      return kj(mref((Kmodel*)x).modules().size());
   case Class::optimizer:  return kj(objsize((Kopt*)x));
   default: return ktn(0,0);
  }
@@ -1128,8 +1128,8 @@ static J objnum(Ktag *x) {
  switch(x->a) {
   case Class::tensor:     {auto& a=((Kten*)x)->t; return objnum(a);}
   case Class::vector:     {auto& a=((Kvec*)x)->v; return objnum(a);}
-  case Class::layer:
-  case Class::model:      return objnum(layermodule(x));
+  case Class::layer:      return objnum(mref((Klayer*)x));
+  case Class::model:      return objnum(mref((Kmodel*)x));
   default: return nj;
  }
 }
@@ -1143,12 +1143,11 @@ static J objbytes(Ktag *x) {
  switch(x->a) {
   case Class::tensor:     {auto& a=((Kten*)x)->t; return objbytes(a);}
   case Class::vector:     {auto& a=((Kvec*)x)->v; return objbytes(a);}
-  case Class::layer:
-  case Class::model:      return objbytes(layermodule(x));
+  case Class::layer:      return objbytes(mref((Klayer*)x));
+  case Class::model:      return objbytes(mref((Kmodel*)x));
   default: return nj;
  }
 }
-
 
 KAPI kobj(K x) {
  KTRY

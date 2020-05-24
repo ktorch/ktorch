@@ -5,7 +5,7 @@ using Modulestack=std::stack<Module>;
 KAPI layerlist(K x) {
  Klayer *q;
  if((q=xlayer(x))) {
-  auto& m=layermodule(q->m);
+  auto& m=mref(q->m);
   std::cerr << "named modules: \n";
   for(auto& a:m.named_modules())
    std::cerr << a.key() << "\n";
@@ -338,13 +338,6 @@ void addchild2(Layer& q,const AnyModule& a) {
    [&a](auto& q)        {q->push_back(a);},
    [](AnyModule& q)     {AT_ERROR("cannot add child layer");},
    [](NamedAnyModule& q){AT_ERROR("cannot add child layer");}), q);
-}
-
-Module& mref(const Layer& x) {
- return c10::visit(
-         make_overload(
-          [](const auto& x)          ->Module& {return *x.ptr();},
-          [](const NamedAnyModule& x)->Module& {return *x.module().ptr();}), x);
 }
 
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}

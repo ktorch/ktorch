@@ -1,8 +1,24 @@
 #include "ktorch.h"
 
-c10::optional<std::string>& modulename(Module& m) {return access_private::name_(m);}
+// ---------------------------------------------------------------------------
+// mref - given layer or k ptr, return reference to generic module
+// mname - given module reference return optional name
+// ---------------------------------------------------------------------------
+Module& mref(const Layer& x) {
+ return c10::visit(
+         make_overload(
+          [](const auto& x)          ->Module& {return *x.ptr();},
+          [](const NamedAnyModule& x)->Module& {return *x.module().ptr();}), x);
+}
 
+Module& mref(Klayer* x) {return mref(x->m);}
+Module& mref(Kmodel* x) {return mref(x->m);}
+
+c10::optional<std::string>& mname(Module& m) {return access_private::name_(m);}
+
+// ----------------------------------------------------------------------------
 // append a module option to a k dictionary given dict,name & value
+// ----------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 
 // ----------------------------------------------------------------------------
@@ -13,7 +29,7 @@ K klayer(Cast c,const Layer& m) {return kptr(new Klayer(c,m));}
 
 K layerto(Klayer* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
- auto& m=layermodule(x->m);
+ auto& m=mref(x->m);
  if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
  else if(o.has_device())             m.to(o.device(),a);
  else                                m.to(s,a);
@@ -204,7 +220,6 @@ void layerchild(Layer& q,const Layer& a,const char* s) {
 
 // ------------------------------------------------------------------------------------
 // layerptr - shared pointer to generic module from layer variant
-// layermodule - return a reference to underlying module (to retrieve options & parms)
 // layername - given k layer ptr or layer variant, return name or nullptr if none
 // ------------------------------------------------------------------------------------
 std::shared_ptr<Module> layerptr(const Layer& q) {
@@ -218,26 +233,12 @@ std::shared_ptr<Module> layerptr(const Layer& q) {
  }
 }
 
-Module& layermodule2(Layer& q) {
- switch(q.index()) {
-  case (size_t)Layers::sequential:  return *c10::get<Sequential>(q);
-  case (size_t)Layers::seqnest:     return *c10::get<SeqNest>(q);
-  case (size_t)Layers::seqjoin:     return *c10::get<SeqJoin>(q);
-  case (size_t)Layers::any:         return *c10::get<AnyModule>(q).ptr();
-  case (size_t)Layers::anyname:     return *c10::get<NamedAnyModule>(q).module().ptr();
-  default: AT_ERROR("unrecognized layer: unable to get module");
- }
-}
-
-Module& layermodule(const Layer& q) {return *layerptr(q);}
-Module& layermodule(Klayer* x) {return layermodule(x->m);}
-Module& layermodule(Ktag* x)   {return layermodule(((Klayer*)x)->m);}
 
 S layername(const Layer& m) {
  if(m.index()==(size_t)Layers::anyname) {
    return const_cast<char*>(c10::get<NamedAnyModule>(m).name().c_str());
  } else {
-  auto& s=modulename(layermodule(m));
+  auto& s=mname(mref(m));
   return const_cast<char*>(s ? (*s).c_str() : nullptr);
  }
 }
@@ -288,8 +289,8 @@ K layerforward(Layer& q,K a) {
 // ---------------------------------------------------------------------------------------
 K layerattr(const Layer& l,Ktype k,Attr a) {
  switch(a) {
-  case Attr::ptr: return kj((intptr_t)layerptr(l).get());
-  case Attr::ref: return kj(layerptr(l).use_count()-1);
+  case Attr::ptr: return kj((intptr_t)mref(l).shared_from_this().get());
+  case Attr::ref: return kj(mref(l).shared_from_this().use_count()-1);
   default: AT_ERROR(mapattr(a),": not implemented for module");
  }
 }
@@ -2167,19 +2168,19 @@ static void layerparent(const Layer& a,S s,Layerstack& q) {
  q.push(a);                             // add new parent container to stack
 }
 
-static void layerparent(Cast c,S nm,Layerstack& q,K o=nullptr,K p=nullptr,K f=nullptr);
-static void layerparent(Cast c,S nm,Layerstack& q,K o,K p,K f) {
+static void layerparent(Cast c,S s,Layerstack& q,K o=nullptr,K p=nullptr,K f=nullptr);
+static void layerparent(Cast c,S s,Layerstack& q,K o,K p,K f) {
  TORCH_CHECK(!(o && xlen(o)), msym(c), ": no options expected");
  TORCH_CHECK(!(p && xlen(p)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(f && xlen(f)), msym(c), ": no buffers expected");
- auto a=parent(c);                       // create parent module
- if(nm) modulename(layermodule(a))=nm;   // add name if supplied
- layerparent(a,nm,q);                    // add to any previous parent, push on stack
+ auto a=parent(c);         // create parent module
+ if(s) mname(mref(a))=s;   // add name if supplied
+ layerparent(a,s,q);       // add to any previous parent, push on stack
 }
 
 static void layeradd(const AnyModule& a,Cast c,S s,Layerstack& q) {
  if(q.size()) {
-  TORCH_CHECK(container(layermodule(q.top())), msym(c), ": cannot add without a parent/container layer");
+  TORCH_CHECK(container(mref(q.top())), msym(c), ": cannot add without a parent/container layer");
   layerany(q.top(),a,s);
  } else {
   if(s) q.push(NamedAnyModule(s,a));
@@ -2187,11 +2188,11 @@ static void layeradd(const AnyModule& a,Cast c,S s,Layerstack& q) {
  }
 }
 
-static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p=nullptr,K f=nullptr);
-static void layeradd(Cast c,S nm,Layerstack& q,K x,J i,K p,K f) {
+static void layeradd(Cast c,S s,Layerstack& q,K x,J i,K p=nullptr,K f=nullptr);
+static void layeradd(Cast c,S s,Layerstack& q,K x,J i,K p,K f) {
  auto a=anymodule(x,i,c);             // create module from cast, options & offset
  if(p||f) layerparms(c,*a.ptr(),p,f); // add any supplied parms or buffers
- layeradd(a,c,nm,q);                  // add to immediate parent container on stack
+ layeradd(a,c,s,q);                   // add to immediate parent container on stack
 }
 
 static void layersym(K x,S& s,S& nm) {
@@ -2217,7 +2218,7 @@ static void layersym(K x,S& s,S& nm) {
 // -------------------------------------------------------------------------------------------------
 /*
 static void layererror(J d,K x,Layerstack& q) {
- auto n=q.size() ? layermodule(q.top()).modules().size() : 0;
+ auto n=q.size() ? mref(q.top()).modules().size() : 0;
  if(n)
   AT_ERROR("unrecognized arg(s) at depth ",d,", after ",n," layer",(n==1 ? "\n" : "s\n"),kstring(x));
  else
@@ -2291,7 +2292,7 @@ KAPI extend(K x) {
   Klayer *a=xlayer(x,0), *b=xlayer(x,1); J d=0;
   if(!b && xlong(x,1,d)) b=xlayer(x,2);
   TORCH_CHECK(a && b, "expecting two layer args");
-  Layerstack q; layerstack(d, layermodule(a), q);
+  Layerstack q; layerstack(d, mref(a), q);
   layerextend(b->m,b->c,d,q);
   kfree(kK(x)[x->n-1]);
   return (K)0;
@@ -2549,7 +2550,7 @@ KAPI layer(K x) {
  KTRY
   bool a=env().alloptions; Klayer* l=nullptr; Kmodel *m;
   if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
-   return layerget(a,false,layername(l),layermodule(l->m));
+   return layerget(a,false,layername(l),mref(l->m));
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else if((m=xmodel(x))) {
