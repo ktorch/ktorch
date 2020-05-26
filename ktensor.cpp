@@ -79,11 +79,11 @@ K kget(const TensorDeque& v) {
 }
 
 // -------------------------------------------------------------------------------
-// tento - change tensor device/type, return new tensor if copy flag set
+// to - change tensor/vector device/type, return new tensor if copy flag set
 // ktenpair - given a pair of tensors return pair of pointers or array
 // kten3 - given a triplet of tensors return triplet of pointers or array
 // -------------------------------------------------------------------------------
-K tento(Kten* t,const TensorOptions& o,bool a,bool b) {
+K to(Kten* t,const TensorOptions& o,bool a,bool b) {
  auto r=t->t.to(o,a,b);
  if(b)                 // if copy flag set
   return kten(r);      // return new tensor
@@ -92,7 +92,7 @@ K tento(Kten* t,const TensorOptions& o,bool a,bool b) {
  return (K)0;
 }
 
-K vecto(Kvec* v,const TensorOptions& o,bool a) {
+K to(Kvec* v,const TensorOptions& o,bool a) {
  for(auto& t:v->v) {
   auto r=t.to(o,a);
   if(!t.is_same(r)) t=std::move(r);

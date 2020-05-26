@@ -1197,7 +1197,7 @@ KAPI kstate(K x) {
  KCATCH("state")
 }
 
-KAPI to(K x) {
+KAPI To(K x) {
  KTRY
   bool a=false,b=false; Ktag *g; Tensor t; TensorOptions o;
   if((g=xtag(x,0)) && (xto(x,1,o) || xten(x,1,t)) &&
@@ -1207,10 +1207,10 @@ KAPI to(K x) {
    if(t.defined())
     o=o.device(t.device()).dtype(t.dtype());
    switch(g->a) {
-    case Class::tensor:     return tento((Kten*)g,o,a,b);
-    case Class::vector:     return vecto((Kvec*)g,o,a);
-    case Class::layer:      return layerto((Klayer*)g,o,a);
-    case Class::loss:       return lossto((Kmodule*)g,o,a);
+    case Class::tensor:     return to((Kten*)g,o,a,b);
+    case Class::vector:     return to((Kvec*)g,o,a);
+    case Class::layer:      return to((Klayer*)g,o,a);
+    case Class::loss:       return to((Kmodule*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
    }
   } else {
@@ -1604,7 +1604,7 @@ KAPI fns(K x){
  fn(x, "addref",      KFN(addref),      1);
  fn(x, "free",        KFN(Kfree),       1);
  fn(x, "obj",         KFN(kobj),        1);
- fn(x, "to",          KFN(to),          1);
+ fn(x, "to",          KFN(To),          1);
  fn(x, "info",        KFN(info1),       1);
  fn(x, "detail",      KFN(info2),       1);
  fn(x, "state",       KFN(kstate),      1);

@@ -6,10 +6,19 @@
 
 // ------------------------------------------------------------------------------------------------------
 // kloss - given loss type & shared pointer to newly created loss module, return kptr
+// to - given loss object and device/data type, converts tensors in options (e.g. class weights)
 // lmap - map to/from sym to loss function name, e.g. `mse <-> Cast::mse
 // lset - map to/from sym to loss setting enum, e.g. `reduce <-> Setting::reduce
 // ------------------------------------------------------------------------------------------------------
 K kloss(Cast c,const AnyModule& m) {return kptr(new Kmodule(Class::loss,c,m));}
+
+K to(Kmodule* l,const TensorOptions& o,bool a) {
+ auto s=torch::typeMetaToScalarType(o.dtype()); auto m=l->m.ptr();
+ if(o.has_device() && o.has_dtype()) m->to(o.device(),s,a);
+ else if(o.has_device())             m->to(o.device(),a);
+ else                                m->to(s,a);
+ return (K)0;
+}
 
 static Cast lmap(S s) {
  for(auto&m:env().loss)
@@ -566,7 +575,6 @@ KAPI Ctc(K a) {
 // lossdict - dictionary of loss module & options or full state (w'class, empty name, parms & buffers)
 // losswt - handle loss w'optional batch weights (e.g. bce/bcelogits)
 // lossfwd - given loss object, calls forward function on remaining inputs and returns loss
-// lossto - given loss object and device/data type, converts tensors in options (e.g. class weights)
 // loss - main api function that creates/calls loss objects and queries their properties
 // ---------------------------------------------------------------------------------------------------
 static AnyModule lossinit(Cast c,K x,J i) {
@@ -669,14 +677,6 @@ static K lossfwd(Cast c,AnyModule& m,K a) {
   AT_ERROR("unrecognized arg(s) for ",lmap(c)," forward call");
  }
  return kresult(p,r);
-}
-
-K lossto(Kmodule* l,const TensorOptions& o,bool a) {
- auto s=torch::typeMetaToScalarType(o.dtype()); auto m=l->m.ptr();
- if(o.has_device() && o.has_dtype()) m->to(o.device(),s,a);
- else if(o.has_device())             m->to(o.device(),a);
- else                                m->to(s,a);
- return (K)0;
 }
 
 KAPI loss(K x) {

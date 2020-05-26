@@ -95,18 +95,21 @@ using TypeMeta=caffe2::TypeMeta;
 using TensorOptions=torch::TensorOptions;
 using TensorList=torch::TensorList;
 
-using Module=torch::nn::Module;
-using AnyModule=torch::nn::AnyModule;
-using NamedAnyModule=torch::nn::NamedAnyModule;
-using Sequential=torch::nn::Sequential;
-
-using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule, NamedAnyModule>;
-enum class Layers       {sequential, seqnest, seqjoin, any,       anyname};
-using Layerstack=std::stack<Layer>;
-
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
 using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
+
+// shorter names for commononly used container modules defined by pytorch & created in knn.h
+using Module=torch::nn::Module;
+using AnyModule=torch::nn::AnyModule;
+using Sequential=torch::nn::Sequential;
+class SeqNest;
+class SeqJoin;
+
+// define a kind of union for modules used to build sequences
+using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule>;
+enum class Layers       {sequential, seqnest, seqjoin, any};
+using Layerstack=std::stack<Layer>;
 
 typedef struct {
  Ktype a = 0;  // type: 1-dict, 2-list of pairs, 3-general list, 4-sym list
@@ -467,8 +470,8 @@ Tensor kput(K,J);
 K kten(const Tensor&);
 K kvec(const TensorVector&);
 inline K kresult(bool p,const Tensor& t) {return p ? kten(t) : kget(t);}
-K tento(Kten*,const TensorOptions&,bool,bool);
-K vecto(Kvec*,const TensorOptions&,bool);
+K to(Kten*,const TensorOptions&,bool,bool);
+K to(Kvec*,const TensorOptions&,bool);
 K ktenpair(bool,Tensor&,Tensor&);
 K kten3(bool,Tensor&,Tensor&,Tensor&);
 J tensorlong(const Tensor&,Attr);
@@ -504,7 +507,7 @@ void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
 
 K klayer(Cast,const Layer&);
-K layerto(Klayer*,const TensorOptions&,bool);
+K to(Klayer*,const TensorOptions&,bool);
 Module& mref(const Layer&);
 Module& mref(Klayer*);
 Module& mref(Kmodel*);
@@ -521,7 +524,7 @@ K kloss(Cast,const AnyModule&);
 Tensor losswt(Cast,AnyModule&,const Tensor&,const Tensor&);
 K lossdict(Ktag*,K);
 K lossdict(bool,bool,Cast,AnyModule&);
-K lossto(Kmodule*,const TensorOptions&,bool);
+K to(Kmodule*,const TensorOptions&,bool);
 K lossattr(const AnyModule&,Ktype,Attr);
 void lossfn(K);
 

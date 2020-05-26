@@ -1,6 +1,11 @@
 #include "ktorch.h"
-using Moduleptr=std::shared_ptr<Module>;
-using Modulestack=std::stack<Module>;
+
+void addchild2(Layer& q,const AnyModule& a) {
+ c10::visit(
+  make_overload(
+   [&a](auto& q)        {q->push_back(a);},
+   [](AnyModule& q)     {AT_ERROR("cannot add child layer");}), q);
+}
 
 KAPI layerlist(K x) {
  Klayer *q;
@@ -330,24 +335,10 @@ template <class... Fs> auto make_overload(Fs... fs) {
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
 void layerchild(Layer& q,const Layer& a,const char* nm);
-void layerany(Layer& q,const AnyModule& a,const char* s);
-
-void addchild2(Layer& q,const AnyModule& a) {
- c10::visit(
-  make_overload(
-   [&a](auto& q)        {q->push_back(a);},
-   [](AnyModule& q)     {AT_ERROR("cannot add child layer");},
-   [](NamedAnyModule& q){AT_ERROR("cannot add child layer");}), q);
-}
 
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
 
 std::tuple<Cast,K> mopt(bool,const Module&);
-
-/*
-addchild:{[p;v;nm] -2 $[count p; string[p],"->pushback(",string[` sv v,nm],")"; "creating container: ",string v]}
-{[p;pd;d;v;nm] if[d<pd;p:pop p]; addchild[first p;v;nm]; $[container[v] & d>pd;push[p]` sv v,nm;p]}
-*/
 
 KAPI join1(K x) {
  KTRY

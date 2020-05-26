@@ -129,6 +129,24 @@ class CatImpl : public torch::nn::Cloneable<CatImpl> {
 };
 TORCH_MODULE(Cat);
 
+// ----------------------------------------------------------------------------------
+// SeqNest - derived from Sequential to allow nested sequentials 
+//         - no templatized forward result means can be stored as an AnyModule
+//         - forward method accepts up to three tensors x,y,z w'y & z optional
+// ---------------------------------------------------------------------------------
+struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
+  using SequentialImpl::SequentialImpl;
+
+  torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
+   if(y.defined())
+    return z.defined() ? SequentialImpl::forward(x,y,z) : SequentialImpl::forward(x,y);
+   else
+    return SequentialImpl::forward(x);
+  }
+ protected:
+  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
+};
+TORCH_MODULE(SeqNest);
 
 // --------------------------------------------------------------------------------------------------
 // SeqJoin - define sequential modules for inputs x & y w'layer for joining the output of each module
@@ -173,22 +191,3 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  torch::nn::AnyModule  join;
 };
 TORCH_MODULE(SeqJoin);
-
-// ----------------------------------------------------------------------------------
-// SeqNest - derived from Sequential to allow nested sequentials 
-//         - no templatized forward result means can be stored as an AnyModule
-//         - forward method accepts up to three tensors x,y,z w'y & z optional
-// ---------------------------------------------------------------------------------
-struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
-  using SequentialImpl::SequentialImpl;
-
-  torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
-   if(y.defined())
-    return z.defined() ? SequentialImpl::forward(x,y,z) : SequentialImpl::forward(x,y);
-   else
-    return SequentialImpl::forward(x);
-  }
- protected:
-  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
-};
-TORCH_MODULE(SeqNest);
