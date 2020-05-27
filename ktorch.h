@@ -512,6 +512,7 @@ Module& mref(const Layer&);
 Module& mref(Klayer*);
 Module& mref(Kmodel*);
 c10::optional<std::string>& mname(Module&);
+std::string mlabel(const std::type_info&);
 K layerget(bool,bool,const char*,const Module&);
 K seqforward(Sequential&,K);
 K layerforward(Layer&,K);

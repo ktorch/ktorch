@@ -1,12 +1,5 @@
 #include "ktorch.h"
 
-void addchild2(Layer& q,const AnyModule& a) {
- c10::visit(
-  make_overload(
-   [&a](auto& q)        {q->push_back(a);},
-   [](AnyModule& q)     {AT_ERROR("cannot add child layer");}), q);
-}
-
 KAPI layerlist(K x) {
  Klayer *q;
  if((q=xlayer(x))) {

@@ -3,12 +3,24 @@
 // ---------------------------------------------------------------------------
 // mref - given layer or k ptr, return reference to generic module
 // mname - given module reference return optional name
+//       - also, given layer variant/layer ptr, return name or null ptr
+// mlabel - demangle and simplify type name for use in error messages
 // ---------------------------------------------------------------------------
 Module& mref(const Layer& x) {return c10::visit(make_overload([](const auto& x)->Module& {return *x.ptr();}), x);}
 Module& mref(Klayer* x) {return mref(x->m);}
 Module& mref(Kmodel* x) {return mref(x->m);}
 
 c10::optional<std::string>& mname(Module& m) {return access_private::name_(m);}
+S mname(const Layer& m) {auto& s=mname(mref(m)); return const_cast<char*>(s ? (*s).c_str() : nullptr);}
+S mname(Klayer* x) {return mname(x->m);}
+
+std::string mlabel(const std::type_info& x) {
+ auto s=c10::demangle(x.name());
+ if(!s.find("struct "))     s.erase(s.begin(),s.begin()+7);
+ if(!s.find("class "))      s.erase(s.begin(),s.begin()+6);
+ if(!s.find("torch::nn::")) s.erase(s.begin(),s.begin()+11);
+ return s;
+}
 
 // ----------------------------------------------------------------------------
 // append a module option to a k dictionary given dict,name & value
@@ -173,63 +185,6 @@ static void mstack(size_t d,Module& m,Layerstack& q) {
    mstack(d+1,*i,q);
  }
 }
-
-// ------------------------------------------------------------------------------------
-// layerpush - invoke push_back method w'optional name on container layers
-// layerseq - add Sequential to existing parent, only SeqJoin currently implemented
-// layerany - add AnyModule child to existing parent container w'optional name
-// layerchild - add a child module to parent container layer, e.g. sequential
-// ------------------------------------------------------------------------------------
-template<typename Q,typename A> static void layerpush(Q& q,const A& a,const char* s) {
- if(s) q->push_back(s,a); else q->push_back(a);
-}
-
-static void layerseq(Layer& q,const Sequential& a,const char* s) {
- switch(q.index()) {
-  case (size_t)Layers::seqjoin: layerpush(c10::get<SeqJoin>(q),a,s); break;
-  default: AT_ERROR("container unable to add sequential layer");
- }
-}
-
-void layerany(Layer& q,const AnyModule& a,const char* s) {
- switch(q.index()) {
-  case (size_t)Layers::sequential: layerpush(c10::get<Sequential>(q), a, s); break;
-  case (size_t)Layers::seqnest:    layerpush(c10::get<SeqNest>(q),    a, s); break;
-  case (size_t)Layers::seqjoin:    layerpush(c10::get<SeqJoin>(q),    a, s); break;
-  default: AT_ERROR("unrecognized container: unable to add child layer");
- }
-}
-
-void layerchild(Layer& q,const Layer& a,const char* s) {
- switch(a.index()) {
-  case (size_t)Layers::any:        layerany(q, c10::get<AnyModule>(a), s); break;
-  case (size_t)Layers::seqnest:    layerany(q, AnyModule(c10::get<SeqNest>(a)), s); break;
-  case (size_t)Layers::seqjoin:    layerany(q, AnyModule(c10::get<SeqJoin>(a)), s); break;
-  case (size_t)Layers::sequential: layerseq(q, c10::get<Sequential>(a), s); break;
-  default: AT_ERROR("unrecognized child layer");
- }
-}
-
-static void addmodule(Layer& x,const Layer& y,const char* s) {
- c10::visit(
-  make_overload(
-   [&s](Sequential& x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const Sequential& y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   []  (auto&       x, const auto&       y)  {AT_ERROR("unable to add module");}),
-   x,y);
-}
-
-// ------------------------------------------------------------------------------------
-// layername - given k layer ptr or layer variant, return name or nullptr if none
-// ------------------------------------------------------------------------------------
-S layername(const Layer& m) {auto& s=mname(mref(m)); return const_cast<char*>(s ? (*s).c_str() : nullptr);}
-S layername(Klayer* x) {return layername(x->m);}
 
 // ------------------------------------------------------------------------------------
 // layerforward - given layer, run forward calc on tensor x & optional y,z
@@ -2144,13 +2099,30 @@ void mparms(Cast c,Module &m,K p,K f) {
 }
 
 // -----------------------------------------------------------------------------------------
+// addmodule - given parent & layer variants, add allowable combinations, else error
 // layerparent - create container if needed, add to any previous parent layer, push on stack
 // layeradd - add a child layer to existing parent or push single layer to stack
 // layersym - parse module and optional name symbol from k arg(s), throw error if not found
 // -----------------------------------------------------------------------------------------
+static void addmodule(Layer& x,const Layer& y,const char* s) {
+ c10::visit(
+  make_overload(
+   [&s](Sequential& x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](Sequential& x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](Sequential& x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqJoin&    x, const Sequential& y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqJoin&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [](auto& x,const auto& y) {AT_ERROR("unable to add a ",mlabel(typeid(y)),
+                                       " module as a child of a ",mlabel(typeid(x))," module");}),
+   x,y);
+}
+
 static void layerparent(const Layer& a,S s,Layerstack& q) {
  if(q.size()) addmodule(q.top(),a,s);  // add to previous parent, if any
- q.push(a);                             // add new parent container to stack
+ q.push(a);                            // add new parent container to stack
 }
 
 static void layerparent(Cast c,S s,Layerstack& q,K o=nullptr,K p=nullptr,K f=nullptr);
@@ -2259,10 +2231,10 @@ K layertable(K x) { // process table/dict w'depth,layer,options.. return ptr to 
 void layerextend(Layer& a,Cast c,J d,Layerstack& q) {
  if(d) layerdepth(c,d,q);
  if(container(c)) {
-  layerparent(a, layername(a), q);
+  layerparent(a, mname(a), q);
  } else {
   if(a.index()==(size_t)Layers::any) {
-   layeradd(c10::get<AnyModule>(a), c, layername(a), q);
+   layeradd(c10::get<AnyModule>(a), c, mname(a), q);
   } else {
    AT_ERROR(msym(c), ": unable to extend module");
   }
@@ -2532,7 +2504,7 @@ KAPI layer(K x) {
  KTRY
   bool a=env().alloptions; Klayer* l=nullptr; Kmodel *m;
   if((l=xlayer(x)) || ((l=xlayer(x,0)) && xbool(x,1,a) && x->n==2)) {
-   return layerget(a,false,layername(l),mref(l->m));
+   return layerget(a,false,mname(l),mref(l->m));
   } else if(xstate(x)) { // || ((l=xlayer(x,0)) && xstate(x,1) && x->n==2)) {
    return layertable(x);
   } else if((m=xmodel(x))) {
