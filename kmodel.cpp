@@ -30,7 +30,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, layerget(a,b,"",mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
+ return xD(modelkeys(), knk(3, mget(a,b,"",mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,m->o.get())));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -84,13 +84,13 @@ KAPI model(K x) {
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(sequential(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
-Tensor mforward(Kmodel *m,const Tensor& x) {return layerforward(m->m,x);}
+Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->m,x);}
 Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
 
 K mbackward(K a) {
  Kmodel *m; Tensor *x,*y,r;
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
-  r=losswt(m->lc,m->l,layerforward(m->m,*x),*y);
+  r=losswt(m->lc,m->l,mforward(m->m,*x),*y);
  } else {
   AT_ERROR("backward expects (model; inputs; targets)");
  }
@@ -186,7 +186,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=layerforward(g->m,*z);
+  Tensor gx=mforward(g->m,*z);
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   optstep(d);
@@ -204,18 +204,18 @@ KAPI ganstep(K a) {
 static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
  auto m=mref(q);
  bool b=m.is_training(); Tensor y;
- if(b) m.train(false);                 // turn off training mode
- if(w) {                               // if batches of window size w
-  auto n=maxsize(x);                   // get maxsize
+ if(b) m.train(false);             // turn off training mode
+ if(w) {                           // if batches of window size w
+  auto n=maxsize(x);               // get maxsize
   TensorVector r;
-  for(int64_t i=0; i<n; i+=w) {        // batches of w
+  for(int64_t i=0; i<n; i+=w) {    // batches of w
    subset(x,0,i,w,n);
-   r.emplace_back(layerforward(q,x));  // accumulate forward calcs
+   r.emplace_back(mforward(q,x));  // accumulate forward calcs
   }
-  subset(x,0,0,n,n);                   // restore size of inputs
-  y=torch::cat(r);                     // and join batch results
+  subset(x,0,0,n,n);               // restore size of inputs
+  y=torch::cat(r);                 // and join batch results
  } else {
-  y=layerforward(q,x);                 // no batching, run forward on full inputs
+  y=mforward(q,x);                 // no batching, run forward on full inputs
  }
  if(b) m.train(true);
  return y;

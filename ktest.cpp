@@ -327,8 +327,6 @@ template <class... Fs> auto make_overload(Fs... fs) {
 //template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
-void layerchild(Layer& q,const Layer& a,const char* nm);
-
 //Tensor fwd(Layer& q,const Tensor& x,const Tensor& y) {c10::visit([&x,&y](auto& q) {q.ptr()->forward(x,y);}, q);}
 
 std::tuple<Cast,K> mopt(bool,const Module&);
@@ -345,7 +343,7 @@ KAPI join1(K x) {
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
-  return layerget(true,true,"",*q);
+  return mget(true,true,"",*q);
  KCATCH("join1");
 }
 
@@ -362,7 +360,7 @@ KAPI join2(K x) {
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
-  return layerget(true,true,"",*q);
+  return mget(true,true,"",*q);
  KCATCH("join2");
 }
 

@@ -1259,8 +1259,8 @@ KAPI forward(K x) {
   Ktag *g;
   TORCH_CHECK((g=xtag(x,0)), "forward expects layer(s) or full model as first arg");
   switch(g->a) {
-   case Class::layer:      return layerforward(((Klayer*)g)->m,x);
-   case Class::model:      return layerforward(((Kmodel*)g)->m,x);
+   case Class::layer:      return mforward(((Klayer*)g)->m,x);
+   case Class::model:      return mforward(((Kmodel*)g)->m,x);
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
   return (K)0;
@@ -1507,7 +1507,7 @@ static K attr(K x,Ktype k,Attr a) {
   switch(g->a) {
    case Class::tensor:     return tensorattr(((Kten*)g)->t,k,a);
    case Class::vector:     return vectorattr(((Kvec*)g)->v,k,a);
-   case Class::layer:      return layerattr(((Klayer*)g)->m,k,a);
+   case Class::layer:      return mattr(((Klayer*)g)->m,k,a);
    case Class::loss:       return lossattr(((Kmodule*)g)->m,k,a);
    case Class::optimizer:  return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));

@@ -513,11 +513,10 @@ Module& mref(Klayer*);
 Module& mref(Kmodel*);
 c10::optional<std::string>& mname(Module&);
 std::string mlabel(const std::type_info&);
-K layerget(bool,bool,const char*,const Module&);
-K seqforward(Sequential&,K);
-K layerforward(Layer&,K);
-Tensor layerforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
-K layerattr(const Layer&,Ktype,Attr);
+K mget(bool,bool,const char*,const Module&);
+K mforward(Layer&,K);
+Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
+K mattr(const Layer&,Ktype,Attr);
 void nnfn(K);
 
 // loss functions:
