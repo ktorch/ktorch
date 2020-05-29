@@ -1012,8 +1012,8 @@ static K dve(K x) {
  return x;
 }
 
-static J dvd(K x,J i) {return kK(i<0 ? x : kK(x)[i])[0]->j;}
-static K dvv(K x,J i) {return kK(i<0 ? x : kK(x)[i])[1];}
+J dvd(K x,J i) {return kK(i<0 ? x : kK(x)[i])[0]->j;}
+K dvv(K x,J i) {return kK(i<0 ? x : kK(x)[i])[1];}
 
 static K tdv(K x,J i,J j,J n) {
  K v=dvv(x,i), z=ktn(i==j && v->t==-KS ? KS : 0,1);

@@ -108,7 +108,6 @@ class SeqJoin;
 
 // define a kind of union for modules used to build sequences
 using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule>;
-enum class Layers       {sequential, seqnest, seqjoin, any};
 using Layerstack=std::stack<Layer>;
 
 typedef struct {
@@ -451,6 +450,8 @@ K kexpand(J,const double*);
 K kexpand(J,const c10::optional<int64_t>*e);
 #define KEX(x) kexpand(x.size(),(*x).data())  // k list from ExpandingArray
 J xdv(K);
+J dvd(K,J);
+K dvv(K,J);
 
 S objdevice(const Tensor&);
 S objdevice(const TensorVector&,S);
