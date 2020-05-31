@@ -1004,6 +1004,8 @@ J xdv(K x) {
  }
 }
 
+J xdv(K x,J i) {return xind(x,i) ? xdv(kK(x)[i]) : false;}
+
 static K dve(K x) { 
  if(!x->t && x->n>0 && !xmixed(x,2)) {
   for(J i=0;i<x->n;++i)
