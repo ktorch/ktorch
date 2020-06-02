@@ -515,8 +515,6 @@ KAPI unsqueeze(K x) {return ksqueeze(x, false, "unsqueeze");}
 // ----------------------------------------------------------------------------------------------
 static J storlong(const Storage& s,Attr a) {
  switch(a) {
-  case Attr::elementsize: return s.dtype().itemsize();
-  case Attr::size:        return s.nbytes() / s.dtype().itemsize();
   case Attr::ptr:         return (intptr_t)s.data();
   case Attr::ref:         return s.use_count();
   default: AT_ERROR(mapattr(a),": not implemented for storage");
@@ -525,15 +523,15 @@ static J storlong(const Storage& s,Attr a) {
 
 J tensorlong(const Tensor& t,Attr a) {
  switch(a) {
-  case Attr::dim:         return t.dim();
-  case Attr::elementsize: return t.is_sparse() ? tensorlong(t.values(),a) : storlong(t.storage(),a);
-  case Attr::numel:       return t.numel();
-  case Attr::offset:      return t.is_sparse() ? nj : t.storage_offset();
-  case Attr::ref:         return t.use_count();
-  case Attr::weakref:     return t.weak_use_count();
-  case Attr::ptr:         return (intptr_t)t.unsafeGetTensorImpl();
-  case Attr::sparsedim:   return t.is_sparse() ? t.sparse_dim() : 0;
-  case Attr::storage:     return t.is_sparse() ? nj : (intptr_t)t.storage().data();
+  case Attr::dim:       return t.dim();
+  case Attr::itemsize:  return t.is_sparse() ? tensorlong(t.values(),a) : t.dtype().itemsize();
+  case Attr::numel:     return t.numel();
+  case Attr::offset:    return t.is_sparse() ? nj : t.storage_offset();
+  case Attr::ref:       return t.use_count();
+  case Attr::weakref:   return t.weak_use_count();
+  case Attr::ptr:       return (intptr_t)t.unsafeGetTensorImpl();
+  case Attr::sparsedim: return t.is_sparse() ? t.sparse_dim() : 0;
+  case Attr::storage:   return t.is_sparse() ? nj : (intptr_t)t.storage().data();
   default: AT_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -622,20 +620,21 @@ KAPI options(K x) {
 // storinfo - return storage attributes & data as dictionary
 // tensorinfo - return dictionary of attributes given tensor and detail level 0,1,2
 // ------------------------------------------------------------------------------------------------
-K stordata(const Storage& s) {
+K stordata(const TypeMeta& t,const Storage& s) {
  TORCH_CHECK(s.device().is_cpu(), "cannot copy CUDA storage via memcpy");
- K x=ktn(maptype(s.dtype()),s.nbytes() / s.dtype().itemsize());
+ K x=ktn(maptype(t),s.nbytes() / t.itemsize());
  memcpy(kG(x),s.data(),s.nbytes());
  return x;
 }
 
-K storinfo(const Storage& s,const Storage& c) {
+K storinfo(const Tensor& t,const Storage& c) {
+ const auto& s=t.storage(); const auto& d=t.dtype();
  K x=xD(ktn(KS,0),ktn(0,0)),*a=&kK(x)[0],*b=&kK(x)[1];
- js(a, mapattr(Attr::size));        jk(b, kj(storlong(s, Attr::size)));
- js(a, mapattr(Attr::elementsize)); jk(b, kj(storlong(s, Attr::elementsize)));
- js(a, mapattr(Attr::ref));         jk(b, kj(storlong(s, Attr::ref)));
- js(a, mapattr(Attr::ptr));         jk(b, kj(storlong(s, Attr::ptr)));
- js(a, mapattr(Attr::data));        jk(b, stordata(c));
+ js(a, mapattr(Attr::size));     jk(b, kj(s.nbytes()/d.itemsize()));
+ js(a, mapattr(Attr::itemsize)); jk(b, kj(d.itemsize()));
+ js(a, mapattr(Attr::ref));      jk(b, kj(storlong(s, Attr::ref)));
+ js(a, mapattr(Attr::ptr));      jk(b, kj(storlong(s, Attr::ptr)));
+ js(a, mapattr(Attr::data));     jk(b, stordata(d, d==torch::kHalf ? t.cpu().to(torch::kFloat).storage() : t.cpu().storage()));
  return x;
 }
 
@@ -658,7 +657,7 @@ K tensorinfo(const Tensor& t,bool d) {
  js(a, mapattr(Attr::size));        jk(b, tensorsize(t,    Attr::size));
  js(a, mapattr(Attr::stride));      jk(b, tensorsize(t,    Attr::stride));
  js(a, mapattr(Attr::numel));       jk(b, kj(tensorlong(t, Attr::numel)));
- js(a, mapattr(Attr::elementsize)); jk(b, kj(tensorlong(t, Attr::elementsize)));
+ js(a, mapattr(Attr::itemsize));    jk(b, kj(tensorlong(t, Attr::itemsize)));
  js(a, mapattr(Attr::contiguous));  jk(b, kb(tensorflag(t, Attr::contiguous)));
  js(a, mapattr(Attr::coalesced));   jk(b, kb(tensorflag(t, Attr::coalesced)));
  js(a, mapattr(Attr::offset));      jk(b, kj(tensorlong(t, Attr::offset)));
@@ -666,8 +665,7 @@ K tensorinfo(const Tensor& t,bool d) {
  js(a, mapattr(Attr::ref));         jk(b, kj(tensorlong(t, Attr::ref)));
  if(d) {
   js(a, mapattr(Attr::storage));   
-  jk(b, storinfo(t.storage(),
-        t.dtype()==torch::kHalf ? t.cpu().to(torch::kFloat).storage() : t.cpu().storage()));
+  jk(b, storinfo(t, t.dtype()==torch::kHalf ? t.cpu().to(torch::kFloat).storage() : t.cpu().storage()));
  }
  return x;
 }
@@ -760,7 +758,7 @@ void setsafe(Tensor& t,const Storage& s,int64_t i,const IntArrayRef& sz,const In
  TORCH_CHECK(s.nbytes()>=i+at::detail::computeStorageNbytes(sz,st,1), 
             "size ",sz," and stride ",st," require total of ",
              at::detail::computeStorageNbytes(sz,st,1),
-            " plus offset of ",i," exceeds storage size of ",s.nbytes()/s.dtype().itemsize());
+            " plus offset of ",i," exceeds storage size of ",s.nbytes()/t.dtype().itemsize());
  t.set_(s,i,sz,st);
 }
 
@@ -917,7 +915,7 @@ std::vector<int64_t> newsize(const Tensor& t,int64_t d,int64_t n) {
 int64_t maxsize(const Tensor& t,int64_t d) {
  int64_t n=1;
  for(auto i:t.sizes()) n*=i;
- return t.size(d)*t.storage().nbytes()/(n*t.storage().dtype().itemsize());
+ return t.size(d)*t.storage().nbytes()/(n*t.dtype().itemsize());
 }
 
 int64_t maxsize(const TensorVector& v,int64_t d) {

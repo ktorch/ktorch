@@ -207,11 +207,11 @@ enum class State:char {
 
 enum class Attr:char {
  undefined = 0,
- dim, elementsize, numel,  offset, ptr, ref, sparsedim, weakref, // long scalars
- device, dtype, gradfn, gradient, layout,                        // symbol
- coalesced, contiguous, leaf, pinned,                            // boolean
- size, stride,                                                   // long list
- data, storage                                                   // other: list,dict,..
+ dim, itemsize, numel,  offset, ptr, ref, sparsedim, weakref, // long scalars
+ device, dtype, gradfn, gradient, layout,                     // symbol
+ coalesced, contiguous, leaf, pinned,                         // boolean
+ size, stride,                                                // long list
+ data, storage                                                // other: list,dict,..
 };
  
 enum class Metric: char {
@@ -513,9 +513,9 @@ K to(Klayer*,const TensorOptions&,bool);
 Module& mref(const Layer&);
 Module& mref(Klayer*);
 Module& mref(Kmodel*);
-c10::optional<std::string>& mname(Module&);
+c10::optional<std::string>& mname_(Module&);
 std::string mlabel(const std::type_info&);
-K mget(bool,bool,const char*,const Module&);
+K mget(bool,bool,const Module&);
 K mforward(Layer&,K);
 Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
 K mattr(const Layer&,Ktype,Attr);
@@ -891,9 +891,9 @@ typedef struct {
   std::make_tuple(cs("device"),      Attr::device),
   std::make_tuple(cs("dim"),         Attr::dim),
   std::make_tuple(cs("dtype"),       Attr::dtype),
-  std::make_tuple(cs("elementsize"), Attr::elementsize),
   std::make_tuple(cs("gradfn"),      Attr::gradfn),
   std::make_tuple(cs("gradient"),    Attr::gradient),
+  std::make_tuple(cs("itemsize"),    Attr::itemsize),
   std::make_tuple(cs("layout"),      Attr::layout),
   std::make_tuple(cs("leaf"),        Attr::leaf),
   std::make_tuple(cs("numel"),       Attr::numel),

@@ -1121,8 +1121,7 @@ static K objsize(Ktag *x) {
  }
 }
 
-static J objnum(const Storage &s) {return s.nbytes() / s.dtype().itemsize();}
-static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : objnum(t.storage());}
+static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize();}
 static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 static J objnum(const Module &m) {return objnum(m.parameters());}
 

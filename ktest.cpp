@@ -343,7 +343,7 @@ KAPI join1(K x) {
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
-  return mget(true,true,"",*q);
+  return mget(true,true,*q);
  KCATCH("join1");
 }
 
@@ -360,7 +360,7 @@ KAPI join2(K x) {
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
   q->push_back("flat",AnyModule(torch::nn::Flatten(torch::nn::FlattenOptions().start_dim(0).end_dim(-1))));
-  return mget(true,true,"",*q);
+  return mget(true,true,*q);
  KCATCH("join2");
 }
 
