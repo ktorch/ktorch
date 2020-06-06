@@ -1,5 +1,19 @@
 #include "ktorch.h"
 
+KAPI Xnone(K x,K y) {
+ return kb(xnone(x,y->j));
+}
+
+J nest(K x) {
+ if(x->t || !x->n) return 0;
+ J n,m=0;
+ for(J i=0;i<x->n;++i)
+  if((n=nest(kK(x)[i])) && n>m) m=n;
+ return ++m;
+}
+
+KAPI xnest(K x) {return kj(nest(x)); }
+
 KAPI layerlist(K x) {
  Klayer *q;
  if((q=xlayer(x))) {

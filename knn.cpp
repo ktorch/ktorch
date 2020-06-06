@@ -200,6 +200,8 @@ static void mstack(size_t d,Module& m,Layers& q) {
  }
 }
 
+static void mstack(Klayer *l,Layers& q) {mstack(0,mref(l->m),q);} // initialize stack
+
 // ------------------------------------------------------------------------------------
 // mforward - given layer, run forward calc on tensor x and optional y,z tensors
 // ------------------------------------------------------------------------------------
@@ -2132,7 +2134,7 @@ static void addparent(const Layer& a,Layers& q) {
 
 static void addparent(Cast c,S s,Layers& q,K x=nullptr,K y=nullptr,K z=nullptr);
 static void addparent(Cast c,S s,Layers& q,K x,K y,K z) {
- TORCH_CHECK(!(x && xlen(x)), msym(c), ": no options expected");
+ TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
  TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
  auto a=parent(c);         // create parent module
@@ -2157,6 +2159,8 @@ static void addchild(Cast c,S s,Layers& q,K x,J i,K y,K z) {
 
 // -----------------------------------------------------------------------------------------
 // msyms - parse module and optional name symbol from k arg(s), throw error if not found
+// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
+// mpush - add new parent/child module to network stored in stack of layers
 // -----------------------------------------------------------------------------------------
 static void msyms(K x,S& s,S& nm) {
  nm=nullptr;
@@ -2176,65 +2180,74 @@ static void msyms(K x,S& s,S& nm) {
  }
 }
 
-// --------------------------------------------------------------------------------------------
-// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
-// mpush - add new parent/child module to network stored in stack of layers
-// --------------------------------------------------------------------------------------------
 void mdepth(Cast c,size_t d,Layers& q) {
  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
  while(q.size()>d) q.pop();
 }
 
-static Cast mpush(J d,K x,Layers& q) {
- S s,nm; msyms(x,s,nm); Cast c=msym(s); mdepth(c,d,q);
+Cast mpush(Layers& q,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
+Cast mpush(Layers& q,J d,S s,S nm,K x,K y,K z) {
+ Cast c=msym(s); mdepth(c,d,q);
+ J i=xdict(x) ? -1 : (nm ? 2 : 1);
  if(container(c))
-  addparent(c,nm,q);
+  addparent(c,nm,q,x,y,z);
  else
-  addchild(c,nm,q,x,nm ? 2 : 1);
+  addchild(c,nm,q,x,i,y,z);
  return c;
 }
 
+static Cast mpush(Layers& q,J d,K x) {S s,nm; msyms(x,s,nm); return mpush(q,d,s,nm,x);}
+
 // -----------------------------------------------------------------------------
-// mtree - parse nested tree of layers to build module(s)
+// mtree - parse nested tree of layers -- type,name,options -- to build modules
 // mdv - parse (depth;value) pair(s) to build module(s)
+// mtable - modules from table of options & depth, optional name,parms & buffers
+// mextend - add a created module to existing module(s) at optional depth
 // -----------------------------------------------------------------------------
-static Cast mtree(size_t d,K x,Layers& q) {
+static Cast mtree(K x,size_t d,Layers& q) {
  K y=x->t || !x->n ? x : kK(x)[0];
- Cast c=mpush(d,y,q);    // get type of overall container module
+ Cast c=mpush(q,d,y);    // get type of overall container module
  if(!x->t)               // process any child modules
   for(J i=1;i<x->n;i++)
-   mtree(d+1,kK(x)[i],q);
+   mtree(kK(x)[i],d+1,q);
  return c;
 }
 
-static K mtree(K x) {Layers q; Cast c=mtree(0,x,q); return parent(c,q);}
+static K mtree(K x,J d=0,Klayer *l=nullptr); // higher-level call, can add to existing module
+static K mtree(K x,J d,Klayer *l) {
+ Layers q; if(l) mstack(l,q);
+ Cast c=mtree(x,d,q);
+ return l ? (K)0 : parent(c,q);
+}
 
-K mdv(J n,K x) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
- Cast c,r; J d,m=n<0 ? 0 : n; K v; Layers q;
+Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
+ Cast c,p; J d,m=n<0 ? 0 : n; K v;
  for(J i=n<0 ? -1 : 0;i<m;++i) {
-  d=dvd(x,i); v=dvv(x,i); c=mpush(d,v,q); if(i<=0) r=c;
+  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v); if(i<=0) p=c;
  }
- return parent(r,q);
+ return p;  // return module type of overall parent container
 }
 
-// --------------------------------------------------------------------------------------------
-// mtable - create layers from table of module options & depth, optional name,parms & buffers
-// --------------------------------------------------------------------------------------------
-K mtable(K x) { // process table/dict w'depth,layer,options.. return ptr to allocated layer(s)
- S s,nm; Cast c,r; J n=x->t==99 ? 1 : xlen(x); Layers q;
- for(J i=0;i<n;++i) {
-  s=statemodule(x,i); nm=statename(x,i); J d=statedepth(x,i);    // get module type, optional name, depth
-  K o=stateoptions(x,i), p=stateparms(x,i), f=statebuffers(x,i); // options, optional parms & buffers
-  c=msym(s); if(!i) r=c;                                         // get module enumeration, save if main parent
-  mdepth(c,d,q);                                                 // check depth, trim stack if depth lower
-  if(container(c))
-   addparent(c,nm,q,o,p,f);
-  else
-   addchild(c,nm,q,o,-1,p,f);
- }
- return parent(r,q);
+K mdv(K x,J n,Klayer *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
+K mdv(K x,J n,Klayer *l,J d,K v) {
+ Cast c; Layers q; if(l) mstack(l,q);
+ c=v ? mpush(q,d,v) : mdv(x,n,q);
+ return l ? (K)0 : parent(c,q);
 }
+
+Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
+ Cast c,p; J n=x->t==99 ? 1 : xlen(x);
+ for(J i=0;i<n;++i) {
+  c=mpush(q, statedepth(x,i),   statemodule(x,i), statename(x,i),
+             stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
+  if(!i) p=c;
+ }
+ return p;
+}
+
+K mtable(K x,Klayer *l=nullptr);  //higher-level call, can also add to existing module
+K mtable(K x,Klayer *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : parent(c,q);}
 
 void mextend(Layer& a,Cast c,J d,Layers& q) {
  if(d) mdepth(c,d,q);
@@ -2243,6 +2256,9 @@ void mextend(Layer& a,Cast c,J d,Layers& q) {
  else
   addchild(a,q);
 }
+
+void mextend(Klayer *x,Klayer *y,J d=0);
+void mextend(Klayer *x,Klayer *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d,q);}
 
 // --------------------------------------------------------------------------------------------
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
@@ -2416,15 +2432,20 @@ KAPI module(K x) {
   if((l=xlayer(x)) || (l=xlayer(x,0))) {         // allocated module ptr supplied
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {    // no other args or boolean flag
     return mget(a,false,mref(l->m));             // return module options
-   } else if(x->n==2) {                          // else if allocated module & non-boolean
-    Layers q; mstack(0, mref(l->m), q);          // populate stack of container modules
+   } else if(x->n==2) {                          // else if allocated module & non-boolean arg
     if((g=xlayer(x,1)))                          // if another allocated module
-     mextend(g->m,g->c,0,q), kfree(x,1);         // add to last container module in chain
-    else if((n=xdv(x,1)))                        // 2nd arg is depth,value pair(s)
-     AT_ERROR("module: (module;dv) nyi");
+     return mextend(l,g), kfree(x,1), (K)0;      // add to last container module in chain
+    else if((n=xdv(x,1)))                        // 2nd arg of depth,value pair(s)
+     return mdv(kK(x)[1],n,l);                   // add module(s) specified in depth,value pair(s)
+    else if(xstate(x,1))                         // if state dictionary/table detected as 2nd arg
+     return mtable(kK(x)[1],l);                  // add definition(s) to existing module(s)
+    else 
+     return mtree(kK(x)[1],0,l);
+   } else if(x->n==3 && xlong(x,1,d)) {          // else if allocated module & depth given w'3rd arg
+    if((g=xlayer(x,2)))                          // if another allocated module
+     return mextend(l,g,d), kfree(x,2), (K)0;    // add module at given depth in chain
     else
-     AT_ERROR("module: nyi");
-    return (K)0;
+     return mdv(nullptr,0,l,d,kK(x)[2]);
    } else {
     AT_ERROR("module: ptr supplied, but unable to parse remaining arg(s)");
    }
@@ -2433,7 +2454,7 @@ KAPI module(K x) {
   } else if((m=xmodel(x))) {
    return klayer(m->mc,m->m);
   } else if((n=xdv(x))) {
-   return mdv(n,x);
+   return mdv(x,n);
   } else {
    return mtree(x);
   }
