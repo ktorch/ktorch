@@ -172,10 +172,8 @@ static K adagrad(Adagrad* v) {  //return internal buffer state as k dictionary
 static void adam(K x,J i,AdamOptions& o) {
  Pairs p; J n=xargc(x,i,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
-/* PATCH
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.beta1(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.beta2(f);}
-*/
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f));}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
  if(n && xbool(x,i,b)){i++; n--; o.amsgrad(b);}
@@ -183,23 +181,16 @@ static void adam(K x,J i,AdamOptions& o) {
  while(xpair(p))
   switch(oset(p.k)) {
    case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
-/* PATCH
-   case Setting::beta1:   f=pdouble(p); if(f==f) o.beta1(f); break;
-   case Setting::beta2:   f=pdouble(p); if(f==f) o.beta2(f); break;
-*/
+   case Setting::beta1:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas()))); break;
+   case Setting::beta2:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f)); break;
    case Setting::eps:     f=pdouble(p); if(f==f) o.eps(f); break;
    case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
    case Setting::amsgrad: o.amsgrad(pbool(p)); break;
    default: AT_ERROR("unrecognized option: ",p.k," for Adagrad optimization"); break;
   }
-  std::cerr << "resetting beta1 = 0.5\n";
-  //o.betas({0.5, 0.999});
-  o.betas(std::make_tuple(0.5, 0.999));
-  std::cerr << "beta1: " << std::get<0>(o.betas()) << "\n";
 }
 
 static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
- std::cerr << "beta1: " << std::get<0>(a.betas()) << "\n";
  auto o=std::make_shared<Adam>(w,a);
  auto n=o->state().size();
  if(y && n) {
@@ -215,13 +206,12 @@ static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
 
 static K adam(bool a,double r,Adam* v) { //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); AdamOptions d(r); auto& o=static_cast<AdamOptions&>(v->defaults());
- if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
- // PATCH
- if(a || std::get<0>(d.betas()) != std::get<0>(o.betas()))     OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
- if(a || std::get<1>(d.betas()) != std::get<1>(o.betas()))     OPTSET(x, beta2,   kf(std::get<1>(o.betas())));
- if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,   kf(o.weight_decay()));
- if(a || d.eps()          != o.eps())          OPTSET(x, eps,     kf(o.eps()));
- if(a || d.amsgrad()      != o.amsgrad())      OPTSET(x, amsgrad, kb(o.amsgrad()));
+ if(a || d.lr()           != o.lr())                       OPTSET(x, lr,      kf(o.lr()));
+ if(a || std::get<0>(d.betas()) != std::get<0>(o.betas())) OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
+ if(a || std::get<1>(d.betas()) != std::get<1>(o.betas())) OPTSET(x, beta2,   kf(std::get<1>(o.betas())));
+ if(a || d.eps()          != o.eps())                      OPTSET(x, eps,     kf(o.eps()));
+ if(a || d.weight_decay() != o.weight_decay())             OPTSET(x, decay,   kf(o.weight_decay()));
+ if(a || d.amsgrad()      != o.amsgrad())                  OPTSET(x, amsgrad, kb(o.amsgrad()));
  return x;
 }
 

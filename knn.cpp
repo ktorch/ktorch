@@ -223,12 +223,29 @@ Tensor mforward(Layer& m,const Tensor& x,const Tensor& y,const Tensor& z) {
 }
 
 K mforward(Layer& m,K a) {
- Tensor x,y,z;
- TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: model/layer(s) & up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
- if(!xten(a,1,x))            x=kput(a,1);
- if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
- if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
- return kten(mforward(m,x,y,z));
+ Tensor x,y,z; TensorVector *v;
+ if((v=xvec(a,1))) {
+  TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
+  IntArrayRef i;
+  if(a->n==2) {
+   return kten(mforward(m, v->at(0)));
+  } else if(a->n==3 && xsize(a,2,i)) {
+   switch(i.size()) {
+    case 1: return kten(mforward(m, v->at(i[0])));
+    case 2: return kten(mforward(m, v->at(i[0]), v->at(i[1])));
+    case 3: return kten(mforward(m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
+    default: AT_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
+   }
+  } else {
+   AT_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
+  }
+ } else {
+  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: model/layer(s) & up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
+  if(!xten(a,1,x))            x=kput(a,1);
+  if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
+  if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
+  return kten(mforward(m,x,y,z));
+ }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2217,14 +2234,15 @@ static Cast mtree(K x,size_t d,Layers& q) {
 static K mtree(K x,J d=0,Klayer *l=nullptr); // higher-level call, can add to existing module
 static K mtree(K x,J d,Klayer *l) {
  Layers q; if(l) mstack(l,q);
- Cast c=mtree(x,d,q);
+ Cast c=mtree(x,d ? d : q.size(),q);
  return l ? (K)0 : parent(c,q);
 }
 
 Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
- Cast c,p; J d,m=n<0 ? 0 : n; K v;
+ Cast c,p=Cast::undefined; J d,m=n<0 ? 0 : n; K v;
  for(J i=n<0 ? -1 : 0;i<m;++i) {
-  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v); if(i<=0) p=c;
+  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v);
+  if(p==Cast::undefined) p=c;
  }
  return p;  // return module type of overall parent container
 }
@@ -2232,16 +2250,16 @@ Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. 
 K mdv(K x,J n,Klayer *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
 K mdv(K x,J n,Klayer *l,J d,K v) {
  Cast c; Layers q; if(l) mstack(l,q);
- c=v ? mpush(q,d,v) : mdv(x,n,q);
+ c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
  return l ? (K)0 : parent(c,q);
 }
 
 Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
- Cast c,p; J n=x->t==99 ? 1 : xlen(x);
+ Cast c,p=Cast::undefined; J n=x->t==99 ? 1 : xlen(x);
  for(J i=0;i<n;++i) {
   c=mpush(q, statedepth(x,i),   statemodule(x,i), statename(x,i),
              stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
-  if(!i) p=c;
+  if(p==Cast::undefined) p=c;
  }
  return p;
 }
@@ -2258,7 +2276,7 @@ void mextend(Layer& a,Cast c,J d,Layers& q) {
 }
 
 void mextend(Klayer *x,Klayer *y,J d=0);
-void mextend(Klayer *x,Klayer *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d,q);}
+void mextend(Klayer *x,Klayer *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
 
 // --------------------------------------------------------------------------------------------
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
@@ -2439,15 +2457,15 @@ KAPI module(K x) {
      return mdv(kK(x)[1],n,l);                   // add module(s) specified in depth,value pair(s)
     else if(xstate(x,1))                         // if state dictionary/table detected as 2nd arg
      return mtable(kK(x)[1],l);                  // add definition(s) to existing module(s)
-    else 
+    else                                         // fallback: assume 2nd arg is nested tree spec
      return mtree(kK(x)[1],0,l);
    } else if(x->n==3 && xlong(x,1,d)) {          // else if allocated module & depth given w'3rd arg
     if((g=xlayer(x,2)))                          // if another allocated module
      return mextend(l,g,d), kfree(x,2), (K)0;    // add module at given depth in chain
     else
-     return mdv(nullptr,0,l,d,kK(x)[2]);
+     return mdv(nullptr,0,l,d,kK(x)[2]);         // add single module definition at indicated depth
    } else {
-    AT_ERROR("module: ptr supplied, but unable to parse remaining arg(s)");
+    AT_ERROR("module: ", mlabel(mref(l->m)), " given as 1st arg, but unable to parse remaining arg(s)");
    }
   } else if(xstate(x)) {
    return mtable(x);
