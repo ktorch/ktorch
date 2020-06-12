@@ -320,3 +320,13 @@ void modelfn(K x) {
  fn(x, "train",    KFN(ktrain),   1);
  fn(x, "evaluate", KFN(evaluate), 1);
 }
+
+/*
+ main functions:
+
+ step
+ train/evaluate
+ forward
+ backward/loss
+*/
+
