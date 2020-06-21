@@ -129,6 +129,17 @@ class CatImpl : public torch::nn::Cloneable<CatImpl> {
 };
 TORCH_MODULE(Cat);
 
+// ----------------------------------------------------------------------------------------------------
+// mul - add convenience module for multiply
+// ----------------------------------------------------------------------------------------------------
+class MulImpl : public torch::nn::Cloneable<MulImpl> {
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Mul()";}
+ torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y) {return torch::mul(x,y);}
+};
+TORCH_MODULE(Mul);
+
 // ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 
 //         - no templatized forward result means can be stored as an AnyModule

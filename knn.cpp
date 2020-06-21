@@ -406,7 +406,7 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
   }
  while(xpair(p))
   switch(mset(p.k)) {
-   case Setting::in:       o.num_features(int64(p,c)); break;
+   case Setting::in:       o.num_features(int64(p,c)); in=true; break;
    case Setting::eps:      o.eps(mdouble(p,c)); break;
    case Setting::momentum: o.momentum(mdouble(p,c)); break;
    case Setting::affine:   o.affine(mbool(p,c)); break;
@@ -2060,6 +2060,7 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::tanh:         noarg(c,x,i); return AnyModule(torch::nn::Tanh());
   case Cast::tanhshrink:   noarg(c,x,i); return AnyModule(torch::nn::Tanhshrink());
   case Cast::gelu:         noarg(c,x,i); return AnyModule(torch::nn::GELU());
+  case Cast::mul:          noarg(c,x,i); return AnyModule(Mul());
 
   case Cast::relu:         return AnyModule( torch::nn::ReLU(inplace(x,i,c)));
   case Cast::relu6:        return AnyModule(torch::nn::ReLU6(inplace(x,i,c)));
@@ -2364,6 +2365,7 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(g.as<torch::nn::Tanh>())          { c=Cast::tanh;
  } else if(g.as<torch::nn::Tanhshrink>())    { c=Cast::tanhshrink;
  } else if(g.as<torch::nn::GELU>())          { c=Cast::gelu;
+ } else if(g.as<Mul>())                      { c=Cast::mul;
 
  } else if(auto* m=g.as<torch::nn::ReLU>())  { c=Cast::relu;  inplace(a,x,m->options.inplace());
  } else if(auto* m=g.as<torch::nn::SELU>())  { c=Cast::selu;  inplace(a,x,m->options.inplace());

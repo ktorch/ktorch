@@ -659,7 +659,7 @@ K lossdict(Ktag *g,K x) {
 }
 
 Tensor losswt(Cast c,AnyModule& m,const Tensor& x,const Tensor&y) {
-  return (c==Cast::bce || c==Cast::bcelogits) ? m.forward(x,y,Tensor{}) : m.forward(x,y);
+ return (c==Cast::bce || c==Cast::bcelogits) ? m.forward(x,y,Tensor{}) : m.forward(x,y);
 }
 
 static K lossfwd(Cast c,AnyModule& m,K a) {
@@ -692,6 +692,8 @@ KAPI loss(K x) {
    return lossdict(a,false,l->c,l->m); //given allocated loss ptr or ptr w'boolean, return options
   } else if((l=xloss(x,0)) && x->n>1) {
    return lossfwd(l->c,l->m,x); //else, run forward calculation w'loss and input,target,..
+  } else if((m=xmodel(x,0)) && x->n>1) {
+   return lossfwd(m->lc,m->l,x); //else, run forward calculation w'loss and input,target,..
   } else if((m=xmodel(x))) {
    return kloss(m->lc,m->l);
   } else {

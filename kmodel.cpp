@@ -1,11 +1,10 @@
 #include "ktorch.h"
 
 // -------------------------------------------------------------------------------------------
-// modelpart - parse args from k to define sequential, loss & optimizer modules
+// modelpart - parse args from k to define module, loss & optimizer
 // modelkeys - return list of symbols used for model state dictionary
-// modelstate - return a dictionary with state of sequential module, loss fn & optimizer
-// modeltable - state dictionary -> table w'rows for sequential module, loss & optimizer
-// model - create model from sequential, loss & optimizer modules or retrieve input options
+// modelstate - return a dictionary with state of module, loss fn & optimizer
+// model - create model from module, loss & optimizer or retrieve input options
 // -------------------------------------------------------------------------------------------
 static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
  for(;i<x->n;++i) {
@@ -23,9 +22,9 @@ static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
 K modelkeys() {
  K x=ktn(KS,env().model.size());
  for(auto &m:env().model)
-  if     (std::get<1>(m)==Class::sequential) kS(x)[0]=std::get<0>(m);
-  else if(std::get<1>(m)==Class::loss)       kS(x)[1]=std::get<0>(m);
-  else if(std::get<1>(m)==Class::optimizer)  kS(x)[2]=std::get<0>(m);
+  if     (std::get<1>(m)==Class::module)    kS(x)[0]=std::get<0>(m);
+  else if(std::get<1>(m)==Class::loss)      kS(x)[1]=std::get<0>(m);
+  else if(std::get<1>(m)==Class::optimizer) kS(x)[2]=std::get<0>(m);
  return x;
 }
 
@@ -47,13 +46,6 @@ static void modelfree(K x,J i) {
   TORCH_CHECK(kfree(x,i), "model: unable to free arg[",i,"]");
 }
 
-KAPI modeltable(K x) {
- KTRY
-  TORCH_CHECK(x->t==99, "modeltable not implemented for ",kname(x->t));
-  return k(0,(S)"{raze[x where b],x where not b:98=type each x}",r1(x),0);
- KCATCH("modeltable");
-}
-
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
@@ -64,13 +56,13 @@ KAPI model(K x) {
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->m=q->m;              // reassign model's sequential module
-    if(l) m->lc=l->c, m->l=l->m;  // loss function
-    if(o) m->oc=o->c, m->o=o->o;  // optimizer
+    if(q) m->m=q->m;              // assign new module layer
+    if(l) m->lc=l->c, m->l=l->m;  // new loss function
+    if(o) m->oc=o->c, m->o=o->o;  // new optimizer
     modelfree(x,1);
     return (K)0;
    } else {
-    TORCH_CHECK(q && l && o, (q ? (l ? "optimizer" : "loss") : "sequential module")," not specified");
+    TORCH_CHECK(q && l && o, (q ? (l ? "optimizer" : "loss") : "module")," not specified");
     m=new Kmodel(q,l,o);
     modelfree(x,0);
     return kptr(m);
@@ -82,7 +74,7 @@ KAPI model(K x) {
 // -------------------------------------------------------------------------------------------
 // mforward - return tensor from running forward calcs on input(s)
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
-// mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(sequential(v[0]),v[1])
+// mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(module(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
 Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->m,x);}
 Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
@@ -199,7 +191,7 @@ KAPI ganstep(K a) {
 }
 
 // --------------------------------------------------------------------------------------------
-// evalfwd - forward calc on given sequential module and inputs, in batches if batchsize given
+// evalfwd - forward calc on given module layer and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
 static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
  auto m=mref(q);
@@ -270,7 +262,7 @@ KAPI evaluate(K x) {
  KTRY
   torch::NoGradGuard g;
   Klayer *q=xlayer(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
-  TORCH_CHECK(q || m, "evaluate: expects (model/sequential; vector/tensor(s)/array(s);optional args..)\n"
+  TORCH_CHECK(q || m, "evaluate: expects (model/module; vector/tensor(s)/array(s);optional args..)\n"
                       "          optional args: (batch size; tensor flag; metric(s))");
   J n=x->n; K s=nullptr;
   if(abs(kK(x)[n-1]->t)==KS) n--, s=kK(x)[n];  // metric symbol(s) given as last arg
@@ -290,7 +282,7 @@ KAPI evaluate(K x) {
 // -------------------------------------------------------------------------------------------
 // xlayer - given tag, returns layer or error
 // xmodule - given tag, returns module or error
-// training - query/set training flag given model or sequential module
+// training - query/set training flag given model or module layer
 // -------------------------------------------------------------------------------------------
 Layer& xlayer(Ktag *g) {
  switch(g->a) {
@@ -328,5 +320,16 @@ void modelfn(K x) {
  train/evaluate
  forward
  backward/loss
+
+ forward(m; x)
+ forward(m; z; y)
+ forward(m; x; y; z)
+ forward(m; v)
+ forward(m; v; i)
+ 
+
+ forward(m; (v;0 1); t)
+
+ backward(m; 
 */
 

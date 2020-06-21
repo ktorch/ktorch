@@ -155,7 +155,7 @@ enum class Cast:char {
  groupnorm,      gru,             hardshrink,      hardtanh,        identity,
  instancenorm1d, instancenorm2d,  instancenorm3d,  layernorm,       leakyrelu,
  linear,         localnorm,       logsigmoid,      logsoftmax,      lppool1d,
- lppool2d,       lstm,            maxpool1d,       maxpool2d,       maxpool3d,
+ lppool2d,       lstm,            maxpool1d,       maxpool2d,       maxpool3d,    mul,
  normalize,      pad,             pad1d,           pad2d,           pad3d,
  prelu,          reflect1d,       reflect2d,       relu,            relu6,
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn,
@@ -606,9 +606,9 @@ typedef struct {
  }};
 
  std::array<std::tuple<S,Class>,3> model = {{
-  std::make_tuple(cs("seq"),  Class::sequential),
-  std::make_tuple(cs("loss"), Class::loss),
-  std::make_tuple(cs("opt"),  Class::optimizer),
+  std::make_tuple(cs("module"), Class::module),
+  std::make_tuple(cs("loss"),   Class::loss),
+  std::make_tuple(cs("opt"),    Class::optimizer),
  }};
 
  std::array<std::tuple<S,Tensormode>,13> tensormode = {{    //tensor creation mode: map symbol -> enum
@@ -644,7 +644,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Cast>,94> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,95> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -703,6 +703,7 @@ typedef struct {
   std::make_tuple(cs("maxpool1d"),       Cast::maxpool1d),
   std::make_tuple(cs("maxpool2d"),       Cast::maxpool2d),
   std::make_tuple(cs("maxpool3d"),       Cast::maxpool3d),
+  std::make_tuple(cs("mul"),             Cast::mul),
   std::make_tuple(cs("normalize"),       Cast::normalize),
   std::make_tuple(cs("pad"),             Cast::pad),
   std::make_tuple(cs("pad1d"),           Cast::pad1d),
