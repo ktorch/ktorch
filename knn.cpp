@@ -82,14 +82,18 @@ static Cast msym(S s) {
  AT_ERROR("unrecognized module: ",s);
 }
 
-static S mset(Setting o) {
- for(auto& m:env().mset) if(o==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized module option: ",(I)o);
+static S mset(Setting x) {
+ for(auto& m:env().mset) if(x == std::get<1>(m)) return std::get<0>(m);
+ AT_ERROR("unrecognized module option: ",(I)x);
 }
 
-static Setting mset(S s) {
- for(auto& m:env().mset) if(s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("unrecognized option: ",s);
+static Setting mset(S x,Cast c=Cast::undefined);
+static Setting mset(S x,Cast c) {
+ for(auto& m:env().mset) if(x == std::get<0>(m)) return std::get<1>(m);
+ if(c == Cast::undefined)
+  AT_ERROR("unrecognized option: `",x);
+ else
+  AT_ERROR(msym(c),": unrecognized option `",x);
 }
 
 K mkeys(bool b) {
@@ -319,6 +323,49 @@ static double mdouble(const Pairs& p,Cast c) {
 static c10::optional<double> optdouble(K x,J i,Cast c,Setting s) {double d=mdouble(x,i,c,s); if(d==d) return d; else return c10::nullopt;}
 static c10::optional<double> optdouble(const Pairs& p,Cast c)    {double d=mdouble(p,c);     if(d==d) return d; else return c10::nullopt;}
 
+// ----------------------------------------------------------------------------------------------------
+// mlongs - check for long(s), return vector else error specific to module and setting
+// mdoubles - check for double(s), return vector else error specific to module and setting
+// ----------------------------------------------------------------------------------------------------
+static LongVector mlongs(K x,J i,Cast c,Setting s) {
+ IntArrayRef a;
+ TORCH_CHECK(xsize(x,i,a), msym(c)," ",mset(s),": expected long(s), given ",kname(x,i));
+ return a.vec();
+}
+
+static LongVector mlongs(const Pairs& p,Cast c) {
+ IntArrayRef a;
+ TORCH_CHECK(p.t==-KJ || p.t==KJ, msym(c)," ",p.k,": expected long(s), given ",kname(p.t));
+ psize(p,a);
+ return a.vec();
+}
+
+static DoubleVector mdoubles(K x,J i,Cast c,Setting s) {
+ J n; F *f; IntArrayRef a; DoubleVector v;
+ if(xsize(x,i,a)) {
+  for(auto j:a) v.push_back(j);
+ } else if(xdouble(x,i,n,f)) {
+  v=DoubleArrayRef(f,n).vec();
+ } else {
+  AT_ERROR(msym(c)," ",mset(s),": expected double(s), given ",kname(x,i));
+ }
+ return v;
+}
+
+static DoubleVector mdoubles(const Pairs& p,Cast c) {
+ DoubleVector v;
+ if(p.t==-KJ || p.t==KJ) {
+  IntArrayRef a; psize(p,a);
+  for(auto j:a) v.push_back(j);
+ } else if(p.t==-KF || p.t==KF) {
+  DoubleArrayRef a; pdoubles(p,a); v=a.vec();
+ } else {
+  AT_ERROR(msym(c)," ",p.k,": expected double(s), given ",kname(p.t));
+ }
+ return v;
+}
+
+
 // -------------------------------------------------------------------------------------------------
 // exarray - check positional or name-value args for long(s), return expanding array,  else error
 // exoptional - similar to exarray, for optional long(s), return expanding array with nulls
@@ -405,7 +452,7 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:       o.num_features(int64(p,c)); in=true; break;
    case Setting::eps:      o.eps(mdouble(p,c)); break;
    case Setting::momentum: o.momentum(mdouble(p,c)); break;
@@ -441,7 +488,7 @@ template<typename O> static O localnorm(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size:  o.size(int64(p,c)); sz=true; break;
    case Setting::alpha: o.alpha(mdouble(p,c)); break;
    case Setting::beta:  o.beta(mdouble(p,c)); break;
@@ -475,7 +522,7 @@ static torch::nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::groups:   o.num_groups(int64(p,c)); g=true; break;
    case Setting::channels: o.num_channels(int64(p,c)); h=true; break;
    case Setting::eps:      o.eps(mdouble(p,c)); break;
@@ -499,23 +546,23 @@ static void groupnorm(bool a,K x,const torch::nn::GroupNormOptions& o) {
 // layernorm - get/set shape,eps,affine flag for layer normalization
 // --------------------------------------------------------------------------------------
 static torch::nn::LayerNormOptions layernorm(K x,J i,Cast c) {
- torch::nn::LayerNormOptions o({}); IntArrayRef a; Pairs p; J n=xargc(x,i,p);
+ torch::nn::LayerNormOptions o({}); Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
-    case 0: TORCH_CHECK(xsize(x,i+j,a), msym(c),": expecting 1st arg of normalized shape(s)"); break;
+    case 0: o.normalized_shape(mlongs(x,i+j,c,Setting::shape)); break;
     case 1: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
     case 2: o.elementwise_affine(mbool(x,i+j,c,Setting::affine)); break;
     default: AT_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
-   case Setting::shape:  psize(p,a); break;
+  switch(mset(p.k,c)) {
+   case Setting::shape:  o.normalized_shape(mlongs(p,c)); break;
    case Setting::eps:    o.eps(mdouble(p,c)); break;
    case Setting::affine: o.elementwise_affine(mbool(p,c)); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
- TORCH_CHECK(a.size(), msym(c),": no normalized shape given");
- return o.normalized_shape(a.vec());
+ TORCH_CHECK(o.normalized_shape().size(), msym(c),": no normalized shape given");
+ return o;
 }
 
 static void layernorm(bool a,K x,const torch::nn::LayerNormOptions& o) {
@@ -539,7 +586,7 @@ static torch::nn::functional::NormalizeFuncOptions normalize(K x,J i,Cast c,Tens
    default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 4 args(p,dim,eps,output tensor) expected, ",n," supplied");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
@@ -598,7 +645,7 @@ template<size_t D> static torch::nn::ConvOptions<D> conv(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:        o.in_channels (int64(p,c));     in=true; break;
    case Setting::out:       o.out_channels(int64(p,c));    out=true; break;
    case Setting::size:      o.kernel_size (exarray<D>(p,c)); sz=true; break;
@@ -634,7 +681,7 @@ template<size_t D> static torch::nn::ConvTransposeOptions<D> convtran(K x,J i,Ca
     default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:        o.in_channels   (int64(p,c));      in=true; break;
    case Setting::out:       o.out_channels  (int64(p,c));     out=true; break;
    case Setting::size:      o.kernel_size   (exarray<D>(p,c)); sz=true; break;
@@ -690,7 +737,7 @@ static torch::nn::FoldOptions fold(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::out:       o.output_size(exarray<2>(p,c));out=true; break;
    case Setting::size:      o.kernel_size(exarray<2>(p,c)); sz=true; break;
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
@@ -724,7 +771,7 @@ static torch::nn::UnfoldOptions unfold(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size:      o.kernel_size(exarray<2>(p,c)); sz=true; break;
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
    case Setting::pad:       o.padding    (exarray<2>(p,c)); break;
@@ -757,6 +804,73 @@ KAPI   Fold(K x) {return kfold(x, Cast::fold);}
 KAPI Unfold(K x) {return kfold(x, Cast::unfold);}
 
 // --------------------------------------------------------------------------------------
+// upsample & interpolate
+// --------------------------------------------------------------------------------------
+static void upmode(torch::nn::UpsampleOptions& o,S s) {
+ switch(emap(s)) {
+  case Enum::nearest:   o.mode(torch::kNearest); break;
+  case Enum::linear:    o.mode(torch::kLinear); break;
+  case Enum::bilinear:  o.mode(torch::kBilinear); break;
+  case Enum::bicubic:   o.mode(torch::kBicubic); break;
+  case Enum::trilinear: o.mode(torch::kTrilinear); break;
+  default: AT_ERROR("unrecognized upsample mode: ",s); break;
+ }
+}
+
+static void upmode(torch::nn::functional::InterpolateFuncOptions& o,S s) {
+ switch(emap(s)) {
+  case Enum::nearest:   o.mode(torch::kNearest); break;
+  case Enum::linear:    o.mode(torch::kLinear); break;
+  case Enum::bilinear:  o.mode(torch::kBilinear); break;
+  case Enum::bicubic:   o.mode(torch::kBicubic); break;
+  case Enum::trilinear: o.mode(torch::kTrilinear); break;
+  case Enum::area:      o.mode(torch::kArea); break;
+  default: AT_ERROR("unrecognized interpolate mode: ",s); break;
+ }
+}
+
+static torch::nn::UpsampleOptions upsample(K x,J i,Cast c) {
+ torch::nn::UpsampleOptions o;
+ Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j) {
+  switch(j) {
+   case 0: if(xempty(x,i+j)) o.size({}); else o.size(mlongs(x,i+j,c,Setting::size)); break;
+   case 1: if(xempty(x,i+j)) o.scale_factor({}); else o.scale_factor(mdoubles(x,i+j,c,Setting::scale)); break;
+   case 2: upmode(o,mode(x,i+j,c,Setting::mode)); break;
+   case 3: if(xempty(x,i+j)) o.align_corners({}); else o.align_corners(mbool(x,i+j,c,Setting::align)); break;
+   default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+  }
+ }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::size:   if(pempty(p)) o.size({}); else o.size(mlongs(p,c)); break;
+   case Setting::scale:  if(pempty(p)) o.scale_factor({}); else o.scale_factor(mdoubles(p,c)); break;
+   case Setting::mode:   upmode(o,psym(p)); break;
+   case Setting::align:  if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ if(o.size()         && !(*o.size()).size())         o.size({});
+ if(o.scale_factor() && !(*o.scale_factor()).size()) o.scale_factor({});
+ TORCH_CHECK(o.size() || o.scale_factor(), msym(c),": no output size or scale factor given");
+ TORCH_CHECK(!(o.size() && o.scale_factor()), msym(c),": both output size and scale factor given");
+ return o;
+}
+
+static void upsample(bool a,K x,const torch::nn::UpsampleOptions& o) {
+ torch::nn::UpsampleOptions d;
+ if(a || o.size())
+  OPTION(x, size, o.size() ? ((*o.size()).size()==1 ? kj((*o.size())[0]) : kget(*o.size())) : ktn(0,0));
+ if(a || o.scale_factor())
+  OPTION(x, scale, o.scale_factor() ? ((*o.scale_factor()).size()==1 ? kf((*o.scale_factor())[0]) : kget(*o.scale_factor())) : ktn(0,0));
+ if(a || o.mode().index() != d.mode().index()) OPTION(x, mode,  ks(ESYM(o.mode())));
+ if(a || (d.align_corners() != o.align_corners()) ||
+         (d.align_corners() == o.align_corners() &&
+          o.align_corners() && *o.align_corners() != *d.align_corners()))
+  OPTION(x, align, o.align_corners() ? kb(*o.align_corners()) : ktn(0,0));
+}
+
+
+// --------------------------------------------------------------------------------------
 // drop - create dropout module given probability/set dictionary given module
 // --------------------------------------------------------------------------------------
 static torch::nn::DropoutOptions drop(K x,J i,Cast c) {
@@ -768,7 +882,7 @@ static torch::nn::DropoutOptions drop(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
    default: AT_ERROR("unrecognized dropout option: ",p.k); break;
@@ -812,7 +926,7 @@ static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingBagOptions& o
 
 template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &z) {
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::rows:       o.num_embeddings(int64(p,c)); break;
    case Setting::cols:       o.embedding_dim (int64(p,c)); break;
    case Setting::padindex:   embedset(c,Setting::padindex,p,o); break;
@@ -957,7 +1071,7 @@ static torch::nn::LinearOptions linear(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:   in=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
    case Setting::bias: b=mbool(p,c); break;
@@ -1003,7 +1117,7 @@ static torch::nn::BilinearOptions bilinear(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in1:  in1=int64(p,c); break;
    case Setting::in2:  in2=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
@@ -1047,7 +1161,7 @@ static M rnn(Cast c,K x,J k) {
   AT_ERROR("unrecognized arguments for ",msym(c)," module");
  // PATCH: bool r=std::is_same<M,torch::nn::RNN>::value;
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:          i=plong(p); break;
    case Setting::hidden:      h=plong(p); break;
    case Setting::layers:      l=plong(p); break;
@@ -1094,7 +1208,7 @@ template<size_t D> static torch::nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::stride:  o.stride     (exarray<D>(p,c)); st=true; break;
    case Setting::pad:     o.padding    (exarray<D>(p,c)); break;
@@ -1134,7 +1248,7 @@ template<size_t D> static torch::nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size:    o.kernel_size (exarray<D>(p,c)); sz=true; break;
    case Setting::stride:  o.stride      (exarray<D>(p,c)); st=true; break;
    case Setting::pad:     o.padding     (exarray<D>(p,c)); break;
@@ -1179,7 +1293,7 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size: adapt<D>(o.output_size(),p,c); sz=true; break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
@@ -1209,7 +1323,7 @@ template<size_t D> static torch::nn::FractionalMaxPoolOptions<D> fpool(K x,J i,C
  }
  while(xpair(p)) {
   e=pempty(p);
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::outsize: if(e) o.output_size (c10::nullopt); else o.output_size(exarray  <D>(p,c)); break;
    case Setting::ratio:   if(e) o.output_ratio(c10::nullopt); else o.output_ratio(exdouble<D>(p,c)); break;
@@ -1245,7 +1359,7 @@ template<size_t D> static torch::nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::p:       o.norm_type  (mdouble   (p,c)); pw=true; break;
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::stride:  o.stride     (exarray<D>(p,c)); st=true; break;
@@ -1328,28 +1442,28 @@ static void padmode(torch::nn::functional::PadFuncOptions& o,S s) {
 }
 
 static torch::nn::functional::PadFuncOptions pad(K x,J i,Cast c) {
- torch::nn::functional::PadFuncOptions o({}); S s; Pairs p; J n=xargc(x,i,p); IntArrayRef a;
+ torch::nn::functional::PadFuncOptions o({}); S s; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
-   switch(j) {
-    case 0: TORCH_CHECK(xsize(x,i+j,a), msym(c),": expecting 1st arg of padding size(s)"); break;
-    case 1:
-     if(xsym(x,i+j,s)) padmode(o,s);
-     else if(n==2)     o.value(mdouble(x,i+j,c,Setting::value));
-     else AT_ERROR("pad: unrecognized 2nd arg, expecting mode or value");
-     break;
-    case 2: o.value(mdouble(x,i+j,c,Setting::value)); break;
-    default: AT_ERROR(msym(c),": up to 3 positional args expected(padding;mode;value), ",n," given");
+  switch(j) {
+   case 0: o.pad(mlongs(x,i+j,c,Setting::pad)); break;
+   case 1:
+    if(xsym(x,i+j,s)) padmode(o,s);
+    else if(n==2)     o.value(mdouble(x,i+j,c,Setting::value));
+    else AT_ERROR("pad: unrecognized 2nd arg, expecting mode or value");
+    break;
+   case 2: o.value(mdouble(x,i+j,c,Setting::value)); break;
+   default: AT_ERROR(msym(c),": up to 3 positional args expected(padding;mode;value), ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
-   case Setting::pad:    psize(p,a); break;
-   case Setting::mode:   padmode(o,psym(p)); break;
-   case Setting::value:  o.value(mdouble(p,c)); break;
+  switch(mset(p.k,c)) {
+   case Setting::pad:   o.pad(mlongs(p,c)); break;
+   case Setting::mode:  padmode(o,psym(p)); break;
+   case Setting::value: o.value(mdouble(p,c)); break;
    default: AT_ERROR("padding option: ",p.k," not recognized");
   }
- TORCH_CHECK(a.size()>0 && !(a.size() % 2),
-             a.size()," pad size(s) given, expecting pairs for left,right or left,right,top,bottom.. etc");
- return o.pad(a.vec());
+ n=o.pad().size();
+ TORCH_CHECK(n>0 && !(n % 2), msym(c),": ",n," pad size(s) given, expecting pairs for left,right or left,right,top,bottom.. etc");
+ return o;
 }
 
 static void pad(bool a,K x,const PadImpl* m) {
@@ -1380,7 +1494,7 @@ template<size_t D,typename M> static M cpad(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": up to 2 positional args expected(padding;value), ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
    case Setting::value: o.value(mdouble(p,c)); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
@@ -1406,7 +1520,7 @@ template<size_t D,typename M> static M npad(K x,J i,Cast c) {
     default: AT_ERROR(msym(c),": only 1 positional argument expected, ",n," given");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
@@ -1443,7 +1557,7 @@ static bool inplace(K x,J i,Cast c) {
  if(n)
   TORCH_CHECK(xbool(x,i,b) && n==1, msym(c),": unrecognized option(s), expecting single boolean flag");
  while(xpair(p)) {
-  TORCH_CHECK(mset(p.k)==Setting::inplace, msym(c),": unrecognized option: ",p.k);
+  TORCH_CHECK(mset(p.k,c)==Setting::inplace, msym(c),": unrecognized option: ",p.k);
   b=mbool(p,c);
  }
  return b;
@@ -1469,7 +1583,7 @@ template<typename O> static O alpha(K x,J i,Cast c) {
   AT_ERROR(msym(c), ": unrecognized positional option(s), expecting alpha, inplace flag, or (alpha;inplace flag)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::alpha:   o.alpha(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
@@ -1500,7 +1614,7 @@ static torch::nn::LeakyReLUOptions slope(K x,J i,Cast c) {
   AT_ERROR(msym(c), ": unrecognized positional option(s), expecting slope, inplace flag, or (slope;inplace flag)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::slope:   o.negative_slope(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
@@ -1527,7 +1641,7 @@ static double lambda(K x,J i,Cast c) {
  if(n==1) l=mdouble(x,i,c,Setting::lambda);
  TORCH_CHECK(n<2,msym(c),": unrecognized positional option(s), expecting lambda, e.g. 0.5");
  while(xpair(p)) {
-  TORCH_CHECK(mset(p.k)==Setting::lambda,"unrecognized option: ",p.k); l=mdouble(p,c);
+  TORCH_CHECK(mset(p.k,c)==Setting::lambda,"unrecognized option: ",p.k); l=mdouble(p,c);
  }
  return l;
 }
@@ -1550,7 +1664,7 @@ static int64_t dim(K x,J i,Cast c) {
  if(n==1) d=int64(x,i,c,Setting::dim);
  TORCH_CHECK(n<2, msym(c),": unrecognized positional option(s), expecting single dimension");
  while(xpair(p)) {
-  TORCH_CHECK(mset(p.k)==Setting::dim,"unrecognized option: ",p.k); d=int64(p,c);
+  TORCH_CHECK(mset(p.k,c)==Setting::dim,"unrecognized option: ",p.k); d=int64(p,c);
  }
  TORCH_CHECK(d!=nj, msym(c),": no dimension given");
  return d;
@@ -1569,7 +1683,7 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) {
  if(!((n==0 && p.n) || (xlong(x,i,d) && (n==1 || (n==2 && xtype(x,i+1,s))))))
   AT_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::dim:  d=plong(p); break;
    case Setting::type: s=ptype(p); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
@@ -1599,7 +1713,7 @@ static void rrelu(K x,J i,Cast c,bool fn,bool& tr,bool& in,double& lo,double& up
   }
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::lower:   lo=mdouble(p,c); break;
    case Setting::upper:   up=mdouble(p,c); break;
    case Setting::train:   TORCH_CHECK(fn,"rrelu: training flag not set for module"); tr=mbool(p,c);   break;
@@ -1635,7 +1749,7 @@ static torch::nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
               "hardtanh: unexpected positional arg(s), expects (min;max;inplace flag)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::min:     v1=mdouble(p,c); break;
    case Setting::max:     v2=mdouble(p,c); break;
    case Setting::inplace: b=mbool(p,c); break;
@@ -1661,7 +1775,7 @@ static torch::nn::SoftplusOptions softplus(K x,J i,Cast c) {
               "softplus: unexpected positional arg(s), expects (beta;threshold)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::beta:      v1=mdouble(p,c); break;
    case Setting::threshold: v2=mdouble(p,c); break;
    default: AT_ERROR("softplus option: ",p.k," not recognized");
@@ -1687,7 +1801,7 @@ static torch::nn::ThresholdOptions threshold(K x,J i,Cast c) {
               "threshold: unexpected positional arg(s), expects (threshold;value;inplace flag)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::threshold: v1=mdouble(p,c); break;
    case Setting::value:     v2=mdouble(p,c); break;
    case Setting::inplace:   b=mbool(p,c); break;
@@ -1780,7 +1894,7 @@ static torch::nn::PReLUOptions prelu(K x,J i,Cast c) {
                    (n==2 &&  xint64(x,i,m) && xdouble(x,i+1,w)),
                    "prelu: expecting 1-2 positional args in,init or (in;init)");
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::in:    m=int64(p,c); break;
    case Setting::init:  w=mdouble(p,c); break;
    default: AT_ERROR("prelu option: ",p.k," not recognized");
@@ -1821,7 +1935,7 @@ torch::nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
    default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 2 args(dim,eps) expected, ",n," supplied");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    default: AT_ERROR("unrecognized option: ",p.k," for cosine similarity distance");
@@ -1845,7 +1959,7 @@ torch::nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
    default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 3 args(p,eps,keepdim) expected, ",n," supplied");
   }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    case Setting::keepdim: o.keepdim(mbool(p,c)); break;
@@ -1893,12 +2007,12 @@ KAPI pdist(K x) {
 //         - return options used given a flatten module used
 //         - call flatten as function given input/tensor and optional start & end dimensions
 // ----------------------------------------------------------------------------------------------------
-static torch::nn::FlattenOptions flatten(K x,J i) {
+static torch::nn::FlattenOptions flatten(K x,J i,Cast c) {
  torch::nn::FlattenOptions o; int64_t s=o.start_dim(),e=o.end_dim(); Pairs p; J n=xargc(x,i,p);
  if(!(n==0 || (xint64(x,i,s) && (n==1 || (n==2 && xint64(x,i+1,e))))))
   AT_ERROR("flatten: unrecognized arg(s)");
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::start: s=plong(p); break;
    case Setting::end:   e=plong(p); break;
    default: AT_ERROR("flatten option: ",p.k," not recognized");
@@ -1915,7 +2029,7 @@ static void flatten(bool a,K x,const torch::nn::FlattenImpl* m) {
 KAPI kflatten(K x) {
  KTRY
   bool m=false; Tensor t;
-  auto o=flatten((xten(x,t) || xten(x,0,t) || (m=xmixed(x,3))) ? x : nullptr, 1);
+  auto o=flatten((xten(x,t) || xten(x,0,t) || (m=xmixed(x,3))) ? x : nullptr, 1, Cast::flatten);
   if(t.defined())
    return kten(torch::flatten(t, o.start_dim(), o.end_dim()));
   else
@@ -1940,7 +2054,7 @@ static SqueezeOptions squeeze(K x,J i,Cast c) {
   AT_ERROR(msym(c), ": unrecognized positional arg(s), expecting dim, inplace flag, or (dim;inplace flag)");
  }
  while(xpair(p))
-  switch(mset(p.k)) {
+  switch(mset(p.k,c)) {
    case Setting::dim:     o.dim(int64n(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
@@ -1960,15 +2074,15 @@ static void squeeze(bool a,K x,const SqueezeOptions& o) {
 // reshape
 // ----------------------------------------------------------------------------------------------------
 static SizeOptions getsize(K x,J i,Cast c) {
- IntArrayRef a; LongVector v; Pairs p; J n=xargc(x,i,p);
- TORCH_CHECK(!n || (xsize(x,i,a) && n==1), msym(c)," expects size(s) as argument");
+ SizeOptions o({}); Pairs p; J n=xargc(x,i,p);
+ TORCH_CHECK(n<2, msym(c),": 1 positional argument expected, ",n," given");
+ if(n==1) o.size(mlongs(x,i,c,Setting::size));
  while(xpair(p))
-  switch(mset(p.k)) {
-   case Setting::size: psize(p,a); break;
+  switch(mset(p.k,c)) {
+   case Setting::size: o.size(mlongs(p,c)); break;
    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
   }
- for(auto j:a) v.push_back(j);
- return SizeOptions(v);
+ return o;
 }
 
 static void getsize(bool a,K x,const SizeOptions& o) {
@@ -2014,6 +2128,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 
   case Cast::fold:         return AnyModule(torch::nn::Fold(fold(x,i,c)));
   case Cast::unfold:       return AnyModule(torch::nn::Unfold(unfold(x,i,c)));
+  case Cast::upsample:     return AnyModule(torch::nn::Upsample(upsample(x,i,c)));
 
   case Cast::maxpool1d:    return AnyModule(torch::nn::MaxPool1d(maxpool<1>(x,i,c)));
   case Cast::maxpool2d:    return AnyModule(torch::nn::MaxPool2d(maxpool<2>(x,i,c)));
@@ -2069,7 +2184,7 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::softmax:      return AnyModule(torch::nn::Softmax(dim(x,i,c)));
   case Cast::softmin:      return AnyModule(torch::nn::Softmin(dim(x,i,c)));
   case Cast::logsoftmax:   return AnyModule(torch::nn::LogSoftmax(dim(x,i,c)));
-  case Cast::flatten:      return AnyModule(torch::nn::Flatten(flatten(x,i)));
+  case Cast::flatten:      return AnyModule(torch::nn::Flatten(flatten(x,i,c)));
 
   case Cast::squeeze:      return AnyModule(Squeeze(squeeze(x,i,c)));
   case Cast::unsqueeze:    return AnyModule(Unsqueeze(squeeze(x,i,c)));
@@ -2318,7 +2433,8 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<torch::nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; conv<3>(a,x,m->options);
 
  } else if(auto* m=g.as<torch::nn::Fold>())           { c=Cast::fold;     fold(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Unfold>())         { c=Cast::unfold; unfold(a,x,m->options);
+ } else if(auto* m=g.as<torch::nn::Unfold>())         { c=Cast::unfold;   unfold(a,x,m->options);
+ } else if(auto* m=g.as<torch::nn::Upsample>())       { c=Cast::upsample; upsample(a,x,m->options);
 
  } else if(auto* m=g.as<torch::nn::MaxPool1d>())      { c=Cast::maxpool1d; maxpool<1,torch::nn::MaxPool1dImpl>(a,x,m);
  } else if(auto* m=g.as<torch::nn::MaxPool2d>())      { c=Cast::maxpool2d; maxpool<2,torch::nn::MaxPool2dImpl>(a,x,m);

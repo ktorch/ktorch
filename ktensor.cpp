@@ -12,7 +12,7 @@ K kvec(const TensorVector& v) {return kptr(new Kvec(v));}
 // kgetscalar - return k scalar given a scalar tensor
 // kgets - process tensor at depth, creating k array
 // kget - take tensor reference, return k scalar/array
-//      - take reference to vector of longs, return k list
+//      - take reference to vector of longs/doubles, return k list
 //      - take reference to vector of tensors, return k lists
 // -------------------------------------------------------------------------
 K kgetscalar(const Tensor &t){
@@ -64,7 +64,8 @@ K kget(const Tensor &t) {
  return kgets(0,j,maptype(t.dtype()),b,s,p);
 }
 
-K kget(const LongVector& v) {return klist(v.size(),v.data());}
+K kget(const LongVector& v)   {return klist(v.size(),v.data());}
+K kget(const DoubleVector& v) {return klist(v.size(),v.data());}
 
 K kget(const TensorVector& v) {
  K x=ktn(0,v.size());

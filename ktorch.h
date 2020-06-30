@@ -86,7 +86,9 @@ using Scalar=torch::Scalar;
 using TensorVector=std::vector<Tensor>;
 using TensorDeque=std::deque<Tensor>;
 using LongVector=std::vector<int64_t>;
+using DoubleVector=std::vector<double>;
 using IntArrayRef=torch::IntArrayRef;
+using DoubleArrayRef=torch::ArrayRef<double>;
 template<size_t D,typename T=int64_t> using ExpandingArray=torch::ExpandingArray<D,T>;
 template<size_t D,typename T=double>  using Exdouble=torch::ExpandingArray<D,T>;
 template<size_t D,typename T=int64_t> using Exoptional=torch::ExpandingArrayWithOptionalElem<D,T>;
@@ -162,7 +164,7 @@ enum class Cast:char {
  rrelu,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
  tanh,           tanhshrink,      threshold,       unfold,          unsqueeze,
- zeropad2d,
+ upsample,       zeropad2d,
 
  pairwise,  similar, // distance functions
 
@@ -186,7 +188,7 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- affine,  alpha,     amsgrad,   batchfirst, beta,      beta1,      beta2,
+ affine,  align,     alpha,     amsgrad,    batchfirst, beta,      beta1,      beta2,
  bi,      bias,      blank,     ceiling,    centered,  changetol,  channels,
  cols,    countpad,  dampening, decay,      dilate,    dim,        divisor,
  dropout, end,       eps,       eval,       fn,        freeze,     full,
@@ -427,6 +429,7 @@ void pnum(const Pairs&,Scalar&);
 void psize(const Pairs&,IntArrayRef&,J n=-1);
 void psize(const Pairs&,J,int64_t*);
 void psize(const Pairs&,J,double*);
+void pdoubles(const Pairs&,DoubleArrayRef&,J n=-1);
 void pten(const Pairs&,Tensor&);
 
 S& optsym(const torch::Device&);
@@ -462,9 +465,10 @@ void fn(K,const char*,void*,I);
 void randomfn(K);
 void mathfn(K);
 
-// tensor routines:
+// tensor & vector routines:
 K kget(const Tensor&);
 K kget(const LongVector&);
+K kget(const DoubleVector&);
 K kget(const TensorVector&);
 K kget(const TensorDeque&);
 Tensor kput(K);
@@ -644,7 +648,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Cast>,95> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,96> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -739,12 +743,14 @@ typedef struct {
   std::make_tuple(cs("threshold"),       Cast::threshold),
   std::make_tuple(cs("unfold"),          Cast::unfold),
   std::make_tuple(cs("unsqueeze"),       Cast::unsqueeze),
+  std::make_tuple(cs("upsample"),        Cast::upsample),
   std::make_tuple(cs("zeropad2d"),       Cast::zeropad2d)
  }};
 
- std::array<std::tuple<S,Setting>,66> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,67> mset = {{        // module option sym -> enum
   std::make_tuple(cs("affine"),     Setting::affine),
   std::make_tuple(cs("alpha"),      Setting::alpha),
+  std::make_tuple(cs("align"),      Setting::align),
   std::make_tuple(cs("batchfirst"), Setting::batchfirst),
   std::make_tuple(cs("beta"),       Setting::beta),
   std::make_tuple(cs("bi"),         Setting::bi),

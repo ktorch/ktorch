@@ -813,6 +813,7 @@ bool xnone(K x,J i) {Pairs p; return !(xargc(x,i,p) || p.n);}
 // pdouble - check if numeric scalar, return double
 // pnum - check for long/double, set torch scalar
 // psize - check if integral scalar or list, set IntArrayRef or ExpandingArray, else error
+// pdoubles - check if long/double scalar or list, set DoubleArrayRef, else error
 // pten - attempt to define a tensor from provided scalar or array
 // ------------------------------------------------------------------------------------------
 void perr(const Pairs& p,const char* s) {AT_ERROR("option: ",p.k," is a ",kname(p.t),", expected a ",s);}
@@ -876,6 +877,17 @@ void psize(const Pairs& p,J d,double *a) {
  } else {
   perr(p,"double precision scalar or list");
  }
+}
+
+void pdoubles(const Pairs& p,DoubleArrayRef &a,J n) {
+ J j; F *f;
+ if(p.t==-KF)
+  a=DoubleArrayRef(&p.f,1);
+ else if(p.t==KF && xdouble(p.v,j,f))
+  a=DoubleArrayRef(f,j);
+ else
+  perr(p,"a double scalar or list");
+ plen(p,n,a.size());
 }
 
 void pten(const Pairs& p,Tensor &t) {
