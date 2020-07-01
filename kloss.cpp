@@ -1,5 +1,7 @@
 #include "ktorch.h"
 #include "kloss.h"
+namespace nn=torch::nn;
+namespace fnn=torch::nn::functional;
 
 // append a loss option to a k dictionary given dict,name & value
 #define OPTION(x,k,v) dictadd(x, lset(Setting::k), v)
@@ -145,7 +147,7 @@ template<typename O> static void reduce(bool a,K x,const O& o,const O d) {
 // ------------------------------------------------------------------------------------------------------
 static K lossfunc(K a,Cast c) {
  KTRY
-  namespace nn=torch::nn; namespace f=nn::functional; bool b,p; Tensor r,x,y;
+  bool b,p; Tensor r,x,y;
   TORCH_CHECK(a->t>=0, lmap(c),": not implemented for ",kname(a));
   b=a->n==2;
   if(a->t) {
@@ -155,18 +157,18 @@ static K lossfunc(K a,Cast c) {
    p=xtenarg(a,x,y);
   }
   switch(c) {
-   case Cast::kl: r=b ? f::kl_div(x,y) : f::kl_div(x,y,reduce<nn::KLDivLossOptions>(a,2,c)); break;
-   case Cast::l1: r=b ? f::l1_loss(x,y) : f::l1_loss(x,y,reduce<nn::L1LossOptions>(a,2,c)); break;
-   case Cast::mse: r=b ? f::mse_loss(x,y) : f::mse_loss(x,y,reduce<nn::MSELossOptions>(a,2,c)); break;
+   case Cast::kl: r=b ? fnn::kl_div(x,y) : fnn::kl_div(x,y,reduce<nn::KLDivLossOptions>(a,2,c)); break;
+   case Cast::l1: r=b ? fnn::l1_loss(x,y) : fnn::l1_loss(x,y,reduce<nn::L1LossOptions>(a,2,c)); break;
+   case Cast::mse: r=b ? fnn::mse_loss(x,y) : fnn::mse_loss(x,y,reduce<nn::MSELossOptions>(a,2,c)); break;
    case Cast::multilabel:
-    r=b ? f::multilabel_margin_loss(x,y)
-        : f::multilabel_margin_loss(x,y,reduce<nn::MultiLabelMarginLossOptions>(a,2,c));
+    r=b ? fnn::multilabel_margin_loss(x,y)
+        : fnn::multilabel_margin_loss(x,y,reduce<nn::MultiLabelMarginLossOptions>(a,2,c));
     break;
    case Cast::smoothl1:
-    r=b ? f::smooth_l1_loss(x,y) : f::smooth_l1_loss(x,y,reduce<nn::SmoothL1LossOptions>(a,2,c));
+    r=b ? fnn::smooth_l1_loss(x,y) : fnn::smooth_l1_loss(x,y,reduce<nn::SmoothL1LossOptions>(a,2,c));
     break;
    case Cast::softmargin:
-    r=b ? f::soft_margin_loss(x,y) : f::soft_margin_loss(x,y,reduce<nn::SoftMarginLossOptions>(a,2,c));
+    r=b ? fnn::soft_margin_loss(x,y) : fnn::soft_margin_loss(x,y,reduce<nn::SoftMarginLossOptions>(a,2,c));
     break;
    default: AT_ERROR("unrecognized loss function"); break;
   }
@@ -200,7 +202,7 @@ KAPI bce(K a) {
    p = b ? xtenarg(a,x,y) : xtenarg(a,x,y,w);
    r=reduce<BCELossOptions>(a,3-b,c).reduction();
   }
-  return kresult(p, torch::nn::functional::detail::binary_cross_entropy(x,y,w,r));
+  return kresult(p, fnn::detail::binary_cross_entropy(x,y,w,r));
  KCATCH("bce");
 }
 
@@ -282,16 +284,15 @@ template<typename O> static void classwt(bool a,K x,const O& o) {
 // ------------------------------------------------------------------------------------------------------
 static K classwt(K a,Cast c) {
  KTRY
-  namespace nn=torch::nn; namespace f=nn::functional;
   bool p=false; Tensor r,x,y;
   TORCH_CHECK(a->t>=0, lmap(c),": not implemented for ",kname(a));
   TORCH_CHECK(a->n>1, lmap(c), " loss expects (input;target;optional arg(s)..)");
   if(a->t) r=kput(a), x=r[0], y=r[1];
   else     p=xtenarg(a,x,y);
   switch(c) {
-   case Cast::ce:        r=f::cross_entropy(x,y,classwt<nn::CrossEntropyLossOptions>(a,2,c)); break;
-   case Cast::nll:       r=f::nll_loss(x,y,classwt<nn::NLLLossOptions>(a,2,c)); break;
-   case Cast::multisoft: r=f::multilabel_soft_margin_loss(x,y,classwt(a,2,c,nn::MultiLabelSoftMarginLossOptions())); break;
+   case Cast::ce:        r=fnn::cross_entropy(x,y,classwt<nn::CrossEntropyLossOptions>(a,2,c)); break;
+   case Cast::nll:       r=fnn::nll_loss(x,y,classwt<nn::NLLLossOptions>(a,2,c)); break;
+   case Cast::multisoft: r=fnn::multilabel_soft_margin_loss(x,y,classwt(a,2,c,nn::MultiLabelSoftMarginLossOptions())); break;
    default: AT_ERROR("unrecognized loss function");
   }
   return kresult(p,r);
@@ -318,7 +319,7 @@ static K bceloss(K a,bool b,const char* s) {  // a:args, b:true if batch wts, s:
   } else {
    p=b ? xtenarg(a,x,y,w) : xtenarg(a,x,y);
   }
-  return kresult(p, torch::nn::functional::detail::binary_cross_entropy_with_logits(x, y, w, o.reduction(), o.pos_weight()));
+  return kresult(p, fnn::detail::binary_cross_entropy_with_logits(x, y, w, o.reduction(), o.pos_weight()));
  KCATCH(s);
 }
 
@@ -352,7 +353,6 @@ template<typename O> static void margin(bool a,K x,const O& o) {
 
 static K marginloss(K a,Cast c) {
  KTRY
-  namespace nn=torch::nn; namespace f=nn::functional;
   bool b,p=false,h=c==Cast::hinge; Tensor r,x1,x2,y;
   TORCH_CHECK(a->t>=0, lmap(c),": not implemented for ",kname(a));
   TORCH_CHECK(a->n>=3-h, lmap(c), " loss expects (input", (h ? "" : "1;input2"),";target;optional arg(s)..)");
@@ -366,13 +366,13 @@ static K marginloss(K a,Cast c) {
   }
   switch(c) {
    case Cast::hinge: 
-    r=b ? f::hinge_embedding_loss(x1,y) : f::hinge_embedding_loss(x1,y,margin<nn::HingeEmbeddingLossOptions>(a,2,c));
+    r=b ? fnn::hinge_embedding_loss(x1,y) : fnn::hinge_embedding_loss(x1,y,margin<nn::HingeEmbeddingLossOptions>(a,2,c));
     break;
    case Cast::cosineloss:
-    r=b ? f::cosine_embedding_loss(x1,x2,y) : f::cosine_embedding_loss(x1,x2,y,margin<nn::CosineEmbeddingLossOptions>(a,3,c));
+    r=b ? fnn::cosine_embedding_loss(x1,x2,y) : fnn::cosine_embedding_loss(x1,x2,y,margin<nn::CosineEmbeddingLossOptions>(a,3,c));
     break;
    case Cast::margin:
-    r=b ? f::margin_ranking_loss(x1,x2,y) : f::margin_ranking_loss(x1,x2,y,margin<nn::MarginRankingLossOptions>(a,3,c));
+    r=b ? fnn::margin_ranking_loss(x1,x2,y) : fnn::margin_ranking_loss(x1,x2,y,margin<nn::MarginRankingLossOptions>(a,3,c));
     break;
    default: AT_ERROR("unrecognized loss function"); break;
   }
@@ -426,8 +426,8 @@ KAPI multimargin(K a) {
   TORCH_CHECK(a->n>=2, lmap(c)," loss expects (input;target;optional arg(s)..)");
   if(a->t) p=false, x=kput(a), y=x[1], x=x[0]; 
   else     p=xtenarg(a,x,y);
-  return kresult(p, a->n==2 ? torch::nn::functional::multi_margin_loss(x,y)
-                            : torch::nn::functional::multi_margin_loss(x,y,multi(a,2,c)));
+  return kresult(p, a->n==2 ? fnn::multi_margin_loss(x,y)
+                            : fnn::multi_margin_loss(x,y,multi(a,2,c)));
  KCATCH("multi-margin loss");
 }
 
@@ -474,8 +474,8 @@ KAPI Triplet(K a) {
   TORCH_CHECK(a->n>=2, lmap(c)," loss expects (anchor;positive;negative;optional arg(s)..)");
   if(a->t) p=false, x=kput(a), z=x[2], y=x[1], x=x[0];
   else     p=xtenarg(a,x,y,z);
-  return kresult(p, a->n==3 ? torch::nn::functional::triplet_margin_loss(x,y,z)
-                            : torch::nn::functional::triplet_margin_loss(x,y,z,triplet(a,3,c)));
+  return kresult(p, a->n==3 ? fnn::triplet_margin_loss(x,y,z)
+                            : fnn::triplet_margin_loss(x,y,z,triplet(a,3,c)));
  KCATCH("triplet margin loss");
 }
 
@@ -520,8 +520,8 @@ KAPI poissonloss(K a) {
   TORCH_CHECK(a->n>=2, lmap(c)," loss expects (input;target;optional arg(s)..)");
   if(a->t) p=false, x=kput(a), y=x[1], x=x[0];
   else     p=xtenarg(a,x,y);
-  return kresult(p, a->n==2 ? torch::nn::functional::poisson_nll_loss(x,y)
-                            : torch::nn::functional::poisson_nll_loss(x,y,poisson(a,2,c)));
+  return kresult(p, a->n==2 ? fnn::poisson_nll_loss(x,y)
+                            : fnn::poisson_nll_loss(x,y,poisson(a,2,c)));
  KCATCH("poisson nll loss");
 }
 
@@ -565,7 +565,7 @@ KAPI Ctc(K a) {
    AT_ERROR("ctc loss expects at least 4 args, (input;target;input lengths;target lengths)");
   }
   p=xtenarg(a,x,y); xtenarg(a,2,nx,ny);
-  return kresult(p, torch::nn::functional::ctc_loss(x,y,nx,ny,ctc(a,4,Cast::ctc)));
+  return kresult(p, fnn::ctc_loss(x,y,nx,ny,ctc(a,4,Cast::ctc)));
  KCATCH("ctc loss");
 }
 
@@ -578,7 +578,6 @@ KAPI Ctc(K a) {
 // loss - main api function that creates/calls loss objects and queries their properties
 // ---------------------------------------------------------------------------------------------------
 static AnyModule lossinit(Cast c,K x,J i) {
- namespace nn=torch::nn;
  switch(c) {
   case Cast::bce:         return AnyModule(    BCELoss(             reduce<    BCELossOptions>(x,i,c)));
   case Cast::kl:          return AnyModule(nn::KLDivLoss(           reduce<nn::KLDivLossOptions>(x,i,c)));

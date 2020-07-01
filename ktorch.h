@@ -511,7 +511,6 @@ torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
 void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
 void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
-
 K klayer(Cast,const Layer&);
 K to(Klayer*,const TensorOptions&,bool);
 Module& mref(const Layer&);

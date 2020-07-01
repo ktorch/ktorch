@@ -1,4 +1,6 @@
 #include "ktorch.h"
+namespace nn=torch::nn;
+namespace fnn=torch::nn::functional;
 
 // ---------------------------------------------------------------------------
 // mref - given layer or k ptr, return reference to generic module
@@ -20,7 +22,7 @@ std::string mlabel(const Module& x) {
  auto s=c10::demangle(typeid(x).name());
  if(!s.find("struct "))     s.erase(s.begin(),s.begin()+7);
  if(!s.find("class "))      s.erase(s.begin(),s.begin()+6);
- if(!s.find("torch::nn::")) s.erase(s.begin(),s.begin()+11);
+ if(!s.find("nn::")) s.erase(s.begin(),s.begin()+11);
  if(s.find("Impl",s.size()-4)==s.size()-4) s.erase(s.size()-4,s.size());
  return s;
 }
@@ -52,19 +54,19 @@ K to(Klayer* x,const TensorOptions& o,bool a) {
 // rnnfn(options,sym)  set activation function if rnn options, else no-op
 // --------------------------------------------------------------------------------------------
 /*
-static torch::nn::RNNActivation rnnfn(S s) {
+static nn::RNNActivation rnnfn(S s) {
  for(auto& m:env().rnnfn) if (s==std::get<0>(m)) return std::get<1>(m);
  AT_ERROR("unrecognized rnn activiation function: ",s);
 }
 
 template<typename O> static S rnnfn(O& o) {return nullptr;}
-template<> S rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o) {
+template<> S rnnfn<nn::RNNOptions>(nn::RNNOptions& o) {
  for(auto& m:env().rnnfn) if (o.activation()==std::get<1>(m)) return std::get<0>(m);
  AT_ERROR("unrecognized rnn activiation function: ",(I)o.activation());
 }
 
-template<typename O> static void rnnfn(O& o,torch::nn::RNNActivation f) {}
-template<> void rnnfn<torch::nn::RNNOptions>(torch::nn::RNNOptions& o,torch::nn::RNNActivation f) {o.activation(f);}
+template<typename O> static void rnnfn(O& o,nn::RNNActivation f) {}
+template<> void rnnfn<nn::RNNOptions>(nn::RNNOptions& o,nn::RNNActivation f) {o.activation(f);}
 */
 
 // -----------------------------------------------------------------------------------
@@ -189,7 +191,7 @@ static K parent(Cast c,Layers& q) {
 }
 
 static Layer parent(Module& m) {
- if     (m.as<Sequential>()) return Sequential(std::dynamic_pointer_cast<torch::nn::SequentialImpl>(m.shared_from_this()));
+ if     (m.as<Sequential>()) return Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(m.shared_from_this()));
  else if(m.as<SeqNest>())    return SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
  else if(m.as<SeqJoin>())    return SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
  else AT_ERROR("unable to create parent layer from ",m.name());
@@ -510,8 +512,8 @@ template<typename O> static void localnorm(bool a,K x,Cast c,const O& o) {
 // --------------------------------------------------------------------------------------
 // groupnorm - group norm, get/set number of groups,channels,eps,affine flag
 // --------------------------------------------------------------------------------------
-static torch::nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
- torch::nn::GroupNormOptions o(0,0);
+static nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
+ nn::GroupNormOptions o(0,0);
  bool g=false,h=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
@@ -534,8 +536,8 @@ static torch::nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
  return o;
 }
 
-static void groupnorm(bool a,K x,const torch::nn::GroupNormOptions& o) {
- torch::nn::GroupNormOptions d(o.num_groups(),o.num_channels());
+static void groupnorm(bool a,K x,const nn::GroupNormOptions& o) {
+ nn::GroupNormOptions d(o.num_groups(),o.num_channels());
  OPTION(x, groups,   kj(o.num_groups()));
  OPTION(x, channels, kj(o.num_channels()));
  if(a || (o.eps()    != d.eps()))    OPTION(x, eps,    kf(o.eps()));
@@ -545,8 +547,8 @@ static void groupnorm(bool a,K x,const torch::nn::GroupNormOptions& o) {
 // --------------------------------------------------------------------------------------
 // layernorm - get/set shape,eps,affine flag for layer normalization
 // --------------------------------------------------------------------------------------
-static torch::nn::LayerNormOptions layernorm(K x,J i,Cast c) {
- torch::nn::LayerNormOptions o({}); Pairs p; J n=xargc(x,i,p);
+static nn::LayerNormOptions layernorm(K x,J i,Cast c) {
+ nn::LayerNormOptions o({}); Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
     case 0: o.normalized_shape(mlongs(x,i+j,c,Setting::shape)); break;
@@ -565,8 +567,8 @@ static torch::nn::LayerNormOptions layernorm(K x,J i,Cast c) {
  return o;
 }
 
-static void layernorm(bool a,K x,const torch::nn::LayerNormOptions& o) {
- torch::nn::LayerNormOptions d(o.normalized_shape());
+static void layernorm(bool a,K x,const nn::LayerNormOptions& o) {
+ nn::LayerNormOptions d(o.normalized_shape());
  OPTION(x, shape, klist(o.normalized_shape().size(),o.normalized_shape().data()));
  if(a || (o.eps()    != d.eps())) OPTION(x, eps, kf(o.eps()));
  if(a || (o.elementwise_affine() != d.elementwise_affine())) OPTION(x, affine, kb(o.elementwise_affine()));
@@ -575,8 +577,8 @@ static void layernorm(bool a,K x,const torch::nn::LayerNormOptions& o) {
 // --------------------------------------------------------------------------------------
 // normalize - pytorch has functional form only
 // --------------------------------------------------------------------------------------
-static torch::nn::functional::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
- Pairs p; J n=xargc(x,i,p); torch::nn::functional::NormalizeFuncOptions o;
+static fnn::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
+ Pairs p; J n=xargc(x,i,p); fnn::NormalizeFuncOptions o;
  if(n>0 && xten(x,i+n-1,r)) n--;
  for(J j=0;j<n;++j)
   switch(j) {
@@ -600,7 +602,7 @@ static torch::nn::functional::NormalizeFuncOptions normalize(K x,J i,Cast c,Tens
 
 KAPI Normalize(K x) {
  KTRY
-  namespace f=torch::nn::functional;
+  namespace f=fnn;
   Tensor r,*t=nullptr;
   if(x->t || (t=xten(x))) {
    return kresult(t, f::normalize(t ? *t : kput(x), f::NormalizeFuncOptions()));
@@ -618,7 +620,7 @@ KAPI Normalize(K x) {
 //        ConvOptions & ConvTransOptions have different members, 
 // convtran - similar to conv() except adds output_padding and changes position order
 // --------------------------------------------------------------------------------------
-static torch::nn::detail::conv_padding_mode_t convpad(S s) {
+static nn::detail::conv_padding_mode_t convpad(S s) {
  switch(emap(s)) {
   case Enum::zeros:     return torch::kZeros;
   case Enum::reflect:   return torch::kReflect;
@@ -628,8 +630,8 @@ static torch::nn::detail::conv_padding_mode_t convpad(S s) {
  }
 }
 
-template<size_t D> static torch::nn::ConvOptions<D> conv(K x,J i,Cast c) {
- torch::nn::ConvOptions<D> o(0,0,0);
+template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
+ nn::ConvOptions<D> o(0,0,0);
  bool in=false,out=false,sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
@@ -663,8 +665,8 @@ template<size_t D> static torch::nn::ConvOptions<D> conv(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D> static torch::nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
- torch::nn::ConvTransposeOptions<D> o(0,0,0);
+template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
+ nn::ConvTransposeOptions<D> o(0,0,0);
  bool in=false,out=false,sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
@@ -700,8 +702,8 @@ template<size_t D> static torch::nn::ConvTransposeOptions<D> convtran(K x,J i,Ca
  return o;
 }
 
-template<size_t D> static void conv(bool a,K x,const torch::nn::detail::ConvNdOptions<D>& o) {
- torch::nn::detail::ConvNdOptions<D> d(o.in_channels(),o.out_channels(),o.kernel_size());
+template<size_t D> static void conv(bool a,K x,const nn::detail::ConvNdOptions<D>& o) {
+ nn::detail::ConvNdOptions<D> d(o.in_channels(),o.out_channels(),o.kernel_size());
  bool t=o.transposed();
  OPTION(x, in,   kj(o.in_channels()));
  OPTION(x, out,  kj(o.out_channels()));
@@ -724,8 +726,8 @@ template<size_t D> static void conv(bool a,K x,const torch::nn::detail::ConvNdOp
 // --------------------------------------------------------------------------------------
 // fold,unfold - set/get size,dilation,padding,stride
 // --------------------------------------------------------------------------------------
-static torch::nn::FoldOptions fold(K x,J i,Cast c) {
- torch::nn::FoldOptions o(0,0);
+static nn::FoldOptions fold(K x,J i,Cast c) {
+ nn::FoldOptions o(0,0);
  bool out=false,sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
@@ -750,8 +752,8 @@ static torch::nn::FoldOptions fold(K x,J i,Cast c) {
  return o;
 }
 
-static void fold(bool a,K x,const torch::nn::FoldOptions& o) {
- torch::nn::FoldOptions d(o.output_size(),o.kernel_size());
+static void fold(bool a,K x,const nn::FoldOptions& o) {
+ nn::FoldOptions d(o.output_size(),o.kernel_size());
  OPTION(x, out,  KEX(o.output_size()));
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || (*o.dilation() != *d.dilation())) OPTION(x, dilate, KEX(o.dilation()));
@@ -759,8 +761,8 @@ static void fold(bool a,K x,const torch::nn::FoldOptions& o) {
  if(a || (*o.stride()   != *d.stride()))   OPTION(x, stride, KEX(o.stride()));
 }
 
-static torch::nn::UnfoldOptions unfold(K x,J i,Cast c) {
- torch::nn::UnfoldOptions o(0);
+static nn::UnfoldOptions unfold(K x,J i,Cast c) {
+ nn::UnfoldOptions o(0);
  bool sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
@@ -782,8 +784,8 @@ static torch::nn::UnfoldOptions unfold(K x,J i,Cast c) {
  return o;
 }
 
-static void unfold(bool a,K x,const torch::nn::UnfoldOptions& o) {
- torch::nn::UnfoldOptions d(o.kernel_size());
+static void unfold(bool a,K x,const nn::UnfoldOptions& o) {
+ nn::UnfoldOptions d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || (*o.dilation() != *d.dilation())) OPTION(x, dilate, KEX(o.dilation()));
  if(a || (*o.padding()  != *d.padding()))  OPTION(x, pad,    KEX(o.padding()));
@@ -795,8 +797,8 @@ static K kfold(K x,Cast c) {
   TORCH_CHECK(!x->t, msym(c)," not implemented for ",kname(x->t));
   Tensor r, *t=xten(x,0);
   return kresult(t, c==Cast::fold
-       ? torch::nn::functional::fold  (t ? *t : kput(x,0),   fold(x,1,c))
-       : torch::nn::functional::unfold(t ? *t : kput(x,0), unfold(x,1,c)));
+       ? fnn::fold  (t ? *t : kput(x,0),   fold(x,1,c))
+       : fnn::unfold(t ? *t : kput(x,0), unfold(x,1,c)));
  KCATCH("fold");
 }
 
@@ -807,7 +809,7 @@ KAPI Unfold(K x) {return kfold(x, Cast::unfold);}
 // upsample & interpolate - both require same options, interpolate has additional flag
 // upsample is implemented as a module in pytorch, interpolate as a function
 // --------------------------------------------------------------------------------------
-static void upmode(torch::nn::UpsampleOptions& o,S s) {
+static void upmode(nn::UpsampleOptions& o,S s) {
  switch(emap(s)) {
   case Enum::nearest:   o.mode(torch::kNearest); break;
   case Enum::linear:    o.mode(torch::kLinear); break;
@@ -818,7 +820,7 @@ static void upmode(torch::nn::UpsampleOptions& o,S s) {
  }
 }
 
-static void upmode(torch::nn::functional::InterpolateFuncOptions& o,S s) {
+static void upmode(fnn::InterpolateFuncOptions& o,S s) {
  switch(emap(s)) {
   case Enum::nearest:   o.mode(torch::kNearest); break;
   case Enum::linear:    o.mode(torch::kLinear); break;
@@ -831,16 +833,16 @@ static void upmode(torch::nn::functional::InterpolateFuncOptions& o,S s) {
 }
 
 // recompute_scale_factor only part of interpolate options, separate fns to handle setting
-static void rescale(K x,J i,Cast c,Setting s,torch::nn::UpsampleOptions& o) {
+static void rescale(K x,J i,Cast c,Setting s,nn::UpsampleOptions& o) {
  AT_ERROR(msym(c),": up to 4 positional arguments expected, 5th argument unrecognized");
 }
-static void rescale(K x,J i,Cast c,Setting s,torch::nn::functional::InterpolateFuncOptions& o) {
+static void rescale(K x,J i,Cast c,Setting s,fnn::InterpolateFuncOptions& o) {
  if(xempty(x,i)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(x,i,c,s));
 }
-static void rescale(Pairs& p,Cast c,torch::nn::UpsampleOptions& o) {
+static void rescale(Pairs& p,Cast c,nn::UpsampleOptions& o) {
  AT_ERROR(msym(c),": rescale is not a recognized option");
 }
-static void rescale(Pairs& p,Cast c,torch::nn::functional::InterpolateFuncOptions& o) {
+static void rescale(Pairs& p,Cast c,fnn::InterpolateFuncOptions& o) {
  if(pempty(p)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(p,c));
 }
 
@@ -872,8 +874,8 @@ template<typename O>static O upsample(K x,J i,Cast c) {
  return o;
 }
 
-static void upsample(bool a,K x,const torch::nn::UpsampleOptions& o) {
- torch::nn::UpsampleOptions d;
+static void upsample(bool a,K x,const nn::UpsampleOptions& o) {
+ nn::UpsampleOptions d;
  if(a || o.size())
   OPTION(x, size, o.size() ? ((*o.size()).size()==1 ? kj((*o.size())[0]) : kget(*o.size())) : ktn(0,0));
  if(a || o.scale_factor())
@@ -890,16 +892,16 @@ KAPI kinterpolate(K x) {
   TORCH_CHECK(!x->t, "interpolate not implemented for ",kname(x->t));
   Tensor r, *t=xten(x,0);
   return kresult(t,
-                 torch::nn::functional::interpolate(t ? *t : kput(x,0),
-                 upsample<torch::nn::functional::InterpolateFuncOptions>(x,1,Cast::interpolate)));
+                 fnn::interpolate(t ? *t : kput(x,0),
+                 upsample<fnn::InterpolateFuncOptions>(x,1,Cast::interpolate)));
  KCATCH("interpolate");
 }
 
 // --------------------------------------------------------------------------------------
 // drop - create dropout module given probability/set dictionary given module
 // --------------------------------------------------------------------------------------
-static torch::nn::DropoutOptions drop(K x,J i,Cast c) {
- torch::nn::DropoutOptions o; Pairs p; J n=xargc(x,i,p);
+static nn::DropoutOptions drop(K x,J i,Cast c) {
+ nn::DropoutOptions o; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
     case 0: o.p(mdouble(x,i+j,c,Setting::p)); break;
@@ -915,8 +917,8 @@ static torch::nn::DropoutOptions drop(K x,J i,Cast c) {
  return o;
 }
 
-static void drop(bool a,K x,const torch::nn::DropoutOptions& o) {
- torch::nn::DropoutOptions d;
+static void drop(bool a,K x,const nn::DropoutOptions& o) {
+ nn::DropoutOptions d;
  if(a || o.p()       != d.p())       OPTION(x, p,       kf(o.p()));
  if(a || o.inplace() != d.inplace()) OPTION(x, inplace, kb(o.inplace()));
 }
@@ -929,7 +931,7 @@ static void drop(bool a,K x,const torch::nn::DropoutOptions& o) {
 // embedwt - handle options depending on whether pre-trained weights supplied
 // embed, embedbag - process args and return Embedding/EmbeddingBag module
 // --------------------------------------------------------------------------------------
-static torch::nn::EmbeddingBagMode embedmode(S s) {
+static nn::EmbeddingBagMode embedmode(S s) {
  switch(emap(s)) {
   case Enum::sum:  return torch::kSum;
   case Enum::mean: return torch::kMean;
@@ -938,12 +940,12 @@ static torch::nn::EmbeddingBagMode embedmode(S s) {
  }
 }
 
-static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingOptions& o) {
+static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
  if(s == Setting::padindex) o.padding_idx(int64n(p,c));
  else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
-static void embedset(Cast c,Setting s,Pairs& p,torch::nn::EmbeddingBagOptions& o) {
+static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
  if       (s == Setting::mode) o.mode(embedmode(psym(p)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
  else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
@@ -986,9 +988,9 @@ template<typename M,typename O> static M embedwt(Cast c,O o,const Tensor& w,bool
  }
 }
 
-static torch::nn::Embedding embed(K x,J i,Cast c) {
+static nn::Embedding embed(K x,J i,Cast c) {
  bool z=false; Pairs p; Tensor w; J n=xargc(x,i,p);
- torch::nn::EmbeddingOptions o(nj,nj);
+ nn::EmbeddingOptions o(nj,nj);
  for(J j=0;j<n;++j) {
    switch(j) {
     case 0:
@@ -1011,12 +1013,12 @@ static torch::nn::Embedding embed(K x,J i,Cast c) {
   }
  }
  embedpair(c,p,o,w,z);
- return embedwt<torch::nn::Embedding,torch::nn::EmbeddingOptions>(c,o,w,z);
+ return embedwt<nn::Embedding,nn::EmbeddingOptions>(c,o,w,z);
 }
 
-static torch::nn::EmbeddingBag embedbag(K x,J i,Cast c) {
+static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
  bool z=false; Pairs p; Tensor w; J n=xargc(x,i,p);
- torch::nn::EmbeddingBagOptions o(nj,nj);
+ nn::EmbeddingBagOptions o(nj,nj);
  // allow mode if last arg even if early in sequence
  if(!x->t && n>1 && n<6 && xsym(x,i+n-1))
   n--, o.mode(embedmode(mode(x,i+n,c,Setting::mode)));
@@ -1042,7 +1044,7 @@ static torch::nn::EmbeddingBag embedbag(K x,J i,Cast c) {
   }
  }
  embedpair(c,p,o,w,z);
- return embedwt<torch::nn::EmbeddingBag,torch::nn::EmbeddingBagOptions>(c,o,w,z);
+ return embedwt<nn::EmbeddingBag,nn::EmbeddingBagOptions>(c,o,w,z);
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1050,12 +1052,12 @@ static torch::nn::EmbeddingBag embedbag(K x,J i,Cast c) {
 // embedget - templated fucntion to retrieve options specific to Embedding or EmbeddingBag
 // embed - templated function which gets options and initial optional weights
 // -----------------------------------------------------------------------------------------
-static void embedget(bool a,K x,Cast c,Setting s,const torch::nn::EmbeddingOptions& o,const torch::nn::EmbeddingOptions& d) {
+static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingOptions& o,const nn::EmbeddingOptions& d) {
  if(s == Setting::padindex && (a || o.padding_idx().has_value()))
   OPTION(x, padindex, kj(o.padding_idx() ? o.padding_idx().value() : nj));
 }
 
-static void embedget(bool a,K x,Cast c,Setting s,const torch::nn::EmbeddingBagOptions& o,const torch::nn::EmbeddingBagOptions& d) {
+static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingBagOptions& o,const nn::EmbeddingBagOptions& d) {
  if(s == Setting::mode && (a || o.mode().index() != d.mode().index()))
   OPTION(x, mode, ks(ESYM(o.mode())));
  /*
@@ -1085,7 +1087,7 @@ template<typename O>static void embed(bool a,K x,Cast c,const O& o,const Tensor&
 // --------------------------------------------------------------------------------------
 // linear - parse/retrieve args, invoke functional form
 // --------------------------------------------------------------------------------------
-static torch::nn::LinearOptions linear(K x,J i,Cast c) {
+static nn::LinearOptions linear(K x,J i,Cast c) {
  bool b=true; int64_t in=nj,out=nj; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
@@ -1104,11 +1106,11 @@ static torch::nn::LinearOptions linear(K x,J i,Cast c) {
   }
  TORCH_CHECK(in>0,  msym(c), ": positive input size required");
  TORCH_CHECK(out>0, msym(c), ": positive output size required");
- return torch::nn::LinearOptions(in,out).bias(b);
+ return nn::LinearOptions(in,out).bias(b);
 }
 
-static void linear(bool a,K x,const torch::nn::LinearImpl *m) {
- torch::nn::LinearOptions o=m->options, d(o.in_features(),o.out_features());
+static void linear(bool a,K x,const nn::LinearImpl *m) {
+ nn::LinearOptions o=m->options, d(o.in_features(),o.out_features());
  OPTION(x, in,  kj(o.in_features()));
  OPTION(x, out, kj(o.out_features()));
  if(a || (o.bias() != d.bias())) OPTION(x, bias, kb(o.bias()));
@@ -1130,7 +1132,7 @@ KAPI Linear(K x) {
 // --------------------------------------------------------------------------------------
 // bilinear - parse/retrieve args, callable functional form
 // --------------------------------------------------------------------------------------
-static torch::nn::BilinearOptions bilinear(K x,J i,Cast c) {
+static nn::BilinearOptions bilinear(K x,J i,Cast c) {
  bool b=true; int64_t in1=nj,in2=nj,out=nj; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
@@ -1151,11 +1153,11 @@ static torch::nn::BilinearOptions bilinear(K x,J i,Cast c) {
   }
  TORCH_CHECK(in1>0 && in2>0, msym(c), ": positive input sizes required");
  TORCH_CHECK(out>0,          msym(c), ": positive output size required");
- return torch::nn::BilinearOptions(in1,in2,out).bias(b);
+ return nn::BilinearOptions(in1,in2,out).bias(b);
 }
 
-static void bilinear(bool a,K x,const torch::nn::BilinearImpl *m) {
- torch::nn::BilinearOptions o=m->options, d(o.in1_features(),o.in2_features(),o.out_features());
+static void bilinear(bool a,K x,const nn::BilinearImpl *m) {
+ nn::BilinearOptions o=m->options, d(o.in1_features(),o.in2_features(),o.out_features());
  OPTION(x, in1,  kj(o.in1_features()));
  OPTION(x, in2,  kj(o.in2_features()));
  OPTION(x, out, kj(o.out_features()));
@@ -1180,11 +1182,11 @@ KAPI Bilinear(K x) {
 // --------------------------------------------------------------------------------------
 template<typename M,typename O>
 static M rnn(Cast c,K x,J k) {
- // PATCH: auto f=torch::nn::RNNActivation::ReLU;
+ // PATCH: auto f=nn::RNNActivation::ReLU;
  bool b=true,bi=false,ba=false; Pairs p; J i=-1,h=-1,l=1,n=xargc(x,k,p); double d=0.0;
  if(!((n==0 && p.n) || (xlong(x,k,i) && (n==1 || (n==2 && xlong(x,k+1,h))))))
   AT_ERROR("unrecognized arguments for ",msym(c)," module");
- // PATCH: bool r=std::is_same<M,torch::nn::RNN>::value;
+ // PATCH: bool r=std::is_same<M,nn::RNN>::value;
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::in:          i=plong(p); break;
@@ -1219,8 +1221,8 @@ static void rnn(bool a,K x,const M* m) {
 // ----------------------------------------------------------------------------------
 //  maxpool - process args, return dictionary of options, call functional form
 // ----------------------------------------------------------------------------------
-template<size_t D> static torch::nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
- torch::nn::MaxPoolOptions<D> o(0);
+template<size_t D> static nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
+ nn::MaxPoolOptions<D> o(0);
  bool sz=false,st=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
@@ -1247,7 +1249,7 @@ template<size_t D> static torch::nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
 }
 
 template<size_t D,typename M> static void maxpool(bool a,K x,const M* m) {
- torch::nn::MaxPoolOptions<D> o=m->options, d(o.kernel_size());
+ nn::MaxPoolOptions<D> o=m->options, d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()   != *d.stride())   OPTION(x, stride,  KEX(o.stride()));
  if(a || *o.padding()  != *d.padding())  OPTION(x, pad,     KEX(o.padding()));
@@ -1258,8 +1260,8 @@ template<size_t D,typename M> static void maxpool(bool a,K x,const M* m) {
 // ----------------------------------------------------------------------------------
 //  avgpool - process args, return dictionary of options, call functional form
 // ----------------------------------------------------------------------------------
-template<size_t D> static torch::nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
- torch::nn::AvgPoolOptions<D> o(0);
+template<size_t D> static nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
+ nn::AvgPoolOptions<D> o(0);
  bool sz=false,st=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
@@ -1288,7 +1290,7 @@ template<size_t D> static torch::nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
 }
 
 template<size_t D,typename M> static void avgpool(bool a,K x,const M* m) {
- torch::nn::AvgPoolOptions<D> o=m->options, d(o.kernel_size());
+ nn::AvgPoolOptions<D> o=m->options, d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()           != *d.stride())           OPTION(x, stride,   KEX(o.stride()));
  if(a || *o.padding()          != *d.padding())          OPTION(x, pad,      KEX(o.padding()));
@@ -1334,8 +1336,8 @@ template<typename M> static void adapt(K x,const M* m) {
 // ----------------------------------------------------------------------------------
 // fpool - fractional max pooling for 2 & 3d layers
 // ----------------------------------------------------------------------------------
-template<size_t D> static torch::nn::FractionalMaxPoolOptions<D> fpool(K x,J i,Cast c) {
- torch::nn::FractionalMaxPoolOptions<D> o(0);
+template<size_t D> static nn::FractionalMaxPoolOptions<D> fpool(K x,J i,Cast c) {
+ nn::FractionalMaxPoolOptions<D> o(0);
  bool e,sz=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    e=xempty(x,i+j);
@@ -1362,7 +1364,7 @@ template<size_t D> static torch::nn::FractionalMaxPoolOptions<D> fpool(K x,J i,C
 }
 
 template<size_t D,typename M> static void fpool(bool a,K x,const M* m) {
- torch::nn::FractionalMaxPoolOptions<D> o=m->options;
+ nn::FractionalMaxPoolOptions<D> o=m->options;
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || o.output_size().has_value())    OPTION(x, outsize, o.output_size() ? KEX(o.output_size().value())  : ktn(0,0));
  if(a || o.output_ratio().has_value())   OPTION(x, ratio,   o.output_ratio()? KEX(o.output_ratio().value()) : ktn(0,0));
@@ -1371,8 +1373,8 @@ template<size_t D,typename M> static void fpool(bool a,K x,const M* m) {
 // ----------------------------------------------------------------------------------
 // lppool - power-average pooling
 // ----------------------------------------------------------------------------------
-template<size_t D> static torch::nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
- torch::nn::LPPoolOptions<D> o(0,0);
+template<size_t D> static nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
+ nn::LPPoolOptions<D> o(0,0);
  bool pw=false,sz=false,st=false; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
    switch(j) {
@@ -1398,7 +1400,7 @@ template<size_t D> static torch::nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
 }
 
 template<size_t D,typename M> static void lppool(bool a,K x,const M* m) {
- torch::nn::LPPoolOptions<D> o=m->options, d(o.norm_type(),o.kernel_size());
+ nn::LPPoolOptions<D> o=m->options, d(o.norm_type(),o.kernel_size());
  OPTION(x, p,    kf(o.norm_type()));
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()   != *d.stride())   OPTION(x, stride,  KEX(o.stride()));
@@ -1413,22 +1415,22 @@ static K pool(K x,Cast c) {
   TORCH_CHECK(!x->t, msym(c)," not implemented for ",kname(x->t));
   Tensor r, *t=xten(x,0);
   switch(c) {
-   case Cast::maxpool1d:  r=torch::nn::functional::max_pool1d(t ? *t : kput(x,0), maxpool<1>(x,1,c)); break;
-   case Cast::maxpool2d:  r=torch::nn::functional::max_pool2d(t ? *t : kput(x,0), maxpool<2>(x,1,c)); break;
-   case Cast::maxpool3d:  r=torch::nn::functional::max_pool3d(t ? *t : kput(x,0), maxpool<3>(x,1,c)); break;
-   case Cast::avgpool1d:  r=torch::nn::functional::avg_pool1d(t ? *t : kput(x,0), avgpool<1>(x,1,c)); break;
-   case Cast::avgpool2d:  r=torch::nn::functional::avg_pool2d(t ? *t : kput(x,0), avgpool<2>(x,1,c)); break;
-   case Cast::avgpool3d:  r=torch::nn::functional::avg_pool3d(t ? *t : kput(x,0), avgpool<3>(x,1,c)); break;
-   case Cast::adaptmax1d: r=torch::nn::functional::adaptive_max_pool1d(t ? *t : kput(x,0), adapt<1,torch::nn::AdaptiveMaxPool1dOptions>(x,1,c)); break;
-   case Cast::adaptmax2d: r=torch::nn::functional::adaptive_max_pool2d(t ? *t : kput(x,0), adapt<2,torch::nn::AdaptiveMaxPool2dOptions>(x,1,c)); break;
-   case Cast::adaptmax3d: r=torch::nn::functional::adaptive_max_pool3d(t ? *t : kput(x,0), adapt<3,torch::nn::AdaptiveMaxPool3dOptions>(x,1,c)); break;
-   case Cast::adaptavg1d: r=torch::nn::functional::adaptive_avg_pool1d(t ? *t : kput(x,0), adapt<1,torch::nn::AdaptiveAvgPool1dOptions>(x,1,c)); break;
-   case Cast::adaptavg2d: r=torch::nn::functional::adaptive_avg_pool2d(t ? *t : kput(x,0), adapt<2,torch::nn::AdaptiveAvgPool2dOptions>(x,1,c)); break;
-   case Cast::adaptavg3d: r=torch::nn::functional::adaptive_avg_pool3d(t ? *t : kput(x,0), adapt<3,torch::nn::AdaptiveAvgPool3dOptions>(x,1,c)); break;
-   case Cast::fmaxpool2d: r=torch::nn::functional::fractional_max_pool2d(t ? *t : kput(x,0), fpool<2>(x,1,c)); break;
-   case Cast::fmaxpool3d: r=torch::nn::functional::fractional_max_pool3d(t ? *t : kput(x,0), fpool<3>(x,1,c)); break;
-   case Cast::lppool1d:   r=torch::nn::functional::lp_pool1d(t ? *t : kput(x,0), lppool<1>(x,1,c)); break;
-   case Cast::lppool2d:   r=torch::nn::functional::lp_pool2d(t ? *t : kput(x,0), lppool<2>(x,1,c)); break;
+   case Cast::maxpool1d:  r=fnn::max_pool1d(t ? *t : kput(x,0), maxpool<1>(x,1,c)); break;
+   case Cast::maxpool2d:  r=fnn::max_pool2d(t ? *t : kput(x,0), maxpool<2>(x,1,c)); break;
+   case Cast::maxpool3d:  r=fnn::max_pool3d(t ? *t : kput(x,0), maxpool<3>(x,1,c)); break;
+   case Cast::avgpool1d:  r=fnn::avg_pool1d(t ? *t : kput(x,0), avgpool<1>(x,1,c)); break;
+   case Cast::avgpool2d:  r=fnn::avg_pool2d(t ? *t : kput(x,0), avgpool<2>(x,1,c)); break;
+   case Cast::avgpool3d:  r=fnn::avg_pool3d(t ? *t : kput(x,0), avgpool<3>(x,1,c)); break;
+   case Cast::adaptmax1d: r=fnn::adaptive_max_pool1d(t ? *t : kput(x,0), adapt<1,nn::AdaptiveMaxPool1dOptions>(x,1,c)); break;
+   case Cast::adaptmax2d: r=fnn::adaptive_max_pool2d(t ? *t : kput(x,0), adapt<2,nn::AdaptiveMaxPool2dOptions>(x,1,c)); break;
+   case Cast::adaptmax3d: r=fnn::adaptive_max_pool3d(t ? *t : kput(x,0), adapt<3,nn::AdaptiveMaxPool3dOptions>(x,1,c)); break;
+   case Cast::adaptavg1d: r=fnn::adaptive_avg_pool1d(t ? *t : kput(x,0), adapt<1,nn::AdaptiveAvgPool1dOptions>(x,1,c)); break;
+   case Cast::adaptavg2d: r=fnn::adaptive_avg_pool2d(t ? *t : kput(x,0), adapt<2,nn::AdaptiveAvgPool2dOptions>(x,1,c)); break;
+   case Cast::adaptavg3d: r=fnn::adaptive_avg_pool3d(t ? *t : kput(x,0), adapt<3,nn::AdaptiveAvgPool3dOptions>(x,1,c)); break;
+   case Cast::fmaxpool2d: r=fnn::fractional_max_pool2d(t ? *t : kput(x,0), fpool<2>(x,1,c)); break;
+   case Cast::fmaxpool3d: r=fnn::fractional_max_pool3d(t ? *t : kput(x,0), fpool<3>(x,1,c)); break;
+   case Cast::lppool1d:   r=fnn::lp_pool1d(t ? *t : kput(x,0), lppool<1>(x,1,c)); break;
+   case Cast::lppool2d:   r=fnn::lp_pool2d(t ? *t : kput(x,0), lppool<2>(x,1,c)); break;
    default: AT_ERROR("unrecognized pooling function");
   }
   return kresult(t,r);
@@ -1456,7 +1458,7 @@ KAPI lppool2d(K x)   {return pool(x,Cast::lppool2d);}
 // padmode - match k symbol to std::variant style enumeration
 // pad - n-dimensional padding, specify even number of sizes and optional pad value
 // ----------------------------------------------------------------------------------
-static void padmode(torch::nn::functional::PadFuncOptions& o,S s) {
+static void padmode(fnn::PadFuncOptions& o,S s) {
  switch(emap(s)) {
   case Enum::constant:  o.mode(torch::kConstant); break;
   case Enum::reflect:   o.mode(torch::kReflect); break;
@@ -1466,8 +1468,8 @@ static void padmode(torch::nn::functional::PadFuncOptions& o,S s) {
  }
 }
 
-static torch::nn::functional::PadFuncOptions pad(K x,J i,Cast c) {
- torch::nn::functional::PadFuncOptions o({}); S s; Pairs p; J n=xargc(x,i,p);
+static fnn::PadFuncOptions pad(K x,J i,Cast c) {
+ fnn::PadFuncOptions o({}); S s; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
   switch(j) {
    case 0: o.pad(mlongs(x,i+j,c,Setting::pad)); break;
@@ -1492,7 +1494,7 @@ static torch::nn::functional::PadFuncOptions pad(K x,J i,Cast c) {
 }
 
 static void pad(bool a,K x,const PadImpl* m) {
- const torch::nn::functional::PadFuncOptions d({}), &o=m->options;
+ const fnn::PadFuncOptions d({}), &o=m->options;
  OPTION(x, pad, klist(o.pad().size(),o.pad().data()));
  if(a || o.mode().index() != d.mode().index()) OPTION(x, mode,  ks(ESYM(o.mode())));
  if(a || o.value()        != d.value())        OPTION(x, value, kf(o.value()));
@@ -1502,7 +1504,7 @@ KAPI kpad(K x) {
  KTRY
   TORCH_CHECK(!x->t, "pad not implemented for ",kname(x->t));
   Tensor r, *t=xten(x,0);
-  return kresult(t, torch::nn::functional::pad(t ? *t : kput(x,0), pad(x,1,Cast::pad)));
+  return kresult(t, fnn::pad(t ? *t : kput(x,0), pad(x,1,Cast::pad)));
  KCATCH("pad");
 }
 
@@ -1571,8 +1573,8 @@ static K noarg(const char* s,Ft f, K x) {
 
 KAPI gelu(K x)       {return noarg("gelu",       torch::gelu,                       x);}
 KAPI logsigmoid(K x) {return noarg("logsigmoid", torch::log_sigmoid,                x);}
-KAPI softsign(K x)   {return noarg("softsign",   torch::nn::functional::softsign,   x);}
-KAPI tanhshrink(K x) {return noarg("tanhshrink", torch::nn::functional::tanhshrink, x);}
+KAPI softsign(K x)   {return noarg("softsign",   fnn::softsign,   x);}
+KAPI tanhshrink(K x) {return noarg("tanhshrink", fnn::tanhshrink, x);}
 
 // ------------------------------------------------------------------------------------
 // activation fns with inplace flag as only arg: relu,relu6,selu
@@ -1625,8 +1627,8 @@ template<typename O>static void alpha(bool a,Cast c,K x,const O& o) {
 // ------------------------------------------------------------------------------------
 //  leakyrelu - allow a small positive gradient(slope) when x<0
 // ------------------------------------------------------------------------------------
-static torch::nn::LeakyReLUOptions slope(K x,J i,Cast c) {
- torch::nn::LeakyReLUOptions o; Pairs p; bool b; J n=xargc(x,i,p);
+static nn::LeakyReLUOptions slope(K x,J i,Cast c) {
+ nn::LeakyReLUOptions o; Pairs p; bool b; J n=xargc(x,i,p);
  if(n==1) {
   if(xbool(x,i,b))
     o.inplace(b);
@@ -1647,8 +1649,8 @@ static torch::nn::LeakyReLUOptions slope(K x,J i,Cast c) {
  return o;
 }
 
-static void slope(bool a,Cast c,K x,const torch::nn::LeakyReLUOptions& o) {
- torch::nn::LeakyReLUOptions d;
+static void slope(bool a,Cast c,K x,const nn::LeakyReLUOptions& o) {
+ nn::LeakyReLUOptions d;
  if(a || o.negative_slope()   != d.negative_slope()) OPTION(x, slope,   kf(o.negative_slope()));
  if(a || o.inplace()          != d.inplace())        OPTION(x, inplace, kb(o.inplace()));
 }
@@ -1657,8 +1659,8 @@ static void slope(bool a,Cast c,K x,const torch::nn::LeakyReLUOptions& o) {
 // hardshrink, softshrink - module/function requires single parm: lambda
 // ------------------------------------------------------------------------------------
 static double lambda(Cast c) {
- return c==Cast::hardshrink ? torch::nn::HardshrinkOptions().lambda() 
-                            : torch::nn::SoftshrinkOptions().lambda();
+ return c==Cast::hardshrink ? nn::HardshrinkOptions().lambda() 
+                            : nn::SoftshrinkOptions().lambda();
 }
 
 static double lambda(K x,J i,Cast c) {
@@ -1678,7 +1680,7 @@ static void lambda(bool a,Cast c,K x,double l) {if(a || l != lambda(c)) OPTION(x
 // ------------------------------------------------------------------------------------
 static int64_t dim(Cast c) {
  switch(c) {
-  case Cast::glu: return torch::nn::GLUOptions().dim();
+  case Cast::glu: return nn::GLUOptions().dim();
   case Cast::cat: return CatOptions().dim();
   default:        return nj;
  }
@@ -1721,7 +1723,7 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) {
 // rrelu - randomized leaky relu, functional form has an additional flag for training
 // -----------------------------------------------------------------------------------
 static void rrelu(K x,J i,Cast c,bool fn,bool& tr,bool& in,double& lo,double& up) {
- Pairs p; J n=xargc(x,i,p); torch::nn::functional::RReLUFuncOptions o;
+ Pairs p; J n=xargc(x,i,p); fnn::RReLUFuncOptions o;
  lo=o.lower(); up=o.upper(); in=o.inplace(); tr=o.training();
  if(n) {
   if(fn) {
@@ -1748,14 +1750,14 @@ static void rrelu(K x,J i,Cast c,bool fn,bool& tr,bool& in,double& lo,double& up
 }
 
 // return options for rrelu module
-static torch::nn::RReLUOptions rrelu(K x,J i,Cast c) {
+static nn::RReLUOptions rrelu(K x,J i,Cast c) {
  double lo,up; bool in,tr; rrelu(x,i,c,false,tr,in,lo,up);
- return torch::nn::RReLUOptions().lower(lo).upper(up).inplace(in);
+ return nn::RReLUOptions().lower(lo).upper(up).inplace(in);
 }
 
 // retrieve options from rrelu module
-static void rrelu(bool a,K x,const torch::nn::RReLUOptions& o) {
- torch::nn::RReLUOptions d;
+static void rrelu(bool a,K x,const nn::RReLUOptions& o) {
+ nn::RReLUOptions d;
  if(a || d.lower()   != o.lower())   OPTION(x, lower,   kf(o.lower()));
  if(a || d.upper()   != o.upper())   OPTION(x, upper,   kf(o.upper()));
  if(a || d.inplace() != o.inplace()) OPTION(x, inplace, kb(o.inplace()));
@@ -1764,8 +1766,8 @@ static void rrelu(bool a,K x,const torch::nn::RReLUOptions& o) {
 // -----------------------------------------------------------------------------------------
 // hardtanh - computationally cheaper version of tanh, straight line at min,max
 // -----------------------------------------------------------------------------------------
-static torch::nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
- Pairs p; J n=xargc(x,i,p); torch::nn::HardtanhOptions o;
+static nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::HardtanhOptions o;
  bool b=o.inplace(); double v1=o.min_val(),v2=o.max_val();
  if(n) {
   TORCH_CHECK((n==1 && (xnum(x,i,v1) || xbool(x,i,b))) ||
@@ -1783,8 +1785,8 @@ static torch::nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
  return o.min_val(v1).max_val(v2).inplace(b);
 }
 
-static void hardtanh(bool a,K x,const torch::nn::HardtanhOptions& o) {
- torch::nn::HardtanhOptions d;
+static void hardtanh(bool a,K x,const nn::HardtanhOptions& o) {
+ nn::HardtanhOptions d;
  if(a || d.min_val() != o.min_val()) OPTION(x, min,     kf(o.min_val()));
  if(a || d.max_val() != o.max_val()) OPTION(x, max,     kf(o.max_val()));
  if(a || d.inplace() != o.inplace()) OPTION(x, inplace, kb(o.inplace()));
@@ -1793,8 +1795,8 @@ static void hardtanh(bool a,K x,const torch::nn::HardtanhOptions& o) {
 // -----------------------------------------------------------------------------------------
 // softplus - smooth approximation to relu, can constrain to always be positive
 // -----------------------------------------------------------------------------------------
-static torch::nn::SoftplusOptions softplus(K x,J i,Cast c) {
- Pairs p; J n=xargc(x,i,p); torch::nn::SoftplusOptions o; double v1=o.beta(),v2=o.threshold();
+static nn::SoftplusOptions softplus(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::SoftplusOptions o; double v1=o.beta(),v2=o.threshold();
  if(n) {
   TORCH_CHECK(xnum(x,i,v1) && (n==1 || (n==2 && xnum(x,i+1,v2))),
               "softplus: unexpected positional arg(s), expects (beta;threshold)");
@@ -1808,8 +1810,8 @@ static torch::nn::SoftplusOptions softplus(K x,J i,Cast c) {
  return o.beta(v1).threshold(v2);
 }
 
-static void softplus(bool a,K x,const torch::nn::SoftplusOptions& o) {
- torch::nn::SoftplusOptions d;
+static void softplus(bool a,K x,const nn::SoftplusOptions& o) {
+ nn::SoftplusOptions d;
  if(a || d.beta()      != o.beta())      OPTION(x, beta,      kf(o.beta()));
  if(a || d.threshold() != o.threshold()) OPTION(x, threshold, kf(o.threshold()));
 }
@@ -1817,7 +1819,7 @@ static void softplus(bool a,K x,const torch::nn::SoftplusOptions& o) {
 // ----------------------------------------------------------------------------------------------
 // threshold - thresholds each element of input tensor, fns set/get threshold,value,inplace flag
 // ----------------------------------------------------------------------------------------------
-static torch::nn::ThresholdOptions threshold(K x,J i,Cast c) {
+static nn::ThresholdOptions threshold(K x,J i,Cast c) {
  Pairs p; J n=xargc(x,i,p); bool b=false; double v1=nf,v2=nf;
  if(n) {
   TORCH_CHECK((n==1 && (xnum(x,i,v1) || xbool(x,i,b))) ||
@@ -1833,10 +1835,10 @@ static torch::nn::ThresholdOptions threshold(K x,J i,Cast c) {
    default: AT_ERROR("threshold option: ",p.k," not recognized");
   }
  TORCH_CHECK(v1 == v1 && v2 == v2, "threshold: both threshold level & replacement value must be given");
- return torch::nn::ThresholdOptions(v1,v2).inplace(b);
+ return nn::ThresholdOptions(v1,v2).inplace(b);
 }
 
-static void threshold(bool a,K x,const torch::nn::ThresholdOptions& o) {
+static void threshold(bool a,K x,const nn::ThresholdOptions& o) {
  OPTION(x, threshold, kf(o.threshold()));
  OPTION(x, value,     kf(o.value()));
  if(a || o.inplace()) OPTION(x, inplace, kb(o.inplace()));
@@ -1856,35 +1858,35 @@ static K act(K x,Cast c,const char* s) {
   else if(xmixed(x,3)) p=false,a=true, t=kput(x,0);
   else                 p=false,a=false,t=kput(x);
   switch(c) {
-   case Cast::relu:  r=torch::nn::functional::relu (t,a ? inplace(x,1,c) : false); break;
-   case Cast::relu6: r=torch::nn::functional::relu6(t,a ? inplace(x,1,c) : false); break;
-   case Cast::selu:  r=torch::nn::functional::selu (t,a ? inplace(x,1,c) : false); break;
-   case Cast::elu:   r=torch::nn::functional::elu(t,alpha<torch::nn::ELUOptions>(a ? x : nullptr,1,c)); break;
-   case Cast::celu:  r=torch::nn::functional::celu(t,alpha<torch::nn::CELUOptions>(a ? x : nullptr,1,c)); break;
-   case Cast::leakyrelu: r=torch::nn::functional::leaky_relu(t,slope(a ? x : nullptr,1,c)); break;
+   case Cast::relu:  r=fnn::relu (t,a ? inplace(x,1,c) : false); break;
+   case Cast::relu6: r=fnn::relu6(t,a ? inplace(x,1,c) : false); break;
+   case Cast::selu:  r=fnn::selu (t,a ? inplace(x,1,c) : false); break;
+   case Cast::elu:   r=fnn::elu(t,alpha<nn::ELUOptions>(a ? x : nullptr,1,c)); break;
+   case Cast::celu:  r=fnn::celu(t,alpha<nn::CELUOptions>(a ? x : nullptr,1,c)); break;
+   case Cast::leakyrelu: r=fnn::leaky_relu(t,slope(a ? x : nullptr,1,c)); break;
    case Cast::hardshrink: r=torch::hardshrink(t,a ? lambda(x,1,c) : lambda(c)); break;
    case Cast::softshrink: r=torch::softshrink(t,a ? lambda(x,1,c) : lambda(c)); break;
-   case Cast::glu:        r=torch::nn::functional::glu(t,a ? dim(x,1,c) : dim(c)); break;
+   case Cast::glu:        r=fnn::glu(t,a ? dim(x,1,c) : dim(c)); break;
    case Cast::softmin:
    case Cast::softmax:
    case Cast::logsoftmax: {
     auto d=softdim(t.dim()); c10::optional<ScalarType> s; if(a) softargs(x,1,c,d,s);
     switch(c) {
-     case Cast::softmin:    r=torch::nn::functional::detail::softmin(t,d,s); break;
-     case Cast::softmax:    r=torch::nn::functional::detail::softmax(t,d,s); break;
-     case Cast::logsoftmax: r=torch::nn::functional::detail::log_softmax(t,d,s); break;
+     case Cast::softmin:    r=fnn::detail::softmin(t,d,s); break;
+     case Cast::softmax:    r=fnn::detail::softmax(t,d,s); break;
+     case Cast::logsoftmax: r=fnn::detail::log_softmax(t,d,s); break;
      default: AT_ERROR("unrecognized activation function");
     }
     break;
    }
    case Cast::rrelu: {
     double lo,up; bool in,tr; rrelu(a ? x : nullptr,1,c,false,tr,in,lo,up);
-    r=torch::nn::functional::detail::rrelu(t,lo,up,tr,in);
+    r=fnn::detail::rrelu(t,lo,up,tr,in);
     break;
    }
-   case Cast::hardtanh:  r=torch::nn::functional::hardtanh (t,  hardtanh(a ? x : nullptr,1,c)); break;
-   case Cast::softplus:  r=torch::nn::functional::softplus (t,  softplus(a ? x : nullptr,1,c)); break;
-   case Cast::threshold: r=torch::nn::functional::threshold(t, threshold(a ? x : nullptr,1,c)); break;
+   case Cast::hardtanh:  r=fnn::hardtanh (t,  hardtanh(a ? x : nullptr,1,c)); break;
+   case Cast::softplus:  r=fnn::softplus (t,  softplus(a ? x : nullptr,1,c)); break;
+   case Cast::threshold: r=fnn::threshold(t, threshold(a ? x : nullptr,1,c)); break;
    default: AT_ERROR("unrecognized activation function"); break;
   }
   return p && r.is_same(t) ? (K)0 : kresult(p,r);
@@ -1913,8 +1915,8 @@ KAPI  Threshold(K x) {return act(x, Cast::threshold,  "threshold");}
 //        module accepts 1 or number of input parameters and optional initalization value
 //        functional form requires weight directly rather than module's count & initial value
 // -------------------------------------------------------------------------------------------
-static torch::nn::PReLUOptions prelu(K x,J i,Cast c) {
- torch::nn::PReLUOptions o; auto m=o.num_parameters();auto w=o.init(); Pairs p; J n=xargc(x,i,p);
+static nn::PReLUOptions prelu(K x,J i,Cast c) {
+ nn::PReLUOptions o; auto m=o.num_parameters();auto w=o.init(); Pairs p; J n=xargc(x,i,p);
  if(n) TORCH_CHECK((n==1 && (xint64(x,i,m) || xdouble(x,i,w))) ||
                    (n==2 &&  xint64(x,i,m) && xdouble(x,i+1,w)),
                    "prelu: expecting 1-2 positional args in,init or (in;init)");
@@ -1927,8 +1929,8 @@ static torch::nn::PReLUOptions prelu(K x,J i,Cast c) {
  return o.num_parameters(m).init(w);
 }
 
-static void prelu(bool a,K x,const torch::nn::PReLUOptions& o) {
- torch::nn::PReLUOptions d;
+static void prelu(bool a,K x,const nn::PReLUOptions& o) {
+ nn::PReLUOptions d;
  if(a || d.num_parameters() != o.num_parameters()) OPTION(x, in,   kj(o.num_parameters()));
  if(a || d.init()           != o.init())           OPTION(x, init, kf(o.init()));
 }
@@ -1951,8 +1953,8 @@ KAPI Prelu(K x) {
 // similar - cosine similarity distance, parse/retrieve optional dimension and epsilon
 // pairwise - pairwise distance, parse/retrieve optional power, eps, deep dimension flag
 // ----------------------------------------------------------------------------------------------------
-torch::nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
- Pairs p; J n=xargc(x,i,p); torch::nn::CosineSimilarityOptions o;
+nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::CosineSimilarityOptions o;
  for(J j=0;j<n;++j)
   switch(j) {
    case 0: o.dim(int64(x,i+j,c,Setting::dim)); break;
@@ -1968,14 +1970,14 @@ torch::nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
  return o;
 }
 
-void similar(bool a,K x,const torch::nn::CosineSimilarityOptions& o) {
- torch::nn::CosineSimilarityOptions d; 
+void similar(bool a,K x,const nn::CosineSimilarityOptions& o) {
+ nn::CosineSimilarityOptions d; 
  if(a || (o.dim() != o.dim())) OPTION(x, dim, kj(o.dim()));
  if(a || (o.eps() != d.eps())) OPTION(x, eps, kf(o.eps()));
 }
 
-torch::nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
- Pairs p; J n=xargc(x,i,p); torch::nn::PairwiseDistanceOptions o;
+nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::PairwiseDistanceOptions o;
  for(J j=0;j<n;++j)
   switch(j) {
    case 0: o.p(mdouble(x,i+j,c,Setting::p)); break;
@@ -1993,8 +1995,8 @@ torch::nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
  return o;
 }
 
-void pairwise(bool a,K x,const torch::nn::PairwiseDistanceOptions& o) {
- torch::nn::PairwiseDistanceOptions d; 
+void pairwise(bool a,K x,const nn::PairwiseDistanceOptions& o) {
+ nn::PairwiseDistanceOptions d; 
  if(a || (o.p()       != d.p()))       OPTION(x, p,       kf(o.p()));
  if(a || (o.eps()     != d.eps()))     OPTION(x, eps,     kf(o.eps()));
  if(a || (o.keepdim() != d.keepdim())) OPTION(x, keepdim, kb(o.keepdim()));
@@ -2008,8 +2010,8 @@ static K distance(K x,Cast c) {
   TORCH_CHECK(!x->t, msym(c)," not implemented for ",kname(x->t));
   Tensor r, *a=xten(x,0), *b=xten(x,1);
   switch(c) {
-   case Cast::pairwise: r=torch::nn::functional::pairwise_distance(a ? *a : kput(x,0), b ? *b : kput(x,1), pairwise(x,2,c)); break;
-   case Cast::similar:  r=torch::nn::functional::cosine_similarity(a ? *a : kput(x,0), b ? *b : kput(x,1), similar(x,2,c)); break;
+   case Cast::pairwise: r=fnn::pairwise_distance(a ? *a : kput(x,0), b ? *b : kput(x,1), pairwise(x,2,c)); break;
+   case Cast::similar:  r=fnn::cosine_similarity(a ? *a : kput(x,0), b ? *b : kput(x,1), similar(x,2,c)); break;
    default: AT_ERROR("unrecognized distance function");
   }
   return kresult(a||b,r);
@@ -2032,8 +2034,8 @@ KAPI pdist(K x) {
 //         - return options used given a flatten module used
 //         - call flatten as function given input/tensor and optional start & end dimensions
 // ----------------------------------------------------------------------------------------------------
-static torch::nn::FlattenOptions flatten(K x,J i,Cast c) {
- torch::nn::FlattenOptions o; int64_t s=o.start_dim(),e=o.end_dim(); Pairs p; J n=xargc(x,i,p);
+static nn::FlattenOptions flatten(K x,J i,Cast c) {
+ nn::FlattenOptions o; int64_t s=o.start_dim(),e=o.end_dim(); Pairs p; J n=xargc(x,i,p);
  if(!(n==0 || (xint64(x,i,s) && (n==1 || (n==2 && xint64(x,i+1,e))))))
   AT_ERROR("flatten: unrecognized arg(s)");
  while(xpair(p))
@@ -2045,8 +2047,8 @@ static torch::nn::FlattenOptions flatten(K x,J i,Cast c) {
  return o.start_dim(s).end_dim(e);
 }
 
-static void flatten(bool a,K x,const torch::nn::FlattenImpl* m) {
- torch::nn::FlattenOptions d,o=m->options;
+static void flatten(bool a,K x,const nn::FlattenImpl* m) {
+ nn::FlattenOptions d,o=m->options;
  if(a || d.start_dim() != o.start_dim()) OPTION(x, start, kj(o.start_dim()));
  if(a || d.end_dim()   != o.end_dim())   OPTION(x, end,   kj(o.end_dim()));
 }
@@ -2119,97 +2121,97 @@ static void getsize(bool a,K x,const SizeOptions& o) {
 // ----------------------------------------------------------------------------------------------------
 AnyModule anymodule(K x,J i,Cast c) {
  switch(c) {
-  case Cast::batchnorm1d:  return AnyModule(torch::nn::BatchNorm1d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
-  case Cast::batchnorm2d:  return AnyModule(torch::nn::BatchNorm2d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
-  case Cast::batchnorm3d:  return AnyModule(torch::nn::BatchNorm3d(batchnorm<torch::nn::BatchNormOptions>(x,i,c)));
+  case Cast::batchnorm1d:  return AnyModule(nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)));
+  case Cast::batchnorm2d:  return AnyModule(nn::BatchNorm2d(batchnorm<nn::BatchNormOptions>(x,i,c)));
+  case Cast::batchnorm3d:  return AnyModule(nn::BatchNorm3d(batchnorm<nn::BatchNormOptions>(x,i,c)));
 
-  case Cast::instancenorm1d:  return AnyModule(torch::nn::InstanceNorm1d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
-  case Cast::instancenorm2d:  return AnyModule(torch::nn::InstanceNorm2d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
-  case Cast::instancenorm3d:  return AnyModule(torch::nn::InstanceNorm3d(batchnorm<torch::nn::InstanceNormOptions>(x,i,c)));
+  case Cast::instancenorm1d:  return AnyModule(nn::InstanceNorm1d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
+  case Cast::instancenorm2d:  return AnyModule(nn::InstanceNorm2d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
+  case Cast::instancenorm3d:  return AnyModule(nn::InstanceNorm3d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
 
-  case Cast::groupnorm:  return AnyModule(torch::nn::GroupNorm(groupnorm(x,i,c)));
-  case Cast::layernorm:  return AnyModule(torch::nn::LayerNorm(layernorm(x,i,c)));
-  case Cast::localnorm:  return AnyModule(torch::nn::LocalResponseNorm(localnorm<torch::nn::LocalResponseNormOptions>(x,i,c)));
-  case Cast::crossmap2d: return AnyModule(torch::nn::CrossMapLRN2d(localnorm<torch::nn::CrossMapLRN2dOptions>(x,i,c)));
+  case Cast::groupnorm:  return AnyModule(nn::GroupNorm(groupnorm(x,i,c)));
+  case Cast::layernorm:  return AnyModule(nn::LayerNorm(layernorm(x,i,c)));
+  case Cast::localnorm:  return AnyModule(nn::LocalResponseNorm(localnorm<nn::LocalResponseNormOptions>(x,i,c)));
+  case Cast::crossmap2d: return AnyModule(nn::CrossMapLRN2d(localnorm<nn::CrossMapLRN2dOptions>(x,i,c)));
 
   case Cast::embed:        return AnyModule(embed(x,i,c));
   case Cast::embedbag:     return AnyModule(embedbag(x,i,c));
-  case Cast::linear:       return AnyModule(torch::nn::Linear(linear(x,i,c)));
-  case Cast::bilinear:     return AnyModule(torch::nn::Bilinear(bilinear(x,i,c)));
+  case Cast::linear:       return AnyModule(nn::Linear(linear(x,i,c)));
+  case Cast::bilinear:     return AnyModule(nn::Bilinear(bilinear(x,i,c)));
 
-  case Cast::drop:         return AnyModule(torch::nn::Dropout(drop(x,i,c)));
-  case Cast::drop2d:       return AnyModule(torch::nn::Dropout2d(drop(x,i,c)));
-  case Cast::drop3d:       return AnyModule(torch::nn::Dropout3d(drop(x,i,c)));
-  case Cast::adrop:        return AnyModule(torch::nn::AlphaDropout(drop(x,i,c)));
-  case Cast::fadrop:       return AnyModule(torch::nn::FeatureAlphaDropout(drop(x,i,c)));
+  case Cast::drop:         return AnyModule(nn::Dropout(drop(x,i,c)));
+  case Cast::drop2d:       return AnyModule(nn::Dropout2d(drop(x,i,c)));
+  case Cast::drop3d:       return AnyModule(nn::Dropout3d(drop(x,i,c)));
+  case Cast::adrop:        return AnyModule(nn::AlphaDropout(drop(x,i,c)));
+  case Cast::fadrop:       return AnyModule(nn::FeatureAlphaDropout(drop(x,i,c)));
 
-  case Cast::conv1d:       return AnyModule(torch::nn::Conv1d(conv<1>(x,i,c)));
-  case Cast::conv2d:       return AnyModule(torch::nn::Conv2d(conv<2>(x,i,c)));
-  case Cast::conv3d:       return AnyModule(torch::nn::Conv3d(conv<3>(x,i,c)));
+  case Cast::conv1d:       return AnyModule(nn::Conv1d(conv<1>(x,i,c)));
+  case Cast::conv2d:       return AnyModule(nn::Conv2d(conv<2>(x,i,c)));
+  case Cast::conv3d:       return AnyModule(nn::Conv3d(conv<3>(x,i,c)));
 
-  case Cast::convtranspose1d:  return AnyModule(torch::nn::ConvTranspose1d(convtran<1>(x,i,c)));
-  case Cast::convtranspose2d:  return AnyModule(torch::nn::ConvTranspose2d(convtran<2>(x,i,c)));
-  case Cast::convtranspose3d:  return AnyModule(torch::nn::ConvTranspose3d(convtran<3>(x,i,c)));
+  case Cast::convtranspose1d:  return AnyModule(nn::ConvTranspose1d(convtran<1>(x,i,c)));
+  case Cast::convtranspose2d:  return AnyModule(nn::ConvTranspose2d(convtran<2>(x,i,c)));
+  case Cast::convtranspose3d:  return AnyModule(nn::ConvTranspose3d(convtran<3>(x,i,c)));
 
-  case Cast::fold:         return AnyModule(torch::nn::Fold(fold(x,i,c)));
-  case Cast::unfold:       return AnyModule(torch::nn::Unfold(unfold(x,i,c)));
-  case Cast::upsample:     return AnyModule(torch::nn::Upsample(upsample<torch::nn::UpsampleOptions>(x,i,c)));
+  case Cast::fold:         return AnyModule(nn::Fold(fold(x,i,c)));
+  case Cast::unfold:       return AnyModule(nn::Unfold(unfold(x,i,c)));
+  case Cast::upsample:     return AnyModule(nn::Upsample(upsample<nn::UpsampleOptions>(x,i,c)));
 
-  case Cast::maxpool1d:    return AnyModule(torch::nn::MaxPool1d(maxpool<1>(x,i,c)));
-  case Cast::maxpool2d:    return AnyModule(torch::nn::MaxPool2d(maxpool<2>(x,i,c)));
-  case Cast::maxpool3d:    return AnyModule(torch::nn::MaxPool3d(maxpool<3>(x,i,c)));
+  case Cast::maxpool1d:    return AnyModule(nn::MaxPool1d(maxpool<1>(x,i,c)));
+  case Cast::maxpool2d:    return AnyModule(nn::MaxPool2d(maxpool<2>(x,i,c)));
+  case Cast::maxpool3d:    return AnyModule(nn::MaxPool3d(maxpool<3>(x,i,c)));
 
-  case Cast::avgpool1d:    return AnyModule(torch::nn::AvgPool1d(avgpool<1>(x,i,c)));
-  case Cast::avgpool2d:    return AnyModule(torch::nn::AvgPool2d(avgpool<2>(x,i,c)));
-  case Cast::avgpool3d:    return AnyModule(torch::nn::AvgPool3d(avgpool<3>(x,i,c)));
+  case Cast::avgpool1d:    return AnyModule(nn::AvgPool1d(avgpool<1>(x,i,c)));
+  case Cast::avgpool2d:    return AnyModule(nn::AvgPool2d(avgpool<2>(x,i,c)));
+  case Cast::avgpool3d:    return AnyModule(nn::AvgPool3d(avgpool<3>(x,i,c)));
 
-  case Cast::adaptmax1d:   return AnyModule(torch::nn::AdaptiveMaxPool1d(adapt<1,torch::nn::AdaptiveMaxPool1dOptions>(x,i,c)));
-  case Cast::adaptmax2d:   return AnyModule(torch::nn::AdaptiveMaxPool2d(adapt<2,torch::nn::AdaptiveMaxPool2dOptions>(x,i,c)));
-  case Cast::adaptmax3d:   return AnyModule(torch::nn::AdaptiveMaxPool3d(adapt<3,torch::nn::AdaptiveMaxPool3dOptions>(x,i,c)));
+  case Cast::adaptmax1d:   return AnyModule(nn::AdaptiveMaxPool1d(adapt<1,nn::AdaptiveMaxPool1dOptions>(x,i,c)));
+  case Cast::adaptmax2d:   return AnyModule(nn::AdaptiveMaxPool2d(adapt<2,nn::AdaptiveMaxPool2dOptions>(x,i,c)));
+  case Cast::adaptmax3d:   return AnyModule(nn::AdaptiveMaxPool3d(adapt<3,nn::AdaptiveMaxPool3dOptions>(x,i,c)));
 
-  case Cast::adaptavg1d:   return AnyModule(torch::nn::AdaptiveAvgPool1d(adapt<1,torch::nn::AdaptiveAvgPool1dOptions>(x,i,c)));
-  case Cast::adaptavg2d:   return AnyModule(torch::nn::AdaptiveAvgPool2d(adapt<2,torch::nn::AdaptiveAvgPool2dOptions>(x,i,c)));
-  case Cast::adaptavg3d:   return AnyModule(torch::nn::AdaptiveAvgPool3d(adapt<3,torch::nn::AdaptiveAvgPool3dOptions>(x,i,c)));
+  case Cast::adaptavg1d:   return AnyModule(nn::AdaptiveAvgPool1d(adapt<1,nn::AdaptiveAvgPool1dOptions>(x,i,c)));
+  case Cast::adaptavg2d:   return AnyModule(nn::AdaptiveAvgPool2d(adapt<2,nn::AdaptiveAvgPool2dOptions>(x,i,c)));
+  case Cast::adaptavg3d:   return AnyModule(nn::AdaptiveAvgPool3d(adapt<3,nn::AdaptiveAvgPool3dOptions>(x,i,c)));
 
-  case Cast::fmaxpool2d:   return AnyModule(torch::nn::FractionalMaxPool2d(fpool<2>(x,i,c)));
-  case Cast::fmaxpool3d:   return AnyModule(torch::nn::FractionalMaxPool3d(fpool<3>(x,i,c)));
+  case Cast::fmaxpool2d:   return AnyModule(nn::FractionalMaxPool2d(fpool<2>(x,i,c)));
+  case Cast::fmaxpool3d:   return AnyModule(nn::FractionalMaxPool3d(fpool<3>(x,i,c)));
 
-  case Cast::lppool1d:     return AnyModule(torch::nn::LPPool1d(lppool<1>(x,i,c)));
-  case Cast::lppool2d:     return AnyModule(torch::nn::LPPool2d(lppool<2>(x,i,c)));
+  case Cast::lppool1d:     return AnyModule(nn::LPPool1d(lppool<1>(x,i,c)));
+  case Cast::lppool2d:     return AnyModule(nn::LPPool2d(lppool<2>(x,i,c)));
 
   case Cast::pad:          return AnyModule(Pad(pad(x,i,c)));
-  case Cast::pad1d:        return AnyModule(torch::nn::ConstantPad1d(cpad<1,torch::nn::ConstantPad1dOptions>(x,i,c)));
-  case Cast::pad2d:        return AnyModule(torch::nn::ConstantPad2d(cpad<2,torch::nn::ConstantPad2dOptions>(x,i,c)));
-  case Cast::pad3d:        return AnyModule(torch::nn::ConstantPad3d(cpad<3,torch::nn::ConstantPad3dOptions>(x,i,c)));
-  case Cast::reflect1d:    return AnyModule(torch::nn::ReflectionPad1d(npad<1,torch::nn::ReflectionPad1dOptions>(x,i,c)));
-  case Cast::reflect2d:    return AnyModule(torch::nn::ReflectionPad2d(npad<2,torch::nn::ReflectionPad2dOptions>(x,i,c)));
-  case Cast::replicate1d:  return AnyModule(torch::nn::ReplicationPad1d(npad<1,torch::nn::ReplicationPad1dOptions>(x,i,c)));
-  case Cast::replicate2d:  return AnyModule(torch::nn::ReplicationPad2d(npad<2,torch::nn::ReplicationPad2dOptions>(x,i,c)));
-  case Cast::replicate3d:  return AnyModule(torch::nn::ReplicationPad3d(npad<3,torch::nn::ReplicationPad3dOptions>(x,i,c)));
-  case Cast::zeropad2d:    return AnyModule(torch::nn::ZeroPad2d(npad<2,torch::nn::ZeroPad2dOptions>(x,i,c)));
+  case Cast::pad1d:        return AnyModule(nn::ConstantPad1d(cpad<1,nn::ConstantPad1dOptions>(x,i,c)));
+  case Cast::pad2d:        return AnyModule(nn::ConstantPad2d(cpad<2,nn::ConstantPad2dOptions>(x,i,c)));
+  case Cast::pad3d:        return AnyModule(nn::ConstantPad3d(cpad<3,nn::ConstantPad3dOptions>(x,i,c)));
+  case Cast::reflect1d:    return AnyModule(nn::ReflectionPad1d(npad<1,nn::ReflectionPad1dOptions>(x,i,c)));
+  case Cast::reflect2d:    return AnyModule(nn::ReflectionPad2d(npad<2,nn::ReflectionPad2dOptions>(x,i,c)));
+  case Cast::replicate1d:  return AnyModule(nn::ReplicationPad1d(npad<1,nn::ReplicationPad1dOptions>(x,i,c)));
+  case Cast::replicate2d:  return AnyModule(nn::ReplicationPad2d(npad<2,nn::ReplicationPad2dOptions>(x,i,c)));
+  case Cast::replicate3d:  return AnyModule(nn::ReplicationPad3d(npad<3,nn::ReplicationPad3dOptions>(x,i,c)));
+  case Cast::zeropad2d:    return AnyModule(nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)));
 
-  case Cast::rnn:          return AnyModule((rnn<torch::nn::RNN, torch::nn::RNNOptions> (c,x,i)));
-  case Cast::gru:          return AnyModule((rnn<torch::nn::GRU, torch::nn::GRUOptions> (c,x,i)));
-  case Cast::lstm:         return AnyModule((rnn<torch::nn::LSTM,torch::nn::LSTMOptions>(c,x,i)));
+  case Cast::rnn:          return AnyModule((rnn<nn::RNN, nn::RNNOptions> (c,x,i)));
+  case Cast::gru:          return AnyModule((rnn<nn::GRU, nn::GRUOptions> (c,x,i)));
+  case Cast::lstm:         return AnyModule((rnn<nn::LSTM,nn::LSTMOptions>(c,x,i)));
 
-  case Cast::identity:     noarg(c,x,i); return AnyModule(torch::nn::Identity());
-  case Cast::logsigmoid:   noarg(c,x,i); return AnyModule(torch::nn::LogSigmoid());
-  case Cast::sigmoid:      noarg(c,x,i); return AnyModule(torch::nn::Sigmoid());
-  case Cast::softsign:     noarg(c,x,i); return AnyModule(torch::nn::Softsign());
-  case Cast::softmax2d:    noarg(c,x,i); return AnyModule(torch::nn::Softmax2d());
-  case Cast::tanh:         noarg(c,x,i); return AnyModule(torch::nn::Tanh());
-  case Cast::tanhshrink:   noarg(c,x,i); return AnyModule(torch::nn::Tanhshrink());
-  case Cast::gelu:         noarg(c,x,i); return AnyModule(torch::nn::GELU());
+  case Cast::identity:     noarg(c,x,i); return AnyModule(nn::Identity());
+  case Cast::logsigmoid:   noarg(c,x,i); return AnyModule(nn::LogSigmoid());
+  case Cast::sigmoid:      noarg(c,x,i); return AnyModule(nn::Sigmoid());
+  case Cast::softsign:     noarg(c,x,i); return AnyModule(nn::Softsign());
+  case Cast::softmax2d:    noarg(c,x,i); return AnyModule(nn::Softmax2d());
+  case Cast::tanh:         noarg(c,x,i); return AnyModule(nn::Tanh());
+  case Cast::tanhshrink:   noarg(c,x,i); return AnyModule(nn::Tanhshrink());
+  case Cast::gelu:         noarg(c,x,i); return AnyModule(nn::GELU());
   case Cast::mul:          noarg(c,x,i); return AnyModule(Mul());
 
-  case Cast::relu:         return AnyModule( torch::nn::ReLU(inplace(x,i,c)));
-  case Cast::relu6:        return AnyModule(torch::nn::ReLU6(inplace(x,i,c)));
-  case Cast::selu:         return AnyModule( torch::nn::SELU(inplace(x,i,c)));
+  case Cast::relu:         return AnyModule( nn::ReLU(inplace(x,i,c)));
+  case Cast::relu6:        return AnyModule(nn::ReLU6(inplace(x,i,c)));
+  case Cast::selu:         return AnyModule( nn::SELU(inplace(x,i,c)));
 
-  case Cast::softmax:      return AnyModule(torch::nn::Softmax(dim(x,i,c)));
-  case Cast::softmin:      return AnyModule(torch::nn::Softmin(dim(x,i,c)));
-  case Cast::logsoftmax:   return AnyModule(torch::nn::LogSoftmax(dim(x,i,c)));
-  case Cast::flatten:      return AnyModule(torch::nn::Flatten(flatten(x,i,c)));
+  case Cast::softmax:      return AnyModule(nn::Softmax(dim(x,i,c)));
+  case Cast::softmin:      return AnyModule(nn::Softmin(dim(x,i,c)));
+  case Cast::logsoftmax:   return AnyModule(nn::LogSoftmax(dim(x,i,c)));
+  case Cast::flatten:      return AnyModule(nn::Flatten(flatten(x,i,c)));
 
   case Cast::squeeze:      return AnyModule(Squeeze(squeeze(x,i,c)));
   case Cast::unsqueeze:    return AnyModule(Unsqueeze(squeeze(x,i,c)));
@@ -2217,20 +2219,20 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::reshape:      return AnyModule(Reshape(getsize(x,i,c)));
   case Cast::cat:          return AnyModule(Cat(dim(x,i,c)));
 
-  case Cast::elu:          return AnyModule(torch::nn::ELU (alpha<torch::nn::ELUOptions> (x,i,c)));
-  case Cast::celu:         return AnyModule(torch::nn::CELU(alpha<torch::nn::CELUOptions>(x,i,c)));
-  case Cast::leakyrelu:    return AnyModule(torch::nn::LeakyReLU(slope(x,i,c)));
-  case Cast::glu:          return AnyModule(torch::nn::GLU(dim(x,i,c)));
-  case Cast::hardshrink:   return AnyModule(torch::nn::Hardshrink(lambda(x,i,c)));
-  case Cast::softshrink:   return AnyModule(torch::nn::Softshrink(lambda(x,i,c)));
-  case Cast::prelu:        return AnyModule(torch::nn::PReLU(prelu(x,i,c)));
-  case Cast::rrelu:        return AnyModule(torch::nn::RReLU(rrelu(x,i,c)));
-  case Cast::hardtanh:     return AnyModule(torch::nn::Hardtanh(hardtanh(x,i,c)));
-  case Cast::softplus:     return AnyModule(torch::nn::Softplus(softplus(x,i,c)));
-  case Cast::threshold:    return AnyModule(torch::nn::Threshold(threshold(x,i,c)));
+  case Cast::elu:          return AnyModule(nn::ELU (alpha<nn::ELUOptions> (x,i,c)));
+  case Cast::celu:         return AnyModule(nn::CELU(alpha<nn::CELUOptions>(x,i,c)));
+  case Cast::leakyrelu:    return AnyModule(nn::LeakyReLU(slope(x,i,c)));
+  case Cast::glu:          return AnyModule(nn::GLU(dim(x,i,c)));
+  case Cast::hardshrink:   return AnyModule(nn::Hardshrink(lambda(x,i,c)));
+  case Cast::softshrink:   return AnyModule(nn::Softshrink(lambda(x,i,c)));
+  case Cast::prelu:        return AnyModule(nn::PReLU(prelu(x,i,c)));
+  case Cast::rrelu:        return AnyModule(nn::RReLU(rrelu(x,i,c)));
+  case Cast::hardtanh:     return AnyModule(nn::Hardtanh(hardtanh(x,i,c)));
+  case Cast::softplus:     return AnyModule(nn::Softplus(softplus(x,i,c)));
+  case Cast::threshold:    return AnyModule(nn::Threshold(threshold(x,i,c)));
 
-  case Cast::pairwise:     return AnyModule(torch::nn::PairwiseDistance(pairwise(x,i,c)));
-  case Cast::similar:      return AnyModule(torch::nn::CosineSimilarity(similar(x,i,c)));
+  case Cast::pairwise:     return AnyModule(nn::PairwiseDistance(pairwise(x,i,c)));
+  case Cast::similar:      return AnyModule(nn::CosineSimilarity(similar(x,i,c)));
   default: AT_ERROR("unrecognized module: ",(I)c);
  }
 }
@@ -2428,94 +2430,94 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(g.as<SeqNest>())     { c=Cast::seqnest;
  } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
 
- } else if(auto* m=g.as<torch::nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::InstanceNorm1d>())    { c=Cast::instancenorm1d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::InstanceNorm2d>())    { c=Cast::instancenorm2d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::InstanceNorm3d>())    { c=Cast::instancenorm3d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::GroupNorm>())         { c=Cast::groupnorm;      groupnorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::LayerNorm>())         { c=Cast::layernorm;      layernorm(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::LocalResponseNorm>()) { c=Cast::localnorm;      localnorm(a,x,c,m->options);
- } else if(auto* m=g.as<torch::nn::CrossMapLRN2d>())     { c=Cast::crossmap2d;     localnorm(a,x,c,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm1d>())    { c=Cast::instancenorm1d; batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm2d>())    { c=Cast::instancenorm2d; batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm3d>())    { c=Cast::instancenorm3d; batchnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::GroupNorm>())         { c=Cast::groupnorm;      groupnorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::LayerNorm>())         { c=Cast::layernorm;      layernorm(a,x,m->options);
+ } else if(auto* m=g.as<nn::LocalResponseNorm>()) { c=Cast::localnorm;      localnorm(a,x,c,m->options);
+ } else if(auto* m=g.as<nn::CrossMapLRN2d>())     { c=Cast::crossmap2d;     localnorm(a,x,c,m->options);
 
- } else if(auto* m=g.as<torch::nn::Embedding>())         { c=Cast::embed;    embed(a,x,c,m->options,m->weight);
- } else if(auto* m=g.as<torch::nn::EmbeddingBag>())      { c=Cast::embedbag; embed(a,x,c,m->options,m->weight);
- } else if(auto* m=g.as<torch::nn::Linear>())            { c=Cast::linear;   linear(a,x,m);
- } else if(auto* m=g.as<torch::nn::Bilinear>())          { c=Cast::bilinear; bilinear(a,x,m);
+ } else if(auto* m=g.as<nn::Embedding>())         { c=Cast::embed;    embed(a,x,c,m->options,m->weight);
+ } else if(auto* m=g.as<nn::EmbeddingBag>())      { c=Cast::embedbag; embed(a,x,c,m->options,m->weight);
+ } else if(auto* m=g.as<nn::Linear>())            { c=Cast::linear;   linear(a,x,m);
+ } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; bilinear(a,x,m);
 
- } else if(auto* m=g.as<torch::nn::Dropout>())             { c=Cast::drop;   drop(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Dropout2d>())           { c=Cast::drop2d; drop(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Dropout3d>())           { c=Cast::drop3d; drop(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::AlphaDropout>())        { c=Cast::adrop;  drop(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::FeatureAlphaDropout>()) { c=Cast::fadrop; drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::Dropout>())             { c=Cast::drop;   drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::Dropout2d>())           { c=Cast::drop2d; drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::Dropout3d>())           { c=Cast::drop3d; drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::AlphaDropout>())        { c=Cast::adrop;  drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::FeatureAlphaDropout>()) { c=Cast::fadrop; drop(a,x,m->options);
 
- } else if(auto* m=g.as<torch::nn::Conv1d>())         { c=Cast::conv1d; conv<1>(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Conv2d>())         { c=Cast::conv2d; conv<2>(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Conv3d>())         { c=Cast::conv3d; conv<3>(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; conv<1>(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; conv<2>(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; conv<3>(a,x,m->options);
+ } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d; conv<1>(a,x,m->options);
+ } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d; conv<2>(a,x,m->options);
+ } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d; conv<3>(a,x,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; conv<1>(a,x,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; conv<2>(a,x,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; conv<3>(a,x,m->options);
 
- } else if(auto* m=g.as<torch::nn::Fold>())           { c=Cast::fold;     fold(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Unfold>())         { c=Cast::unfold;   unfold(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Upsample>())       { c=Cast::upsample; upsample(a,x,m->options);
+ } else if(auto* m=g.as<nn::Fold>())           { c=Cast::fold;     fold(a,x,m->options);
+ } else if(auto* m=g.as<nn::Unfold>())         { c=Cast::unfold;   unfold(a,x,m->options);
+ } else if(auto* m=g.as<nn::Upsample>())       { c=Cast::upsample; upsample(a,x,m->options);
 
- } else if(auto* m=g.as<torch::nn::MaxPool1d>())      { c=Cast::maxpool1d; maxpool<1,torch::nn::MaxPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::MaxPool2d>())      { c=Cast::maxpool2d; maxpool<2,torch::nn::MaxPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::MaxPool3d>())      { c=Cast::maxpool3d; maxpool<3,torch::nn::MaxPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::MaxPool1d>())      { c=Cast::maxpool1d; maxpool<1,nn::MaxPool1dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::MaxPool2d>())      { c=Cast::maxpool2d; maxpool<2,nn::MaxPool2dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::MaxPool3d>())      { c=Cast::maxpool3d; maxpool<3,nn::MaxPool3dImpl>(a,x,m);
 
- } else if(auto* m=g.as<torch::nn::AvgPool1d>())      { c=Cast::avgpool1d; avgpool<1,torch::nn::AvgPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::AvgPool2d>())      { c=Cast::avgpool2d; avgpool<2,torch::nn::AvgPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::AvgPool3d>())      { c=Cast::avgpool3d; avgpool<3,torch::nn::AvgPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; avgpool<1,nn::AvgPool1dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; avgpool<2,nn::AvgPool2dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; avgpool<3,nn::AvgPool3dImpl>(a,x,m);
 
- } else if(auto* m=g.as<torch::nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; adapt<torch::nn::AdaptiveMaxPool1dImpl>(x,m);
- } else if(auto* m=g.as<torch::nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; adapt<torch::nn::AdaptiveMaxPool2dImpl>(x,m);
- } else if(auto* m=g.as<torch::nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; adapt<torch::nn::AdaptiveMaxPool3dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; adapt<nn::AdaptiveMaxPool1dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; adapt<nn::AdaptiveMaxPool2dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; adapt<nn::AdaptiveMaxPool3dImpl>(x,m);
 
- } else if(auto* m=g.as<torch::nn::AdaptiveAvgPool1d>())   { c=Cast::adaptmax1d; adapt<torch::nn::AdaptiveAvgPool1dImpl>(x,m);
- } else if(auto* m=g.as<torch::nn::AdaptiveAvgPool2d>())   { c=Cast::adaptmax2d; adapt<torch::nn::AdaptiveAvgPool2dImpl>(x,m);
- } else if(auto* m=g.as<torch::nn::AdaptiveAvgPool3d>())   { c=Cast::adaptmax3d; adapt<torch::nn::AdaptiveAvgPool3dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptmax1d; adapt<nn::AdaptiveAvgPool1dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptmax2d; adapt<nn::AdaptiveAvgPool2dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptmax3d; adapt<nn::AdaptiveAvgPool3dImpl>(x,m);
 
- } else if(auto* m=g.as<torch::nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; fpool<2,torch::nn::FractionalMaxPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; fpool<3,torch::nn::FractionalMaxPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; fpool<2,nn::FractionalMaxPool2dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; fpool<3,nn::FractionalMaxPool3dImpl>(a,x,m);
 
- } else if(auto* m=g.as<torch::nn::LPPool1d>())         { c=Cast::lppool1d; lppool<1,torch::nn::LPPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<torch::nn::LPPool2d>())         { c=Cast::lppool2d; lppool<2,torch::nn::LPPool2dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::LPPool1d>())         { c=Cast::lppool1d; lppool<1,nn::LPPool1dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::LPPool2d>())         { c=Cast::lppool2d; lppool<2,nn::LPPool2dImpl>(a,x,m);
 
  } else if(auto* m=g.as<Pad>())                         { c=Cast::pad;         pad(a,x,m);
- } else if(auto* m=g.as<torch::nn::ConstantPad1d>())    { c=Cast::pad1d;       cpad(x,m);
- } else if(auto* m=g.as<torch::nn::ConstantPad2d>())    { c=Cast::pad2d;       cpad(x,m);
- } else if(auto* m=g.as<torch::nn::ConstantPad3d>())    { c=Cast::pad3d;       cpad(x,m);
- } else if(auto* m=g.as<torch::nn::ReflectionPad1d>())  { c=Cast::reflect1d;   npad(x,m);
- } else if(auto* m=g.as<torch::nn::ReflectionPad2d>())  { c=Cast::reflect2d;   npad(x,m);
- } else if(auto* m=g.as<torch::nn::ReplicationPad1d>()) { c=Cast::replicate1d; npad(x,m);
- } else if(auto* m=g.as<torch::nn::ReplicationPad2d>()) { c=Cast::replicate2d; npad(x,m);
- } else if(auto* m=g.as<torch::nn::ReplicationPad3d>()) { c=Cast::replicate3d; npad(x,m);
- } else if(auto* m=g.as<torch::nn::ZeroPad2d>())        { c=Cast::zeropad2d;   npad(x,m);
+ } else if(auto* m=g.as<nn::ConstantPad1d>())    { c=Cast::pad1d;       cpad(x,m);
+ } else if(auto* m=g.as<nn::ConstantPad2d>())    { c=Cast::pad2d;       cpad(x,m);
+ } else if(auto* m=g.as<nn::ConstantPad3d>())    { c=Cast::pad3d;       cpad(x,m);
+ } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   npad(x,m);
+ } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   npad(x,m);
+ } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; npad(x,m);
+ } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; npad(x,m);
+ } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; npad(x,m);
+ } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   npad(x,m);
 
- } else if(auto* m=g.as<torch::nn::RNN>())   { c=Cast::rnn;  rnn<torch::nn::RNNImpl,  torch::nn::RNNOptions> (a,x,m);
- } else if(auto* m=g.as<torch::nn::GRU>())   { c=Cast::gru;  rnn<torch::nn::GRUImpl,  torch::nn::GRUOptions> (a,x,m);
- } else if(auto* m=g.as<torch::nn::LSTM>())  { c=Cast::lstm; rnn<torch::nn::LSTMImpl, torch::nn::LSTMOptions>(a,x,m);
+ } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn<nn::RNNImpl,  nn::RNNOptions> (a,x,m);
+ } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn<nn::GRUImpl,  nn::GRUOptions> (a,x,m);
+ } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; rnn<nn::LSTMImpl, nn::LSTMOptions>(a,x,m);
 
- } else if(g.as<torch::nn::Identity>())      { c=Cast::identity;
- } else if(g.as<torch::nn::LogSigmoid>())    { c=Cast::logsigmoid;
- } else if(g.as<torch::nn::Sigmoid>())       { c=Cast::sigmoid;
- } else if(g.as<torch::nn::Softsign>())      { c=Cast::softsign;
- } else if(g.as<torch::nn::Softmax2d>())     { c=Cast::softmax2d;
- } else if(g.as<torch::nn::Tanh>())          { c=Cast::tanh;
- } else if(g.as<torch::nn::Tanhshrink>())    { c=Cast::tanhshrink;
- } else if(g.as<torch::nn::GELU>())          { c=Cast::gelu;
+ } else if(g.as<nn::Identity>())      { c=Cast::identity;
+ } else if(g.as<nn::LogSigmoid>())    { c=Cast::logsigmoid;
+ } else if(g.as<nn::Sigmoid>())       { c=Cast::sigmoid;
+ } else if(g.as<nn::Softsign>())      { c=Cast::softsign;
+ } else if(g.as<nn::Softmax2d>())     { c=Cast::softmax2d;
+ } else if(g.as<nn::Tanh>())          { c=Cast::tanh;
+ } else if(g.as<nn::Tanhshrink>())    { c=Cast::tanhshrink;
+ } else if(g.as<nn::GELU>())          { c=Cast::gelu;
  } else if(g.as<Mul>())                      { c=Cast::mul;
 
- } else if(auto* m=g.as<torch::nn::ReLU>())  { c=Cast::relu;  inplace(a,x,m->options.inplace());
- } else if(auto* m=g.as<torch::nn::SELU>())  { c=Cast::selu;  inplace(a,x,m->options.inplace());
- } else if(auto* m=g.as<torch::nn::ReLU6>()) { c=Cast::relu6; inplace(a,x,m->options.inplace());
+ } else if(auto* m=g.as<nn::ReLU>())  { c=Cast::relu;  inplace(a,x,m->options.inplace());
+ } else if(auto* m=g.as<nn::SELU>())  { c=Cast::selu;  inplace(a,x,m->options.inplace());
+ } else if(auto* m=g.as<nn::ReLU6>()) { c=Cast::relu6; inplace(a,x,m->options.inplace());
 
- } else if(auto* m=g.as<torch::nn::Softmax>())    { c=Cast::softmax;    OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<torch::nn::Softmin>())    { c=Cast::softmin;    OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<torch::nn::LogSoftmax>()) { c=Cast::logsoftmax; OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<torch::nn::Flatten>())    { c=Cast::flatten;    flatten(a,x,m);
+ } else if(auto* m=g.as<nn::Softmax>())    { c=Cast::softmax;    OPTION(x, dim, kj(m->options.dim()));
+ } else if(auto* m=g.as<nn::Softmin>())    { c=Cast::softmin;    OPTION(x, dim, kj(m->options.dim()));
+ } else if(auto* m=g.as<nn::LogSoftmax>()) { c=Cast::logsoftmax; OPTION(x, dim, kj(m->options.dim()));
+ } else if(auto* m=g.as<nn::Flatten>())    { c=Cast::flatten;    flatten(a,x,m);
 
  } else if(auto* m=g.as<Squeeze>())    { c=Cast::squeeze;    squeeze(a,x,m->options);
  } else if(auto* m=g.as<Unsqueeze>())  { c=Cast::unsqueeze;  squeeze(a,x,m->options);
@@ -2523,21 +2525,21 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<Reshape>())    { c=Cast::reshape;    getsize(a,x,m->options);
  } else if(auto* m=g.as<Cat>())        { c=Cast::cat;        dim(a,c,x,m->options.dim());
 
- } else if(auto* m=g.as<torch::nn::ELU>())        { c=Cast::elu;  alpha(a,c,x,m->options);
- } else if(auto* m=g.as<torch::nn::CELU>())       { c=Cast::celu; alpha(a,c,x,m->options);
- } else if(auto* m=g.as<torch::nn::LeakyReLU>())  { c=Cast::leakyrelu;  slope(a,c,x,m->options);
- } else if(auto* m=g.as<torch::nn::GLU>())        { c=Cast::glu;        dim(a,c,x,m->options.dim());
- } else if(auto* m=g.as<torch::nn::Hardshrink>()) { c=Cast::hardshrink; lambda(a,c,x,m->options.lambda());
- } else if(auto* m=g.as<torch::nn::Softshrink>()) { c=Cast::softshrink; lambda(a,c,x,m->options.lambda());
+ } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;  alpha(a,c,x,m->options);
+ } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu; alpha(a,c,x,m->options);
+ } else if(auto* m=g.as<nn::LeakyReLU>())  { c=Cast::leakyrelu;  slope(a,c,x,m->options);
+ } else if(auto* m=g.as<nn::GLU>())        { c=Cast::glu;        dim(a,c,x,m->options.dim());
+ } else if(auto* m=g.as<nn::Hardshrink>()) { c=Cast::hardshrink; lambda(a,c,x,m->options.lambda());
+ } else if(auto* m=g.as<nn::Softshrink>()) { c=Cast::softshrink; lambda(a,c,x,m->options.lambda());
 
- } else if(auto* m=g.as<torch::nn::PReLU>())      { c=Cast::prelu;      prelu(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::RReLU>())      { c=Cast::rrelu;      rrelu(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Hardtanh>())   { c=Cast::hardtanh;   hardtanh(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Softplus>())   { c=Cast::softplus;   softplus(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::Threshold>())  { c=Cast::threshold;  threshold(a,x,m->options);
+ } else if(auto* m=g.as<nn::PReLU>())      { c=Cast::prelu;      prelu(a,x,m->options);
+ } else if(auto* m=g.as<nn::RReLU>())      { c=Cast::rrelu;      rrelu(a,x,m->options);
+ } else if(auto* m=g.as<nn::Hardtanh>())   { c=Cast::hardtanh;   hardtanh(a,x,m->options);
+ } else if(auto* m=g.as<nn::Softplus>())   { c=Cast::softplus;   softplus(a,x,m->options);
+ } else if(auto* m=g.as<nn::Threshold>())  { c=Cast::threshold;  threshold(a,x,m->options);
 
- } else if(auto* m=g.as<torch::nn::PairwiseDistance>())  { c=Cast::pairwise; pairwise(a,x,m->options);
- } else if(auto* m=g.as<torch::nn::CosineSimilarity>())  { c=Cast::similar;  similar(a,x,m->options);
+ } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; pairwise(a,x,m->options);
+ } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  similar(a,x,m->options);
  } else { AT_ERROR("unrecognized module: ",g.name());
  }
  return std::make_tuple(c,x);
