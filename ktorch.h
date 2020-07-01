@@ -155,7 +155,7 @@ enum class Cast:char {
  embedbag,       expand,          fadrop,          flatten,
  fmaxpool2d,     fmaxpool3d,      fold,            gelu,            glu,
  groupnorm,      gru,             hardshrink,      hardtanh,        identity,
- instancenorm1d, instancenorm2d,  instancenorm3d,  layernorm,       leakyrelu,
+ instancenorm1d, instancenorm2d,  instancenorm3d,  interpolate,     layernorm,       leakyrelu,
  linear,         localnorm,       logsigmoid,      logsoftmax,      lppool1d,
  lppool2d,       lstm,            maxpool1d,       maxpool2d,       maxpool3d,    mul,
  normalize,      pad,             pad1d,           pad2d,           pad3d,
@@ -188,19 +188,19 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- affine,  align,     alpha,     amsgrad,    batchfirst, beta,      beta1,      beta2,
- bi,      bias,      blank,     ceiling,    centered,  changetol,  channels,
- cols,    countpad,  dampening, decay,      dilate,    dim,        divisor,
- dropout, end,       eps,       eval,       fn,        freeze,     full,
- gradtol, groups,    heads,     hidden,     history,   ignore,     in,
- in1,     in2,       indices,   init,       inplace,   iter,       k,
- kdim,    keepdim,   kvbias,    kvzeros,    lambda,    lastoffset, layers,
- log,     lower,     lr,        lrdecay,    margin,    max,        maxnorm,
- min,     mode,      momentum,  nesterov,   out,       outpad,     outsize,
- p,       pad,       padindex,  padmode,    ratio,     reduce,     rows,
- scale,   shape,     size,      slope,      sparse,    start,      stride,
- swap,    threshold, track,     train,      transpose, type,       upper,
- value,   vdim,      weight,    zeroinf
+ affine,   align,   alpha,    amsgrad,   batchfirst, beta,     beta1,     
+ beta2,    bi,      bias,     blank,     ceiling,    centered, changetol, 
+ channels, cols,    countpad, dampening, decay,      dilate,   dim,       
+ divisor,  dropout, end,      eps,       eval,       fn,       freeze,    
+ full,     gradtol, groups,   heads,     hidden,     history,  ignore,    
+ in,       in1,     in2,      indices,   init,       inplace,  iter,      
+ k,        kdim,    keepdim,  kvbias,    kvzeros,    lambda,   lastoffset,
+ layers,   log,     lower,    lr,        lrdecay,    margin,   max,       
+ maxnorm,  min,     mode,     momentum,  nesterov,   out,      outpad,    
+ outsize,  p,       pad,      padindex,  padmode,    ratio,    reduce,    
+ rescale,  rows,    scale,    shape,     size,       slope,    sparse,    
+ start,    stride,  swap,     threshold, track,      train,    transpose, 
+ type,     upper,   value,    vdim,      weight,     zeroinf   
 };
 
 enum class State:char {
@@ -648,7 +648,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Cast>,96> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,97> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -695,6 +695,7 @@ typedef struct {
   std::make_tuple(cs("instancenorm1d"),  Cast::instancenorm1d),
   std::make_tuple(cs("instancenorm2d"),  Cast::instancenorm2d),
   std::make_tuple(cs("instancenorm3d"),  Cast::instancenorm3d),
+  std::make_tuple(cs("interpolate"),     Cast::interpolate),
   std::make_tuple(cs("layernorm"),       Cast::layernorm),
   std::make_tuple(cs("leakyrelu"),       Cast::leakyrelu),
   std::make_tuple(cs("linear"),          Cast::linear),
@@ -747,7 +748,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),       Cast::zeropad2d)
  }};
 
- std::array<std::tuple<S,Setting>,67> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,68> mset = {{        // module option sym -> enum
   std::make_tuple(cs("affine"),     Setting::affine),
   std::make_tuple(cs("alpha"),      Setting::alpha),
   std::make_tuple(cs("align"),      Setting::align),
@@ -798,6 +799,7 @@ typedef struct {
   std::make_tuple(cs("padindex"),   Setting::padindex),
   std::make_tuple(cs("padmode"),    Setting::padmode),
   std::make_tuple(cs("ratio"),      Setting::ratio),
+  std::make_tuple(cs("rescale"),    Setting::rescale),
   std::make_tuple(cs("rows"),       Setting::rows),
   std::make_tuple(cs("scale"),      Setting::scale),
   std::make_tuple(cs("size"),       Setting::size),

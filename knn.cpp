@@ -804,7 +804,8 @@ KAPI   Fold(K x) {return kfold(x, Cast::fold);}
 KAPI Unfold(K x) {return kfold(x, Cast::unfold);}
 
 // --------------------------------------------------------------------------------------
-// upsample & interpolate
+// upsample & interpolate - both require same options, interpolate has additional flag
+// upsample is implemented as a module in pytorch, interpolate as a function
 // --------------------------------------------------------------------------------------
 static void upmode(torch::nn::UpsampleOptions& o,S s) {
  switch(emap(s)) {
@@ -829,24 +830,39 @@ static void upmode(torch::nn::functional::InterpolateFuncOptions& o,S s) {
  }
 }
 
-static torch::nn::UpsampleOptions upsample(K x,J i,Cast c) {
- torch::nn::UpsampleOptions o;
- Pairs p; J n=xargc(x,i,p);
+// recompute_scale_factor only part of interpolate options, separate fns to handle setting
+static void rescale(K x,J i,Cast c,Setting s,torch::nn::UpsampleOptions& o) {
+ AT_ERROR(msym(c),": up to 4 positional arguments expected, 5th argument unrecognized");
+}
+static void rescale(K x,J i,Cast c,Setting s,torch::nn::functional::InterpolateFuncOptions& o) {
+ if(xempty(x,i)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(x,i,c,s));
+}
+static void rescale(Pairs& p,Cast c,torch::nn::UpsampleOptions& o) {
+ AT_ERROR(msym(c),": rescale is not a recognized option");
+}
+static void rescale(Pairs& p,Cast c,torch::nn::functional::InterpolateFuncOptions& o) {
+ if(pempty(p)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(p,c));
+}
+
+template<typename O>static O upsample(K x,J i,Cast c) {
+ O o; Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j) {
   switch(j) {
    case 0: if(xempty(x,i+j)) o.size({}); else o.size(mlongs(x,i+j,c,Setting::size)); break;
    case 1: if(xempty(x,i+j)) o.scale_factor({}); else o.scale_factor(mdoubles(x,i+j,c,Setting::scale)); break;
    case 2: upmode(o,mode(x,i+j,c,Setting::mode)); break;
    case 3: if(xempty(x,i+j)) o.align_corners({}); else o.align_corners(mbool(x,i+j,c,Setting::align)); break;
-   default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+   case 4: rescale(x,i+j,c,Setting::rescale,o); break;
+   default: AT_ERROR(msym(c),": up to ",(c==Cast::upsample ? 4 : 5)," positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
   switch(mset(p.k,c)) {
-   case Setting::size:   if(pempty(p)) o.size({}); else o.size(mlongs(p,c)); break;
-   case Setting::scale:  if(pempty(p)) o.scale_factor({}); else o.scale_factor(mdoubles(p,c)); break;
-   case Setting::mode:   upmode(o,psym(p)); break;
-   case Setting::align:  if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
+   case Setting::size:    if(pempty(p)) o.size({}); else o.size(mlongs(p,c)); break;
+   case Setting::scale:   if(pempty(p)) o.scale_factor({}); else o.scale_factor(mdoubles(p,c)); break;
+   case Setting::mode:    upmode(o,psym(p)); break;
+   case Setting::align:   if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
+   case Setting::rescale: rescale(p,c,o); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(o.size()         && !(*o.size()).size())         o.size({});
@@ -869,6 +885,15 @@ static void upsample(bool a,K x,const torch::nn::UpsampleOptions& o) {
   OPTION(x, align, o.align_corners() ? kb(*o.align_corners()) : ktn(0,0));
 }
 
+KAPI kinterpolate(K x) {
+ KTRY
+  TORCH_CHECK(!x->t, "interpolate not implemented for ",kname(x->t));
+  Tensor r, *t=xten(x,0);
+  return kresult(t,
+                 torch::nn::functional::interpolate(t ? *t : kput(x,0),
+                 upsample<torch::nn::functional::InterpolateFuncOptions>(x,1,Cast::interpolate)));
+ KCATCH("interpolate");
+}
 
 // --------------------------------------------------------------------------------------
 // drop - create dropout module given probability/set dictionary given module
@@ -2128,7 +2153,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 
   case Cast::fold:         return AnyModule(torch::nn::Fold(fold(x,i,c)));
   case Cast::unfold:       return AnyModule(torch::nn::Unfold(unfold(x,i,c)));
-  case Cast::upsample:     return AnyModule(torch::nn::Upsample(upsample(x,i,c)));
+  case Cast::upsample:     return AnyModule(torch::nn::Upsample(upsample<torch::nn::UpsampleOptions>(x,i,c)));
 
   case Cast::maxpool1d:    return AnyModule(torch::nn::MaxPool1d(maxpool<1>(x,i,c)));
   case Cast::maxpool2d:    return AnyModule(torch::nn::MaxPool2d(maxpool<2>(x,i,c)));
@@ -2601,59 +2626,60 @@ KAPI module(K x) {
 // module fns defined in k namespace
 // ----------------------------------
 void nnfn(K x) {
- fn(x, "seq",        KFN(seq),         1);    // convenience fn for sequential layers
- fn(x, "module",     KFN(module),      1);    // api function for layer create/query
- fn(x, "adaptavg1d", KFN(adaptavg1d),  1);    // functional form of modules/activations
- fn(x, "adaptavg2d", KFN(adaptavg2d),  1);
- fn(x, "adaptavg3d", KFN(adaptavg3d),  1);
- fn(x, "adaptmax1d", KFN(adaptmax1d),  1);
- fn(x, "adaptmax2d", KFN(adaptmax2d),  1);
- fn(x, "adaptmax3d", KFN(adaptmax3d),  1);
- fn(x, "fmaxpool2d", KFN(fmaxpool2d),  1);
- fn(x, "fmaxpool3d", KFN(fmaxpool3d),  1);
- fn(x, "avgpool1d",  KFN(avgpool1d),   1);
- fn(x, "avgpool2d",  KFN(avgpool2d),   1);
- fn(x, "avgpool3d",  KFN(avgpool3d),   1);
- fn(x, "pad",        KFN(kpad),        1);
- fn(x, "celu",       KFN(celu),        1);
- fn(x, "elu",        KFN(elu),         1);
- fn(x, "flatten",    KFN(kflatten),    1);
- fn(x, "fold",       KFN(Fold),        1);
- fn(x, "glu",        KFN(glu),         1);
- fn(x, "hardshrink", KFN(hardshrink),  1);
- fn(x, "hardtanh",   KFN(Hardtanh),    1);
- fn(x, "leakyrelu",  KFN(leakyrelu),   1);
- fn(x, "linear",     KFN(Linear),      1);
- fn(x, "bilinear",   KFN(Bilinear),    1);
- fn(x, "logsigmoid", KFN(logsigmoid),  1);
- fn(x, "logsoftmax", KFN(logsoftmax),  1);
- fn(x, "lppool1d",   KFN(lppool1d),    1);
- fn(x, "lppool2d",   KFN(lppool2d),    1);
- fn(x, "maxpool1d",  KFN(maxpool1d),   1);
- fn(x, "maxpool2d",  KFN(maxpool2d),   1);
- fn(x, "maxpool3d",  KFN(maxpool3d),   1);
- fn(x, "normalize",  KFN(Normalize),   1);
- fn(x, "prelu",      KFN(Prelu),       1);
- fn(x, "gelu",       KFN(gelu),        1);
- fn(x, "relu",       KFN(relu),        1);
- fn(x, "relu6",      KFN(relu6),       1);
- fn(x, "rrelu",      KFN(Rrelu),       1);
- fn(x, "selu",       KFN(selu),        1);
- fn(x, "softmax",    KFN(softmax),     1);
- fn(x, "softmin",    KFN(softmin),     1);
- fn(x, "softplus",   KFN(Softplus),    1);
- fn(x, "softsign",   KFN(softsign),    1);
- fn(x, "softshrink", KFN(softshrink),  1);
- fn(x, "tanhshrink", KFN(tanhshrink),  1);
- fn(x, "threshold",  KFN(Threshold),   1);
- fn(x, "unfold",     KFN(Unfold),      1);
- fn(x, "pairwise",   KFN(Pairwise),    1);
- fn(x, "pdist",      KFN(pdist),       1);
- fn(x, "similar",    KFN(Similar),     1);
+ fn(x, "seq",         KFN(seq),          1);    // convenience fn for sequential layers
+ fn(x, "module",      KFN(module),       1);    // api function for layer create/query
+ fn(x, "adaptavg1d",  KFN(adaptavg1d),   1);    // functional form of modules/activations
+ fn(x, "adaptavg2d",  KFN(adaptavg2d),   1);
+ fn(x, "adaptavg3d",  KFN(adaptavg3d),   1);
+ fn(x, "adaptmax1d",  KFN(adaptmax1d),   1);
+ fn(x, "adaptmax2d",  KFN(adaptmax2d),   1);
+ fn(x, "adaptmax3d",  KFN(adaptmax3d),   1);
+ fn(x, "fmaxpool2d",  KFN(fmaxpool2d),   1);
+ fn(x, "fmaxpool3d",  KFN(fmaxpool3d),   1);
+ fn(x, "avgpool1d",   KFN(avgpool1d),    1);
+ fn(x, "avgpool2d",   KFN(avgpool2d),    1);
+ fn(x, "avgpool3d",   KFN(avgpool3d),    1);
+ fn(x, "pad",         KFN(kpad),         1);
+ fn(x, "celu",        KFN(celu),         1);
+ fn(x, "elu",         KFN(elu),          1);
+ fn(x, "flatten",     KFN(kflatten),     1);
+ fn(x, "fold",        KFN(Fold),         1);
+ fn(x, "glu",         KFN(glu),          1);
+ fn(x, "hardshrink",  KFN(hardshrink),   1);
+ fn(x, "hardtanh",    KFN(Hardtanh),     1);
+ fn(x, "interpolate", KFN(kinterpolate), 1);
+ fn(x, "leakyrelu",   KFN(leakyrelu),    1);
+ fn(x, "linear",      KFN(Linear),       1);
+ fn(x, "bilinear",    KFN(Bilinear),     1);
+ fn(x, "logsigmoid",  KFN(logsigmoid),   1);
+ fn(x, "logsoftmax",  KFN(logsoftmax),   1);
+ fn(x, "lppool1d",    KFN(lppool1d),     1);
+ fn(x, "lppool2d",    KFN(lppool2d),     1);
+ fn(x, "maxpool1d",   KFN(maxpool1d),    1);
+ fn(x, "maxpool2d",   KFN(maxpool2d),    1);
+ fn(x, "maxpool3d",   KFN(maxpool3d),    1);
+ fn(x, "normalize",   KFN(Normalize),    1);
+ fn(x, "prelu",       KFN(Prelu),        1);
+ fn(x, "gelu",        KFN(gelu),         1);
+ fn(x, "relu",        KFN(relu),         1);
+ fn(x, "relu6",       KFN(relu6),        1);
+ fn(x, "rrelu",       KFN(Rrelu),        1);
+ fn(x, "selu",        KFN(selu),         1);
+ fn(x, "softmax",     KFN(softmax),      1);
+ fn(x, "softmin",     KFN(softmin),      1);
+ fn(x, "softplus",    KFN(Softplus),     1);
+ fn(x, "softsign",    KFN(softsign),     1);
+ fn(x, "softshrink",  KFN(softshrink),   1);
+ fn(x, "tanhshrink",  KFN(tanhshrink),   1);
+ fn(x, "threshold",   KFN(Threshold),    1);
+ fn(x, "unfold",      KFN(Unfold),       1);
+ fn(x, "pairwise",    KFN(Pairwise),     1);
+ fn(x, "pdist",       KFN(pdist),        1);
+ fn(x, "similar",     KFN(Similar),      1);
 }
 
 /*
-normalize -- functional form implemented, add module?
+normalize, interpolate  -- functional form implemented, add module?
 pairwise distance & cosine similarity: in both module & functional form but forward method needs 2 input tensors
 fractional pool -- try with indices registered as buffer?
 embeddingbag -- forward w'defaults should work with sequential
