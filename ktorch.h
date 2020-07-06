@@ -101,7 +101,7 @@ using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
 using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
 
-// shorter names for commononly used container modules defined by pytorch & created in knn.h
+// shorter names for commonly used container modules defined by pytorch & created in knn.h
 using Module=torch::nn::Module;
 using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;

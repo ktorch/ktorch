@@ -1,5 +1,14 @@
 #include "ktorch.h"
 
+/*
+bool msimple(K x) {
+ if(!x->t && x->n>1 && kK(x)[0]->t == -KS)
+  return container(msym(kK(x)[0]->s)) ? xnone(x,x->n-1) : true;
+ else
+  return false;
+}
+*/
+
 KAPI Xnone(K x,K y) {
  return kb(xnone(x,y->j));
 }

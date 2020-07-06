@@ -946,7 +946,7 @@ static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
- if       (s == Setting::mode) o.mode(embedmode(psym(p)));
+ if     (s == Setting::mode)       o.mode(embedmode(psym(p)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
  else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
@@ -964,7 +964,7 @@ template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &
    case Setting::weight:     if(!pempty(p)) pten(p,w); break;
    case Setting::freeze:     z=mbool(p,c); break;
    case Setting::mode:       embedset(c,Setting::mode,p,o); break;
-   case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o);
+   case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o); break;
    default: AT_ERROR("embedding option: ",p.k," unrecognized");
   }
 }
@@ -1060,10 +1060,8 @@ static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingOptions& o,c
 static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingBagOptions& o,const nn::EmbeddingBagOptions& d) {
  if(s == Setting::mode && (a || o.mode().index() != d.mode().index()))
   OPTION(x, mode, ks(ESYM(o.mode())));
- /*
- else if(s == Setting::lastoffset && (a || o.include_last_offset() != d.include_last_offset())
+ else if(s == Setting::lastoffset && (a || o.include_last_offset() != d.include_last_offset()))
   OPTION(x, lastoffset, kb(o.include_last_offset()));
- */
 }
 
 template<typename O>static void embed(bool a,K x,Cast c,const O& o,const Tensor& w) {
@@ -1081,7 +1079,7 @@ template<typename O>static void embed(bool a,K x,Cast c,const O& o,const Tensor&
  if(a || o.scale_grad_by_freq() != d.scale_grad_by_freq()) OPTION(x, scale,   kb(o.scale_grad_by_freq()));
  embedget(a,x,c,Setting::mode,o,d); //EmbeddingBag only
  if(a || o.sparse()             != d.sparse())             OPTION(x, sparse,  kb(o.sparse()));
- //embedget(a,x,c,Setting::lastoffset,o,d);
+ embedget(a,x,c,Setting::lastoffset,o,d);
 }
 
 // --------------------------------------------------------------------------------------
@@ -2603,7 +2601,7 @@ KAPI module(K x) {
     else if(xstate(x,1))                         // if state dictionary/table detected as 2nd arg
      return mtable(kK(x)[1],l);                  // add definition(s) to existing module(s)
     else                                         // fallback: assume 2nd arg is nested tree spec
-     return mtree(kK(x)[1],0,l);
+     return mtree(kK(x)[1],0,l);                 // add module(s) to last container in existing module
    } else if(x->n==3 && xlong(x,1,d)) {          // else if allocated module & depth given w'3rd arg
     if((g=xlayer(x,2)))                          // if another allocated module
      return mextend(l,g,d), kfree(x,2), (K)0;    // add module at given depth in chain
@@ -2612,14 +2610,14 @@ KAPI module(K x) {
    } else {
     AT_ERROR("module: ", mlabel(mref(l->m)), " given as 1st arg, but unable to parse remaining arg(s)");
    }
-  } else if(xstate(x)) {
+  } else if(xstate(x)) {                         // module table or dictionary supplied
    return mtable(x);
-  } else if((m=xmodel(x))) {
+  } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return klayer(m->mc,m->m);
-  } else if((n=xdv(x))) {
+  } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);
   } else {
-   return mtree(x);
+   return mtree(x);                              // nested tree representation
   }
  KCATCH("module");
 }
