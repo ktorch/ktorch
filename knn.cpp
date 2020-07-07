@@ -48,27 +48,6 @@ K to(Klayer* x,const TensorOptions& o,bool a) {
  return (K)0;
 }
 
-// --------------------------------------------------------------------------------------------
-// enum<-rnnfn(sym)    match symbol to enum for activation function
-// sym<-rnnfn(options) return symbol matching activation fn, else null (e.g. for gru/lstm)
-// rnnfn(options,sym)  set activation function if rnn options, else no-op
-// --------------------------------------------------------------------------------------------
-/*
-static nn::RNNActivation rnnfn(S s) {
- for(auto& m:env().rnnfn) if (s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("unrecognized rnn activiation function: ",s);
-}
-
-template<typename O> static S rnnfn(O& o) {return nullptr;}
-template<> S rnnfn<nn::RNNOptions>(nn::RNNOptions& o) {
- for(auto& m:env().rnnfn) if (o.activation()==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized rnn activiation function: ",(I)o.activation());
-}
-
-template<typename O> static void rnnfn(O& o,nn::RNNActivation f) {}
-template<> void rnnfn<nn::RNNOptions>(nn::RNNOptions& o,nn::RNNActivation f) {o.activation(f);}
-*/
-
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
@@ -862,7 +841,7 @@ template<typename O>static O upsample(K x,J i,Cast c) {
   switch(mset(p.k,c)) {
    case Setting::size:    if(pempty(p)) o.size({}); else o.size(mlongs(p,c)); break;
    case Setting::scale:   if(pempty(p)) o.scale_factor({}); else o.scale_factor(mdoubles(p,c)); break;
-   case Setting::mode:    upmode(o,psym(p)); break;
+   case Setting::mode:    upmode(o,mode(p,c)); break;
    case Setting::align:   if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
    case Setting::rescale: rescale(p,c,o); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
@@ -946,7 +925,7 @@ static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
- if     (s == Setting::mode)       o.mode(embedmode(psym(p)));
+ if     (s == Setting::mode)       o.mode(embedmode(mode(p,c)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
  else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
@@ -1177,43 +1156,85 @@ KAPI Bilinear(K x) {
 
 // --------------------------------------------------------------------------------------
 // rnn - create rnn/gru/lstm module given options/set dictionary of options from module
+//     - rnn accepts non-linear function specification: `tanh or `relu
+//       gru & lstm don't have that option, so templates/overloading used for fn setting
 // --------------------------------------------------------------------------------------
-template<typename M,typename O>
-static M rnn(Cast c,K x,J k) {
- // PATCH: auto f=nn::RNNActivation::ReLU;
- bool b=true,bi=false,ba=false; Pairs p; J i=-1,h=-1,l=1,n=xargc(x,k,p); double d=0.0;
- if(!((n==0 && p.n) || (xlong(x,k,i) && (n==1 || (n==2 && xlong(x,k+1,h))))))
-  AT_ERROR("unrecognized arguments for ",msym(c)," module");
- // PATCH: bool r=std::is_same<M,nn::RNN>::value;
- while(xpair(p))
-  switch(mset(p.k,c)) {
-   case Setting::in:          i=plong(p); break;
-   case Setting::hidden:      h=plong(p); break;
-   case Setting::layers:      l=plong(p); break;
-   case Setting::bias:        b=pbool(p); break;
-   case Setting::bi:         bi=pbool(p); break;
-   case Setting::batchfirst: ba=pbool(p); break;
-   case Setting::dropout:   d=pdouble(p); break;
-   // PATCH: case Setting::fn: if(r) f=rnnfn(psym(p)); else AT_ERROR("activation function only for RNN module"); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," unrecognized, expected one of in,hidden,layers,bias,bi,batchfirst,drop,fn");
-  }
- // PATCH: layers -> num_layers, with_bias -> bias
- auto o=O(i,h).num_layers(l).dropout(d).bias(b).bidirectional(bi).batch_first(ba);
- // PATCH: if(r) rnnfn(o,f);
- return M(o);
+template<typename O> static void rnnfn(O& o,Cast c,S s) {
+ AT_ERROR(msym(c),": no non-linear function required (RNN only)");
 }
 
-template<typename M,typename O>
-static void rnn(bool a,K x,const M* m) {
- O o=m->options, d(o.input_size(),o.hidden_size()); // PATCH: S f=rnnfn(o);
+static void rnnfn(nn::RNNOptions& o,Cast c,S s) {
+ switch(emap(s)) {
+  case Enum::tanh:   o.nonlinearity(torch::kTanh); break;
+  case Enum::relu:   o.nonlinearity(torch::kReLU); break;
+  default: AT_ERROR("unrecognized RNN fn: ",s); break;
+ }
+}
+
+template<typename O> static void rnnpair(Cast c,Pairs& p,O& o) {
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::in:          o.input_size(int64(p,c)); break;
+   case Setting::hidden:      o.hidden_size(int64(p,c)); break;
+   case Setting::layers:      o.num_layers(int64(p,c)); break;
+   case Setting::fn:          rnnfn(o,c,c==Cast::rnn ? mode(p,c) : nullptr); break;
+   case Setting::bias:        o.bias(mbool(p,c)); break;
+   case Setting::batchfirst:  o.batch_first(mbool(p,c)); break;
+   case Setting::dropout:     o.dropout(mdouble(p,c)); break;
+   case Setting::bi:          o.bidirectional(mbool(p,c)); break;
+   default: AT_ERROR(msym(c)," option: ",p.k," unrecognized");
+  }
+ TORCH_CHECK(o.hidden_size()>0, msym(c), ": hidden size should be greater than zero");
+}
+
+static nn::RNNOptions rnn(K x,J i,Cast c) {
+ nn::RNNOptions o(0,0); Pairs p; Tensor w; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.input_size (int64(x,i+j,c,Setting::in)); break;
+   case 1: o.hidden_size(int64(x,i+j,c,Setting::hidden)); break;
+   case 2: o.num_layers (int64(x,i+j,c,Setting::layers)); break;
+   case 3: rnnfn(o,c,mode(x,i+j,c,Setting::fn)); break;
+   case 4: o.bias(mbool(x,i+j,c,Setting::bias)); break;
+   case 5: o.batch_first(mbool(x,i+j,c,Setting::batchfirst)); break;
+   case 6: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
+   case 7: o.bidirectional(mbool(x,i+j,c,Setting::bi)); break;
+   default: AT_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
+  }
+ rnnpair(c,p,o);
+ return o;
+}
+
+template<typename O> static O rnn(K x,J i,Cast c) {
+ O o(0,0); Pairs p; Tensor w; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.input_size (int64(x,i+j,c,Setting::in)); break;
+   case 1: o.hidden_size(int64(x,i+j,c,Setting::hidden)); break;
+   case 2: o.num_layers (int64(x,i+j,c,Setting::layers)); break;
+   case 3: o.bias(mbool(x,i+j,c,Setting::bias)); break;
+   case 4: o.batch_first(mbool(x,i+j,c,Setting::batchfirst)); break;
+   case 5: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
+   case 6: o.bidirectional(mbool(x,i+j,c,Setting::bi)); break;
+   default: AT_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
+  }
+ rnnpair(c,p,o);
+ return o;
+}
+ 
+static S rnnfn(const nn::RNNOptions& o) {return ESYM(o.nonlinearity());}
+template<typename O>static S rnnfn(const O& o) {return nullptr;}
+
+template<typename O> static void rnn(bool a,K x,const O& o) {
+ O d(o.input_size(),o.hidden_size()); S s=rnnfn(o);
  OPTION(x, in,     kj(o.input_size()));
  OPTION(x, hidden, kj(o.hidden_size()));
  if(a || (o.num_layers()    != d.num_layers()))   OPTION(x, layers,     kj(o.num_layers()));
- if(a || (o.dropout()       != d.dropout()))      OPTION(x, dropout,    kf(o.dropout()));
- // PATCH: if((a && f) || f           != rnnfn(d))          OPTION(x, fn,         ks(f));
+ if((a && s) || s           != rnnfn(d))          OPTION(x, fn,         ks(s));
  if(a || (o.bias()          != d.bias()))         OPTION(x, bias,       kb(o.bias()));
- if(a || (o.bidirectional() != d.bidirectional()))OPTION(x, bi,         kb(o.bidirectional()));
  if(a || (o.batch_first()   != d.batch_first()))  OPTION(x, batchfirst, kb(o.batch_first()));
+ if(a || (o.dropout()       != d.dropout()))      OPTION(x, dropout,    kf(o.dropout()));
+ if(a || (o.bidirectional() != d.bidirectional()))OPTION(x, bi,         kb(o.bidirectional()));
 }
 
 // ----------------------------------------------------------------------------------
@@ -1482,7 +1503,7 @@ static fnn::PadFuncOptions pad(K x,J i,Cast c) {
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::pad:   o.pad(mlongs(p,c)); break;
-   case Setting::mode:  padmode(o,psym(p)); break;
+   case Setting::mode:  padmode(o,mode(p,c)); break;
    case Setting::value: o.value(mdouble(p,c)); break;
    default: AT_ERROR("padding option: ",p.k," not recognized");
   }
@@ -2188,9 +2209,9 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::replicate3d:  return AnyModule(nn::ReplicationPad3d(npad<3,nn::ReplicationPad3dOptions>(x,i,c)));
   case Cast::zeropad2d:    return AnyModule(nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)));
 
-  case Cast::rnn:          return AnyModule((rnn<nn::RNN, nn::RNNOptions> (c,x,i)));
-  case Cast::gru:          return AnyModule((rnn<nn::GRU, nn::GRUOptions> (c,x,i)));
-  case Cast::lstm:         return AnyModule((rnn<nn::LSTM,nn::LSTMOptions>(c,x,i)));
+  case Cast::rnn:          return AnyModule(nn::RNN(rnn(x,i,c)));
+  case Cast::gru:          return AnyModule(nn::GRU(rnn<nn::GRUOptions>(x,i,c)));
+  case Cast::lstm:         return AnyModule(nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)));
 
   case Cast::identity:     noarg(c,x,i); return AnyModule(nn::Identity());
   case Cast::logsigmoid:   noarg(c,x,i); return AnyModule(nn::LogSigmoid());
@@ -2494,9 +2515,9 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; npad(x,m);
  } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   npad(x,m);
 
- } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn<nn::RNNImpl,  nn::RNNOptions> (a,x,m);
- } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn<nn::GRUImpl,  nn::GRUOptions> (a,x,m);
- } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; rnn<nn::LSTMImpl, nn::LSTMOptions>(a,x,m);
+ } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn(a,x,m->options);
+ } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn(a,x,m->options);
+ } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; rnn(a,x,m->options);
 
  } else if(g.as<nn::Identity>())      { c=Cast::identity;
  } else if(g.as<nn::LogSigmoid>())    { c=Cast::logsigmoid;

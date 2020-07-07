@@ -640,13 +640,6 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
-/* PATCH
- std::array<std::tuple<S,torch::nn::RNNActivation>,2> rnnfn = {{
-  std::make_tuple(cs("relu"),torch::nn::RNNActivation::ReLU),
-  std::make_tuple(cs("tanh"),torch::nn::RNNActivation::Tanh)
- }};
-*/
-
  std::array<std::tuple<S,Cast>,97> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
