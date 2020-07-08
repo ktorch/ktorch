@@ -24,13 +24,13 @@ K kopt(Cast x,const Optptr& y) {return kptr(new Kopt(x,y));}
 
 static void omap(S s,Cast &c,double &r) {
  for(auto& m:env().opt)
-   if(s==std::get<0>(m)) {c=std::get<1>(m); r=std::get<2>(m); return;}
+  if(s==std::get<0>(m)) {c=std::get<1>(m); r=std::get<2>(m); return;}
  AT_ERROR("unrecognized optimizer: ",s);
 }
 
 static void omap(Cast c,S &s,double &r) {
  for(auto& m:env().opt)
-   if(c==std::get<1>(m)) {s=std::get<0>(m); r=std::get<2>(m); return;}
+  if(c==std::get<1>(m)) {s=std::get<0>(m); r=std::get<2>(m); return;}
  AT_ERROR("unrecognized optimizer: ",(I)c);
 }
 
