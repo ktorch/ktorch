@@ -240,8 +240,8 @@ static void tensorout(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:output, r:re
 }
 
 static void tensoropt(K x,Tensormode m,Tensor &r) {
- double e; J i,j; Scalar a,z,n; IntArrayRef s; TensorOptions o;
- bool b=xopt(x,x->n-1,o); I nx=x->n-b;                        //track if options in last arg
+ double e; J i,j,nx=x->n; Scalar a,z,n; IntArrayRef s; TensorOptions o;
+ bool b=xopt(x,x->n-1,o); if(b) nx--;                         //track if options in last arg
  bool sz=xsize(x,1,s) && nx==((m==Tensormode::full) ? 3 : 2); //2nd arg is size & correct arg count
  switch(m) {
   case Tensormode::empty: if(sz) r=torch::empty(s,o); break;
@@ -260,8 +260,8 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
    else if(sz && nx==4 && xlong(x,1,i) && xlong(x,2,j)) r=torch::randint(i,j,s,o);
    break;
   case Tensormode::eye:
-    if     (xn==2 && xlong(x,1,i))                 r=torch::eye(i,o);
-    else if(xn==3 && xlong(x,1,i) && xlong(x,2,j)) r=torch::eye(i,j,o);
+    if     (nx==2 && xlong(x,1,i))                 r=torch::eye(i,o);
+    else if(nx==3 && xlong(x,1,i) && xlong(x,2,j)) r=torch::eye(i,j,o);
     break;
   case Tensormode::range:
    if     (nx==3 && xnum(x,1,a) && xnum(x,2,z))               r=torch::range(a,z,o);
