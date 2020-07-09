@@ -1,6 +1,14 @@
 Tensors
 =======
 
+PyTorch describes a tensor as a multi-dimensional matrix containing elements of a single data type.
+The simplest way to create a tensor is to use a k value, e.g.
+
+.. code-block::
+
+q)t:tensor 0 1 2 3f
+q)tensor t
+0 1 2 3f
 
 Tensor creation modes
 *********************
