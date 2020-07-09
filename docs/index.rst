@@ -9,6 +9,8 @@ k api to pytorch
    :caption: Contents:
 
    quick
+   types
+   devices
    tensors
    modules
 

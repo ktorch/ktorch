@@ -617,25 +617,27 @@ KAPI options(K x) {
 // ------------------------------------------------------------------------------------------------
 // diagnostic functions -- check underlying pointers, storage data, reference counts, etc.
 // ------------------------------------------------------------------------------------------------
-// stordata - return CPU storage data as k list
+// stordata - return storage data as k list (first move from cuda -> cpu, convert half to float)
 // storinfo - return storage attributes & data as dictionary
 // tensorinfo - return dictionary of attributes given tensor and detail level 0,1,2
 // ------------------------------------------------------------------------------------------------
-K stordata(const TypeMeta& t,const Storage& s) {
- TORCH_CHECK(s.device().is_cpu(), "cannot copy CUDA storage via memcpy");
- K x=ktn(maptype(t),s.nbytes() / t.itemsize());
+static K stordata(const Tensor& a) {
+ const auto& t=(a.dtype()==torch::kHalf) ? a.cpu().to(torch::kFloat) : a.cpu();
+ const auto& d=t.dtype();
+ const auto& s=t.storage();
+ K x=ktn(maptype(d),s.nbytes() / d.itemsize());
  memcpy(kG(x),s.data(),s.nbytes());
  return x;
 }
 
-K storinfo(const Tensor& t,const Storage& c) {
+static K storinfo(const Tensor& t,const Storage& c) {
  const auto& s=t.storage(); const auto& d=t.dtype();
- K x=xD(ktn(KS,0),ktn(0,0)),*a=&kK(x)[0],*b=&kK(x)[1];
- js(a, mapattr(Attr::size));     jk(b, kj(s.nbytes()/d.itemsize()));
- js(a, mapattr(Attr::itemsize)); jk(b, kj(d.itemsize()));
- js(a, mapattr(Attr::ref));      jk(b, kj(storlong(s, Attr::ref)));
- js(a, mapattr(Attr::ptr));      jk(b, kj(storlong(s, Attr::ptr)));
- js(a, mapattr(Attr::data));     jk(b, stordata(d, d==torch::kHalf ? t.cpu().to(torch::kFloat).storage() : t.cpu().storage()));
+ K x=xD(ktn(KS,0),ktn(0,0)),*k=&kK(x)[0],*v=&kK(x)[1];
+ js(k, mapattr(Attr::size));     jk(v, kj(s.nbytes()/d.itemsize()));
+ js(k, mapattr(Attr::itemsize)); jk(v, kj(d.itemsize()));
+ js(k, mapattr(Attr::ref));      jk(v, kj(storlong(s, Attr::ref)));
+ js(k, mapattr(Attr::ptr));      jk(v, kj(storlong(s, Attr::ptr)));
+ js(k, mapattr(Attr::data));     jk(v, stordata(t));
  return x;
 }
 
