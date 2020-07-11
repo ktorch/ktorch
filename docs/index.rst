@@ -10,6 +10,7 @@ k api to pytorch
 
    quick
    types
+   pointers
    devices
    tensors
    modules

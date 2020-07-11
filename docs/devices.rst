@@ -12,6 +12,7 @@ the main device choices are CPU or Nvidia GPU's with compute capability >= 3.0.
 
    q)cudadevices[]
    2
+
    q)cudadevices()
    `cuda`cuda:0`cuda:1
 
@@ -21,6 +22,7 @@ On a host without any GPU's:
 
    q)cudadevices[]
    0
+
    q)cudadevices()
    `symbol$()
 
