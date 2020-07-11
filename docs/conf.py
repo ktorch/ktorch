@@ -12,7 +12,7 @@
 #
 #import os
 #import sys
-#import pytorch_sphinx_theme
+import pytorch_sphinx_theme
 
 # import os
 # import sys
