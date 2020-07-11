@@ -15,10 +15,23 @@ Setting properties of a tensor
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes. The main two are device and data type, along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes:
 
-- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``, ```cuda:1``, ..
+- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
 - **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
+
+.. function:: value:tensor ptr
+
+   | return k value from previously allocated tensor
+
+.. function:: ptr:tensor values
+.. function:: ptr:tensor(value;options)
+
+   | Create a tensor from k value.
+
+   :param scalar,list,array value: the k value to populate the tensor. 
+   :param sym options: one or more symbols for device, datatype, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :return: pointer to the allocated tensor
 
 Tensor creation modes
 *********************
