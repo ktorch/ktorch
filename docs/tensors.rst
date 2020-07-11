@@ -13,7 +13,7 @@ The simplest way to create a tensor is to use a k value, e.g.
 Setting properties of a tensor
 ******************************
 
-PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes. The main two are device and data type, along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes:
+PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes. The main two are :ref:`device <devices>` and data type, along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
 - **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
