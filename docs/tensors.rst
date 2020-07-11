@@ -20,6 +20,11 @@ PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/te
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
 
+Creating a tensor from a k value
+********************************
+
+The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type and the same size at each dimension.
+
 .. function:: value:tensor ptr
 
    | return k value from previously allocated tensor
@@ -32,6 +37,36 @@ PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/te
    :param scalar,list,array value: the k value to populate the tensor. 
    :param sym options: one or more symbols for device, datatype, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: pointer to the allocated tensor
+
+Examples:
+^^^^^^^^^
+
+.. code-block:: k
+
+   q)t:tensor 2 3 4#til 24
+
+   q)size t
+   2 3 4
+
+   q)dtype t
+   `long
+
+   q)device t
+   `cpu
+
+   q)free t
+   q)t:tensor(2 3 4#til 24;`cuda`double)
+
+   q)device t
+   `cuda:0
+
+   q)dtype t
+   `double
+
+   q)last tensor t
+   12 13 14 15
+   16 17 18 19
+   20 21 22 23
 
 Tensor creation modes
 *********************
