@@ -17,9 +17,7 @@ Setting properties of a tensor
 ******************************
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
-The main two are
-:ref:`device <devices>` and
-:ref:`types <data type>`,
+The main two are :ref:`device <devices>` and :ref:`data type <types>`,
 along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes are represented as symbols in the k interface:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
@@ -35,7 +33,9 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 .. function:: value:tensor ptr
 
    | Return a k value from previously allocated tensor
+
    :param :ref:`api-pointer <pointers>` ptr: pointer to a previously allocated tensor
+   :param pointer ptr: :ref:`api-pointer <pointers>` to a previously allocated tensor
 
 .. function:: ptr:tensor value
 .. function:: ptr:tensor(value;options)
