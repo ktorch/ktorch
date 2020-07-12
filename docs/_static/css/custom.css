@@ -8,3 +8,8 @@ div[role=contentinfo] {
 	visibility: hidden;
 	position: relative;
 }
+
+div[class=container-fluid docs-tutorials-resources] {
+	visibility: hidden;
+	position: relative;
+}
