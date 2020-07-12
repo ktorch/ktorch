@@ -1,3 +1,8 @@
+div[class=header-container] {
+	visibility: hidden;
+	position: relative;
+}
+
 /* remove copyright to avoid confusion with PyTorch's copyright */
 div[role=contentinfo] {
 	visibility: hidden;
