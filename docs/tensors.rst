@@ -41,7 +41,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    :param scalar,list,array value: the k value to populate the tensor. 
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
-   :return: pointer to the allocated tensor
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 Examples:
 ^^^^^^^^^
@@ -73,27 +73,30 @@ Examples:
    16 17 18 19
    20 21 22 23
 
-Examples where k value cannot be converted to a tensor:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Examples where a k value cannot be converted to a tensor:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: k
 
-q)t:tensor(1 2;3 4.0)
-'type mismatch at depth 1, long list vs double list
-  [0]  t:tensor(1 2;3 4.0)
+   q)t:tensor(1 2;3 4.0)
+   'type mismatch at depth 1, long list vs double list
+     [0]  t:tensor(1 2;3 4.0)
          ^
-q)t:tensor(1 2;3 4 5)
-'dimension mismatch at depth 1, 2 vs 3
-  [0]  t:tensor(1 2;3 4 5)
+
+   q)t:tensor(1 2;3 4 5)
+   'dimension mismatch at depth 1, 2 vs 3
+     [0]  t:tensor(1 2;3 4 5)
          ^
-q)t:tensor `a`b`c
-'no torch type found for k: symbol list
-  [0]  t:tensor `a`b`c
+
+   q)t:tensor `a`b`c
+   'no torch type found for k: symbol list
+     [0]  t:tensor `a`b`c
          ^
-q)t:tensor ([]1 2)
-'no torch type found for k: table
-  [0]  t:tensor ([]1 2)
-         ^
+
+   q)t:tensor ([]1 2)
+   'no torch type found for k: table
+     [0]  t:tensor ([]1 2)
+            ^
 
 Tensor creation modes
 *********************
