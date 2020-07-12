@@ -9,7 +9,7 @@ div[role=contentinfo] {
 	position: relative;
 }
 
-div[class=container-fluid docs-tutorials-resources] {
+div[class=site-footer] {
 	visibility: hidden;
 	position: relative;
 }
