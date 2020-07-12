@@ -28,14 +28,11 @@ along with layout and whether gradients are recorded for operations on the tenso
 Creating a tensor from a k value
 ********************************
 
-The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type and the same size at each dimension.
+The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type throughout and the same size at each dimension.
 
 .. function:: value:tensor ptr
 
-   | Return a k value from previously allocated tensor
-
-   :param :ref:`api-pointer <pointers>` ptr: pointer to a previously allocated tensor
-   :param pointer ptr: :ref:`api-pointer <pointers>` to a previously allocated tensor
+   | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
 .. function:: ptr:tensor value
 .. function:: ptr:tensor(value;options)
@@ -75,6 +72,28 @@ Examples:
    12 13 14 15
    16 17 18 19
    20 21 22 23
+
+Examples where k value cannot be converted to a tensor:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: k
+
+q)t:tensor(1 2;3 4.0)
+'type mismatch at depth 1, long list vs double list
+  [0]  t:tensor(1 2;3 4.0)
+         ^
+q)t:tensor(1 2;3 4 5)
+'dimension mismatch at depth 1, 2 vs 3
+  [0]  t:tensor(1 2;3 4 5)
+         ^
+q)t:tensor `a`b`c
+'no torch type found for k: symbol list
+  [0]  t:tensor `a`b`c
+         ^
+q)t:tensor ([]1 2)
+'no torch type found for k: table
+  [0]  t:tensor ([]1 2)
+         ^
 
 Tensor creation modes
 *********************
