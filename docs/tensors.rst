@@ -31,7 +31,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 .. function:: value:tensor ptr
 
    | Return a k value from previously allocated tensor
-   :param ::ref:`api-pointer <pointers>` ptr: pointer to a previously allocated tensor
+   :param ::ref`api-pointer <pointers>` ptr: pointer to a previously allocated tensor
 
 .. function:: ptr:tensor value
 .. function:: ptr:tensor(value;options)
