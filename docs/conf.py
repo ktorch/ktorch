@@ -12,7 +12,7 @@
 #
 #import os
 #import sys
-#import ktorch_sphinx_theme
+import ktorch_sphinx_theme
 
 # -- Project information -----------------------------------------------------
 project = 'ktorch'
