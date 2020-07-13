@@ -12,12 +12,12 @@
 #
 #import os
 #import sys
-#import pytorch_sphinx_theme
+#import ktorch_sphinx_theme
 
 # -- Project information -----------------------------------------------------
 project = 'ktorch'
-copyright = '2020, Tom Ferguson'
-#author = 'Tom Ferguson'
+copyright = '2020'
+author = 'ktorch'
 
 # -- General configuration ---------------------------------------------------
 # Add any Sphinx extension module names here, as strings. They can be
@@ -34,9 +34,9 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-html_theme = 'alabaster'
-#html_theme = 'pytorch_sphinx_theme'
-#html_theme_path = [pytorch_sphinx_theme.get_html_theme_path()]
+#html_theme = 'alabaster'
+html_theme = 'ktorch_sphinx_theme'
+html_theme_path = [ktorch_sphinx_theme.get_html_theme_path()]
 html_static_path = ['_static']
 html_css_files = [
     'css/custom.css',
