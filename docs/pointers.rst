@@ -37,5 +37,5 @@ The api maintains a map of pointers that can be viewed via ``obj`` and released 
 
 .. function:: table:obj[]
 
-   | Return a table of allocated objects with brief description.
+   | Return a table of allocated objects with brief descriptions.
 
