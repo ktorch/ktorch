@@ -3,6 +3,8 @@
 Data types
 ==========
 
+PyTorch defines 9 data types for tensors:
+
 .. csv-table:: PyTorch data types
    :header: "PyTorch", "k", "Description"
    :widths: 10, 10, 40
