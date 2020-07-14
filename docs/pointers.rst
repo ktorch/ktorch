@@ -29,6 +29,7 @@ The api maintains a map of pointers that can be viewed via ``obj`` and released 
 
 .. code-block:: k
 
+   q)t:tensor 1 2 3e
 
    q)obj[]
    ptr      obj    device dtype size elements bytes
