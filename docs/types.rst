@@ -18,7 +18,7 @@ Data types
    double, float, "64-bit floating point"
 
 PyTorch defines 9 data types for tensors.
-All but ``half`` have a direct mapping to a k data type: ``half`` values are mapped to k ``real`` values.
+All but `half` have a direct mapping to a k data type: `half` values are mapped to k `real` values.
 
 .. code-block:: k
 
