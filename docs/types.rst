@@ -19,6 +19,8 @@ PyTorch defines 9 data types for tensors:
    float, real, "32-bit floating point, default data type"
    double, float, "64-bit floating point"
 
+All but ``half`` have a direct mapping to a k data type: ``half`` values are mapped to k ``real`` values.
+
 .. code-block:: k
 
    q)d:`byte`char`bool`short`int`long`half`float`double
