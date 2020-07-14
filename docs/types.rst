@@ -9,7 +9,7 @@ Data types
 
    byte, byte, "byte or 8-bit integer (unsigned)"
    char, char, "char or 8-bit integer (signed)"
-   boolean, boolean, "boolean"
+   bool, boolean, "boolean"
    short, short, "16-bit integer (signed)"
    int, int, "32-bit integer (signed)"
    long, long, "64-bit integer (signed)"
@@ -17,4 +17,17 @@ Data types
    float, real, "32-bit floating point, default data type"
    double, float, "64-bit floating point"
 
+.. code-block:: k
 
+   q)d:`byte`char`bool`short`int`long`half`float`double
+
+   q){d:dtype t:tensor(x;y); v:tensor t; free t; (d;v)}[0 1]'[d]
+   `byte   0x0001    
+   `char   "\000\001"
+   `bool   01b       
+   `short  0 1h      
+   `int    0 1i      
+   `long   0 1       
+   `half   0 1e      
+   `float  0 1e      
+   `double 0 1f      
