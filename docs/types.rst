@@ -5,7 +5,7 @@ Data types
 
 .. csv-table:: PyTorch data types
    :header: "PyTorch", "k"
-   :widths: 20, 20
+   :widths: 10, 10
 
    byte, byte
    char, char
