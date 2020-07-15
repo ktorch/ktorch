@@ -116,3 +116,30 @@ In addition to supplying k values to initialise tensors, the following methods c
 - `randperm <https://pytorch.org/docs/stable/torch.html#torch.randperm>`_: returns a tensor with a random permutation of integers in some interval
 - `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_: returns a tensor filled with zeros
 
+
+Tensors are created using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
+
+.. code-block:: k
+
+   q)t:tensor(`zeros; 2 3; `int)
+   q)tensor t
+   0 0 0
+   0 0 0
+
+zeros, ones, empty: creating tensors by specifying size:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: ptr:tensor(mode;size)
+.. function:: ptr:tensor(mode;size;options)
+.. function:: ptr:tensor(mode;size;out-tensor)
+
+.. function:: ptr:tensor(mode;in-tensor)
+.. function:: ptr:tensor(mode;in-tensor;options)
+.. function:: ptr:tensor(mode;in-tensor;out-tensor)
+
+   | Create a tensor given size or input tensor whose size will be used.
+
+   :param sym mode: one of ```zeros``, ```ones`` or ```empty``
+   :param longs size: scalar/list specifiying size of array
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
