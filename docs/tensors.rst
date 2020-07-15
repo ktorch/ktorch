@@ -127,7 +127,7 @@ Tensors are created using the above methods by supplying a mode symbol as the fi
    0 0 0
 
 `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_, ones, empty: creating tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
