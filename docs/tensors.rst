@@ -18,12 +18,36 @@ Setting properties of a tensor
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
 The main two are :ref:`device <devices>` and :ref:`data type <types>`,
-along with layout and whether gradients are recorded for operations on the tensor. The r:ref:`api-pointer <pointers>`ecognized values for these axes are represented as symbols in the k interface:
+along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes are represented as symbols in the k interface:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
 - **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
+
+The ``default`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
+
+.. function:: dict:default[]
+.. function:: default type
+   Display existing default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type)
+
+.. code-block:: k
+   :emphasize-lines: 9
+
+   q)default[]
+   device  | cpu
+   dtype   | float
+   layout  | strided
+   gradient| nograd
+
+   q)default`double
+
+   q)default[]
+   device  | cpu
+   dtype   | double
+   layout  | strided
+   gradient| nograd
+
 
 Creating a tensor from a k value
 ********************************
@@ -39,7 +63,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    | Create a tensor from k value.
 
-   :param scalar,list,array value: the k value to populate the tensor. 
+   :param scalar,list,array value: the k value to populate the tensor.  If no options given, the d:ref:`data type <types> will be mapped from the data type of the k value.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
