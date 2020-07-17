@@ -73,8 +73,8 @@ Examples:
    16 17 18 19
    20 21 22 23
 
-Examples using an output tensor as final argument:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using an output tensor:
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
@@ -106,8 +106,8 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    q)device r
    `cuda:0
 
-Examples where a k value cannot be converted to a tensor:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+k value cannot be converted to a tensor:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: k
 
