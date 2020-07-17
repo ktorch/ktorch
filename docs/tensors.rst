@@ -77,7 +77,7 @@ Examples using an output tensor as final argument:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
-The tensor's attributes, data type, device, etc., will be used, but it's values will be replaced.
+The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
 
 .. code-block:: k
 
@@ -160,8 +160,8 @@ The
    0 0 0
    0 0 0
 
-zeros,ones,empty,rand,randn: creating tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+zeros, ones, empty, rand, randn: creating tensors by specifying size:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
@@ -178,9 +178,13 @@ zeros,ones,empty,rand,randn: creating tensors by specifying size:
 
    | Create a tensor given size or input tensor whose size will be used.
 
-   :param sym mode: one of ```zeros``, ```ones`` or ```empty``
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
    :param longs size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 .. function:: tensor(mode;size;out-tensor)
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
+   :param longs size: scalar/list specifiying size of array
+   :param :ref:`api-pointer <pointers>` out-tensor: output tensor
+   :return: null return, resets values according to size given and attributes of the output tensor
