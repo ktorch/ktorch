@@ -18,7 +18,7 @@ Setting properties of a tensor
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
 The main two are :ref:`device <devices>` and :ref:`data type <types>`,
-along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes are represented as symbols in the k interface:
+along with layout and whether gradients are recorded for operations on the tensor. The r:ref:`api-pointer <pointers>`ecognized values for these axes are represented as symbols in the k interface:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
 - **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
@@ -106,8 +106,11 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    q)device r
    `cuda:0
 
-k value cannot be converted to a tensor:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Possible conversion errors:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The k value given must be the same data type throughout and have the same size at each depth.
+There also needs to be a defined mapping between the k type and the PyTorch type (see :ref:`data types <types>` ).
+Some examples where these conditions are not met:
 
 .. code-block:: k
 
@@ -160,15 +163,16 @@ The
    0 0 0
    0 0 0
 
-zeros, ones, empty, rand, randn: creating tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+zeros, ones, empty: creating tensors by specifying size:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Return tensor filled with zeros(```zeros), ones (```ones``), and unitialized (```empty).
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
 
    | Create a tensor given size or input tensor whose size will be used.
 
-   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param longs size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
@@ -178,13 +182,30 @@ zeros, ones, empty, rand, randn: creating tensors by specifying size:
 
    | Create a tensor given size or input tensor whose size will be used.
 
-   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param longs size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 .. function:: tensor(mode;size;out-tensor)
-   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param longs size: scalar/list specifiying size of array
    :param :ref:`api-pointer <pointers>` out-tensor: output tensor
    :return: null return, resets values according to size given and attributes of the output tensor
+
+rand, randn: creating random tensors by specifying size:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
+
+Parameters and function calls are as above for mode of ```zeros``, ```ones`` and ```empty``.
+
+.. code-block:: k
+
+   q)tensor t:tensor(`rand;10)
+   0.05592483 0.7734587 0.1025799 0.6335379 0.3350263 0.5218872 0.8726696 0.9215..
+
+   q)free t
+   q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
+   -0.0002174295 0.9999617
+
