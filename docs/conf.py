@@ -48,7 +48,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'ktorch_sphinx_theme'
 html_theme_path = [ktorch_sphinx_theme.get_html_theme_path()]
 html_theme_options = {
-    'pytorch_project': 'docs',
+    'ktorch_project': 'docs',
     'canonical_url': 'https://ktorch.readthedocs.io/en/latest/',
     'collapse_navigation': False,
     'display_version': True,

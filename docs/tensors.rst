@@ -73,6 +73,39 @@ Examples:
    16 17 18 19
    20 21 22 23
 
+Examples using an output tensor as final argument:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
+The tensor's attributes, data type, device, etc., will be used, but it's values will be replaced.
+
+.. code-block:: k
+
+   q)4#info r:tensor()  / initialize empty tensor, retrieve attributes
+   device  | cpu
+   dtype   | float
+   layout  | strided
+   gradient| nograd
+
+   q)tensor(1 2 3;r)
+
+   q)tensor r
+   1 2 3e
+
+   q)free r  / free tensor r, redefine on gpu as 4-byte int
+   q)4#info r:tensor((); `cuda`int)
+   device  | cuda:0
+   dtype   | int
+   layout  | strided
+   gradient| nograd
+
+   q)tensor(1 2 3 4;r)
+
+   q)tensor r
+   1 2 3 4i
+   q)device r
+   `cuda:0
+
 Examples where a k value cannot be converted to a tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -118,6 +151,7 @@ In addition to supplying k values to initialise tensors, the following methods c
 
 
 Tensors are created using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
+The
 
 .. code-block:: k
 
@@ -126,15 +160,15 @@ Tensors are created using the above methods by supplying a mode symbol as the fi
    0 0 0
    0 0 0
 
-`zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_, ones, empty: creating tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+zeros,ones,empty,rand,randn: creating tensors by specifying size:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
 
    | Create a tensor given size or input tensor whose size will be used.
 
-   :param sym mode: one of ```zeros``, ```ones`` or ```empty``
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``, ```rand``, ```randn``
    :param longs size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
