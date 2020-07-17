@@ -29,7 +29,7 @@ The ``default`` function will display the defaults usually in effect if no optio
 
 .. function:: dict:default[]
 .. function:: default type
-   Display existing default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type)
+   :return:  Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
 .. code-block:: k
    :emphasize-lines: 9
@@ -178,7 +178,6 @@ In addition to supplying k values to initialise tensors, the following methods c
 
 
 Tensors are created using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
-The
 
 .. code-block:: k
 
@@ -191,7 +190,7 @@ Creating tensors by specifying size: zeros, ones, empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_,
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
-and unitialized (`ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_).
+and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
@@ -243,10 +242,10 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
 .. code-block:: k
 
-   q)tensor t:tensor(`rand;10)
+   q)tensor t:tensor(**`rand**;10)
    0.05592483 0.7734587 0.1025799 0.6335379 0.3350263 0.5218872 0.8726696 0.9215..
 
    q)free t
-   q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
+   q)(avg;dev)@\:tensor t:tensor(**`randn**;10000000;`double)
    -0.0002174295 0.9999617
 
