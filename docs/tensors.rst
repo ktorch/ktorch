@@ -163,14 +163,16 @@ The
    0 0 0
    0 0 0
 
-zeros, ones, empty: creating tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Return tensor filled with zeros(```zeros), ones (```ones``), and unitialized (```empty).
+Creating tensors by specifying size: zeros, ones, empty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_,
+`ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
+and unitialized (`ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_).
 
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
 
-   | Create a tensor given size or input tensor whose size will be used.
+   | Create a tensor given mode, size  and optional parameter attribute(s).
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param longs size: scalar/list specifiying size of array
@@ -180,7 +182,7 @@ Return tensor filled with zeros(```zeros), ones (```ones``), and unitialized (``
 .. function:: ptr:tensor(mode;in-tensor)
 .. function:: ptr:tensor(mode;in-tensor;options)
 
-   | Create a tensor given size or input tensor whose size will be used.
+   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s).
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param longs size: scalar/list specifiying size of array
@@ -193,8 +195,23 @@ Return tensor filled with zeros(```zeros), ones (```ones``), and unitialized (``
    :param :ref:`api-pointer <pointers>` out-tensor: output tensor
    :return: null return, resets values according to size given and attributes of the output tensor
 
-rand, randn: creating random tensors by specifying size:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. code-block:: k
+
+   q)tensor t:tensor(`zeros;3 2)
+   0 0
+   0 0
+   0 0
+
+   q)tensor(`ones;5;t)
+   q)tensor t
+   1 1 1 1 1e
+
+   q)tensor(`empty;100;t)
+   q)tensor t
+   1 1 1 1 1 0 4.332332e-37 0 2.791531e+20 1.693048e+22 7.501883e+28 2.733884e+2..
+
+Creating random tensors by specifying size: rand, randn
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
 
