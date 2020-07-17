@@ -28,10 +28,12 @@ along with layout and whether gradients are recorded for operations on the tenso
 The ``default`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: dict:default[]
-.. function:: default type
-   :return:  Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
-.. code-block:: k
+.. function:: default type
+
+   | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
+
+.. code-block::
    :emphasize-lines: 9
 
    q)default[]
@@ -242,10 +244,10 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
 .. code-block:: k
 
-   q)tensor t:tensor(**`rand**;10)
+   q)tensor t:tensor(`rand;10)
    0.05592483 0.7734587 0.1025799 0.6335379 0.3350263 0.5218872 0.8726696 0.9215..
 
    q)free t
-   q)(avg;dev)@\:tensor t:tensor(**`randn**;10000000;`double)
+   q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
 
