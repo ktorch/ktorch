@@ -203,7 +203,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
 .. function:: ptr:tensor(mode;in-tensor)
 .. function:: ptr:tensor(mode;in-tensor;options)
 
-   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). Similar to PyTorch creation functions, e.g. `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>_.
+   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). Similar to PyTorch creation functions, e.g. `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param :ref:`api-pointer <pointers>` in-tensor: pointer to pre-allocated tensor, size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but will be overwritten by explicit options given in last argument.
