@@ -6,7 +6,7 @@ Tensors
 PyTorch describes a tensor as a multi-dimensional matrix containing elements of a single data type.
 The simplest way to create a tensor is to use a k value, e.g.
 
-.. code-block:: k
+::
 
    q)t:tensor 0 1 2 3f
 
@@ -33,7 +33,7 @@ The ``default`` function will display the defaults usually in effect if no optio
 
    | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
-.. code-block::
+::
    :emphasize-lines: 9
 
    q)default[]
@@ -44,11 +44,8 @@ The ``default`` function will display the defaults usually in effect if no optio
 
    q)default`double
 
-   q)default[]
-   device  | cpu
-   dtype   | double
-   layout  | strided
-   gradient| nograd
+   q)(1#`dtype)#default[]
+   dtype| double
 
 
 Creating a tensor from a k value
@@ -72,7 +69,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 Examples:
 ^^^^^^^^^
 
-.. code-block:: k
+::
 
    q)t:tensor 2 3 4#til 24
 
@@ -105,7 +102,7 @@ Using an output tensor:
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
 
-.. code-block:: k
+::
 
    q)4#info r:tensor()  / initialize empty tensor, retrieve attributes
    device  | cpu
@@ -138,7 +135,7 @@ The k value given must be the same data type throughout and have the same size a
 There also needs to be a defined mapping between the k type and the PyTorch type (see :ref:`data types <types>` ).
 Some examples where these conditions are not met:
 
-.. code-block:: k
+::
 
    q)t:tensor(1 2;3 4.0)
    'type mismatch at depth 1, long list vs double list
@@ -181,7 +178,7 @@ In addition to supplying k values to initialise tensors, the following methods c
 
 Tensors are created using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
 
-.. code-block:: k
+::
 
    q)t:tensor(`zeros; 2 3; `int)
    q)tensor t
@@ -220,7 +217,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    :param :ref:`api-pointer <pointers>` out-tensor: output tensor
    :return: null return, resets values according to size given and attributes of the output tensor
 
-.. code-block:: k
+::
 
    q)tensor t:tensor(`zeros;3 2)
    0 0
@@ -242,7 +239,7 @@ Return a tensor filled with random numbers from a uniform distribution on ``[0, 
 
 Parameters and function calls are as above for mode of ```zeros``, ```ones`` and ```empty``.
 
-.. code-block:: k
+::
 
    q)tensor t:tensor(`rand;10)
    0.05592483 0.7734587 0.1025799 0.6335379 0.3350263 0.5218872 0.8726696 0.9215..
