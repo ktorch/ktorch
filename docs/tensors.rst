@@ -34,7 +34,6 @@ The ``default`` function will display the defaults usually in effect if no optio
    | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
 ::
-   :emphasize-lines: 9
 
    q)default[]
    device  | cpu
@@ -247,4 +246,29 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
    q)free t
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
+
+Creating tensor filled with single value: full
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: ptr:tensor(mode;size;value)
+.. function:: ptr:tensor(mode;size;value;options)
+
+   | Create a tensor given mode=```full``, size, fill value  and optional parameter attribute(s).
+
+   :param sym mode: set to ```full`` 
+   :param long size: scalar/list specifiying size of array
+   :param scalar value: scalar fill value, real or double k type. Also possible to specify non floating point scalar, but options must also include required tensor data type.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
+
+::
+
+   q)t:tensor(`full; 2 5; 3.0)
+
+   q)tensor t
+   3 3 3 3 3
+   3 3 3 3 3
+
+   q)first tensor t
+   3 3 3 3 3f
 
