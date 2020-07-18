@@ -196,23 +196,23 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    | Create a tensor given mode, size  and optional parameter attribute(s).
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param longs size: scalar/list specifiying size of array
+   :param long size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 .. function:: ptr:tensor(mode;in-tensor)
 .. function:: ptr:tensor(mode;in-tensor;options)
 
-   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s).
+   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). Similar to PyTorch creation functions, e.g. `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>_.
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param longs size: scalar/list specifiying size of array
+   :param :ref:`api-pointer <pointers>` in-tensor: pointer to pre-allocated tensor, size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but will be overwritten by explicit options given in last argument.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 .. function:: tensor(mode;size;out-tensor)
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param longs size: scalar/list specifiying size of array
+   :param long size: scalar/list specifiying size of array
    :param :ref:`api-pointer <pointers>` out-tensor: output tensor
    :return: null return, resets values according to size given and attributes of the output tensor
 
@@ -247,7 +247,7 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
 
-Creating tensor filled with single value: full
+Creating tensor with single value: full
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: ptr:tensor(mode;size;value)

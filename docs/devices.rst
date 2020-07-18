@@ -10,7 +10,7 @@ the main device choices are CPU or Nvidia GPU's with compute capability >= 3.0.
 | From a q/k session, there are a few functions that deal with CUDA devices. 
 | On a host with 2 GPU's:
 
-.. code-block:: k
+::
 
    q)cudadevices[]
    2
@@ -20,7 +20,7 @@ the main device choices are CPU or Nvidia GPU's with compute capability >= 3.0.
 
 On a host without any GPU's:
 
-.. code-block:: k
+::
 
    q)cudadevices[]
    0

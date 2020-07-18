@@ -3,7 +3,7 @@
 Data types
 ==========
 
-.. csv-table:: PyTorch data types
+.. csv-table::
    :header: "PyTorch", "k", "Description"
    :widths: 10, 10, 40
 
@@ -20,7 +20,7 @@ Data types
 PyTorch defines 9 data types for tensors.
 All but `half` have a direct mapping to a k data type: `half` values are mapped to k `real` values.
 
-.. code-block:: k
+::
 
    q)d:`byte`char`bool`short`int`long`half`float`double
 
