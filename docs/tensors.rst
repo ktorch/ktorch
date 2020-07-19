@@ -253,7 +253,7 @@ Creating tensor with single value: full
 .. function:: ptr:tensor(mode;size;value)
 .. function:: ptr:tensor(mode;size;value;options)
 
-   | Create a tensor given mode=```full``, size, fill value  and optional parameter attribute(s).
+   | Create a tensor given mode = ```full``, size, fill value  and optional parameter attribute(s).
 
    :param sym mode: set to ```full`` 
    :param long size: scalar/list specifiying size of array
@@ -275,5 +275,5 @@ Creating tensor with single value: full
 .. function:: ptr:tensor(mode;in-tensor;value)
 .. function:: ptr:tensor(mode;in-tensor;value;options)
 
-   | Create a tensor given mode of```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
+   | Create a tensor given mode of ```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
 
