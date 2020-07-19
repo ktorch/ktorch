@@ -257,7 +257,7 @@ Creating tensor with single value: full
 
    :param sym mode: set to ```full`` 
    :param long size: scalar/list specifiying size of array
-   :param scalar value: scalar fill value, real or double k type. Also possible to specify non floating point scalar, but options must also include required tensor data type.
+   :param scalar value: scalar fill value, real or double k type. Also possible to specify non floating point scalar, but options must include required tensor data type.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
