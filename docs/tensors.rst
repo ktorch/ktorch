@@ -275,5 +275,5 @@ Creating tensor with single value: full
 .. function:: ptr:tensor(mode;in-tensor)
 .. function:: ptr:tensor(mode;in-tensor;options)
 
-   | Create a tensor given mode=```full`` and input tensor whose size will be used to create new tensor, along with vill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
+   | Create a tensor given mode of```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
 
