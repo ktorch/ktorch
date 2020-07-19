@@ -193,7 +193,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
 .. function:: ptr:tensor(mode;size)
 .. function:: ptr:tensor(mode;size;options)
 
-   | Create a tensor given mode, size  and optional parameter attribute(s).
+   | Create a tensor given mode, size  and optional attribute(s).
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param long size: scalar/list specifiying size of array
@@ -253,7 +253,7 @@ Creating tensor with single value: full
 .. function:: ptr:tensor(mode;size;value)
 .. function:: ptr:tensor(mode;size;value;options)
 
-   | Create a tensor given mode = ```full``, size, fill value  and optional parameter attribute(s).
+   | Create a tensor given mode = ```full``, size, fill value  and optional attribute(s).
 
    :param sym mode: set to ```full`` 
    :param long size: scalar/list specifiying size of array
