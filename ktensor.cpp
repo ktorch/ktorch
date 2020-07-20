@@ -172,6 +172,7 @@ Tensor kput(K x,J i) {
  else
   AT_ERROR("unable to index ",kname(x->t),", element: ",i);
 }
+
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given
@@ -182,23 +183,25 @@ Tensor kput(K x,J i) {
 // vectorptr - given vector ptr, return tensor pointers, or single pointer if index given
 // tensor - high level function to create/retrieve/move/recast tensor from k
 // --------------------------------------------------------------------------------------
-static void tensorlike(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:input, r:result tensor
- //use tensor options from input tensor, override if any supplied in final arg
- using Tensormode=Tensormode; J i,j; Scalar s; TensorOptions o=t.options();
+static void tensorlike(K x,Tensormode m,const Tensor &t,Tensor &r) {  // t:input, r:result tensor
+ J i,j; Scalar s; TensorOptions o;
  bool b=xopt(x,x->n-1,o); I nx=x->n-b;  //set flag if options given, count non-option args
  switch(m) {
-  case Tensormode::empty: if(nx==2) r=b ? torch::empty_like(t,o) : torch::empty_like(t); break;
-  case Tensormode::zeros: if(nx==2) r=b ? torch::zeros_like(t,o) : torch::zeros_like(t); break;
-  case Tensormode::ones:  if(nx==2) r=b ? torch::ones_like(t,o)  : torch::ones_like(t);  break;
-  case Tensormode::rand:  if(nx==2) r=b ? torch::rand_like(t,o)  : torch::rand_like(t);  break;
-  case Tensormode::randn: if(nx==2) r=b ? torch::randn_like(t,o) : torch::randn_like(t); break;
-  case Tensormode::full:  if(nx==3 && xnum(x,1,s))r=b ? torch::full_like(t,s,o) : torch::full_like(t,s); break;
+  case Tensormode::empty: if(nx==2) r=torch::empty_like(t,o); break;
+  case Tensormode::zeros: if(nx==2) r=torch::zeros_like(t,o); break;
+  case Tensormode::ones:  if(nx==2) r=torch::ones_like(t,o);  break;
+  case Tensormode::rand:  if(nx==2) r=torch::rand_like(t,o);  break;
+  case Tensormode::randn: if(nx==2) r=torch::randn_like(t,o); break;
+  case Tensormode::full:
+   if(nx==3 && xscalar(x,2,s))
+    r=torch::full_like(t,s,o.has_dtype() ? o : o.dtype(maptype(kK(x)[2]->t)));
+   break;
   case Tensormode::randint:
-   if     (nx==3 && xlong(x,2,j))                 r=b ? torch::randint_like(t,j,o)   : torch::randint_like(t,j);
-   else if(nx==4 && xlong(x,2,i) && xlong(x,3,j)) r=b ? torch::randint_like(t,i,j,o) : torch::randint_like(t,i,j);
+   if     (nx==3 && xlong(x,2,j))                 r=torch::randint_like(t,j,o);
+   else if(nx==4 && xlong(x,2,i) && xlong(x,3,j)) r=torch::randint_like(t,i,j,o);
    break;
   default:
-   AT_ERROR("tensor creation via: ",x->s," not implemented with input tensor"); break;
+   AT_ERROR("tensor creation via: ",kK(x)[0]->s," not implemented with input tensor"); break;
  }
 }
 
@@ -211,7 +214,7 @@ static void tensorout(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:output, r:re
   case Tensormode::ones:  if(b && x->n==3) r=torch::ones_out(t,s); break;
   case Tensormode::rand:  if(b && x->n==3) r=torch::rand_out(t,s); break;
   case Tensormode::randn: if(b && x->n==3) r=torch::randn_out(t,s); break;
-  case Tensormode::full:  if(b && x->n==4 && xnum(x,2,n)) r=torch::full_out(t,s,n); break;
+  case Tensormode::full:  if(b && x->n==4 && xscalar(x,2,a)) r=torch::full_out(t,s,a); break;
   case Tensormode::randperm: if (x->n==3 && xlong(x,1,i)) r=torch::randperm_out(t,i); break;
   case Tensormode::randint:
    b=xsize(x,x->n-2,s);
@@ -249,7 +252,10 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
   case Tensormode::ones:  if(sz) r=torch::ones(s,o); break;
   case Tensormode::rand:  if(sz) r=torch::rand(s,o); break;
   case Tensormode::randn: if(sz) r=torch::randn(s,o); break;
-  case Tensormode::full:  if(sz && xnum(x,2,n)) r=torch::full(s,n,o); break;
+  case Tensormode::full:
+   if(sz && xscalar(x,2,a))
+    r=torch::full(s,a,o.has_dtype() ? o : o.dtype(maptype(kK(x)[2]->t)));
+   break;
   case Tensormode::randperm:
    if (!o.has_dtype()) o=o.dtype(torch::kLong);
    if (nx==2 && xlong(x,1,i)) r = torch::randperm(i,o);
