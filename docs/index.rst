@@ -8,7 +8,9 @@ k api to pytorch
    :maxdepth: 2
    :caption: Contents:
 
-   quick
+   overview
+   build
+   start
    types
    pointers
    devices
