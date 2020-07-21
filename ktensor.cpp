@@ -257,11 +257,12 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
     r=torch::full(s,a,o.has_dtype() ? o : o.dtype(maptype(kK(x)[2]->t)));
    break;
   case Tensormode::randperm:
-   if (!o.has_dtype()) o=o.dtype(torch::kLong);
-   if (nx==2 && xlong(x,1,i)) r = torch::randperm(i,o);
+   if(!o.has_dtype()) o=o.dtype(torch::kLong);
+   if(nx==2 && xlong(x,1,i)) r = torch::randperm(i,o);
    break;
   case Tensormode::randint:
    sz=xsize(x,nx-1,s); // true if size is supplied as last non-options arg
+   if(!o.has_dtype()) o=o.dtype(torch::kLong);
    if     (sz && nx==3 && xlong(x,1,j))                 r=torch::randint(j,s,o);
    else if(sz && nx==4 && xlong(x,1,i) && xlong(x,2,j)) r=torch::randint(i,j,s,o);
    break;
