@@ -1469,7 +1469,6 @@ KAPI config(K x) {
 // kseed - k interface to query/set device seed or query/reset seed for all devices
 // -----------------------------------------------------------------------------------
 J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
- return 0;
  torch::DeviceGuard dg(d);
  // PATCH auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU); // version 1.5
  auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);  // version 1.6

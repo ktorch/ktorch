@@ -3,7 +3,7 @@
 Quick start
 ===========
 
-   ::
+::
 
    q)(`ktorch 2:`fns,1)[]
    dv         | code
