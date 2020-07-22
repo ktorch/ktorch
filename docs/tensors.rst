@@ -1,4 +1,5 @@
 .. _tensors:
+.. index::  tensor
 
 Tensors
 =======
@@ -13,6 +14,7 @@ The simplest way to create a tensor is to use a k value, e.g.
    q)tensor t
    0 1 2 3f
 
+.. index::  tensor properties; tensor attributes
 Setting properties of a tensor
 ******************************
 
