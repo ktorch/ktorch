@@ -5,7 +5,7 @@ Pointers
 
 The k interface returns a pointer to allocated values (tensor, module, optimizer, loss function or model) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k or q session.
 
-.. code-block:: k
+::
 
    q)t:tensor 1 2 3e
 

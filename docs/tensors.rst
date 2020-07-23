@@ -1,4 +1,3 @@
-.. _tensors:
 .. index::  tensor
 
 Tensors
@@ -136,6 +135,7 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    `cuda:0
 
 .. index:: tensor conversion errors
+
 Possible conversion errors:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The k value given must be the same data type throughout and have the same size at each depth.
@@ -165,6 +165,7 @@ Some examples where these conditions are not met:
             ^
 
 .. index:: tensor via creation mode
+
 Tensor creation modes
 *********************
 
@@ -193,8 +194,11 @@ Tensors are created using the above methods by supplying a mode symbol as the fi
    0 0 0
    0 0 0
 
+.. index:: zeros, ones, empty
+
 Creating tensors by specifying size: zeros, ones, empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_,
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
