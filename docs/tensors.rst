@@ -97,7 +97,7 @@ Examples:
    16 17 18 19
    20 21 22 23
 
-.. index:: tensor; using an output tensor
+.. index:: tensor creation with output tensor given
 Using an output tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -131,7 +131,7 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    q)device r
    `cuda:0
 
-.. index:: tensor; possible conversion errors
+.. index:: tensor conversion errors
 Possible conversion errors:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The k value given must be the same data type throughout and have the same size at each depth.
@@ -160,7 +160,7 @@ Some examples where these conditions are not met:
      [0]  t:tensor ([]1 2)
             ^
 
-.. index:: tensor; using creation mode
+.. index:: tensor via creation mode
 Tensor creation modes
 *********************
 
