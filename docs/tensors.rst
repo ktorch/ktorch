@@ -107,6 +107,13 @@ Using an output tensor:
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
 
+.. function:: tensor(value; out-tensor)
+
+   | Read k value and store in previously created tensor
+
+   :param scalar,list,array value: the k value to populate the tensor.
+   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
+
 ::
 
    q)4#info r:tensor()  / initialize empty tensor, retrieve attributes
@@ -196,8 +203,8 @@ Tensors are created using the above methods by supplying a mode symbol as the fi
 
 .. index:: zeros, ones, empty
 
-Creating tensors by specifying size: zeros, ones, empty
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Creating tensors by size: zeros, ones, empty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_,
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
@@ -248,8 +255,8 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
 
 .. index:: rand, randn
 
-Creating random tensors by specifying size: rand, randn
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Creating random tensors by size: rand, randn
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
 
