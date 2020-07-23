@@ -17,8 +17,8 @@ k api to pytorch
    tensors
    modules
 
-Indices and tables
-==================
+Index
+=====
 
 * :ref:`genindex`
 * :ref:`search`

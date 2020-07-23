@@ -15,6 +15,7 @@ The simplest way to create a tensor is to use a k value, e.g.
    0 1 2 3f
 
 .. index::  tensor properties; tensor attributes
+
 Setting properties of a tensor
 ******************************
 
@@ -36,6 +37,7 @@ The ``default`` function will display the defaults usually in effect if no optio
    | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
 ::
+
    q)default[]
    device  | cpu
    dtype   | float
@@ -49,6 +51,7 @@ The ``default`` function will display the defaults usually in effect if no optio
 
 
 .. index:: tensor; creating from a k value
+
 Creating a tensor from a k value
 ********************************
 
@@ -98,6 +101,7 @@ Examples:
    20 21 22 23
 
 .. index:: tensor creation with output tensor given
+
 Using an output tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -196,6 +200,7 @@ Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#tor
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
 .. function:: ptr:tensor(mode;size)
+
 .. function:: ptr:tensor(mode;size;options)
 
    | Create a tensor given mode, size  and optional attribute(s).
@@ -206,6 +211,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 .. function:: ptr:tensor(mode;in-tensor)
+
 .. function:: ptr:tensor(mode;in-tensor;options)
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). Similar to PyTorch creation functions, e.g. `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.

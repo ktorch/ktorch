@@ -11,6 +11,7 @@ the main device choices are CPU or Nvidia GPU's with compute capability >= 3.0.
 | On a host with 2 GPU's:
 
 .. index:: cudadevices, CUDA
+
 ::
 
    q)cudadevices[]
