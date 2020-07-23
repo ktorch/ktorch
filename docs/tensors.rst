@@ -36,6 +36,7 @@ The ``default`` function will display the defaults usually in effect if no optio
    | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
 ::
+   :emphasize-lines: 3,5
 
    q)default[]
    device  | cpu
