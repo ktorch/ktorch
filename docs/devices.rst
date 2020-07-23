@@ -1,4 +1,4 @@
-.. index: devices
+.. index:: devices
 
 Devices
 =======
@@ -10,7 +10,7 @@ the main device choices are CPU or Nvidia GPU's with compute capability >= 3.0.
 | From a q/k session, there are a few functions that deal with CUDA devices. 
 | On a host with 2 GPU's:
 
-.. index: cudadevices, CUDA
+.. index:: cudadevices, CUDA
 ::
 
    q)cudadevices[]

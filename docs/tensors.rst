@@ -48,6 +48,7 @@ The ``default`` function will display the defaults usually in effect if no optio
    dtype| double
 
 
+.. index:: tensor; creating from a k value
 Creating a tensor from a k value
 ********************************
 
@@ -96,6 +97,7 @@ Examples:
    16 17 18 19
    20 21 22 23
 
+.. index:: tensor; using an output tensor
 Using an output tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -129,6 +131,7 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    q)device r
    `cuda:0
 
+.. index:: tensor; possible conversion errors
 Possible conversion errors:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The k value given must be the same data type throughout and have the same size at each depth.
@@ -157,6 +160,7 @@ Some examples where these conditions are not met:
      [0]  t:tensor ([]1 2)
             ^
 
+.. index:: tensor; using creation mode
 Tensor creation modes
 *********************
 
