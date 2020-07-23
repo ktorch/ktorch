@@ -13,7 +13,7 @@ The simplest way to create a tensor is to use a k value, e.g.
    q)tensor t
    0 1 2 3f
 
-.. index::  tensor properties; tensor attributes
+.. index::  tensor; attributes
 
 Setting properties of a tensor
 ******************************
@@ -99,7 +99,7 @@ Examples:
    16 17 18 19
    20 21 22 23
 
-.. index:: tensor creation with output tensor given
+.. index::  tensor; creation using output tensor
 
 Using an output tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -134,7 +134,7 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    q)device r
    `cuda:0
 
-.. index:: tensor conversion errors
+.. index:: tensor; conversion errors
 
 Possible conversion errors:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -164,7 +164,7 @@ Some examples where these conditions are not met:
      [0]  t:tensor ([]1 2)
             ^
 
-.. index:: tensor via creation mode
+.. index:: tensor; using creation mode
 
 Tensor creation modes
 *********************
@@ -246,6 +246,8 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    q)tensor t
    1 1 1 1 1 0 4.332332e-37 0 2.791531e+20 1.693048e+22 7.501883e+28 2.733884e+2..
 
+.. index:: rand, randn
+
 Creating random tensors by specifying size: rand, randn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -261,6 +263,8 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
    q)free t
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
+
+.. index:: full
 
 Creating tensor with single value: full
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
