@@ -1,4 +1,4 @@
-.. _pointers:
+.. index::  pointer
 
 Pointers
 ========
