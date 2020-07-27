@@ -65,7 +65,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    | Create a tensor from k value.
 
-   :param scalar,list,array value: the k value to populate the tensor.  If no options given, the d:ref:`data type <types> will be mapped from the data type of the k value.
+   :param scalar,list,array value: the k value to populate the tensor.  If no options given, the :ref:`data type <types> for the tensor will be mapped from the data type of the k value.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
