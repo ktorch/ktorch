@@ -277,8 +277,8 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 Creating tensor with single value: full
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: ptr\:tensor(mode;size;value)
-.. function:: ptr\:tensor(mode;size;value;options)
+.. function:: ptr <- tensor(mode;size;value)
+.. function:: ptr <- tensor(mode;size;value;options)
 
    | Create a tensor given mode = ```full``, size, fill value  and optional attribute(s).
 
