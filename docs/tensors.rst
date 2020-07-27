@@ -65,8 +65,8 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    | Create a tensor from k value.
 
-   :param scalar,list,array value: the k value to populate the tensor.  If no options given, the :ref:`data type <types> for the tensor will be mapped from the data type of the k value.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :param scalar,list,array value: the k value to populate the tensor.  If no options given, the :ref:`data type <types>` for the tensor will be mapped from the data type of the k value.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`````long`````grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 Examples:
@@ -112,6 +112,7 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
    | Read k value and store in previously created tensor
 
    :param scalar,list,array value: the k value to populate the tensor.
+
    :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
 
 ::
@@ -210,7 +211,7 @@ Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#tor
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
-.. function:: ptr:tensor(mode;size)
+.. function:: tensor(mode;size)
 
 .. function:: ptr:tensor(mode;size;options)
 
