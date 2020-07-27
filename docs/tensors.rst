@@ -107,13 +107,13 @@ Using an output tensor:
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
 
-.. function:: tensor(value; out-tensor)
+.. function:: tensor(value; out-tensor) -> null
 
    | Read k value and store in previously created tensor
 
    :param scalar,list,array value: the k value to populate the tensor.
-
    :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
+   :return: (null)
 
 ::
 
