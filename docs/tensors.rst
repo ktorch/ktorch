@@ -29,9 +29,9 @@ along with layout and whether gradients are recorded for operations on the tenso
 
 The ``default`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
-.. function:: dict:default[]
+.. function:: default[] -> dict
 
-.. function:: default type
+.. function:: default(type) -> null
 
    | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
 
@@ -56,12 +56,12 @@ Creating a tensor from a k value
 
 The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type throughout and the same size at each dimension.
 
-.. function:: value:tensor ptr
+.. function:: tensor ptr -> value
 
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
-.. function:: ptr:tensor value
-.. function:: ptr:tensor(value;options)
+.. function:: tensor(value) -> ptr
+.. function:: tensor(value;options) -> ptr
 
    | Create a tensor from k value.
 
@@ -105,14 +105,14 @@ Using an output tensor:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
-The tensor's attributes, data type, device, etc., will be used, but its values will be replaced.
+The tensor's existing attributes will be used but its values will be replaced.
 
 .. function:: tensor(value; out-tensor) -> null
 
    | Read k value and store in previously created tensor
 
    :param scalar,list,array value: the k value to populate the tensor.
-   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
+   :param api-pointer out-tensor: previously allocated tensor which will contain the new values.
    :return: (null)
 
 ::
@@ -144,8 +144,8 @@ The tensor's attributes, data type, device, etc., will be used, but its values w
 
 .. index:: tensor; conversion errors
 
-Possible conversion errors:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Conversion errors:
+^^^^^^^^^^^^^^^^^^
 The k value given must be the same data type throughout and have the same size at each depth.
 There also needs to be a defined mapping between the k type and the PyTorch type (see :ref:`data types <types>` ).
 Some examples where these conditions are not met:
@@ -204,16 +204,16 @@ Tensors are created using the above methods by supplying a mode symbol as the fi
 
 .. index:: zeros, ones, empty
 
-Creating tensors by size: zeros, ones, empty
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Creating by size: zeros, ones, empty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_,
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
-.. function:: tensor(mode;size)
+.. function:: tensor(mode;size) -> ptr
 
-.. function:: ptr:tensor(mode;size;options)
+.. function:: tensor(mode;size;options) -> ptr
 
    | Create a tensor given mode, size  and optional attribute(s).
 
@@ -222,9 +222,9 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
-.. function:: ptr:tensor(mode;in-tensor)
+.. function:: tensor(mode;in-tensor) -> ptr
 
-.. function:: ptr:tensor(mode;in-tensor;options)
+.. function:: tensor(mode;in-tensor;options) -> ptr
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). Similar to PyTorch creation functions, e.g. `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.
 
@@ -233,7 +233,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
-.. function:: tensor(mode;size;out-tensor)
+.. function:: tensor(mode;size;out-tensor) -> null
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param long size: scalar/list specifiying size of array
    :param :ref:`api-pointer <pointers>` out-tensor: output tensor
@@ -299,8 +299,8 @@ Creating tensor with single value: full
    q)first tensor t
    3 3 3 3 3f
 
-.. function:: ptr:tensor(mode;in-tensor;value)
-.. function:: ptr:tensor(mode;in-tensor;value;options)
+.. function:: tensor(mode;in-tensor;value) -> ptr
+.. function:: tensor(mode;in-tensor;value;options) -> ptr
 
    | Create a tensor given mode of ```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
 
