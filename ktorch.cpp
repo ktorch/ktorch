@@ -475,19 +475,16 @@ bool xtenarg(K x,Tensor& a,Tensor &b)           {return xtenarg(x,0,a,b);}
 bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
  
 // ------------------------------------------------------------------------------------------------------
-// xmodule - check arg(s) for allocated module pointer
 // xlayer - check arg(s) for allocated layer pointer
 // xloss - check arg(s) for allocated loss module
 // xoptim - check arg(s) for allocated optimizer pointer
 // xmodel - check arg(s) for allocated model pointer (module, loss & optimizer)
 // ------------------------------------------------------------------------------------------------------
-Kmodule* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Kmodule*)g : nullptr;}
-Kmodule* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
 Klayer* xlayer(K x) {auto* g=xtag(x); return (g && g->a==Class::layer) ? (Klayer*)g : nullptr;}
 Klayer* xlayer(K x,J i) {return xind(x,i) ? xlayer(kK(x)[i]) : nullptr;}
 
-Kmodule* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kmodule*)g : nullptr;}
-Kmodule* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
+Kloss* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kloss*)g : nullptr;}
+Kloss* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
 
 Kopt* xoptim(K x) {auto* g=xtag(x); return (g && g->a==Class::optimizer) ? (Kopt*)g : nullptr;}
 Kopt* xoptim(K x,J i) {return xind(x,i) ? xoptim(kK(x)[i]) : nullptr;}
@@ -1063,10 +1060,10 @@ KAPI addref(K x) {
   auto *g=xtag(x);
   TORCH_CHECK(g, "addref not implemented for ",kname(x->t));
   switch(g->a) {
-   case Class::tensor:     return kten(((Kten*)g)->t);
-   case Class::layer:      return klayer(g->c,((Klayer*)g)->m);
-   case Class::loss:       return kloss(g->c,((Kmodule*)g)->m);
-   case Class::optimizer:  return  kopt(g->c,   ((Kopt*)g)->o);
+   case Class::tensor:    return kten(((Kten*)g)->t);
+   case Class::layer:     return klayer(g->c,((Klayer*)g)->m);
+   case Class::loss:      return kloss(g->c, ((Kloss*)g)->m);
+   case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
   }
  KCATCH("addref");
@@ -1113,7 +1110,7 @@ static S objdevice(Ktag *x) {
   case Class::tensor:     return objdevice(((Kten*)x)->t);
   case Class::vector:     return objdevice(((Kvec*)x)->v, s);
   case Class::optimizer:  return objdevice(((Kopt*)x)->o->parameters(), s);
-  case Class::loss:       return objdevice(((Kmodule*)x)->m.ptr()->buffers(), s);
+  case Class::loss:       return objdevice(((Kloss*)x)->m.ptr()->buffers(), s);
   case Class::layer:      return objdevice(mref((Klayer*)x).parameters(), s);
   case Class::model:      return objdevice(mref((Kmodel*)x).parameters(), s);
   default: return s;
@@ -1223,7 +1220,7 @@ KAPI To(K x) {
     case Class::tensor:     return to((Kten*)g,o,a,b);
     case Class::vector:     return to((Kvec*)g,o,a);
     case Class::layer:      return to((Klayer*)g,o,a);
-    case Class::loss:       return to((Kmodule*)g,o,a);
+    case Class::loss:       return to((Kloss*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
    }
   } else {
@@ -1520,7 +1517,7 @@ static K attr(K x,Ktype k,Attr a) {
    case Class::tensor:     return tensorattr(((Kten*)g)->t,k,a);
    case Class::vector:     return vectorattr(((Kvec*)g)->v,k,a);
    case Class::layer:      return mattr(((Klayer*)g)->m,k,a);
-   case Class::loss:       return lossattr(((Kmodule*)g)->m,k,a);
+   case Class::loss:       return lossattr(((Kloss*)g)->m,k,a);
    case Class::optimizer:  return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }

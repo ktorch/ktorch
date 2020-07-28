@@ -251,8 +251,8 @@ struct TORCH_API Klayer : public Ktag {
  Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::layer; c=x;}
 };
 
-struct TORCH_API Kmodule : public Ktag {
- Kmodule(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
+struct TORCH_API Kloss : public Ktag {
+ Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
 };
 
@@ -270,7 +270,7 @@ struct TORCH_API Kmodel : public Ktag {
  Layer m;          // layer(s), e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Klayer *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ Kmodel(Klayer *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
 };
 
 S krrbuf(const char *);
@@ -361,12 +361,10 @@ bool xtenarg(K,J,Tensor&,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
-Kmodule* xmodule(K);
-Kmodule* xmodule(K,J);
 Klayer* xlayer(K);
 Klayer* xlayer(K,J);
-Kmodule* xloss(K);
-Kmodule* xloss(K,J);
+Kloss* xloss(K);
+Kloss* xloss(K,J);
 Kopt* xoptim(K);
 Kopt* xoptim(K,J);
 Kmodel* xmodel(K);
@@ -529,7 +527,7 @@ K kloss(Cast,const AnyModule&);
 Tensor losswt(Cast,AnyModule&,const Tensor&,const Tensor&);
 K lossdict(Ktag*,K);
 K lossdict(bool,bool,Cast,AnyModule&);
-K to(Kmodule*,const TensorOptions&,bool);
+K to(Kloss*,const TensorOptions&,bool);
 K lossattr(const AnyModule&,Ktype,Attr);
 void lossfn(K);
 

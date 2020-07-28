@@ -12,9 +12,9 @@ namespace fnn=torch::nn::functional;
 // lmap - map to/from sym to loss function name, e.g. `mse <-> Cast::mse
 // lset - map to/from sym to loss setting enum, e.g. `reduce <-> Setting::reduce
 // ------------------------------------------------------------------------------------------------------
-K kloss(Cast c,const AnyModule& m) {return kptr(new Kmodule(Class::loss,c,m));}
+K kloss(Cast c,const AnyModule& m) {return kptr(new Kloss(Class::loss,c,m));}
 
-K to(Kmodule* l,const TensorOptions& o,bool a) {
+K to(Kloss* l,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype()); auto m=l->m.ptr();
  if(o.has_device() && o.has_dtype()) m->to(o.device(),s,a);
  else if(o.has_device())             m->to(o.device(),a);
@@ -652,7 +652,7 @@ K lossdict(bool a,bool b,Cast c,AnyModule &m) {
 K lossdict(Ktag *g,K x) {
  bool a=env().alloptions;
  if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return lossdict(a,true,g->c,((Kmodule*)g)->m);
+  return lossdict(a,true,g->c,((Kloss*)g)->m);
  else
   AT_ERROR("loss state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
 }
@@ -680,7 +680,7 @@ static K lossfwd(Cast c,AnyModule& m,K a) {
 
 KAPI loss(K x) {
  KTRY
-  S s; bool a=env().alloptions; Kmodule *l; Kmodel *m;
+  S s; bool a=env().alloptions; Kloss *l; Kmodel *m;
   if(xsyms(x,s) || xsym(x,0,s)) {
    Cast c=lmap(s);
    return kloss(c, lossinit(c,x,1));

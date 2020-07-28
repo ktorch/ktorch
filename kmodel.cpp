@@ -6,12 +6,12 @@
 // modelstate - return a dictionary with state of module, loss fn & optimizer
 // model - create model from module, loss & optimizer or retrieve input options
 // -------------------------------------------------------------------------------------------
-static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
+static void modelpart(K x,J i,Klayer*& q,Kloss*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
   switch(g ? g->a : Class::undefined) {
    case Class::layer:      q=(Klayer*)g;  break;
-   case Class::loss:       l=(Kmodule*)g; break;
+   case Class::loss:       l=(Kloss*)g; break;
    case Class::optimizer:  o=(Kopt*)g;  break;
    default: AT_ERROR("model arg[",i,"] unrecognized: ",
                     (g ? mapclass(g->a) : kname(x,i))); break;
@@ -49,7 +49,7 @@ static void modelfree(K x,J i) {
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
-  Klayer *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
+  Klayer *q=nullptr; Kloss *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
   TORCH_CHECK(!x->t, "model not implemented for ",kname(x->t));
   if((m=xmodel(x)) || (x->n==2 && xbool(x,1,a) && (m=xmodel(x,0)))) {
    return modelstate(a,false,m);
@@ -280,8 +280,8 @@ KAPI evaluate(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// xlayer - given tag, returns layer or error
-// xmodule - given tag, returns module or error
+// xlayer - given model or layer pointer, returns reference to layer or error
+// xmodule - given tag pointer, returns pytorch module reference or error
 // training - query/set training flag given model or module layer
 // -------------------------------------------------------------------------------------------
 Layer& xlayer(Ktag *g) {
