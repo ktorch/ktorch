@@ -6,13 +6,13 @@
 // modelstate - return a dictionary with state of module, loss fn & optimizer
 // model - create model from module, loss & optimizer or retrieve input options
 // -------------------------------------------------------------------------------------------
-static void modelpart(K x,J i,Klayer*& q,Kloss*& l,Kopt*& o) {
+static void modelpart(K x,J i,Kmodule*& q,Kloss*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
   switch(g ? g->a : Class::undefined) {
-   case Class::layer:      q=(Klayer*)g;  break;
-   case Class::loss:       l=(Kloss*)g; break;
-   case Class::optimizer:  o=(Kopt*)g;  break;
+   case Class::module:    q=(Kmodule*)g;  break;
+   case Class::loss:      l=(Kloss*)g; break;
+   case Class::optimizer: o=(Kopt*)g;  break;
    default: AT_ERROR("model arg[",i,"] unrecognized: ",
                     (g ? mapclass(g->a) : kname(x,i))); break;
   }
@@ -49,7 +49,7 @@ static void modelfree(K x,J i) {
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
-  Klayer *q=nullptr; Kloss *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
+  Kmodule *q=nullptr; Kloss *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
   TORCH_CHECK(!x->t, "model not implemented for ",kname(x->t));
   if((m=xmodel(x)) || (x->n==2 && xbool(x,1,a) && (m=xmodel(x,0)))) {
    return modelstate(a,false,m);
@@ -237,7 +237,7 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
  }
 }
 
-static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
+static K metrics(Kmodule *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
  Tensor y=evalfwd(q ? q->m : m->m, v[0], w);
  if(s) {
   if(s->t == -KS) {
@@ -261,7 +261,7 @@ static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
 KAPI evaluate(K x) {
  KTRY
   torch::NoGradGuard g;
-  Klayer *q=xlayer(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
+  Kmodule *q=xmodule(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
   TORCH_CHECK(q || m, "evaluate: expects (model/module; vector/tensor(s)/array(s);optional args..)\n"
                       "          optional args: (batch size; tensor flag; metric(s))");
   J n=x->n; K s=nullptr;
@@ -280,26 +280,14 @@ KAPI evaluate(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// xlayer - given model or layer pointer, returns reference to layer or error
-// xmodule - given tag pointer, returns pytorch module reference or error
 // training - query/set training flag given model or module layer
 // -------------------------------------------------------------------------------------------
-Layer& xlayer(Ktag *g) {
- switch(g->a) {
-  case Class::layer: return ((Klayer*)g)->m;
-  case Class::model: return ((Kmodel*)g)->m;
-  default: AT_ERROR("unable to retrieve layers from ",mapclass(g->a));
- }
-}
-
-Module& xmodule(Ktag *g) {return mref(xlayer(g));}
-
 KAPI training(K x) {
  KTRY
   bool b; Ktag *g;
   TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && x->n==2 && xbool(x,1,b)),
               "training: unrecognized arg(s), expects module layer(s) or model and optional flag");
-  auto& m=xmodule(g);
+  auto& m=mref(g);
   return (x->n==2) ? m.train(b),(K)0 : kb(m.is_training());
  KCATCH("training");
 }

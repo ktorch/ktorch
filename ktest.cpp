@@ -24,8 +24,8 @@ J nest(K x) {
 KAPI xnest(K x) {return kj(nest(x)); }
 
 KAPI layerlist(K x) {
- Klayer *q;
- if((q=xlayer(x))) {
+ Kmodule *q;
+ if((q=xmodule(x))) {
   auto& m=mref(q->m);
   std::cerr << "named modules: \n";
   for(auto& a:m.named_modules())
@@ -412,7 +412,7 @@ KAPI ksizes(K x) {
  std::cerr << "Kten:    " << sizeof(Kten) << "\n";
  std::cerr << "Kvec:    " << sizeof(Kvec) << "\n";
  std::cerr << "Kloss:   " << sizeof(Kloss) << "\n";
- std::cerr << "Klayer:  " << sizeof(Klayer) << "\n";
+ std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
  return (K)0;

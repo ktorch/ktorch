@@ -246,9 +246,9 @@ struct TORCH_API Kvec : public Ktag {
  Kvec(const TensorVector& x) : v(std::move(x)) {a=Class::vector; c=Cast::tensor;}
 };
 
-struct TORCH_API Klayer : public Ktag {
- Layer m;       // name of single module or container of many modules, e.g. Sequential
- Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::layer; c=x;}
+struct TORCH_API Kmodule : public Ktag {
+ Layer m;       // single module or container of many modules, e.g. Sequential
+ Kmodule(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
 };
 
 struct TORCH_API Kloss : public Ktag {
@@ -270,7 +270,7 @@ struct TORCH_API Kmodel : public Ktag {
  Layer m;          // layer(s), e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Klayer *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ Kmodel(Kmodule *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
 };
 
 S krrbuf(const char *);
@@ -361,8 +361,8 @@ bool xtenarg(K,J,Tensor&,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
-Klayer* xlayer(K);
-Klayer* xlayer(K,J);
+Kmodule* xmodule(K);
+Kmodule* xmodule(K,J);
 Kloss* xloss(K);
 Kloss* xloss(K,J);
 Kopt* xoptim(K);
@@ -509,11 +509,13 @@ torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
 void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
 void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
 
-K klayer(Cast,const Layer&);
-K to(Klayer*,const TensorOptions&,bool);
+K kmodule(Cast,const Layer&);
+K to(Kmodule*,const TensorOptions&,bool);
+Layer&  lref(Ktag*);
 Module& mref(const Layer&);
-Module& mref(Klayer*);
+Module& mref(Kmodule*);
 Module& mref(Kmodel*);
+Module& mref(Ktag*);
 c10::optional<std::string>& mname_(Module&);
 std::string mlabel(const std::type_info&);
 K mget(bool,bool,const Module&);
@@ -595,12 +597,10 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Class>,8> kclass = {{
+ std::array<std::tuple<S,Class>,6> kclass = {{
   std::make_tuple(cs("tensor"),     Class::tensor),          
   std::make_tuple(cs("vector"),     Class::vector),
   std::make_tuple(cs("module"),     Class::module),
-  std::make_tuple(cs("layer"),      Class::layer),
-  std::make_tuple(cs("sequential"), Class::sequential),
   std::make_tuple(cs("loss"),       Class::loss),
   std::make_tuple(cs("optimizer"),  Class::optimizer),
   std::make_tuple(cs("model"),      Class::model)

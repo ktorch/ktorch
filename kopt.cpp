@@ -407,7 +407,7 @@ static K sgd(SGD* v) {  //return internal buffer state as k dictionary
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
 static TensorVector optparms(K x,J i) {
- if(auto *a=xlayer(x,i))
+ if(auto *a=xmodule(x,i))
   return mref(a->m).parameters();
  else if(auto *a=xvec(x,i))
   return *a;
