@@ -172,7 +172,7 @@ enum class Cast:char {
  kl,        l1,        margin,      mse,        multilabel, multimargin,
  multisoft, nll,       poissonloss, smoothl1,   softmargin, triplet,    
 
- adagrad, adam, lbfgs, rmsprop, sgd //optimizers
+ adagrad, adam, adamw, lbfgs, rmsprop, sgd //optimizers
 };
 
 enum class Tensormode:char {   // tensor creation modes
@@ -855,12 +855,13 @@ typedef struct {
   std::make_tuple(cs("zeroinf"),   Setting::zeroinf)
  }};
 
- std::array<std::tuple<S,Cast,double>,5> opt = {{        //optimizer: map symbol -> enum, default learning rate PATCH
-  std::make_tuple(cs("adagrad"), Cast::adagrad, 0.010),
-  std::make_tuple(cs("adam"),    Cast::adam,    0.001),
-  std::make_tuple(cs("lbfgs"),   Cast::lbfgs,   1.000),
-  std::make_tuple(cs("rmsprop"), Cast::rmsprop, 0.010),
-  std::make_tuple(cs("sgd"),     Cast::sgd,     0.010)
+ std::array<std::tuple<S,Cast>,6> opt = {{        //optimizer: map symbol -> enum
+  std::make_tuple(cs("adagrad"), Cast::adagrad),
+  std::make_tuple(cs("adam"),    Cast::adam),
+  std::make_tuple(cs("adamw"),   Cast::adamw),
+  std::make_tuple(cs("lbfgs"),   Cast::lbfgs),
+  std::make_tuple(cs("rmsprop"), Cast::rmsprop),
+  std::make_tuple(cs("sgd"),     Cast::sgd)
  }};
 
  std::array<std::tuple<S,Setting>,17> oset = {{         //optimizer setting: map symbol -> enum

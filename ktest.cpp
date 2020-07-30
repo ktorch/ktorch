@@ -9,6 +9,17 @@ bool msimple(K x) {
 }
 */
 
+KAPI optcheck(K x) {
+ auto o1=torch::optim::AdagradOptions();
+ auto o2=torch::optim::AdamOptions();
+ auto o3=torch::optim::AdamWOptions();
+ auto o4=torch::optim::LBFGSOptions();
+ auto o5=torch::optim::RMSpropOptions();
+ auto o6=torch::optim::SGDOptions(.01);
+ return K(0);
+}
+
+
 KAPI Xnone(K x,K y) {
  return kb(xnone(x,y->j));
 }

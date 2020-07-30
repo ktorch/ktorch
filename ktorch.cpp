@@ -1196,10 +1196,10 @@ KAPI kstate(K x) {
   if(!((g=xtag(x)) || (g=xtag(x,0))))
    AT_ERROR("state expects a pointer to previously allocated module, optimizer or loss function");
   switch(g->a) {
-   //case Class::sequential: return mstate(x);
-   case Class::loss:       return lossdict(g,x);
-   case Class::optimizer:  return optstate(g,x);
-   case Class::model:      return modelstate(g,x);
+   case Class::module:    return mget(env().alloptions,true,mref(g));
+   case Class::loss:      return lossdict(g,x);
+   case Class::optimizer: return optstate(g,x);
+   case Class::model:     return modelstate(g,x);
    case Class::tensor:
    case Class::vector:     AT_ERROR("state not defined for ",mapclass(g->a));
    default: return KERR("not a recognized pointer");
@@ -1467,8 +1467,7 @@ KAPI config(K x) {
 // -----------------------------------------------------------------------------------
 J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
  torch::DeviceGuard dg(d);
- // PATCH auto &g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU); // version 1.5
- auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);  // version 1.6
+ auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
  if(b) {
   if(null(s))
    g.seed();
@@ -1491,8 +1490,7 @@ KAPI kseed(K x) {
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
-   // PATCH if(null(s)) s=at::detail::getNonDeterministicRandom();  // version 1.5
-   if(null(s)) s=c10::detail::getNonDeterministicRandom(); // version 1.6
+   if(null(s)) s=c10::detail::getNonDeterministicRandom();
    torch::manual_seed(s);
    return (K)0;
   } else if(xdev(x,d)) {          // query initial random seed for given device
