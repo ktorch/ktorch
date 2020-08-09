@@ -8,6 +8,121 @@ bool msimple(K x) {
   return false;
 }
 */
+KAPI mrefs(K x) {
+ torch::nn::Tanh f;
+ std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
+ {
+  //torch::nn::AnyModule a(f);
+  //std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
+  torch::nn::Sequential q((AnyModule(f)));
+  std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
+ }
+ std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
+ return (K)0;
+}
+
+static void optmodule(torch::nn::ModuleList& m,const Module& a) {
+ for(const auto& i:m->children())
+  if(i.get() == &a)
+   std::cerr << "module: " << a.name() << " already in list of modules\n";
+}
+
+static void optmodule(torch::nn::ModuleList& m,const Module* a) {
+ for(const auto& i:m->children())
+  if(i.get() == a)
+   std::cerr << "module: " << a->name() << " already in list of modules\n";
+}
+
+KAPI mlist(K x) {
+ torch::nn::Linear l(2,3); mname_(*l.ptr())="linear";
+ torch::nn::Tanh f;
+ torch::nn::Sequential q({{"fn",torch::nn::ReLU()}, {"fc",torch::nn::Linear(1,2)}});
+ torch::nn::ModuleList m;
+ std::cerr << "size: " << m->size() << ", children: " << m->children().size() << "\n";
+ //optmodule(m,l.get());
+ optmodule(m,*l);
+ m->register_module(l->name(),l);
+ m->register_module("fn",f);
+ m->register_module("seq",q);
+ //optmodule(m,l.get());
+ optmodule(m,*l);
+ m->register_module("linear2",l);
+ std::cerr << "size: " << m->size() << ", children: " << m->children().size() << "\n";
+
+std::cerr << "\nchildren:\n";
+ for(auto& i:m->named_children()) {
+  std::cerr << i.key() << "\n";
+ }
+
+std::cerr << "\nmodules:\n";
+ for(auto& i:m->named_modules("",false)) {
+  std::cerr << i.key() << "\n";
+ }
+
+std::cerr << "\nparameters:\n";
+ for(auto& i:m->named_parameters()) {
+  std::cerr << i.key() << "\n";
+ }
+ return (K)0;
+}
+
+static bool parmname(const Tensor& t,const Module& m,S s) {
+  S nm=mname(m);
+  for(auto& p:m.named_parameters()) {
+   if(t.is_same(p.value())) {
+    std::cerr << "optimizer parameter: " << (nm ? nm : "") << "." << p.key() << "\n";
+    return true;
+   }
+  }
+ return false;
+}
+
+
+static void optgroup1(const Optimizer& o,const Module &m) {
+S s=nullptr;
+ J i=0;
+ std::cerr << "state size: " << o.state().size() << "\n";
+ std::cerr << "groups: " << o.param_groups().size() << "\n";
+ for(auto& g:o.param_groups()) {
+  std::cerr << "group[" << i << "] count: " << g.params().size() << "\n";
+  std::cerr << "has options: " << g.has_options() << "\n";
+  for(auto& p:g.params()) {
+   if(!parmname(p,m,s))
+    std::cerr << "failed to find parameter\n";
+   }
+  }
+}
+
+KAPI optgroup(K x) {
+ KTRY
+  TORCH_CHECK(!x->t && x->n==2,"expecting 2-element general list");
+  Kmodule *q=xmodule(x,0);
+  Kopt *o=xoptim(x,1);
+  TORCH_CHECK(q && o, "expecting module & optimizer");
+  auto& m=mref(q);
+/*
+  const auto d=m.named_modules("root");
+  for(auto &i:d) {
+   std::cerr << i.key() << "\n";
+   std::cerr << *i.value() << "\n";
+   for(auto& j:i.value()->named_parameters()) {
+    std::cerr << j.key() << "\n";
+   }
+  }
+  std::cerr << " ---------- top-level only -------------- \n";
+*/
+  std::string s;
+  if(mname_(m).has_value()) s=mname(m);
+ 
+  for(auto& p:m.named_parameters()) {
+   std::cerr << s << "." << p.key() << "\n";
+  }
+
+  optgroup1(*o->o,m);
+  
+  return (K)0;
+ KCATCH("optgroup");
+}
 
 KAPI optcheck(K x) {
  auto o1=torch::optim::AdagradOptions();
@@ -16,6 +131,10 @@ KAPI optcheck(K x) {
  auto o4=torch::optim::LBFGSOptions();
  auto o5=torch::optim::RMSpropOptions();
  auto o6=torch::optim::SGDOptions(.01);
+ double f=4.3333333333;
+ bool b=x->g;
+ auto v=b ? static_cast<int>(f) : static_cast<float>(f);
+ std::cerr << "v: " << v << "\n";
  return K(0);
 }
 
@@ -87,6 +206,46 @@ KAPI knull(K x) {
 }
 // void dictadd(K x, const char* s, K v){std::cerr << "dictadd\n"; K *k=kK(x); js(&k[0],cs(s)); std::cerr << "mid..";jk(&k[1],v); std::cerr << "dict exit\n";}
 
+// --------------------------------------------------------------------------------------
+//  parmsize
+// --------------------------------------------------------------------------------------
+J parmsize(bool b,Cast c,const torch::optim::OptimizerParamState& p) {
+ switch(c) {
+  case Cast::adagrad: {
+   auto s=static_cast<const torch::optim::AdagradParamState&>(p);
+   return b ?   objnum(s.step()) +   objnum(s.sum())
+            : objbytes(s.step()) + objbytes(s.sum());
+  }
+  case Cast::rmsprop: {
+   auto s=static_cast<const torch::optim::RMSpropParamState&>(p);
+   return b ?   objnum(s.step()) +  objnum(s.square_avg()) +   objnum(s.momentum_buffer()) +   objnum(s.grad_avg())
+            : objbytes(s.step()) +objbytes(s.square_avg()) + objbytes(s.momentum_buffer()) + objbytes(s.grad_avg());
+  }
+  case Cast::sgd: {
+   auto s=static_cast<const torch::optim::SGDParamState&>(p);
+   return b ? objnum(s.momentum_buffer()) : objbytes(s.momentum_buffer());
+  }
+  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
+ }
+}
+
+J parmsize(bool b,Kopt* x) {
+ J n=0; const auto& s=x->o->state();
+ for(const auto& p:s)
+  n+=parmsize(b,x->c,*p.second);
+ return n;
+}
+
+// --------------------------------------------------------------------------------------
+//  parmstate
+// --------------------------------------------------------------------------------------
+template<typename S> static void parmstate(K x,const S& s) {
+ dictadd(x, "step",           kj(s.step()));
+ dictadd(x, "exp_avg",        kget(s.exp_avg()));
+ dictadd(x, "exp_avg_sq",     kget(s.exp_avg_sq()));
+ dictadd(x, "max_exp_avg_sq", kget(s.max_exp_avg_sq()));
+}
+
 K parmstate(Cast c,const torch::optim::OptimizerParamState& p) {
  K x=xD(ktn(KS,0),ktn(0,0));
  switch(c) {
@@ -96,14 +255,13 @@ K parmstate(Cast c,const torch::optim::OptimizerParamState& p) {
    dictadd(x, "sum",  kget(s.sum()));
    break;
   }
-  case Cast::adam: {
-   auto s=static_cast<const torch::optim::AdamParamState&>(p);
-   dictadd(x, "step",           kj(s.step()));
-   dictadd(x, "exp_avg",        kget(s.exp_avg()));
-   dictadd(x, "exp_avg_sq",     kget(s.exp_avg_sq()));
-   dictadd(x, "max_exp_avg_sq", kget(s.max_exp_avg_sq()));
+  case Cast::adam: 
+  case Cast::adamw:
+   if(c==Cast::adam)
+    parmstate(x, static_cast<const torch::optim::AdamParamState&>(p));
+   else
+    parmstate(x, static_cast<const torch::optim::AdamWParamState&>(p));
    break;
-  }
   case Cast::lbfgs: {
    auto s=static_cast<const torch::optim::LBFGSParamState&>(p);
    dictadd(x, "func_evals",     kj(s.func_evals()));

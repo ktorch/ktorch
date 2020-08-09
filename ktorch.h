@@ -457,6 +457,19 @@ K dvv(K,J);
 
 S objdevice(const Tensor&);
 S objdevice(const TensorVector&,S);
+J objnum(int64_t);
+J objnum(double);
+J objnum(const Tensor&);
+J objnum(const TensorVector&);
+J objnum(const TensorDeque&);
+J objnum(const Module&);
+J objbytes(int64_t);
+J objbytes(double);
+J objbytes(const Tensor&);
+J objbytes(const TensorVector&);
+J objbytes(const TensorDeque&);
+J objbytes(const Module&);
+
 bool kfree(K);
 bool kfree(K,J);
 void fn(K,const char*,void*,I);
@@ -516,7 +529,12 @@ Module& mref(const Layer&);
 Module& mref(Kmodule*);
 Module& mref(Kmodel*);
 Module& mref(Ktag*);
+const
+c10::optional<std::string>& mname_(const Module&);
 c10::optional<std::string>& mname_(Module&);
+S mname(const Module&);
+S mname(const Layer&);
+S mname(Kmodule*);
 std::string mlabel(const std::type_info&);
 K mget(bool,bool,const Module&);
 K mforward(Layer&,K);

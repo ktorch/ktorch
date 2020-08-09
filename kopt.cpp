@@ -20,7 +20,6 @@ using SGDOptions     = torch::optim::SGDOptions;
 // kopt - given optimizer type & shared pointer to newly created optimizer, return k ptr
 // omap - map to/from optimizer symbol/enumeration
 // oset - optimizer settings, map sym <-> enum
-// osize - size of buffers required (not counting trailing parameters without gradients)
 // --------------------------------------------------------------------------------------
 K kopt(Cast x,const Optptr& y) {return kptr(new Kopt(x,y));}
 
@@ -46,15 +45,6 @@ static S oset(Setting e) {
  for(auto& m:env().oset) if(e==std::get<1>(m)) return std::get<0>(m);
  AT_ERROR("unrecognized optimizer setting: ",(I)e);
 }
-
-/*
-static size_t osize(const TensorVector& p) {
- size_t i,n=0;
- for(i=0; i<p.size(); ++i) 
-  if(p.at(i).grad().defined()) n=i+1;
- return n;
-}
-*/
 
 // --------------------------------------------------------------------------------------
 // bget - find buffer (vector of longs/tensors) from dictionary given name
@@ -581,8 +571,9 @@ KAPI lr(K x) {
 // ---------------------------------------------------------------------------------------
 K optattr(const Optptr& o,Ktype k,Attr a) {
  switch(a) {
-  case Attr::ptr:     return kj((intptr_t)o.get());
-  case Attr::ref:     return kj(o.use_count());
+  case Attr::ptr:  return kj((intptr_t)o.get());
+  case Attr::ref:  return kj(o.use_count());
+  case Attr::size: return kj(o->state().size());
   default: AT_ERROR(mapattr(a),": not implemented for optimizers");
  }
 }

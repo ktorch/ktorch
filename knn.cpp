@@ -23,7 +23,9 @@ Module& mref(Kmodule* x) {return mref(x->m);}
 Module& mref(Kmodel* x) {return mref(x->m);}
 Module& mref(Ktag *g) {return mref(lref(g));}
 
-c10::optional<std::string>& mname_(Module& m) {return access_private::name_(m);}
+const
+c10::optional<std::string>& mname_(const Module& m) {return access_private::name_(m);}
+c10::optional<std::string>& mname_(      Module& m) {return access_private::name_(m);}
 S mname(const Module& m) {auto& s=access_private::name_(m); return const_cast<char*>(s ? (*s).c_str() : nullptr);}
 S mname(const Layer& m) {return mname(mref(m));}
 S mname(Kmodule* x) {return mname(x->m);}

@@ -1117,44 +1117,52 @@ static S objdevice(Ktag *x) {
  }
 }
 
-static J objsize(Kopt *x) {J n=0; for(const auto& a:x->o->param_groups()) n+=a.params().size(); return n;}
-
 static K objsize(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    return tensorsize(((Kten*)x)->t, Attr::size);
   case Class::vector:    return kj(((Kvec*)x)->v.size());
   case Class::module:    return kj(mref((Kmodule*)x).modules().size());
   case Class::model:     return kj(mref((Kmodel*)x).modules().size());
-  case Class::optimizer: return kj(objsize((Kopt*)x));
+  case Class::optimizer: return kj(((Kopt*)x)->o->state().size());
   default: return ktn(0,0);
  }
 }
 
-static J objnum(const Tensor &t) {return t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize();}
-static J objnum(const TensorVector &v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
-static J objnum(const Module &m) {return objnum(m.parameters());}
+J objnum(int64_t x) {return 1;}
+J objnum(double  x) {return 1;}
+J objnum(const Tensor& t) {return t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize();}
+J objnum(const TensorVector& v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
+J objnum(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
+J objnum(const Module& m) {return objnum(m.parameters());}
+
+J parmsize(bool,Kopt*);
 
 static J objnum(Ktag *x) {
  switch(x->a) {
-  case Class::tensor: {auto& a=((Kten*)x)->t; return objnum(a);}
-  case Class::vector: {auto& a=((Kvec*)x)->v; return objnum(a);}
-  case Class::module: return objnum(mref((Kmodule*)x));
-  case Class::model:  return objnum(mref((Kmodel*)x));
+  case Class::tensor:    {auto& a=((Kten*)x)->t; return objnum(a);}
+  case Class::vector:    {auto& a=((Kvec*)x)->v; return objnum(a);}
+  case Class::module:    return objnum(mref((Kmodule*)x));
+  case Class::optimizer: return parmsize(true, (Kopt*)x);
+  case Class::model:     return objnum(mref((Kmodel*)x));
   default: return nj;
  }
 }
 
-static J objbytes(const Storage &s) {return s.nbytes();}
-static J objbytes(const Tensor &t) {return t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage());}
-static J objbytes(const TensorVector &v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
-static J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
+J objbytes(int64_t x) {return sizeof(int64_t);}
+J objbytes(double  x) {return sizeof(double);}
+J objbytes(const Storage& s) {return s.nbytes();}
+J objbytes(const Tensor& t) {return t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage());}
+J objbytes(const TensorVector& v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+J objbytes(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
 
 static J objbytes(Ktag *x) {
  switch(x->a) {
   case Class::tensor: {auto& a=((Kten*)x)->t; return objbytes(a);}
   case Class::vector: {auto& a=((Kvec*)x)->v; return objbytes(a);}
-  case Class::module: return objbytes(mref((Kmodule*)x));
-  case Class::model:  return objbytes(mref((Kmodel*)x));
+  case Class::module:    return objbytes(mref((Kmodule*)x));
+  case Class::optimizer: return parmsize(false, (Kopt*)x);
+  case Class::model:     return objbytes(mref((Kmodel*)x));
   default: return nj;
  }
 }
