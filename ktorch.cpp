@@ -1091,28 +1091,29 @@ KAPI Kfree(K x){
 }
 
 // -----------------------------------------------------------------------------------------
-// storsize - storage up to version 1.5 tracked element count and size, now tracks bytes
-// -----------------------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------------------
 // objdevice - return tensor device, or first device found if object w'multiple tensors
-// objsize - size vector of tensor, else count of parameters/modules
+// objsize - size tensor, no. of tensors in vector, else count of parameters
 // objnum - number of elements in tensor's underlying storage or sum across tensors
 // objbytes - bytes allocated in tensor's storage or sum acress tensors/parms/buffers
 // kobj - k api fn returns table of ptr,object,device,dtype,size,number of elements
 // -----------------------------------------------------------------------------------------
 S objdevice(const Tensor& t) {return tensorsym(t,Attr::device);}
 S objdevice(const TensorVector& v,S s) {return v.size() ? objdevice(v[0]) : s;}
+S objdevice(const Optimizer& o,S s) {
+ for(const auto& g:o.param_groups())
+  if(g.params().size()) return objdevice(g.params(),s);
+ return s;
+}
 
 static S objdevice(Ktag *x) {
  S s=cs("");
  switch(x->a) {
-  case Class::tensor:     return objdevice(((Kten*)x)->t);
-  case Class::vector:     return objdevice(((Kvec*)x)->v, s);
-  case Class::optimizer:  return objdevice(((Kopt*)x)->o->parameters(), s);
-  case Class::loss:       return objdevice(((Kloss*)x)->m.ptr()->buffers(), s);
-  case Class::module:     return objdevice(mref((Kmodule*)x).parameters(), s);
-  case Class::model:      return objdevice(mref((Kmodel*)x).parameters(), s);
+  case Class::tensor:    return objdevice(((Kten*)x)->t);
+  case Class::vector:    return objdevice(((Kvec*)x)->v, s);
+  case Class::optimizer: return objdevice(*((Kopt*)x)->o, s);
+  case Class::loss:      return objdevice(((Kloss*)x)->m.ptr()->buffers(), s);
+  case Class::module:    return objdevice(mref((Kmodule*)x).parameters(), s);
+  case Class::model:     return objdevice(mref((Kmodel*)x).parameters(), s);
   default: return s;
  }
 }
@@ -1121,29 +1122,33 @@ static K objsize(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    return tensorsize(((Kten*)x)->t, Attr::size);
   case Class::vector:    return kj(((Kvec*)x)->v.size());
-  case Class::module:    return kj(mref((Kmodule*)x).modules().size());
-  case Class::model:     return kj(mref((Kmodel*)x).modules().size());
+  case Class::module:    return kj(mref((Kmodule*)x).parameters().size());
+  case Class::loss:      return kj(mref((Kloss*)x).parameters().size());
   case Class::optimizer: return kj(((Kopt*)x)->o->state().size());
+  case Class::model:     return kj(mref((Kmodel*)x).parameters().size());
   default: return ktn(0,0);
  }
 }
 
 J objnum(int64_t x) {return 1;}
 J objnum(double  x) {return 1;}
-J objnum(const Tensor& t) {return t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize();}
+J objnum(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize()) : 0;}
 J objnum(const TensorVector& v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
+J objnum(const c10::optional<TensorVector>& v) {return v ? objnum(*v) : 0;}
 J objnum(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
-J objnum(const Module& m) {return objnum(m.parameters());}
-
-J parmsize(bool,Kopt*);
+J objnum(const Module& m) {return objnum(m.parameters()) + objnum(m.buffers());}
+static J objnum(Cast c,const Optimizer& o) {return parmsize(true,c,o);}
+static J objnum(Kopt* x) {return objnum(x->c,*x->o);}
+static J objnum(Kmodel *x) {return objnum(mref(x)) + objnum(x->oc,*x->o);}
 
 static J objnum(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    {auto& a=((Kten*)x)->t; return objnum(a);}
   case Class::vector:    {auto& a=((Kvec*)x)->v; return objnum(a);}
   case Class::module:    return objnum(mref((Kmodule*)x));
-  case Class::optimizer: return parmsize(true, (Kopt*)x);
-  case Class::model:     return objnum(mref((Kmodel*)x));
+  case Class::loss:      return objnum(*((Kloss*)x)->m.ptr());
+  case Class::optimizer: return objnum((Kopt*)x);
+  case Class::model:     return objnum((Kmodel*)x);
   default: return nj;
  }
 }
@@ -1151,18 +1156,23 @@ static J objnum(Ktag *x) {
 J objbytes(int64_t x) {return sizeof(int64_t);}
 J objbytes(double  x) {return sizeof(double);}
 J objbytes(const Storage& s) {return s.nbytes();}
-J objbytes(const Tensor& t) {return t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage());}
+J objbytes(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage())) : 0;}
 J objbytes(const TensorVector& v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
 J objbytes(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
+static J objbytes(Cast c,const Optimizer& o) {return parmsize(false,c,o);}
+static J objbytes(Kopt* x) {return objbytes(x->c,*x->o);}
+static J objbytes(Kmodel *x) {return objbytes(mref(x)) + objbytes(x->oc,*x->o);}
 
 static J objbytes(Ktag *x) {
  switch(x->a) {
   case Class::tensor: {auto& a=((Kten*)x)->t; return objbytes(a);}
   case Class::vector: {auto& a=((Kvec*)x)->v; return objbytes(a);}
   case Class::module:    return objbytes(mref((Kmodule*)x));
-  case Class::optimizer: return parmsize(false, (Kopt*)x);
-  case Class::model:     return objbytes(mref((Kmodel*)x));
+  case Class::loss:      return objbytes(*((Kloss*)x)->m.ptr());
+  case Class::optimizer: return objbytes((Kopt*)x);
+  case Class::model:     return objbytes((Kmodel*)x);
   default: return nj;
  }
 }

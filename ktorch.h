@@ -461,12 +461,14 @@ J objnum(int64_t);
 J objnum(double);
 J objnum(const Tensor&);
 J objnum(const TensorVector&);
+J objnum(const c10::optional<TensorVector>&);
 J objnum(const TensorDeque&);
 J objnum(const Module&);
 J objbytes(int64_t);
 J objbytes(double);
 J objbytes(const Tensor&);
 J objbytes(const TensorVector&);
+J objbytes(const c10::optional<TensorVector>&);
 J objbytes(const TensorDeque&);
 J objbytes(const Module&);
 
@@ -529,6 +531,8 @@ Module& mref(const Layer&);
 Module& mref(Kmodule*);
 Module& mref(Kmodel*);
 Module& mref(Ktag*);
+Module& mref(Kloss*);
+
 const
 c10::optional<std::string>& mname_(const Module&);
 c10::optional<std::string>& mname_(Module&);
@@ -552,9 +556,10 @@ K lossattr(const AnyModule&,Ktype,Attr);
 void lossfn(K);
 
 // optimization functions:
+J parmsize(bool,Cast,const Optimizer&);
 K kopt(Cast,const Optptr&);
 K optstate(Ktag*,K);
-K optstate(bool,bool,Cast,Optimizer*);
+K optstate(bool,bool,Cast,const Optimizer&);
 K optattr(const Optptr&,Ktype,Attr);
 void optstep(Cast,Optptr&);
 void optstep(Kopt*);

@@ -19,9 +19,10 @@ Layer& lref(Ktag *g) {
 }
 
 Module& mref(const Layer& x) {return c10::visit(make_overload([](const auto& x)->Module& {return *x.ptr();}), x);}
-Module& mref(Kmodule* x) {return mref(x->m);}
-Module& mref(Kmodel* x) {return mref(x->m);}
-Module& mref(Ktag *g) {return mref(lref(g));}
+Module& mref(Kmodule* x) {return mref(x->m);}     // module reference from Layer variant
+Module& mref(Kmodel* x)  {return mref(x->m);}
+Module& mref(Ktag *g)    {return mref(lref(g));}
+Module& mref(Kloss* x)   {return *x->m.ptr();}    // module reference from AnyModule
 
 const
 c10::optional<std::string>& mname_(const Module& m) {return access_private::name_(m);}

@@ -149,6 +149,14 @@ static K adagrad(bool a,Adagrad* v) { //return all or non-default options as k d
  return x;
 }
 
+static K adagrad(bool a,const AdagradOptions& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); AdagradOptions d;
+ if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
+ if(a || d.lr_decay()     != o.lr_decay())     OPTSET(x, lrdecay, kf(o.lr_decay()));
+ if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,   kf(o.weight_decay()));
+ return x;
+}
+
 static K adagrad(Adagrad* v) {  //return internal buffer state as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0));
 /* PATCH
@@ -161,7 +169,7 @@ static K adagrad(Adagrad* v) {  //return internal buffer state as k dictionary
 // ----------------------------------------------------------------------------------------
 // adam - parse args (lr;beta1;beta2;eps;wtdecay;amsgrad) or (..;name-value pairs/dict)
 // ----------------------------------------------------------------------------------------
-static void adam(K x,J i,AdamOptions& o) {
+template<typename A> static void adam(K x,J i,A& o) {
  Pairs p; J n=xargc(x,i,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
@@ -178,12 +186,12 @@ static void adam(K x,J i,AdamOptions& o) {
    case Setting::eps:     f=pdouble(p); if(f==f) o.eps(f); break;
    case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
    case Setting::amsgrad: o.amsgrad(pbool(p)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for Adagrad optimization"); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for Adam optimization"); break;
   }
 }
 
-static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
- auto o=std::make_shared<Adam>(w,a);
+template<typename O,typename A> static Optptr adam(const TensorVector& w,const A& a,K y) {
+ auto o=std::make_shared<O>(w,a);
  auto n=o->state().size();
  if(y && n) {
 /* PATCH
@@ -196,8 +204,19 @@ static Optptr adam(const TensorVector& w,const AdamOptions& a,K y) {
  return o;
 }
 
-static K adam(bool a,Adam* v) { //return all or non-default options as k dictionary
- K x=xD(ktn(KS,0),ktn(0,0)); AdamOptions d; auto& o=static_cast<AdamOptions&>(v->defaults());
+template<typename O> static K adam(bool a,const Optimizer& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); O d; const auto& v=static_cast<const O&>(o.defaults());
+ if(a || d.lr()           != v.lr())                       OPTSET(x, lr,      kf(v.lr()));
+ if(a || std::get<0>(d.betas()) != std::get<0>(v.betas())) OPTSET(x, beta1,   kf(std::get<0>(v.betas())));
+ if(a || std::get<1>(d.betas()) != std::get<1>(v.betas())) OPTSET(x, beta2,   kf(std::get<1>(v.betas())));
+ if(a || d.eps()          != v.eps())                      OPTSET(x, eps,     kf(v.eps()));
+ if(a || d.weight_decay() != v.weight_decay())             OPTSET(x, decay,   kf(v.weight_decay()));
+ if(a || d.amsgrad()      != v.amsgrad())                  OPTSET(x, amsgrad, kb(v.amsgrad()));
+ return x;
+}
+
+template<typename O> static K adam(bool a,const O& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); const O d; 
  if(a || d.lr()           != o.lr())                       OPTSET(x, lr,      kf(o.lr()));
  if(a || std::get<0>(d.betas()) != std::get<0>(o.betas())) OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
  if(a || std::get<1>(d.betas()) != std::get<1>(o.betas())) OPTSET(x, beta2,   kf(std::get<1>(o.betas())));
@@ -207,7 +226,8 @@ static K adam(bool a,Adam* v) { //return all or non-default options as k diction
  return x;
 }
 
-static K adam(Adam* v) {  //return internal buffer state as k dictionary
+
+static K adam(const Optimizer& o) {  //return internal buffer state as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0));
 /* PATCH
  OPTBUFFER(x,v,step_buffers);
@@ -261,6 +281,17 @@ static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
 
 static K lbfgs(bool a,LBFGS* v) { //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); LBFGSOptions d; auto& o=static_cast<LBFGSOptions&>(v->defaults());
+ if(a || d.lr()               != o.lr())               OPTSET(x, lr,        kf(o.lr()));
+ if(a || d.max_iter()         != o.max_iter())         OPTSET(x, iter,      kj(o.max_iter()));
+ // PATCH: if(a || d.max_eval()         != o.max_eval())         OPTSET(x, eval,      kj(o.max_eval()));
+ if(a || d.tolerance_grad()   != o.tolerance_grad())   OPTSET(x, gradtol,   kf(o.tolerance_grad()));
+ if(a || d.tolerance_change() != o.tolerance_change()) OPTSET(x, changetol, kf(o.tolerance_change()));
+ if(a || d.history_size()     != o.history_size())     OPTSET(x, history,   kj(o.history_size()));
+ return x;
+}
+
+static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); LBFGSOptions d;
  if(a || d.lr()               != o.lr())               OPTSET(x, lr,        kf(o.lr()));
  if(a || d.max_iter()         != o.max_iter())         OPTSET(x, iter,      kj(o.max_iter()));
  // PATCH: if(a || d.max_eval()         != o.max_eval())         OPTSET(x, eval,      kj(o.max_eval()));
@@ -332,6 +363,17 @@ static K rmsprop(bool a,RMSprop* v) { //return all or non-default options as k d
  return x;
 }
 
+static K rmsprop(bool a,const RMSpropOptions& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); RMSpropOptions d;
+ if(a || d.lr()           != o.lr())           OPTSET(x, lr,       kf(o.lr()));
+ if(a || d.alpha()        != o.alpha())        OPTSET(x, alpha,    kf(o.alpha()));
+ if(a || d.eps()          != o.eps())          OPTSET(x, eps,      kf(o.eps()));
+ if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,    kf(o.weight_decay()));
+ if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum, kf(o.momentum()));
+ if(a || d.centered()     != o.centered())     OPTSET(x, centered, kb(o.centered()));
+ return x;
+}
+
 static K rmsprop(RMSprop* v) {  //return internal buffer state as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0));
 /*
@@ -385,6 +427,16 @@ static K sgd(bool a,SGD* v) { //return all or non-default options as k dictionar
  return x;
 }
 
+static K sgd(bool a,const SGDOptions& o) { //return all or non-default options as k dictionary
+ K x=xD(ktn(KS,0),ktn(0,0)); SGDOptions d(SGDlr);
+ if(a || d.lr()           != o.lr())           OPTSET(x, lr,        kf(o.lr()));
+ if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum,  kf(o.momentum()));
+ if(a || d.dampening()    != o.dampening())    OPTSET(x, dampening, kf(o.dampening()));
+ if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,     kf(o.weight_decay()));
+ if(a || d.nesterov()     != o.nesterov())     OPTSET(x, nesterov,  kb(o.nesterov()));
+ return x;
+}
+
 static K sgd(SGD* v) {  //return internal buffer state as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0));
 /* PATCH
@@ -392,6 +444,75 @@ static K sgd(SGD* v) {  //return internal buffer state as k dictionary
  OPTBUFFER(x,v,momentum_buffers);
 */
  return x;
+}
+
+// -------------------------------------------------------------------------------
+//  optdict - 
+// -------------------------------------------------------------------------------
+K optdict(bool a,Cast c,const Optimizer& o) {
+ for(const auto&g:o.param_groups())
+  switch(c) {
+   case Cast::adagrad: adagrad(a, static_cast<const AdagradOptions&>(g.options())); break;
+   case Cast::adam:       adam(a, static_cast<const AdamOptions&>   (g.options())); break;
+   case Cast::adamw:      adam(a, static_cast<const AdamWOptions&>  (g.options())); break;
+   case Cast::lbfgs:     lbfgs(a, static_cast<const LBFGSOptions&>  (g.options())); break;
+   case Cast::rmsprop: rmsprop(a, static_cast<const RMSpropOptions&>(g.options())); break;
+   case Cast::sgd:         sgd(a, static_cast<const SGDOptions&>    (g.options())); break;
+   default: AT_ERROR("Unrecognized optimizer: ",(I)c);
+  }
+ return (K)0;
+}
+
+// -------------------------------------------------------------------------------
+//  parmsize - number of elements or bytes of optimizer buffers for each parameter
+// -------------------------------------------------------------------------------
+template<typename S> static J parmsize(bool b,Cast c,const S& s) {
+ return b ?   objnum(s.step()) +   objnum(s.exp_avg()) +   objnum(s.exp_avg_sq()) +   objnum(s.max_exp_avg_sq())
+          : objbytes(s.step()) + objbytes(s.exp_avg()) + objbytes(s.exp_avg_sq()) + objbytes(s.max_exp_avg_sq());
+}
+
+static J parmsize(bool b,Cast c,const torch::optim::OptimizerParamState& p) {
+ switch(c) {
+  case Cast::adagrad: {
+   auto s=static_cast<const torch::optim::AdagradParamState&>(p);
+   return b ?   objnum(s.step()) +   objnum(s.sum())
+            : objbytes(s.step()) + objbytes(s.sum());
+  }
+  case Cast::adam:
+  case Cast::adamw:
+   return (c==Cast::adam) ? parmsize(b, c, static_cast<const torch::optim::AdamParamState&>(p))
+                          : parmsize(b, c, static_cast<const torch::optim::AdamWParamState&>(p));
+  case Cast::lbfgs: {
+   auto s=static_cast<const torch::optim::LBFGSParamState&>(p);
+   if(b)
+    return objnum(s.func_evals()) + objnum(s.n_iter())   + objnum(s.t()) + objnum(s.prev_loss()) +  // scalars
+           objnum(s.d())          + objnum(s.H_diag())   + objnum(s.prev_flat_grad()) +             // tensors
+           objnum(s.old_dirs())   + objnum(s.old_stps()) + objnum(s.ro()) +                         // deques
+           objnum(s.al());                                                      // optional vector of tensors
+   else
+    return objbytes(s.func_evals()) + objbytes(s.n_iter())   + objbytes(s.t()) + objbytes(s.prev_loss()) +  // scalars
+           objbytes(s.d())          + objbytes(s.H_diag())   + objbytes(s.prev_flat_grad()) +               // tensors
+           objbytes(s.old_dirs())   + objbytes(s.old_stps()) + objbytes(s.ro()) +                           // deques
+           objbytes(s.al());                                                            // optional vector of tensors
+  }
+  case Cast::rmsprop: {
+   auto s=static_cast<const torch::optim::RMSpropParamState&>(p);
+   return b ?   objnum(s.step()) +  objnum(s.square_avg()) +   objnum(s.momentum_buffer()) +   objnum(s.grad_avg())
+            : objbytes(s.step()) +objbytes(s.square_avg()) + objbytes(s.momentum_buffer()) + objbytes(s.grad_avg());
+  }
+  case Cast::sgd: {
+   auto s=static_cast<const torch::optim::SGDParamState&>(p);
+   return b ? objnum(s.momentum_buffer()) : objbytes(s.momentum_buffer());
+  }
+  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
+ }
+}
+
+J parmsize(bool b,Cast c,const Optimizer& o) {
+ J n=0;
+ for(const auto& p:o.state())
+  n+=parmsize(b,c,*p.second);
+ return n;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -424,7 +545,8 @@ static K optinit(S s,K x,K y) {
  auto w=optparms(x,1); Optptr o;
  switch(c) {
   case Cast::adagrad: {auto a=AdagradOptions();  adagrad(x,i,a); o=adagrad(w,a,y); break;}
-  case Cast::adam:    {auto a=AdamOptions();     adam(x,i,a);    o=adam(w,a,y);    break;}
+  case Cast::adam:    {auto a=AdamOptions();     adam(x,i,a);    o=adam<Adam>(w,a,y);  break;}
+  case Cast::adamw:   {auto a=AdamWOptions();    adam(x,i,a);    o=adam<AdamW>(w,a,y); break;}
   case Cast::lbfgs:   {auto a=LBFGSOptions();    lbfgs(x,i,a);   o=lbfgs(w,a,y);   break;}
   case Cast::rmsprop: {auto a=RMSpropOptions();  rmsprop(x,i,a); o=rmsprop(w,a,y); break;}
   case Cast::sgd:     {auto a=SGDOptions(SGDlr); sgd(x,i,a);     o=sgd(w,a,y);     break;}
@@ -433,14 +555,15 @@ static K optinit(S s,K x,K y) {
  return kopt(c,o);
 }
 
-K optstate(bool a,bool b,Cast c,Optimizer *o) {
+K optstate(bool a,bool b,Cast c,const Optimizer &o) {
  K k,v,x,y;
  switch(c) {
-  case Cast::adagrad: {auto m=(Adagrad*)o; x=adagrad(a,m); if(b) y=adagrad(m); break;}
-  case Cast::adam:    {auto m=(Adam*)o;    x=adam(a,m);    if(b) y=adam(m);    break;}
-  case Cast::lbfgs:   {auto m=(LBFGS*)o;   x=lbfgs(a,m);   if(b) y=lbfgs(m);   break;}
-  case Cast::rmsprop: {auto m=(RMSprop*)o; x=rmsprop(a,m); if(b) y=rmsprop(m); break;}
-  case Cast::sgd:     {auto m=(SGD*)o;     x=sgd(a,m);     if(b) y=sgd(m);     break;}
+  //case Cast::adagrad: {auto m=(Adagrad*)o; x=adagrad(a,m); if(b) y=adagrad(m); break;}
+  case Cast::adam:      x=adam<AdamOptions>(a,o);   if(b) y=adam(o);    break;
+  case Cast::adamw:     x=adam<AdamWOptions>(a,o);  if(b) y=adam(o);    break;
+  //case Cast::lbfgs:   {auto m=(LBFGS*)o;   x=lbfgs(a,m);   if(b) y=lbfgs(m);   break;}
+  //case Cast::rmsprop: {auto m=(RMSprop*)o; x=rmsprop(a,m); if(b) y=rmsprop(m); break;}
+  //case Cast::sgd:     {auto m=(SGD*)o;     x=sgd(a,m);     if(b) y=sgd(m);     break;}
   default: AT_ERROR("unrecognized optimizer; ",(I)c); break;
  }
  k=ktn(KS,2+b),v=ktn(0,2+b);
@@ -456,7 +579,7 @@ K optstate(bool a,bool b,Cast c,Optimizer *o) {
 K optstate(Ktag *g,K x) {
  bool a=env().alloptions;
  if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return optstate(a,true,g->c,((Kopt*)g)->o.get());
+  return optstate(a,true,g->c,*((Kopt*)g)->o);
  else
   AT_ERROR("optimizer state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
 }
@@ -478,7 +601,7 @@ KAPI opt(K x) {
    K d=kK(x)[0];
    return optinit(statemodule(d),stateoptions(d),statebuffers(d));
   } else if((o=xoptim(x)) || (xbool(x,1,a) && (o=xoptim(x,0)) && x->n==2)) {
-   return optstate(a,false,o->c,o->get());
+   return optstate(a,false,o->c,*o->o);
   } else if((o=xoptim(x,0)) && xptr(x,1) && x->n==2) {
    return o->get()->add_parameters(optparms(x,1)), (K)0;
   } else if((m=xmodel(x))) {

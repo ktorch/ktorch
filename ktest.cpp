@@ -207,36 +207,6 @@ KAPI knull(K x) {
 // void dictadd(K x, const char* s, K v){std::cerr << "dictadd\n"; K *k=kK(x); js(&k[0],cs(s)); std::cerr << "mid..";jk(&k[1],v); std::cerr << "dict exit\n";}
 
 // --------------------------------------------------------------------------------------
-//  parmsize
-// --------------------------------------------------------------------------------------
-J parmsize(bool b,Cast c,const torch::optim::OptimizerParamState& p) {
- switch(c) {
-  case Cast::adagrad: {
-   auto s=static_cast<const torch::optim::AdagradParamState&>(p);
-   return b ?   objnum(s.step()) +   objnum(s.sum())
-            : objbytes(s.step()) + objbytes(s.sum());
-  }
-  case Cast::rmsprop: {
-   auto s=static_cast<const torch::optim::RMSpropParamState&>(p);
-   return b ?   objnum(s.step()) +  objnum(s.square_avg()) +   objnum(s.momentum_buffer()) +   objnum(s.grad_avg())
-            : objbytes(s.step()) +objbytes(s.square_avg()) + objbytes(s.momentum_buffer()) + objbytes(s.grad_avg());
-  }
-  case Cast::sgd: {
-   auto s=static_cast<const torch::optim::SGDParamState&>(p);
-   return b ? objnum(s.momentum_buffer()) : objbytes(s.momentum_buffer());
-  }
-  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
- }
-}
-
-J parmsize(bool b,Kopt* x) {
- J n=0; const auto& s=x->o->state();
- for(const auto& p:s)
-  n+=parmsize(b,x->c,*p.second);
- return n;
-}
-
-// --------------------------------------------------------------------------------------
 //  parmstate
 // --------------------------------------------------------------------------------------
 template<typename S> static void parmstate(K x,const S& s) {
