@@ -1137,7 +1137,7 @@ J objnum(const TensorVector& v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 J objnum(const c10::optional<TensorVector>& v) {return v ? objnum(*v) : 0;}
 J objnum(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
 J objnum(const Module& m) {return objnum(m.parameters()) + objnum(m.buffers());}
-static J objnum(Cast c,const Optimizer& o) {return parmsize(true,c,o);}
+static J objnum(Cast c,const Optimizer& o) {return buffersize(true,c,o);}
 static J objnum(Kopt* x) {return objnum(x->c,*x->o);}
 static J objnum(Kmodel *x) {return objnum(mref(x)) + objnum(x->oc,*x->o);}
 
@@ -1161,7 +1161,7 @@ J objbytes(const TensorVector& v) {J n=0; for(auto& t:v) n+=objbytes(t); return 
 J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
 J objbytes(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
-static J objbytes(Cast c,const Optimizer& o) {return parmsize(false,c,o);}
+static J objbytes(Cast c,const Optimizer& o) {return buffersize(false,c,o);}
 static J objbytes(Kopt* x) {return objbytes(x->c,*x->o);}
 static J objbytes(Kmodel *x) {return objbytes(mref(x)) + objbytes(x->oc,*x->o);}
 

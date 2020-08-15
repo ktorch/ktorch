@@ -556,7 +556,7 @@ K lossattr(const AnyModule&,Ktype,Attr);
 void lossfn(K);
 
 // optimization functions:
-J parmsize(bool,Cast,const Optimizer&);
+J buffersize(bool,Cast,const Optimizer&);
 K kopt(Cast,const Optptr&);
 K optstate(Ktag*,K);
 K optstate(bool,bool,Cast,const Optimizer&);
