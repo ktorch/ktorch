@@ -90,11 +90,24 @@ static Setting mset(S x,Cast c) {
   AT_ERROR(msym(c),": unrecognized option `",x);
 }
 
-K mkeys(bool b) {
+static K mkeys1(bool b) {
  K x=ktn(KS, b ? 6 : 4); J i=0;
  for(auto& m:env().state) {
   kS(x)[i++]=std::get<0>(m);
   if(i==x->n) break;
+ }
+ return x;
+}
+
+K mkeys(bool b) {
+ K x=ktn(KS, b ? 6 : 4);
+ kS(x)[0]=statekey(State::depth);
+ kS(x)[1]=statekey(State::module);
+ kS(x)[2]=statekey(State::name);
+ kS(x)[3]=statekey(State::options);
+ if(b) {
+  kS(x)[4]=statekey(State::parms);
+  kS(x)[5]=statekey(State::buffers);
  }
  return x;
 }

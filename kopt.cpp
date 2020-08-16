@@ -480,8 +480,20 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 }
 
 // --------------------------------------------------------------------------------------
+// bufferkeys - return columns for table describing optimizer parameter groups & buffers
 // getbuffers - given optimizer type and parameter state, return buffers as k dictonary
 // --------------------------------------------------------------------------------------
+static K bufferkeys(bool b) {
+ K x=ktn(KS, b ? 6 : 5);
+ kS(x)[0]=cs("id");
+ kS(x)[1]=cs("group");
+ kS(x)[2]=statekey(State::module);
+ kS(x)[3]=statekey(State::name);
+ kS(x)[4]=cs("size");
+ if(b) kS(x)[5]=statekey(State::buffers);
+ return x;
+}
+
 K getbuffers(Cast c,const torch::optim::OptimizerParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adaget(static_cast<const AdagradParamState&>(p));
@@ -492,6 +504,26 @@ K getbuffers(Cast c,const torch::optim::OptimizerParamState& p) {
   case Cast::sgd:     return   sgdget(static_cast<const SGDParamState&>(p));
   default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
  }
+}
+
+K getbuffers(Cast c,const Optimizer& o) {
+ J g=0,i; K k,v=ktn(0,6),*w=kK(v);
+ for(i=0; i<v->n; ++i) kK(v)[i]=ktn((i<3) ? KJ : (i<4 ? KS : 0), 0);
+ const auto& s=o.state();
+ for(auto& gp:o.param_groups()) {
+  for(auto& p:gp.params()) {
+    auto *t=p.unsafeGetTensorImpl();
+    J j=(intptr_t)t, m=nj;
+    ja(&w[0], &j);
+    ja(&w[1], &g);
+    ja(&w[2], &m);
+    js(&w[3], cs(""));
+    jk(&w[4], tensorsize(p, Attr::size));
+    jk(&w[5], getbuffers(c, *s.at(c10::guts::to_string(t))));
+  }
+  g++;
+ }
+ return xT(xD(bufferkeys(true),v));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -535,13 +567,13 @@ static K optinit(S s,K x,K y) {
 }
 
 K optstate(bool a,bool b,Cast c,const Optimizer &o) {
- K k,v,x=optdict(a,c,o),y=nullptr;
+ K k,v,x=optdict(a,c,o);
  k=ktn(KS,2+b),v=ktn(0,2+b);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
  kS(k)[1]=statekey(State::options); kK(v)[1]=x;
  if(b) {
    kS(k)[2]=statekey(State::buffers);
-   kK(v)[2]=y ? y : ktn(0,0);
+   kK(v)[2]=getbuffers(c,o);
  }
  return xD(k,v);
 }
