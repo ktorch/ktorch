@@ -2312,7 +2312,7 @@ void mparms(Cast c,Module &m,K p,K f) {
 
 // -----------------------------------------------------------------------------------------
 // addmodule - given parent & layer variants, add allowable combinations, else error
-// addparent - create container if needed, add to any previous parent layer, push on stack
+// addparent - create container, add to any previous parent layer, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
 static void addmodule(Layer& x,const Layer& y) {
@@ -2602,8 +2602,8 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
   js(&k[2], cs(s));
   jk(&k[3], o);
   if(x->n == 6)
-   jk(&k[4], kdict(m.named_parameters(false))),
-   jk(&k[5], kdict(m.named_buffers(false)));
+   jk(&k[4], kget(m.named_parameters(false))),
+   jk(&k[5], kget(m.named_buffers(false)));
   for(auto& i:m.named_children())
    mget(a,d+1,i.key().c_str(),t,*i.value(),x);
  } else {
@@ -2613,8 +2613,8 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
   k[2]=ks(cs(s));
   k[3]=o;
   if(x->n == 6)
-   k[4]=kdict(m.named_parameters(false)),
-   k[5]=kdict(m.named_buffers(false));
+   k[4]=kget(m.named_parameters(false)),
+   k[5]=kget(m.named_buffers(false));
  }
 }
 

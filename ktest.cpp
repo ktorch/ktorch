@@ -1,5 +1,79 @@
 #include "ktorch.h"
 
+struct TORCH_API Ktensordict : public Ktag {
+ TensorDict d;
+ Ktensordict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
+};
+
+K kdict(TensorDict &d) {return kptr(new Ktensordict(d));}
+
+Ktensordict* xtensordict(K x) {auto* g=xtag(x); return (g && g->a==Class::dict) ? (Ktensordict*)g : nullptr;}
+Ktensordict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
+
+static void kput(TensorDict& d,S s,const Tensor& t) {
+ if(d.contains(s))
+  d[s]=std::move(t);
+ else
+  d.insert(s,std::move(t));
+}
+
+static void kput(TensorDict& d,S s,K x) {
+ Tensor* t=xten(x);
+ kput(d,s,t ? *t : kput(x));
+}
+
+static void kput(TensorDict& d,K k,K v) {
+ TORCH_CHECK(v->t>=0, "dict: unexpected scalar, ", kstring(v));
+ TORCH_CHECK(k->n==v->n, "dict: length error, ",k->n," symbol(s), ", v->n," value(s)");
+ if(v->t) {
+  Tensor t;
+  if(!xten(v,t)) t=kput(v);
+  for(J i=0; i<k->n; ++i)
+    kput(d, kS(k)[i], t[i]);
+ } else {
+  for(J i=0; i<k->n; ++i)
+   kput(d, kS(k)[i], kK(v)[i]);
+ }
+}
+
+KAPI dict(K x) {
+ KTRY
+  S s; J n=xlen(x); TensorDict d; Ktensordict *k=xtensordict(x); if(!k) k=xtensordict(x,0);
+  if(xempty(x)) {                                       // ptr:dict()
+    return kdict(d);
+  } else if (xdict(x) || (n==2 && kK(x)[0]->t==KS)) {   // ptr:dict(kdict) or ptr:dict(syms;values)
+    return kput(d,kK(x)[0],kK(x)[1]), kdict(d);
+  } else if (n==2 && xsym(x,0,s)) {                     // ptr:dict(sym;value)
+    return kput(d,s,kK(x)[1]), kdict(d);
+  } else if (k) {
+   if(n==1) {                               // kdict:dict ptr
+    return kget(k->d);
+   } else if(n==2) {
+    if(xsym(x,1,s))                         // kval:dict(ptr;sym)
+     return kget(k->d[s]);
+    else if(kK(x)[1]->t==KS)                // kvals:dict(ptr;syms)
+     return kget(k->d,kK(x)[1]);
+    else if(xdict(x,1))                     // dict(ptr;kdict)
+     return kput(k->d, kK(kK(x)[1])[0], kK(kK(x)[1])[0]), (K)0;
+    else
+     AT_ERROR("dict: given dictionary pointer and 2nd arg, expecting sym(s) or dictionary, given ", kname(x,0));
+   } else if(n==3) { 
+    if(xsym(x,1,s))                         // dict(ptr;sym;val)
+     kput(k->d,s,kK(x)[2]);
+    else if(kK(x)[1]->t==KS)                // dict(ptr;syms;vals)
+     kput(k->d,kK(x)[1],kK(x)[2]);
+    else
+     AT_ERROR("dict: given dictionary pointer, expecting symbol(s) and values, given 2nd arg of ", kname(x,1));
+    return (K)0;
+   } else {
+    AT_ERROR("dict: tensor dictionary with unrecognized arg(s), expecting ptr, (ptr;syms), (ptr;syms;vals) or dict(ptr;kdict)");
+   }
+  } else {
+   AT_ERROR("dict: unrecognized arg(s), expecting syms, kdict, (syms;values), (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
+  }
+ KCATCH("dict");
+}
+
 KAPI optdefaults(K x) {
 using Adagrad        = torch::optim::Adagrad;
 using AdagradOptions = torch::optim::AdagradOptions;
@@ -827,7 +901,7 @@ KTRY
 KCATCH("duplicate names");
 }
 
-KAPI kdict(K x) {
+KAPI kdictflag(K x) {
  return kb(xdict(x));
 }
 

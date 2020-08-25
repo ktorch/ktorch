@@ -95,14 +95,12 @@ template<size_t D,typename T=int64_t> using Exoptional=torch::ExpandingArrayWith
 using ScalarType=torch::ScalarType;
 using TypeMeta=caffe2::TypeMeta;
 using TensorOptions=torch::TensorOptions;
-using TensorList=torch::TensorList;
-
-using Optimizer=torch::optim::Optimizer;
-using Optptr=std::shared_ptr<Optimizer>;
-using TensorDict = torch::OrderedDict<std::string, torch::Tensor>;
+using TensorList=torch::TensorList;  // ArrayRef<Tensor>
+using TensorDict=torch::OrderedDict<std::string, torch::Tensor>;
 
 // shorter names for commonly used container modules defined by pytorch & created in knn.h
 using Module=torch::nn::Module;
+using ModuleDict=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
 using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;
 class SeqNest;
@@ -111,6 +109,11 @@ class SeqJoin;
 // define a kind of union for modules used to build sequences
 using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule>;
 using Layers=std::stack<Layer>;
+
+using Optimizer=torch::optim::Optimizer;
+using Optptr=std::shared_ptr<Optimizer>;
+using TorchObj=c10::variant<Tensor,Layer>;
+using TorchDict=torch::OrderedDict<std::string, TorchObj>;
 
 typedef struct {
  Ktype a = 0;  // type: 1-dict, 2-list of pairs, 3-general list, 4-sym list
@@ -132,6 +135,7 @@ enum class Class:char {
  undefined=0,
  tensor,
  vector,
+ dict,
  module,
  layer,
  sequential,
@@ -258,6 +262,7 @@ struct TORCH_API Kloss : public Ktag {
 
 struct TORCH_API Kopt : public Ktag {
  Optptr o;
+ TorchDict d;
  Kopt(Cast x,const Optptr& y) : o(std::move(y)) {a=Class::optimizer; c=x;}
  bool is_empty() const noexcept {return o == nullptr;}
  Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
@@ -441,7 +446,6 @@ std::string kstring(K);
 K kout(K);
 K kcast(Ktype,K);
 K kbool(K);
-K kdict(const TensorDict&);
 J kfind(K,const std::string&);
 K klist(J,const int64_t*);
 K klist(J,const double*);
@@ -484,6 +488,7 @@ K kget(const LongVector&);
 K kget(const DoubleVector&);
 K kget(const TensorVector&);
 K kget(const TensorDeque&);
+K kget(const TensorDict& d,K x=nullptr);
 Tensor kput(K);
 Tensor kput(K,J);
 K kten(const Tensor&);

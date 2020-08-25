@@ -908,7 +908,6 @@ void pten(const Pairs& p,Tensor &t) {
 // kout - output k value via "0N!"
 // kcast - given data type and array, cast and return, i.e. 1h$x
 // kbool - cast k value to boolean
-// kdict - tensor dictionary to k dictionary of names -> tensor values
 // ----------------------------------------------------------------------
 std::string kstring(K x) {
  std::string s;
@@ -923,12 +922,6 @@ std::string kstring(K x) {
 K kout(K x) {return k(0,(S)"0N!",r1(x),0);}
 K kcast(Ktype t,K x) {return k(0,(S)"$",kh(t),r1(x),0);}
 K kbool(K x) {return kcast(1,x);}
-
-K kdict(const TensorDict &d) {
- K x=xD(ktn(KS,0),ktn(0,0));
- for(auto &a:d) dictadd(x,a.key().c_str(),kget(a.value()));
- return x;
-}
 
 // -----------------------------------------------------------------------------------------
 // kfind - given list of symbols, find index of matching string, return -1 if not found

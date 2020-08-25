@@ -9,11 +9,50 @@ K kten(const Tensor& t) {return kptr(new Kten(t));}
 K kvec(const TensorVector& v) {return kptr(new Kvec(v));}
 
 // -------------------------------------------------------------------------
+// razeflag - check if general list made up entirely of scalars
+// razelist - if general list is all scalars, raze to simple list
+// -------------------------------------------------------------------------
+static bool razeflag(K x) {
+ if(!x->t && x->n>1) {
+  auto t=kK(x)[0]->t;
+  if(t>=0) 
+   return false;
+  for(J i=1; i<x->n; ++i)
+   if(kK(x)[i]->t != t)
+    return false;;
+  return true;
+ } else {
+  return false;
+ }
+}
+
+static K razelist(K x) {
+ if(razeflag(x)) {
+  J i; K y=ktn(-kK(x)[0]->t, x->n);
+  switch(y->t) {
+   case KE: for(i=0; i<y->n; ++i) kE(y)[i]=kK(x)[i]->e; break;
+   case KF: for(i=0; i<y->n; ++i) kF(y)[i]=kK(x)[i]->f; break;
+   case KJ: for(i=0; i<y->n; ++i) kJ(y)[i]=kK(x)[i]->j; break;
+   case KI: for(i=0; i<y->n; ++i) kI(y)[i]=kK(x)[i]->i; break;
+   case KH: for(i=0; i<y->n; ++i) kH(y)[i]=kK(x)[i]->h; break;
+   case KB:
+   case KC:
+   case KG: for(i=0; i<y->n; ++i) kG(y)[i]=kK(x)[i]->g; break;
+   default: AT_ERROR("unable to raze general list -> ",kname(y));
+  }
+  return r0(x), y;
+ } else {
+  return x;
+ }
+}
+
+// -------------------------------------------------------------------------
 // kgetscalar - return k scalar given a scalar tensor
 // kgets - process tensor at depth, creating k array
 // kget - take tensor reference, return k scalar/array
 //      - take reference to vector of longs/doubles, return k list
-//      - take reference to vector of tensors, return k lists
+//      - take reference to vector/deque of tensors, return k lists
+//      - take reference to dictionary of tensors, return k dictionary
 // -------------------------------------------------------------------------
 K kgetscalar(const Tensor &t){
  auto s=t.item();
@@ -77,6 +116,27 @@ K kget(const TensorDeque& v) {
  K x=ktn(0,v.size());
  for(size_t i=0; i<v.size(); ++i) kK(x)[i]=kget(v[i]);
  return x;
+}
+
+K kget(const TensorDict& d,K x) { // x=nullptr by default, can contain sym(s) for indexing
+ if(!x) {
+  J i=0; K k=ktn(KS,d.size()),v=ktn(0,d.size());
+  for(const auto &a:d) {
+   kS(k)[i]=cs(a.key().c_str());
+   kK(v)[i]=kget(a.value());
+   ++i;
+  }
+  return xD(k,razelist(v));
+ } else if(x->t == -KS) {
+  return kget(d[x->s]);
+ } else if(x->t == KS) {
+  K r=ktn(0,x->n);
+  for(J i=0; i<x->n; ++i)
+   kK(r)[i]=kget(d[kS(x)[i]]);
+  return razelist(r);
+ } else {
+  AT_ERROR("dict: expecting symbol(s) for indexing, given ",kname(x));
+ }
 }
 
 // -------------------------------------------------------------------------------
