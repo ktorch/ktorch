@@ -1,15 +1,18 @@
 #include "ktorch.h"
 
-struct TORCH_API Ktensordict : public Ktag {
+struct TORCH_API Kdict : public Ktag {
  TensorDict d;
- Ktensordict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
+ Kdict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
 };
 
-K kdict(TensorDict &d) {return kptr(new Ktensordict(d));}
+K kdict(TensorDict &d) {return kptr(new Kdict(d));}
 
-Ktensordict* xtensordict(K x) {auto* g=xtag(x); return (g && g->a==Class::dict) ? (Ktensordict*)g : nullptr;}
-Ktensordict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
+Kdict* xtensordict(K x) {auto* g=xtag(x); return (g && g->a==Class::dict) ? (Kdict*)g : nullptr;}
+Kdict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
 
+// ------------------------------------------------------------------------
+// kput - put tensors/array in dictionary using symbols and arrays/tensors
+// ------------------------------------------------------------------------
 static void kput(TensorDict& d,S s,const Tensor& t) {
  if(d.contains(s))
   d[s]=std::move(t);
@@ -17,28 +20,40 @@ static void kput(TensorDict& d,S s,const Tensor& t) {
   d.insert(s,std::move(t));
 }
 
-static void kput(TensorDict& d,S s,K x) {
+static bool kput(TensorDict& d,S s,K x) {
  Tensor* t=xten(x);
  kput(d,s,t ? *t : kput(x));
+ return t;
 }
 
-static void kput(TensorDict& d,K k,K v) {
- TORCH_CHECK(v->t>=0, "dict: unexpected scalar, ", kstring(v));
- TORCH_CHECK(k->n==v->n, "dict: length error, ",k->n," symbol(s), ", v->n," value(s)");
- if(v->t) {
-  Tensor t;
-  if(!xten(v,t)) t=kput(v);
-  for(J i=0; i<k->n; ++i)
-    kput(d, kS(k)[i], t[i]);
+static void kput(TensorDict& d,K x,K y) {
+ if(x->t == -KS) {
+  if(kput(d,x->s,y))
+   kfree(y);
+ } else if(x->t == KS) {
+  if(y->t) {
+   Tensor t=kput(y);
+   TORCH_CHECK(x->n == t.numel(), "dict: length error, ", x->n, " key(s) with ", t.numel(), " value(s)");
+   for(J i=0; i<x->n; ++i)
+    kput(d,kS(x)[i],t.dim() ? t[i].clone() : t);
+  } else {
+   TORCH_CHECK(x->n == y->n, "dict: length error, ", x->n, " key(s) with ", y->n, " value(s)");
+   bool b=false;
+   for(J i=0; i<x->n; ++i)
+    if(kput(d,kS(x)[i], kK(y)[i])) b=true;
+   if(b)
+    for(J i=0; i<y->n; ++i)
+     if(xten(y,i)) kfree(y,i);
+  }
  } else {
-  for(J i=0; i<k->n; ++i)
-   kput(d, kS(k)[i], kK(v)[i]);
+  AT_ERROR("dict: given ptr, expecting symbol keys & values, but 2nd arg is ",kname(x));
  }
 }
 
 KAPI dict(K x) {
  KTRY
-  S s; J n=xlen(x); TensorDict d; Ktensordict *k=xtensordict(x); if(!k) k=xtensordict(x,0);
+  S s; J n=xlen(x); TensorDict d; Kdict *k=xtensordict(x); if(!k) k=xtensordict(x,0);
+  TORCH_CHECK(x->t==0 || x->t==99, "dict: not implemented for ",kname(x));
   if(xempty(x)) {                                       // ptr:dict()
     return kdict(d);
   } else if (xdict(x) || (n==2 && kK(x)[0]->t==KS)) {   // ptr:dict(kdict) or ptr:dict(syms;values)
@@ -47,29 +62,19 @@ KAPI dict(K x) {
     return kput(d,s,kK(x)[1]), kdict(d);
   } else if (k) {
    if(n==1) {                               // kdict:dict ptr
-    return kget(k->d);
+    return kget(k->d);                      // return dictionary of syms!values to k
    } else if(n==2) {
-    if(xsym(x,1,s))                         // kval:dict(ptr;sym)
-     return kget(k->d[s]);
-    else if(kK(x)[1]->t==KS)                // kvals:dict(ptr;syms)
-     return kget(k->d,kK(x)[1]);
-    else if(xdict(x,1))                     // dict(ptr;kdict)
-     return kput(k->d, kK(kK(x)[1])[0], kK(kK(x)[1])[0]), (K)0;
-    else
-     AT_ERROR("dict: given dictionary pointer and 2nd arg, expecting sym(s) or dictionary, given ", kname(x,0));
+    if(xdict(x,1))                          // dict(ptr;kdict)
+     return kput(k->d, kK(kK(x)[1])[0], kK(kK(x)[1])[1]), (K)0;
+    else                                    // dict(ptr;sym(s))
+     return kget(k->d, kK(x)[1]);
    } else if(n==3) { 
-    if(xsym(x,1,s))                         // dict(ptr;sym;val)
-     kput(k->d,s,kK(x)[2]);
-    else if(kK(x)[1]->t==KS)                // dict(ptr;syms;vals)
-     kput(k->d,kK(x)[1],kK(x)[2]);
-    else
-     AT_ERROR("dict: given dictionary pointer, expecting symbol(s) and values, given 2nd arg of ", kname(x,1));
-    return (K)0;
+    return kput(k->d,kK(x)[1],kK(x)[2]), (K)0;
    } else {
-    AT_ERROR("dict: tensor dictionary with unrecognized arg(s), expecting ptr, (ptr;syms), (ptr;syms;vals) or dict(ptr;kdict)");
+    AT_ERROR("dict: given ptr, expecting 1-3 args, but ",x->n," args supplied");
    }
   } else {
-   AT_ERROR("dict: unrecognized arg(s), expecting syms, kdict, (syms;values), (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
+   AT_ERROR("dict: unrecognized arg(s), expecting (sym(s);value(s)), ptr, (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
   }
  KCATCH("dict");
 }
