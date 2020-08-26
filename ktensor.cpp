@@ -497,17 +497,21 @@ KAPI vector(K x) {
  KTRY
   if(auto* v=xvec(x)) {             // if previously created vector, return as k list
    return razelist(kget(*v));
-  } else if(auto* v=xvec(x,0)) {    // if previously created vector
-   if(x->n==2) {
-    if(auto *w=xvec(x,1))           // add additional vector, then free
-     return v->insert(v->end(), w->begin(), w->end()), kfree(x,1), (K)0;
-    else                            // else index into vector via 2nd arg of index/indices
+  } else if(auto* v=xvec(x,0)) {                 // if previously created vector
+   if(x->n==2) {                                 // 2 args
+    if(auto *w=xvec(x,1)) {                      // add additional vector
+     for(size_t i=0,n=w->size(); i<n; ++i)
+      v->emplace_back(w->at(i));         // add via index in case vector added to self
+     if(v!=w) kfree(x,1);                // free vector added unless same
+     return (K)0;
+    } else {                            // else index into vector via 2nd arg of index/indices
      return kget(*v,kK(x)[1]);
-   } else if(x->n==3) {            // if index and tensor/array supplied
+    }
+   } else if(x->n==3) {                 // if indices and values supplied
     kput(*v, kK(x)[1], kK(x)[2]);
     return (K)0;
    } else {
-    AT_ERROR("vector: given ptr, expecting indices or (indices;values), but given ",x->n-1," additional arg(s)");
+    AT_ERROR("vector: given ptr, expecting indices, vector ptr or (indices;values), but given ",x->n-1," additional arg(s)");
    }
   } else {
    return kvec(vec(x,true));
