@@ -106,19 +106,29 @@ K kget(const Tensor &t) {
 K kget(const LongVector& v)   {return klist(v.size(),v.data());}
 K kget(const DoubleVector& v) {return klist(v.size(),v.data());}
 
-K kget(const TensorVector& v) {
- K x=ktn(0,v.size());
- for(size_t i=0; i<v.size(); ++i) kK(x)[i]=kget(v[i]);
- return x;
-}
-
 K kget(const TensorDeque& v) {
  K x=ktn(0,v.size());
  for(size_t i=0; i<v.size(); ++i) kK(x)[i]=kget(v[i]);
  return x;
 }
 
-K kget(const TensorDict& d,K x) { // x=nullptr by default, can contain sym(s) for indexing
+K kget(const TensorVector& v,K x) { // x-nullptr by default, else indices
+ if(!x) {
+  K r=ktn(0,v.size());
+  for(J i=0; i<v.size(); ++i) kK(r)[i]=kget(v[i]);
+  return razelist(r);
+ } else if(x->t == -KJ) {
+  return kget(v.at(x->j));
+ } else if(x->t == KJ) {
+  K r=ktn(0,x->n);
+  for(J i=0; i<x->n; ++i) kK(r)[i]=kget(v.at(kJ(x)[i]));
+  return razelist(r);
+ } else {
+  AT_ERROR("vector: expecting 2nd arg of long indices, given ",kname(x));
+ }
+}
+
+K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) for indexing
  if(!x) {
   J i=0; K k=ktn(KS,d.size()),v=ktn(0,d.size());
   for(const auto &a:d) {
@@ -135,7 +145,7 @@ K kget(const TensorDict& d,K x) { // x=nullptr by default, can contain sym(s) fo
    kK(r)[i]=kget(d[kS(x)[i]]);
   return razelist(r);
  } else {
-  AT_ERROR("dict: expecting symbol(s) for indexing, given ",kname(x));
+  AT_ERROR("dict: expecting 2nd arg of symbol(s) for indexing, given ",kname(x));
  }
 }
 
@@ -231,6 +241,46 @@ Tensor kput(K x,J i) {
   return kput(kK(x)[i]);
  else
   AT_ERROR("unable to index ",kname(x->t),", element: ",i);
+}
+
+// --------------------------------------------------------------------
+// kput - given indices & values from k, [re]set TensorVector elements
+// --------------------------------------------------------------------
+static void kput(TensorVector& v,J i,const Tensor& t) {
+ if(i == nj || i == -1)
+  v.emplace_back(t);
+ else
+  v.at(i)=t;
+}
+
+static bool kput(TensorVector& v,J i,K x) {
+ Tensor *t=xten(x);
+ kput(v, i, t ? *t : kput(x));
+ return t;
+}
+
+static void kput(TensorVector& v,K x,K y) {
+ if(x->t == -KJ) {
+  if(kput(v,x->j,y))
+   kfree(y);
+ } else if(x->t == KJ) {
+  if(y->t) {
+   Tensor t=kput(y);
+   TORCH_CHECK(x->n == t.numel(), "vector: length error, index count of ", x->n, " with ", t.numel(), " value(s)");
+   for(J i=0; i<x->n; ++i)
+    kput(v,kJ(x)[i],t.dim() ? t[i].clone() : t);
+  } else {
+   TORCH_CHECK(x->n == y->n, "vector: length error, index count of ", x->n, " with ", y->n, " value(s)");
+   bool b=false;
+   for(J i=0; i<x->n; ++i)
+    if(kput(v,kJ(x)[i], kK(y)[i])) b=true;
+   if(b)
+    for(J i=0; i<y->n; ++i)
+     if(xten(y,i)) kfree(y,i);
+  }
+ } else {
+  AT_ERROR("vector: expecting long indices as 2nd arg, given ",kname(y));
+ }
 }
 
 // --------------------------------------------------------------------------------------
@@ -425,7 +475,7 @@ TensorVector vec(K x,bool b) {   // b: true if any encountered tensor ptr to be 
   Tensor t=kput(x);
   if(t.dim())
    for(int64_t i=0;i<t.size(0);++i)
-    v.emplace_back(t[i]);
+    v.emplace_back(t[i].clone());
   else
    v.emplace_back(t);
  } else if(auto *t=xten(x)) {
@@ -445,24 +495,20 @@ TensorVector vec(K x,bool b) {   // b: true if any encountered tensor ptr to be 
 
 KAPI vector(K x) {
  KTRY
-  J i;
-  if(auto* v=xvec(x)) {             // if previously created vector, return as list of arrays
-   return kget(*v);
+  if(auto* v=xvec(x)) {             // if previously created vector, return as k list
+   return razelist(kget(*v));
   } else if(auto* v=xvec(x,0)) {    // if previously created vector
-   if(xlong(x,1,i)) {               // and an index,
-    if(x->n==2) {                   // return array
-     return kget(v->at(i));
-    } else if(x->n==3) {            // if index and tensor/array supplied
-      if(auto* t=xten(x,2))         // replace vector element
-       v->at(i)=*t, kfree(x,2);     // and free if tensor arg supplied
-      else 
-       v->at(i)=kput(x,2);          // else convert k array to tensor and replace vector element
-      return (K)0;
-    }
+   if(x->n==2) {
+    if(auto *w=xvec(x,1))           // add additional vector, then free
+     return v->insert(v->end(), w->begin(), w->end()), kfree(x,1), (K)0;
+    else                            // else index into vector via 2nd arg of index/indices
+     return kget(*v,kK(x)[1]);
+   } else if(x->n==3) {            // if index and tensor/array supplied
+    kput(*v, kK(x)[1], kK(x)[2]);
+    return (K)0;
+   } else {
+    AT_ERROR("vector: given ptr, expecting indices or (indices;values), but given ",x->n-1," additional arg(s)");
    }
-   //} else if(auto *w=xvec(x,1) && x->n==2)
-   // v.insert(v.end(), w.begin(), w.end()), (K)0;
-   AT_ERROR("vector: unrecognized arg(s)");
   } else {
    return kvec(vec(x,true));
   }
