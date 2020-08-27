@@ -875,6 +875,7 @@ static K kfft(K x,I m,const char* e) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
    switch(m) {
     case 0: r=torch::fft(t,d,b1); break;
+ // case 0: r=   at::fft(t,d,b1); break;  // PATCH for version 1.7 & new torch::fft namespace
     case 1: r=torch::ifft(t,d,b1); break;
     case 2: r=torch::rfft(t,d,b1,b2); break;
     case 3: r=torch::irfft(t,d,b1,b2,s); break;

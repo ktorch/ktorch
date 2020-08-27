@@ -271,15 +271,15 @@ static void kput(TensorVector& v,K x,K y) {
     kput(v,kJ(x)[i],t.dim() ? t[i].clone() : t);
   } else {
    TORCH_CHECK(x->n == y->n, "vector: length error, index count of ", x->n, " with ", y->n, " value(s)");
-   bool b=false;
-   for(J i=0; i<x->n; ++i)
-    if(kput(v,kJ(x)[i], kK(y)[i])) b=true;
-   if(b)
+   bool b=false; TensorVector w;
+   for(J i=0; i<x->n; ++i) if(kput(w, -1, kK(y)[i])) b=true; // put k values/tensor ptrs in temp vector
+   for(J i=0; i<x->n; ++i) kput(v,kJ(x)[i],w[i]);            // if no error, add to existing vector
+   if(b)                                                     // if any tensor pointers, free
     for(J i=0; i<y->n; ++i)
      if(xten(y,i)) kfree(y,i);
   }
  } else {
-  AT_ERROR("vector: expecting long indices as 2nd arg, given ",kname(y));
+  AT_ERROR("vector: expecting long indices as 2nd arg, given ",kname(x));
  }
 }
 
