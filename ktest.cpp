@@ -1,5 +1,6 @@
 #include "ktorch.h"
 
+/*
 struct TORCH_API Kdict : public Ktag {
  TensorDict d;
  Kdict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
@@ -9,46 +10,6 @@ K kdict(TensorDict &d) {return kptr(new Kdict(d));}
 
 Kdict* xtensordict(K x) {auto* g=xtag(x); return (g && g->a==Class::dict) ? (Kdict*)g : nullptr;}
 Kdict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
-
-// ------------------------------------------------------------------------
-// kput - put tensors/array in dictionary using symbols and arrays/tensors
-// ------------------------------------------------------------------------
-static void kput(TensorDict& d,S s,const Tensor& t) {
- if(d.contains(s))
-  d[s]=std::move(t);
- else
-  d.insert(s,std::move(t));
-}
-
-static bool kput(TensorDict& d,S s,K x) {
- Tensor* t=xten(x);
- kput(d,s,t ? *t : kput(x));
- return t;
-}
-
-static void kput(TensorDict& d,K x,K y) {
- if(x->t == -KS) {
-  if(kput(d,x->s,y))
-   kfree(y);
- } else if(x->t == KS) {
-  if(y->t) {
-   Tensor t=kput(y);
-   TORCH_CHECK(x->n == t.numel(), "dict: length error, ", x->n, " key(s) with ", t.numel(), " value(s)");
-   for(J i=0; i<x->n; ++i)
-    kput(d,kS(x)[i],t.dim() ? t[i].clone() : t);
-  } else {
-   TORCH_CHECK(x->n == y->n, "dict: length error, ", x->n, " key(s) with ", y->n, " value(s)");
-   bool b=false;
-   for(J i=0; i<x->n; ++i)
-    if(kput(d,kS(x)[i], kK(y)[i])) b=true;
-   if(b)
-    for(J i=0; i<y->n; ++i)
-     if(xten(y,i)) kfree(y,i);
-  }
- } else {
-  AT_ERROR("dict: given ptr, expecting symbol keys & values, but 2nd arg is ",kname(x));
- }
-}
 
 KAPI dict(K x) {
  KTRY
@@ -78,6 +39,7 @@ KAPI dict(K x) {
   }
  KCATCH("dict");
 }
+*/
 
 KAPI optdefaults(K x) {
 using Adagrad        = torch::optim::Adagrad;

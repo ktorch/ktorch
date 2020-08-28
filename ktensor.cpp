@@ -13,7 +13,7 @@ K kvec(const TensorVector& v) {return kptr(new Kvec(v));}
 // razelist - if general list is all scalars, raze to simple list
 // -------------------------------------------------------------------------
 static bool razeflag(K x) {
- if(!x->t && x->n>1) {
+ if(!x->t && x->n>0) {
   auto t=kK(x)[0]->t;
   if(t>=0) 
    return false;
@@ -254,7 +254,11 @@ static void kput(TensorVector& v,J i,const Tensor& t) {
 }
 
 static bool kput(TensorVector& v,J i,K x) {
- Tensor *t=xten(x);
+ Tensor *t=nullptr;
+ if(xptr(x)) {
+  t=xten(x);
+  TORCH_CHECK(t, "vector: not implemented for ",kname(x));
+ }
  kput(v, i, t ? *t : kput(x));
  return t;
 }
@@ -282,6 +286,47 @@ static void kput(TensorVector& v,K x,K y) {
   AT_ERROR("vector: expecting long indices as 2nd arg, given ",kname(x));
  }
 }
+
+// ------------------------------------------------------------------------
+// kput - put tensors/array in dictionary using symbols and arrays/tensors
+// ------------------------------------------------------------------------
+static void kput(TensorDict& d,S s,const Tensor& t) {
+ if(d.contains(s))
+  d[s]=std::move(t);
+ else
+  d.insert(s,std::move(t));
+}
+
+static bool kput(TensorDict& d,S s,K x) {
+ Tensor* t=xten(x);
+ kput(d,s,t ? *t : kput(x));
+ return t;
+}
+
+static void kput(TensorDict& d,K x,K y) {
+ if(x->t == -KS) {
+  if(kput(d,x->s,y))
+   kfree(y);
+ } else if(x->t == KS) {
+  if(y->t) {
+   Tensor t=kput(y);
+   TORCH_CHECK(x->n == t.numel(), "dict: length error, ", x->n, " key(s) with ", t.numel(), " value(s)");
+   for(J i=0; i<x->n; ++i)
+    kput(d,kS(x)[i],t.dim() ? t[i].clone() : t);
+  } else {
+   TORCH_CHECK(x->n == y->n, "dict: length error, ", x->n, " key(s) with ", y->n, " value(s)");
+   bool b=false; TensorVector w;
+   for(J i=0; i<x->n; ++i) if(kput(w, -1, kK(y)[i])) b=true;  // add tensors/arrays to temp vector
+   for(J i=0; i<x->n; ++i) kput(d, kS(x)[i], w[i]);           // if no error, add to dictionary
+   if(b)
+    for(J i=0; i<y->n; ++i)
+     if(xten(y,i)) kfree(y,i);
+  }
+ } else {
+  AT_ERROR("dict: given ptr, expecting symbol keys & values, but 2nd arg is ",kname(x));
+ }
+}
+
 
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
@@ -478,16 +523,14 @@ TensorVector vec(K x,bool b) {   // b: true if any encountered tensor ptr to be 
     v.emplace_back(t[i].clone());
   else
    v.emplace_back(t);
- } else if(auto *t=xten(x)) {
-  v.emplace_back(*t);
-  if(b) kfree(x);
+ } else if(xptr(x)) {
+  if(kput(v,-1,x))
+   if(b) kfree(x);
  } else {
+  bool a=false;
   for(J i=0;i<x->n;++i)
-   if(auto *t=xten(x,i))
-    v.emplace_back(*t);
-   else
-    v.emplace_back(kput(x,i));
-  if(b)
+   if(kput(v, -1, kK(x)[i])) a=true;
+  if(a && b)
    for(J i=0;i<x->n;++i) if(xptr(x,i)) kfree(x,i);
  }
  return v;
@@ -496,7 +539,7 @@ TensorVector vec(K x,bool b) {   // b: true if any encountered tensor ptr to be 
 KAPI vector(K x) {
  KTRY
   if(auto* v=xvec(x)) {             // if previously created vector, return as k list
-   return razelist(kget(*v));
+   return kget(*v);
   } else if(auto* v=xvec(x,0)) {                 // if previously created vector
    if(x->n==2) {                                 // 2 args
     if(auto *w=xvec(x,1)) {                      // add additional vector
