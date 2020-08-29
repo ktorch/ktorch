@@ -618,18 +618,7 @@ KAPI Equal(K x) {
 
 // ----------------------------------------------------------------------------------------------
 // comparison functions that check for special values (nan, +/- inf) on floating point tensors
-// torch::isinf not in version 1.4.0, so fn is defined here until later version
 // ----------------------------------------------------------------------------------------------
-Tensor isinf(const Tensor &self) {
-  // Integral tensor types are always not inf
-  if (torch::isIntegralType(self.scalar_type(),true)) {
-    return torch::zeros_like(self, torch::kBool, at::MemoryFormat::Preserve);
-  }
-  return AT_DISPATCH_FLOATING_TYPES_AND_HALF(self.scalar_type(), "isinf", [&]() {
-    return self.abs() == std::numeric_limits<scalar_t>::infinity();
-  });
-}
-
 static K special(K x,Ft f) {
  KTRY
   Tensor *t=xten(x);
@@ -638,7 +627,7 @@ static K special(K x,Ft f) {
 }
 
 KAPI Finite(K x) {return special(x, torch::isfinite);}
-KAPI Inf(K x)    {return special(x,        isinf);}
+KAPI Inf(K x)    {return special(x, torch::isinf);}
 KAPI Nan(K x)    {return special(x, torch::isnan);}
 
 // ------------------------------------------------------------------------------------------------

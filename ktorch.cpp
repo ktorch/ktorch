@@ -446,6 +446,15 @@ TensorVector* xvec(K x) {
 
 TensorVector* xvec(K x,J i) {return xind(x,i) ? xvec(kK(x)[i]) : nullptr;}
 
+TensorDict* xtensordict(K x) {
+ if(auto* a=xtag(x))
+  if(a->a==Class::dict && a->c==Cast::tensor)
+   return &((Kdict*)a)->d;
+ return nullptr;
+}
+
+TensorDict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
+
 // ------------------------------------------------------------------------------------------------------
 // xtenpair - check arg(s) for a pair of allocated tensor ptrs: if found, set & return true, else false
 // xten3 - check arg(s) for a triplet of allocated tensors

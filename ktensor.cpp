@@ -1,12 +1,14 @@
 #include "ktorch.h"
 #include <torch/csrc/autograd/function.h>
 
-// -------------------------------------------------------------------------
-// kten - given tensor, return ptr to struct w'attrs, void ptr to tensor
-// kvec - given ptr to vector of tensors, return ptr to struct w'attrs
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// kten - given tensor ref, return ptr to struct w'attrs, void ptr to tensor
+// kvec - given reference to vector of tensors, return ptr to struct w'attrs
+// kdict - given tensor dictionary reference, return ptr to containing struct
+// ---------------------------------------------------------------------------
 K kten(const Tensor& t) {return kptr(new Kten(t));}
 K kvec(const TensorVector& v) {return kptr(new Kvec(v));}
+K kdict(TensorDict &d) {return kptr(new Kdict(d));}
 
 // -------------------------------------------------------------------------
 // razeflag - check if general list made up entirely of scalars
@@ -298,7 +300,11 @@ static void kput(TensorDict& d,S s,const Tensor& t) {
 }
 
 static bool kput(TensorDict& d,S s,K x) {
- Tensor* t=xten(x);
+ Tensor* t=nullptr;
+ if(xptr(x)) {
+  t=xten(x);
+  TORCH_CHECK(t, "dict: not implemented for ",kname(x));
+ }
  kput(d,s,t ? *t : kput(x));
  return t;
 }
@@ -513,6 +519,7 @@ KAPI tensor(K x) {
 // ------------------------------------------------------------------------------------------
 // vec - initialize vector of tensors from k array, tensor ptr(s) or some mix of both
 // vector - create vector of tensors, or return vector or vector element, or replace element
+// dict - create dictionary of tensors, or return dictionary value(s)
 // ------------------------------------------------------------------------------------------
 TensorVector vec(K x,bool b) {   // b: true if any encountered tensor ptr to be de-referenced
  TensorVector v;
@@ -560,6 +567,35 @@ KAPI vector(K x) {
    return kvec(vec(x,true));
   }
  KCATCH("vector");
+}
+
+KAPI dict(K x) {
+ KTRY
+  S s; J n=xlen(x); TensorDict d,*k=xtensordict(x); if(!k) k=xtensordict(x,0);
+  TORCH_CHECK(x->t==0 || x->t==99, "dict: not implemented for ",kname(x));
+  if(xempty(x)) {                                       // ptr:dict()
+    return kdict(d);
+  } else if (xdict(x) || (n==2 && kK(x)[0]->t==KS)) {   // ptr:dict(kdict) or ptr:dict(syms;values)
+    return kput(d,kK(x)[0],kK(x)[1]), kdict(d);
+  } else if (n==2 && xsym(x,0,s)) {                     // ptr:dict(sym;value)
+    return kput(d,s,kK(x)[1]), kdict(d);
+  } else if (k) {
+   if(n==1) {                               // kdict:dict ptr
+    return kget(*k);                        // return dictionary of syms!values to k
+   } else if(n==2) {
+    if(xdict(x,1))                          // dict(ptr;kdict)
+     return kput(*k, kK(kK(x)[1])[0], kK(kK(x)[1])[1]), (K)0;
+    else                                    // dict(ptr;sym(s))
+     return kget(*k, kK(x)[1]);
+   } else if(n==3) { 
+    return kput(*k,kK(x)[1],kK(x)[2]), (K)0;
+   } else {
+    AT_ERROR("dict: given ptr, expecting 1-3 args, but ",x->n," args supplied");
+   }
+  } else {
+   AT_ERROR("dict: unrecognized arg(s), expecting (sym(s);value(s)), ptr, (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
+  }
+ KCATCH("dict");
 }
 
 // ----------------------------------------------------------------------------------------------

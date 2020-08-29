@@ -1,46 +1,5 @@
 #include "ktorch.h"
 
-/*
-struct TORCH_API Kdict : public Ktag {
- TensorDict d;
- Kdict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
-};
-
-K kdict(TensorDict &d) {return kptr(new Kdict(d));}
-
-Kdict* xtensordict(K x) {auto* g=xtag(x); return (g && g->a==Class::dict) ? (Kdict*)g : nullptr;}
-Kdict* xtensordict(K x,J i) {return xind(x,i) ? xtensordict(kK(x)[i]) : nullptr;}
-
-KAPI dict(K x) {
- KTRY
-  S s; J n=xlen(x); TensorDict d; Kdict *k=xtensordict(x); if(!k) k=xtensordict(x,0);
-  TORCH_CHECK(x->t==0 || x->t==99, "dict: not implemented for ",kname(x));
-  if(xempty(x)) {                                       // ptr:dict()
-    return kdict(d);
-  } else if (xdict(x) || (n==2 && kK(x)[0]->t==KS)) {   // ptr:dict(kdict) or ptr:dict(syms;values)
-    return kput(d,kK(x)[0],kK(x)[1]), kdict(d);
-  } else if (n==2 && xsym(x,0,s)) {                     // ptr:dict(sym;value)
-    return kput(d,s,kK(x)[1]), kdict(d);
-  } else if (k) {
-   if(n==1) {                               // kdict:dict ptr
-    return kget(k->d);                      // return dictionary of syms!values to k
-   } else if(n==2) {
-    if(xdict(x,1))                          // dict(ptr;kdict)
-     return kput(k->d, kK(kK(x)[1])[0], kK(kK(x)[1])[1]), (K)0;
-    else                                    // dict(ptr;sym(s))
-     return kget(k->d, kK(x)[1]);
-   } else if(n==3) { 
-    return kput(k->d,kK(x)[1],kK(x)[2]), (K)0;
-   } else {
-    AT_ERROR("dict: given ptr, expecting 1-3 args, but ",x->n," args supplied");
-   }
-  } else {
-   AT_ERROR("dict: unrecognized arg(s), expecting (sym(s);value(s)), ptr, (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
-  }
- KCATCH("dict");
-}
-*/
-
 KAPI optdefaults(K x) {
 using Adagrad        = torch::optim::Adagrad;
 using AdagradOptions = torch::optim::AdagradOptions;

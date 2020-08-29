@@ -148,7 +148,7 @@ enum class Cast:char {
  undefined=0, 
  tensor,  model,                    // basic structures
  sequential, seqnest, seqjoin,      // container modules
- any,        anyname,               // generic modules
+ //any,        anyname,               // generic modules
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
@@ -248,6 +248,11 @@ struct TORCH_API Kten : public Ktag {
 struct TORCH_API Kvec : public Ktag {
  TensorVector v;
  Kvec(const TensorVector& x) : v(std::move(x)) {a=Class::vector; c=Cast::tensor;}
+};
+
+struct TORCH_API Kdict : public Ktag {
+ TensorDict d;
+ Kdict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
 };
 
 struct TORCH_API Kmodule : public Ktag {
@@ -376,6 +381,8 @@ Kmodel* xmodel(K);
 Kmodel* xmodel(K,J);
 TensorVector* xvec(K);
 TensorVector* xvec(K,J);
+TensorDict* xtensordict(K);
+TensorDict* xtensordict(K,J);
 
 bool xnum(K,double&);
 bool xnum(K,J,double&);
@@ -493,6 +500,7 @@ Tensor kput(K);
 Tensor kput(K,J);
 K kten(const Tensor&);
 K kvec(const TensorVector&);
+K kdict(TensorDict&);
 inline K kresult(bool p,const Tensor& t) {return p ? kten(t) : kget(t);}
 K to(Kten*,const TensorOptions&,bool,bool);
 K to(Kvec*,const TensorOptions&,bool);
