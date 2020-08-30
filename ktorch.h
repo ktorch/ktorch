@@ -633,9 +633,10 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Class>,6> kclass = {{
+ std::array<std::tuple<S,Class>,7> kclass = {{
   std::make_tuple(cs("tensor"),     Class::tensor),          
   std::make_tuple(cs("vector"),     Class::vector),
+  std::make_tuple(cs("dict"),       Class::dict),
   std::make_tuple(cs("module"),     Class::module),
   std::make_tuple(cs("loss"),       Class::loss),
   std::make_tuple(cs("optimizer"),  Class::optimizer),

@@ -1112,6 +1112,7 @@ static S objdevice(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    return objdevice(((Kten*)x)->t);
   case Class::vector:    return objdevice(((Kvec*)x)->v, s);
+  case Class::dict:      return objdevice(((Kdict*)x)->d.values(), s);
   case Class::optimizer: return objdevice(*((Kopt*)x)->o, s);
   case Class::loss:      return objdevice(((Kloss*)x)->m.ptr()->buffers(), s);
   case Class::module:    return objdevice(mref((Kmodule*)x).parameters(), s);
@@ -1124,6 +1125,7 @@ static K objsize(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    return tensorsize(((Kten*)x)->t, Attr::size);
   case Class::vector:    return kj(((Kvec*)x)->v.size());
+  case Class::dict:      return kj(((Kdict*)x)->d.size());
   case Class::module:    return kj(mref((Kmodule*)x).parameters().size());
   case Class::loss:      return kj(mref((Kloss*)x).parameters().size());
   case Class::optimizer: return kj(((Kopt*)x)->o->state().size());
@@ -1147,6 +1149,7 @@ static J objnum(Ktag *x) {
  switch(x->a) {
   case Class::tensor:    {auto& a=((Kten*)x)->t; return objnum(a);}
   case Class::vector:    {auto& a=((Kvec*)x)->v; return objnum(a);}
+  case Class::dict:      {auto& a=((Kdict*)x)->d; return objnum(a.values());}
   case Class::module:    return objnum(mref((Kmodule*)x));
   case Class::loss:      return objnum(*((Kloss*)x)->m.ptr());
   case Class::optimizer: return objnum((Kopt*)x);
@@ -1171,6 +1174,7 @@ static J objbytes(Ktag *x) {
  switch(x->a) {
   case Class::tensor: {auto& a=((Kten*)x)->t; return objbytes(a);}
   case Class::vector: {auto& a=((Kvec*)x)->v; return objbytes(a);}
+  case Class::dict:   {auto& a=((Kdict*)x)->d; return objbytes(a.values());}
   case Class::module:    return objbytes(mref((Kmodule*)x));
   case Class::loss:      return objbytes(*((Kloss*)x)->m.ptr());
   case Class::optimizer: return objbytes((Kopt*)x);

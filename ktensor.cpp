@@ -1328,6 +1328,7 @@ void tensorfn(K x) {
  fn(x, "detach",       KFN(detach),        1);
  fn(x, "same",         KFN(same),          1);
  fn(x, "vector",       KFN(vector),        1);
+ fn(x, "dict",         KFN(dict),          1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "stack",        KFN(stack),         1);
  fn(x, "onehot",       KFN(onehot),        1);
