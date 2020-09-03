@@ -1,5 +1,13 @@
 #include "ktorch.h"
 
+KAPI parms(K x) {
+ if(auto *k=xmodule(x)) {
+  for(const auto& a:mref(k->m).named_parameters())
+   std::cerr << a.key() << "\n";
+ }
+ return (K)0;
+}
+
 KAPI optdefaults(K x) {
 using Adagrad        = torch::optim::Adagrad;
 using AdagradOptions = torch::optim::AdagradOptions;

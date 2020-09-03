@@ -519,7 +519,7 @@ K getbuffers(Cast c,const Optimizer& o) {
     ja(&w[2], &m);
     js(&w[3], cs(""));
     jk(&w[4], tensorsize(p, Attr::size));
-    jk(&w[5], getbuffers(c, *s.at(c10::guts::to_string(t))));
+    jk(&w[5], s.size() ? getbuffers(c, *s.at(c10::guts::to_string(t))) : xD(ktn(KS,0),ktn(0,0)));
   }
   g++;
  }

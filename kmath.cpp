@@ -682,6 +682,8 @@ static K minmaxdim(K x,I m,J d,bool k,Tensor &v,Tensor &i,const char* e) {
   case 3: v=torch::argmax(t,d,k); break;
   case 4: v=torch::min_values(t,d,k); break;
   case 5: v=torch::max_values(t,d,k); break;
+//case 4: v=torch::amin(t,d,k); break;   // version 1.7 changes names
+//case 5: v=torch::amax(t,d,k); break;
   default: minmaxerr(m,e); break;
  }
  if(o)        return (K)0;
@@ -710,12 +712,12 @@ static K minmax(K x,I m,const char* e) {
  KCATCH(e);
 }
 
-KAPI        Min(K x) {return minmax(x, 0, "min");}
-KAPI        Max(K x) {return minmax(x, 1, "max");}
-KAPI     Argmin(K x) {return minmax(x, 2, "argmin");}
-KAPI     Argmax(K x) {return minmax(x, 3, "argmax");}
-KAPI Min_values(K x) {return minmax(x, 4, "min_values");}
-KAPI Max_values(K x) {return minmax(x, 5, "max_values");}
+KAPI    Min(K x) {return minmax(x, 0, "min");}
+KAPI    Max(K x) {return minmax(x, 1, "max");}
+KAPI Argmin(K x) {return minmax(x, 2, "argmin");}
+KAPI Argmax(K x) {return minmax(x, 3, "argmax");}
+KAPI   Amin(K x) {return minmax(x, 4, "amin");}
+KAPI   Amax(K x) {return minmax(x, 5, "amax");}
 
 // ----------------------------------------------------------------------------------------------
 // sort - sort, optionally by a dimension,optional descending, with output a pair: values,indices
@@ -1779,8 +1781,8 @@ void mathfn(K x) {
  fn(x, "mean",               KFN(Mean),               1);
  fn(x, "median",             KFN(Median),             1);
  fn(x, "Min",                KFN(Min),                1);
- fn(x, "maxvalues",          KFN(Max_values),         1);
- fn(x, "minvalues",          KFN(Min_values),         1);
+ fn(x, "amax",               KFN(Amax),               1);
+ fn(x, "amin",               KFN(Amin),               1);
  fn(x, "mm",                 KFN(Mm),                 1);
  fn(x, "mmt",                KFN(Mmt),                1);
  fn(x, "mode",               KFN(Mode),               1);
