@@ -252,7 +252,7 @@ struct TORCH_API Kvec : public Ktag {
 
 struct TORCH_API Kdict : public Ktag {
  TensorDict d;
- Kdict(TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
+ Kdict(const TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
 };
 
 struct TORCH_API Kmodule : public Ktag {
@@ -500,7 +500,7 @@ Tensor kput(K);
 Tensor kput(K,J);
 K kten(const Tensor&);
 K kvec(const TensorVector&);
-K kdict(TensorDict&);
+K kdict(const TensorDict&);
 inline K kresult(bool p,const Tensor& t) {return p ? kten(t) : kget(t);}
 K to(Kten*,const TensorOptions&,bool,bool);
 K to(Kvec*,const TensorOptions&,bool);

@@ -1,11 +1,8 @@
 #include "ktorch.h"
 
 KAPI parms(K x) {
- if(auto *k=xmodule(x)) {
-  for(const auto& a:mref(k->m).named_parameters())
-   std::cerr << a.key() << "\n";
- }
- return (K)0;
+ auto *k=xmodule(x);
+ return k ? kdict(mref(k->m).named_parameters()) : (K)0;
 }
 
 KAPI optdefaults(K x) {

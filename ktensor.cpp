@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 K kten(const Tensor& t) {return kptr(new Kten(t));}
 K kvec(const TensorVector& v) {return kptr(new Kvec(v));}
-K kdict(TensorDict &d) {return kptr(new Kdict(d));}
+K kdict(const TensorDict &d) {return kptr(new Kdict(d));}
 
 // -------------------------------------------------------------------------
 // razeflag - check if general list made up entirely of scalars
@@ -483,27 +483,62 @@ static K tensorput(K x) {
  }
 }
 
-static K tensorget(Ktag *g,bool b,J i) { // g-tag with tensor, b-true if index, i-index
- const auto &t=((Kten*)g)->t;
- return kget(b ? t[i] : t);
+static K tensorget(const Tensor& t,K x) { // g-tag with tensor, x-null ptr or index/indices
+ if(!x)
+  return kget(t);
+ else if(x->t == -KJ)
+   return kget(t[x->j]);
+ else if(x->t == KJ)
+  return kget(torch::index_select(t,0,kput(x).to(t.device())));
+ else
+   AT_ERROR("tensor: 2nd arg expected to be long(s) for indexing, given ",kname(x));
 }
 
-static K vectorptr(Ktag *g,bool b,J i) {
- const auto &v=((Kvec*)g)->v;
- if(b)
-  return kten(v.at(i));
- i=0; K x=ktn(0,v.size());
- for(const auto& t:v) kK(x)[i++]=kten(t);
- return x;
+static K vectorptr(const TensorVector& v,K x) {
+ if(!x) {
+  J i=0; K r=ktn(0,v.size());
+  for(const auto& t:v) kK(r)[i++]=kten(t);
+  return r;
+ } else if(x->t == -KJ) {
+  return kten(v.at(x->j));
+ } else if(x->t == KJ) {
+  K r=ktn(0,x->n);
+  for(J i=0; i<x->n;++i) kK(r)[i]=kten(v.at(kJ(x)[i]));
+  return r;
+ } else {
+   AT_ERROR("tensor: given vector, 2nd arg expected to be long(s) for indexing, not ",kname(x));
+ }
+}
+
+static K dictptr(const TensorDict& d,K x) {
+ if(!x) {
+  J i=0; K k=ktn(KS,d.size()),v=ktn(0,d.size());
+  for(const auto &a:d) {
+   kS(k)[i]=cs(a.key().c_str());
+   kK(v)[i]=kten(a.value());
+   ++i;
+  }
+  return xD(k,v);
+ } else if(x->t == -KS) {
+  return kten(d[x->s]);
+ } else if(x->t == KS) {
+   K r=ktn(0,x->n);
+   for(J i=0; i<x->n;++i) kK(r)[i]=kten(d[kS(x)[i]]);
+   return r;
+ } else {
+   AT_ERROR("tensor: given dictionary, 2nd arg expected to be symbols(s) for indexing, not ",kname(x));
+ }
 }
 
 KAPI tensor(K x) {
  KTRY
-  J i=-1; S s; Tensormode m; Ktag *g;
-  if((g=xtag(x)) || ((g=xtag(x,0)) && x->n==2 && xlong(x,1,i))) {
+  S s; Tensormode m; Ktag *g;
+  if((g=xtag(x)) || (g=xtag(x,0))) {
+   TORCH_CHECK(x->n<3, "tensor: ",kname(x)," given, expecting at most one additional arg but ",x->n," given");
    switch(g->a) {
-    case Class::tensor: return tensorget(g,x->n==2,i);
-    case Class::vector: return vectorptr(g,x->n==2,i);
+    case Class::tensor: return tensorget(((Kten*)g)->t, x->n==2 ? kK(x)[1] : nullptr);
+    case Class::vector: return vectorptr(((Kvec*)g)->v, x->n==2 ? kK(x)[1] : nullptr);
+    case Class::dict:   return  dictptr(((Kdict*)g)->d, x->n==2 ? kK(x)[1] : nullptr);
     default: AT_ERROR("tensor not implemented for ",mapclass(g->a));
    }
   } else if(xmode(x,0,s,m)) {
