@@ -1291,7 +1291,7 @@ KAPI zerograd(K x) {
 KAPI forward(K x) {
  KTRY
   Ktag *g;
-  TORCH_CHECK((g=xtag(x,0)), "forward expects layer(s) or full model as first arg");
+  TORCH_CHECK((g=xtag(x,0)), "forward expects module or full model as first arg");
   switch(g->a) {
    case Class::module: return mforward(((Kmodule*)g)->m,x);
    case Class::model:  return mforward(((Kmodel*)g)->m,x);

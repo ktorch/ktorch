@@ -155,13 +155,14 @@ enum class Cast:char {
  avgpool3d,      batchnorm1d,     batchnorm2d,     batchnorm3d,
  bilinear,       cat,             celu,            conv1d,          conv2d,
  conv3d,         convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d,
- drop,           drop2d,          drop3d,          elu,             embed,
- embedbag,       expand,          fadrop,          flatten,
- fmaxpool2d,     fmaxpool3d,      fold,            gelu,            glu,
- groupnorm,      gru,             hardshrink,      hardtanh,        identity,
- instancenorm1d, instancenorm2d,  instancenorm3d,  interpolate,     layernorm,       leakyrelu,
- linear,         localnorm,       logsigmoid,      logsoftmax,      lppool1d,
- lppool2d,       lstm,            maxpool1d,       maxpool2d,       maxpool3d,    mul,
+ decoder,        decoderlayer,    drop,            drop2d,          drop3d,
+ elu,            embed,           embedbag,        encoder,         encoderlayer,
+ expand,         fadrop,          flatten,         fmaxpool2d,      fmaxpool3d,
+ fold,           gelu,            glu,             groupnorm,       gru,
+ hardshrink,     hardtanh,        identity,        instancenorm1d,  instancenorm2d,
+ instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
+ localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
+ lstm,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
  normalize,      pad,             pad1d,           pad2d,           pad3d,
  prelu,          reflect1d,       reflect2d,       relu,            relu6,
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn,
@@ -192,6 +193,7 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
+ addbias,  addzero,
  affine,   align,   alpha,    amsgrad,   batchfirst, beta,     beta1,     
  beta2,    bi,      bias,     blank,     ceiling,    centered, changetol, 
  channels, cols,    countpad, dampening, decay,      dilate,   dim,       
@@ -226,12 +228,13 @@ enum class Metric: char {
 
 enum class Enum {  // enums to match pytorch variants
  undefined=-1,
- area,            batchmean,       bicubic,         bilinear,  border,   
- circular,        constant,        conv1d,          conv2d,    conv3d,   
- convtranspose1d, convtranspose2d, convtranspose3d, fanin,     fanout,   
- leakyrelu,       linear,          max,             mean,      nearest,  
- none,            reflect,         reflection,      relu,      replicate,
- sigmoid,         sum,             tanh,            trilinear, zeros,    
+ area,            batchmean,       bicubic,         bilinear,   border,   
+ circular,        constant,        conv1d,          conv2d,     conv3d,   
+ convtranspose1d, convtranspose2d, convtranspose3d, fanin,      fanout,   
+ gelu,            leakyrelu,       linear,          max,        mean,
+ nearest,         none,            reflect,         reflection, relu,
+ replicate,       sigmoid,         sum,             tanh,       trilinear,
+ zeros
 };
 
 struct TORCH_API Ktag {
@@ -263,6 +266,7 @@ struct TORCH_API Kmodule : public Ktag {
 struct TORCH_API Kloss : public Ktag {
  Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
+ std::string cb;
 };
 
 struct TORCH_API Kopt : public Ktag {
@@ -552,7 +556,7 @@ c10::optional<std::string>& mname_(Module&);
 S mname(const Module&);
 S mname(const Layer&);
 S mname(Kmodule*);
-std::string mlabel(const std::type_info&);
+std::string mlabel(const Module&);
 K mget(bool,bool,const Module&);
 K mforward(Layer&,K);
 Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
@@ -675,7 +679,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast>,97> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,101> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -700,12 +704,16 @@ typedef struct {
   std::make_tuple(cs("convtranspose2d"), Cast::convtranspose2d),
   std::make_tuple(cs("convtranspose3d"), Cast::convtranspose3d),
   std::make_tuple(cs("crossmap2d"),      Cast::crossmap2d),
+  std::make_tuple(cs("decoder"),         Cast::decoder),
+  std::make_tuple(cs("decoderlayer"),    Cast::decoderlayer),
   std::make_tuple(cs("drop"),            Cast::drop),
   std::make_tuple(cs("drop2d"),          Cast::drop2d),
   std::make_tuple(cs("drop3d"),          Cast::drop3d),
   std::make_tuple(cs("elu"),             Cast::elu),
   std::make_tuple(cs("embed"),           Cast::embed),
   std::make_tuple(cs("embedbag"),        Cast::embedbag),
+  std::make_tuple(cs("encoder"),         Cast::encoder),
+  std::make_tuple(cs("encoderlayer"),    Cast::encoderlayer),
   std::make_tuple(cs("expand"),          Cast::expand),
   std::make_tuple(cs("fadrop"),          Cast::fadrop),
   std::make_tuple(cs("flatten"),         Cast::flatten),
@@ -775,7 +783,9 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),       Cast::zeropad2d)
  }};
 
- std::array<std::tuple<S,Setting>,68> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,70> mset = {{        // module option sym -> enum
+  std::make_tuple(cs("addbias"),    Setting::addbias),
+  std::make_tuple(cs("addzero"),    Setting::addzero),
   std::make_tuple(cs("affine"),     Setting::affine),
   std::make_tuple(cs("alpha"),      Setting::alpha),
   std::make_tuple(cs("align"),      Setting::align),
@@ -960,7 +970,7 @@ typedef struct {
  }};
 
  // array must match order of Enum, so enum can be used as index
- std::array<std::tuple<S,Enum>,30> enums = {{
+ std::array<std::tuple<S,Enum>,31> enums = {{
   std::make_tuple(cs("area"),            Enum::area),
   std::make_tuple(cs("batchmean"),       Enum::batchmean),
   std::make_tuple(cs("bicubic"),         Enum::bicubic),
@@ -976,6 +986,7 @@ typedef struct {
   std::make_tuple(cs("convtranspose3d"), Enum::convtranspose3d),
   std::make_tuple(cs("fanin"),           Enum::fanin),
   std::make_tuple(cs("fanout"),          Enum::fanout),
+  std::make_tuple(cs("gelu"),            Enum::gelu),
   std::make_tuple(cs("leakyrelu"),       Enum::leakyrelu),
   std::make_tuple(cs("linear"),          Enum::linear),
   std::make_tuple(cs("max"),             Enum::max),
@@ -1016,6 +1027,7 @@ struct Esym {
  S operator()(const torch::enumtype::kConvTranspose3D&)  const { return std::get<0>(env().enums[(size_t)Enum::convtranspose3d]);}
  S operator()(const torch::enumtype::kFanIn&)            const { return std::get<0>(env().enums[(size_t)Enum::fanin]);}
  S operator()(const torch::enumtype::kFanOut&)           const { return std::get<0>(env().enums[(size_t)Enum::fanout]);}
+ S operator()(const torch::enumtype::kGELU&)             const { return std::get<0>(env().enums[(size_t)Enum::gelu]);}
  S operator()(const torch::enumtype::kLeakyReLU&)        const { return std::get<0>(env().enums[(size_t)Enum::leakyrelu]);}
  S operator()(const torch::enumtype::kLinear&)           const { return std::get<0>(env().enums[(size_t)Enum::linear]);}
  S operator()(const torch::enumtype::kMax&)              const { return std::get<0>(env().enums[(size_t)Enum::max]);}

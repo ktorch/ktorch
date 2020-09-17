@@ -680,10 +680,10 @@ static K minmaxdim(K x,I m,J d,bool k,Tensor &v,Tensor &i,const char* e) {
   case 1: if(o) torch::max_out(v,i,t,d,k);  else std::tie(v,i)=torch::max(t,d,k); break;
   case 2: v=torch::argmin(t,d,k); break;
   case 3: v=torch::argmax(t,d,k); break;
-  case 4: v=torch::min_values(t,d,k); break;
-  case 5: v=torch::max_values(t,d,k); break;
-//case 4: v=torch::amin(t,d,k); break;   // version 1.7 changes names
-//case 5: v=torch::amax(t,d,k); break;
+//case 4: v=torch::min_values(t,d,k); break;
+//case 5: v=torch::max_values(t,d,k); break;
+  case 4: v=torch::amin(t,d,k); break;   // version 1.7 changes names
+  case 5: v=torch::amax(t,d,k); break;
   default: minmaxerr(m,e); break;
  }
  if(o)        return (K)0;

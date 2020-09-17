@@ -1,8 +1,74 @@
 #include "ktorch.h"
 
+KAPI transform(K x) {
+ auto m=torch::nn::Transformer(torch::nn::TransformerOptions(512,8));
+ for(auto& a:m->named_parameters())
+  std::cerr << a.key() << " " << a.value().sizes() << "\n";
+ return (K)0;
+}
+ 
+KAPI testa(K x) {
+ auto m=torch::nn::MultiheadAttention(64,8);
+ for(auto& a:m->named_parameters())
+  std::cerr << a.key() << " " << a.value().sizes() << "\n";
+ m=torch::nn::MultiheadAttention( torch::nn::MultiheadAttentionOptions(64,8).kdim(128));
+ std::cerr << "m=torch::nn::MultiheadAttention( torch::nn::MultiheadAttentionOptions(64,8).kdim(128))\n";
+ for(auto& a:m->named_parameters())
+  std::cerr << a.key() << " " << a.value().sizes() << "\n";
+ return (K)0;
+}
+
+static void anytest() {
+ auto n=Module("somename");
+ std::cerr << n << "\n";
+ std::cerr << mlabel(n) << "\n";
+ auto a=AnyModule(SeqJoin());
+ auto b=AnyModule(SeqNest());
+ // auto c=AnyModule(torch::nn::ModuleList());
+ // fatal error: no member named 'forward' in 'torch::nn::ModuleListImpl'
+ // auto c=AnyModule(torch::nn::Sequential());
+ //any.h:217:16: fatal error: no matching member function for call to 'make_holder' : content_(make_holder(
+}
+
+KAPI testany(K x) {
+ KTRY
+  anytest();
+  return (K)0;
+ KCATCH("testany");
+}
+
+KAPI cb(K x,K y) {
+ KTRY
+  auto *l=xloss(x);
+  TORCH_CHECK(l, "need loss");
+  TORCH_CHECK(y->t==-KS, "need symbol for callback");
+  l->cb=y->s;
+  return(K)0;
+ KCATCH("callback");
+}
+
+KAPI fw(K x) {
+ KTRY
+  auto *l=xloss(x);
+  TORCH_CHECK(l, "need loss");
+  TORCH_CHECK(l->cb.size(), "no callback");
+  return k(0,(S)l->cb.c_str(),r1(x),0);
+ KCATCH("callback");
+}
+
+
 KAPI parms(K x) {
- auto *k=xmodule(x);
- return k ? kdict(mref(k->m).named_parameters()) : (K)0;
+ KTRY
+  auto *g=xtag(x);
+  TORCH_CHECK(g, "not implemented for ",kname(x));
+  switch(g->a) {
+   case Class::module: 
+   case Class::model:
+    return kdict(mref(g).named_parameters());
+   default:
+     AT_ERROR("nyi");
+  }
+ KCATCH("parms/buffers");
 }
 
 KAPI optdefaults(K x) {

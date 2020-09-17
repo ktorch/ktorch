@@ -291,13 +291,13 @@ static bool mbool(const Pairs& p,Cast c) {
  return p.b;
 }
 
-static S mode(K x,J i,Cast c,Setting s) {
+static S code(K x,J i,Cast c,Setting s) {
  S m;
  TORCH_CHECK(xsym(x,i,m), msym(c)," ",mset(s),": expected symbol, given ",kname(x,i));
  return m;
 }
 
-static S mode(const Pairs& p,Cast c) {
+static S code(const Pairs& p,Cast c) {
  TORCH_CHECK(p.t==-KS, msym(c)," ",p.k,": expected symbol, given ",kname(p.t));
  return p.s;
 }
@@ -648,7 +648,7 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
     case 5: o.dilation    (exarray<D>(x,i+j,c,Setting::dilate));   break;
     case 6: o.groups      (int64(x,i+j,c,Setting::groups));        break;
     case 7: o.bias        (mbool    (x,i+j,c,Setting::bias));      break;
-    case 8: o.padding_mode(convpad(mode(x,i+j,c,Setting::padmode))); break;
+    case 8: o.padding_mode(convpad(code(x,i+j,c,Setting::padmode))); break;
     default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
@@ -661,7 +661,7 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
    case Setting::dilate:    o.dilation    (exarray<D>(p,c)); break;
    case Setting::groups:    o.groups      (int64(p,c));     break;
    case Setting::bias:      o.bias        (mbool(p,c));     break;
-   case Setting::padmode:   o.padding_mode(convpad(mode(p,c)));   break;
+   case Setting::padmode:   o.padding_mode(convpad(code(p,c)));   break;
    default: AT_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c),": number of input channels not defined");
@@ -684,7 +684,7 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
     case 6: o.groups        (int64(x,i+j,c,Setting::groups));      break;
     case 7: o.bias          (mbool(x,i+j,c,Setting::bias));        break;
     case 8: o.dilation      (exarray<D>(x,i+j,c,Setting::dilate)); break;
-    case 9: o.padding_mode  (convpad(mode(x,i+j,c,Setting::padmode))); break;
+    case 9: o.padding_mode  (convpad(code(x,i+j,c,Setting::padmode))); break;
     default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
@@ -698,7 +698,7 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
    case Setting::groups:    o.groups        (int64(p,c));      break;
    case Setting::bias:      o.bias          (mbool(p,c));      break;
    case Setting::dilate:    o.dilation      (exarray<D>(p,c)); break;
-   case Setting::padmode:   o.padding_mode(convpad(mode(p,c)));break;
+   case Setting::padmode:   o.padding_mode(convpad(code(p,c)));break;
    default: AT_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c), ": number of input channels not defined");
@@ -857,7 +857,7 @@ template<typename O>static O upsample(K x,J i,Cast c) {
   switch(j) {
    case 0: if(xempty(x,i+j)) o.size({}); else o.size(mlongs(x,i+j,c,Setting::size)); break;
    case 1: if(xempty(x,i+j)) o.scale_factor({}); else o.scale_factor(mdoubles(x,i+j,c,Setting::scale)); break;
-   case 2: upmode(o,mode(x,i+j,c,Setting::mode)); break;
+   case 2: upmode(o,code(x,i+j,c,Setting::mode)); break;
    case 3: if(xempty(x,i+j)) o.align_corners({}); else o.align_corners(mbool(x,i+j,c,Setting::align)); break;
    case 4: rescale(x,i+j,c,Setting::rescale,o); break;
    default: AT_ERROR(msym(c),": up to ",(c==Cast::upsample ? 4 : 5)," positional arguments expected, ",n," given");
@@ -867,7 +867,7 @@ template<typename O>static O upsample(K x,J i,Cast c) {
   switch(mset(p.k,c)) {
    case Setting::size:    if(pempty(p)) o.size({}); else o.size(mlongs(p,c)); break;
    case Setting::scale:   if(pempty(p)) o.scale_factor({}); else o.scale_factor(mdoubles(p,c)); break;
-   case Setting::mode:    upmode(o,mode(p,c)); break;
+   case Setting::mode:    upmode(o,code(p,c)); break;
    case Setting::align:   if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
    case Setting::rescale: rescale(p,c,o); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
@@ -951,7 +951,7 @@ static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
- if     (s == Setting::mode)       o.mode(embedmode(mode(p,c)));
+ if     (s == Setting::mode)       o.mode(embedmode(code(p,c)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
  else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
@@ -1026,7 +1026,7 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
  nn::EmbeddingBagOptions o(nj,nj);
  // allow mode if last arg even if early in sequence
  if(!x->t && n>1 && n<6 && xsym(x,i+n-1))
-  n--, o.mode(embedmode(mode(x,i+n,c,Setting::mode)));
+  n--, o.mode(embedmode(code(x,i+n,c,Setting::mode)));
  for(J j=0;j<n;++j) {
    switch(j) {
     case 0:
@@ -1043,7 +1043,7 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
     case 2: o.max_norm(optdouble(x,i+j,c,Setting::maxnorm)); break;
     case 3: o.norm_type(mdouble(x,i+j,c,Setting::p)); break;
     case 4: o.scale_grad_by_freq(mbool(x,i+j,c,Setting::scale)); break;
-    case 5: o.mode(embedmode(mode(x,i+j,c,Setting::mode))); break;
+    case 5: o.mode(embedmode(code(x,i+j,c,Setting::mode))); break;
     case 6: o.sparse(mbool(x,i+j,c,Setting::sparse)); break;
     default: AT_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
   }
@@ -1203,7 +1203,7 @@ template<typename O> static void rnnpair(Cast c,Pairs& p,O& o) {
    case Setting::in:          o.input_size(int64(p,c)); break;
    case Setting::hidden:      o.hidden_size(int64(p,c)); break;
    case Setting::layers:      o.num_layers(int64(p,c)); break;
-   case Setting::fn:          rnnfn(o,c,c==Cast::rnn ? mode(p,c) : nullptr); break;
+   case Setting::fn:          rnnfn(o,c,c==Cast::rnn ? code(p,c) : nullptr); break;
    case Setting::bias:        o.bias(mbool(p,c)); break;
    case Setting::batchfirst:  o.batch_first(mbool(p,c)); break;
    case Setting::dropout:     o.dropout(mdouble(p,c)); break;
@@ -1220,7 +1220,7 @@ static nn::RNNOptions rnn(K x,J i,Cast c) {
    case 0: o.input_size (int64(x,i+j,c,Setting::in)); break;
    case 1: o.hidden_size(int64(x,i+j,c,Setting::hidden)); break;
    case 2: o.num_layers (int64(x,i+j,c,Setting::layers)); break;
-   case 3: rnnfn(o,c,mode(x,i+j,c,Setting::fn)); break;
+   case 3: rnnfn(o,c,code(x,i+j,c,Setting::fn)); break;
    case 4: o.bias(mbool(x,i+j,c,Setting::bias)); break;
    case 5: o.batch_first(mbool(x,i+j,c,Setting::batchfirst)); break;
    case 6: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
@@ -1529,7 +1529,7 @@ static fnn::PadFuncOptions pad(K x,J i,Cast c) {
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::pad:   o.pad(mlongs(p,c)); break;
-   case Setting::mode:  padmode(o,mode(p,c)); break;
+   case Setting::mode:  padmode(o,code(p,c)); break;
    case Setting::value: o.value(mdouble(p,c)); break;
    default: AT_ERROR("padding option: ",p.k," not recognized");
   }
@@ -2139,6 +2139,101 @@ static void squeeze(bool a,K x,const SqueezeOptions& o) {
  if(o.dim().has_value()) OPTION(x, dim,     kj(o.dim().value()));
  if(a || o.inplace())    OPTION(x, inplace, kb(o.inplace()));
 }
+ 
+// --------------------------------------------------------------------------------------
+// attention - parse/retrieve settings for multi head attention
+// --------------------------------------------------------------------------------------
+static nn::MultiheadAttentionOptions attention(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::MultiheadAttentionOptions o(0,0);
+ for(J j=0;j<n;++j) {
+   switch(j) {
+    case 0: o.embed_dim(int64(x,i+j,c,Setting::dim)); break;
+    case 1: o.num_heads(int64(x,i+j,c,Setting::heads)); break;
+    case 2: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
+    case 3: o.bias(mbool(x,i+j,c,Setting::bias)); break;
+    case 4: o.add_bias_kv(mbool(x,i+j,c,Setting::addbias)); break;
+    case 5: o.add_zero_attn(mbool(x,i+j,c,Setting::addzero)); break;
+    case 6: o.kdim(int64(x,i+j,c,Setting::kdim)); break;
+    case 7: o.vdim(int64(x,i+j,c,Setting::vdim)); break;
+    default: AT_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
+  }
+ }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::dim:     o.embed_dim(int64(p,c)); break;
+   case Setting::heads:   o.num_heads(int64(p,c)); break;
+   case Setting::dropout: o.dropout(mdouble(p,c)); break;
+   case Setting::bias:    o.bias(mbool(p,c)); break;
+   case Setting::addbias: o.add_bias_kv(mbool(p,c)); break;
+   case Setting::addzero: o.add_zero_attn(mbool(p,c)); break;
+   case Setting::kdim:    o.kdim(int64(p,c)); break;
+   case Setting::vdim:    o.vdim(int64(p,c)); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ TORCH_CHECK(o.embed_dim()>0, msym(c), ": positive embedding dimension required");
+ TORCH_CHECK(o.num_heads()>0, msym(c), ": positive number of heads required");
+ if(o.kdim()<=0) o.kdim(o.embed_dim());
+ if(o.vdim()<=0) o.vdim(o.embed_dim());
+ return o;
+}
+
+static void attention(bool a,K x,const nn::MultiheadAttentionOptions& o) {
+ nn::MultiheadAttentionOptions d(o.embed_dim(),o.num_heads());
+ OPTION(x, dim,   kj(o.embed_dim()));
+ OPTION(x, heads, kj(o.num_heads()));
+ if(a || (o.dropout()       != d.dropout()))       OPTION(x, dropout, kf(o.dropout()));
+ if(a || (o.bias()          != d.bias()))          OPTION(x, bias,    kb(o.bias()));
+ if(a || (o.add_bias_kv()   != d.add_bias_kv()))   OPTION(x, addbias, kb(o.add_bias_kv()));
+ if(a || (o.add_zero_attn() != d.add_zero_attn())) OPTION(x, addzero, kb(o.add_zero_attn()));
+ if(a || (o.kdim()          != d.kdim()))          OPTION(x, kdim,    kj(o.kdim()));
+ if(a || (o.vdim()          != d.vdim()))          OPTION(x, vdim,    kj(o.vdim()));
+}
+
+// --------------------------------------------------------------------------------------
+// encode/decode layers - parse/retrieve settings for multi head attention
+// --------------------------------------------------------------------------------------
+static c10::variant<torch::enumtype::kReLU, torch::enumtype::kGELU> codefn(Cast c,S s) {
+ switch(emap(s)) {
+  case Enum::relu: return torch::kReLU;
+  case Enum::gelu: return torch::kGELU;
+  default: AT_ERROR("unrecognized ", msym(c), " activation fn: ",s); break;
+ }
+}
+
+template<typename O>static O codelayer(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); O o(0,0);
+ for(J j=0;j<n;++j) {
+  switch(j) {
+   case 0: o.d_model(int64(x,i+j,c,Setting::in)); break;
+   case 1: o.nhead(int64(x,i+j,c,Setting::heads)); break;
+   case 2: o.dim_feedforward(int64(x,i+j,c,Setting::dim)); break;
+   case 3: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
+   case 4: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
+   default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
+  }
+ }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::in:      o.d_model(int64(p,c)); break;
+   case Setting::heads:   o.nhead(int64(p,c)); break;
+   case Setting::dim:     o.dim_feedforward(int64(p,c)); break;
+   case Setting::dropout: o.dropout(mdouble(p,c)); break;
+   case Setting::fn:      o.activation(codefn(c,code(p,c))); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
+ TORCH_CHECK(  o.nhead()>0, msym(c), ": positive number of heads required");
+ return o;
+}
+
+template<typename O>static void codelayer(bool a,K x,const O& o) {
+ O d(o.d_model(),o.nhead());
+ OPTION(x, in,    kj(o.d_model()));
+ OPTION(x, heads, kj(o.nhead()));
+ if(a || (o.dim_feedforward()    != d.dim_feedforward()))    OPTION(x, dim,     kj(o.dim_feedforward()));
+ if(a || (o.dropout()            != d.dropout()))            OPTION(x, dropout, kf(o.dropout()));
+ if(a || (o.activation().index() != d.activation().index())) OPTION(x, fn,      ks(ESYM(o.activation())));
+}
 
 // ----------------------------------------------------------------------------------------------------
 // getsize - get size(s) for expand & reshape
@@ -2159,6 +2254,18 @@ static SizeOptions getsize(K x,J i,Cast c) {
 
 static void getsize(bool a,K x,const SizeOptions& o) {
  OPTION(x, size, klist(o.size().size(),o.size().data()));
+}
+
+static std::shared_ptr<Module> mcreate(K x,J i,Cast c) {
+ switch(c) {
+  case Cast::sequential:  return Sequential().ptr();
+  case Cast::seqnest:     return SeqNest().ptr();
+  case Cast::seqjoin:     return SeqJoin().ptr();
+
+  case Cast::embed:        return embed(x,i,c).ptr();
+  case Cast::linear:       return nn::Linear(linear(x,i,c)).ptr();
+  default: AT_ERROR("nyi");
+ }
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2235,6 +2342,11 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::replicate3d:  return AnyModule(nn::ReplicationPad3d(npad<3,nn::ReplicationPad3dOptions>(x,i,c)));
   case Cast::zeropad2d:    return AnyModule(nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)));
 
+  case Cast::attention:    return AnyModule(nn::MultiheadAttention(attention(x,i,c)));
+  //case Cast::attention:    {auto a=nn::MultiheadAttention(attention(x,i,c)); a->reset(); return AnyModule(a);}
+  case Cast::encoderlayer: return AnyModule(nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)));
+  case Cast::decoderlayer: return AnyModule(nn::TransformerDecoderLayer(codelayer<nn::TransformerDecoderLayerOptions>(x,i,c)));
+
   case Cast::rnn:          return AnyModule(nn::RNN(rnn(x,i,c)));
   case Cast::gru:          return AnyModule(nn::GRU(rnn<nn::GRUOptions>(x,i,c)));
   case Cast::lstm:         return AnyModule(nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)));
@@ -2282,9 +2394,9 @@ AnyModule anymodule(K x,J i,Cast c) {
  }
 }
 
-// -------------------------------------------------------------------------------------------------
-// mparms - set module parameters/buffers from k values in dictionary with matching names
-// -------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
+// mparms - set module parms/buffers from k values in dictionary with matching names
+// ----------------------------------------------------------------------------------
 static void mparms(Cast c,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
  for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
@@ -2357,7 +2469,10 @@ static void addchild(const Layer& a,Layers& q) {
 static void addchild(Cast c,S s,Layers& q,K x,J i,K y=nullptr,K z=nullptr);
 static void addchild(Cast c,S s,Layers& q,K x,J i,K y,K z) {
  auto a=anymodule(x,i,c);           // create module from cast, options & offset
- if(s) mname_(mref(a))=s;           // if name supplied, define it in the module
+ if(s) 
+  mname_(mref(a))=s;                // if name supplied, define it in the module
+ else if(c==Cast::attention)        // patch for hardcoding name as "torch::nn::MultiheadAttention"
+  mname_(mref(a))=c10::nullopt;
  if(y||z) mparms(c,*a.ptr(),y,z);   // add any supplied parms or buffers
  addchild(a,q);                     // add to immediate parent container on stack
 }
@@ -2541,6 +2656,10 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; npad(x,m);
  } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   npad(x,m);
 
+ } else if(auto* m=g.as<nn::MultiheadAttention>())      { c=Cast::attention;    attention(a,x,m->options);
+ } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; codelayer(a,x,m->options);
+ } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; codelayer(a,x,m->options);
+
  } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn(a,x,m->options);
  } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn(a,x,m->options);
  } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; rnn(a,x,m->options);
@@ -2621,7 +2740,8 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
 K mget(bool a,bool b,const Module& m) {  
 // a-true for all options else non-defaults, b-true for full state w'parms & buffers, s-name
  K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
- if(container(m)) {
+ //if(container(m)) {
+ if(container(m) || m.children().size()) {
   for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
   mget(a,0,mname(m),true,m,v);
   return xT(xD(k,v));
@@ -2731,4 +2851,5 @@ pairwise distance & cosine similarity: in both module & functional form but forw
 fractional pool -- try with indices registered as buffer?
 embeddingbag -- forward w'defaults should work with sequential
 multi-head attention -- not in 1.4, wait for patch or 1.5
+1.7 adds SiLU, UnFlatten, transformer modules..
 */
