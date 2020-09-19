@@ -103,11 +103,14 @@ using Module=torch::nn::Module;
 using ModuleDict=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
 using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;
+using ModuleList=torch::nn::ModuleList;
+using Moduleptr=std::shared_ptr<Module>;
+using Modulestack=std::stack<Moduleptr>;
 class SeqNest;
 class SeqJoin;
 
 // define a kind of union for modules used to build sequences
-using Layer=c10::variant<Sequential, SeqNest, SeqJoin, AnyModule>;
+using Layer=c10::variant<Sequential, SeqNest, SeqJoin, ModuleList, AnyModule>;
 using Layers=std::stack<Layer>;
 
 using Optimizer=torch::optim::Optimizer;
@@ -131,7 +134,7 @@ typedef struct {
  };
 } Pairs;
 
-enum class Class:char {
+enum class Class:int {
  undefined=0,
  tensor,
  vector,
@@ -144,11 +147,10 @@ enum class Class:char {
  model
 };
 
-enum class Cast:char {
+enum class Cast:short {
  undefined=0, 
- tensor,  model,                    // basic structures
- sequential, seqnest, seqjoin,      // container modules
- //any,        anyname,               // generic modules
+ tensor,  model,                                // basic structures
+ modulelist, sequential, seqnest, seqjoin,      // container modules
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
@@ -168,8 +170,8 @@ enum class Cast:char {
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn,
  rrelu,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
- tanh,           tanhshrink,      threshold,       unfold,          unsqueeze,
- upsample,       zeropad2d,
+ tanh,           tanhshrink,      threshold,       transformer,     unfold,
+ unsqueeze,      upsample,        zeropad2d,
 
  pairwise,  similar, // distance functions
 
@@ -240,6 +242,8 @@ enum class Enum {  // enums to match pytorch variants
 struct TORCH_API Ktag {
  Class a = Class::undefined;
  Cast  c = Cast::undefined;
+ bool b1 = false;
+ bool b2 = false;
  virtual ~Ktag() = default;
 };
 
@@ -261,6 +265,11 @@ struct TORCH_API Kdict : public Ktag {
 struct TORCH_API Kmodule : public Ktag {
  Layer m;       // single module or container of many modules, e.g. Sequential
  Kmodule(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
+};
+
+struct TORCH_API KModule : public Ktag {
+ Moduleptr m;       // single module or container of many modules, e.g. Sequential
+ KModule(Cast x,const Moduleptr& y) : m(std::move(y)) {a=Class::module; c=x;}
 };
 
 struct TORCH_API Kloss : public Ktag {
@@ -377,6 +386,8 @@ bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
 Kmodule* xmodule(K);
 Kmodule* xmodule(K,J);
+KModule* xModule(K);
+KModule* xModule(K,J);
 Kloss* xloss(K);
 Kloss* xloss(K,J);
 Kopt* xoptim(K);
@@ -679,7 +690,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast>,101> module = {{               // module sym -> enum
+ std::array<std::tuple<S,Cast>,103> module = {{               // module sym -> enum
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d),
@@ -743,6 +754,7 @@ typedef struct {
   std::make_tuple(cs("maxpool1d"),       Cast::maxpool1d),
   std::make_tuple(cs("maxpool2d"),       Cast::maxpool2d),
   std::make_tuple(cs("maxpool3d"),       Cast::maxpool3d),
+  std::make_tuple(cs("modulelist"),      Cast::modulelist),
   std::make_tuple(cs("mul"),             Cast::mul),
   std::make_tuple(cs("normalize"),       Cast::normalize),
   std::make_tuple(cs("pad"),             Cast::pad),
@@ -777,6 +789,7 @@ typedef struct {
   std::make_tuple(cs("tanh"),            Cast::tanh),
   std::make_tuple(cs("tanhshrink"),      Cast::tanhshrink),
   std::make_tuple(cs("threshold"),       Cast::threshold),
+  std::make_tuple(cs("transformer"),     Cast::transformer),
   std::make_tuple(cs("unfold"),          Cast::unfold),
   std::make_tuple(cs("unsqueeze"),       Cast::unsqueeze),
   std::make_tuple(cs("upsample"),        Cast::upsample),

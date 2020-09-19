@@ -15,6 +15,9 @@ KAPI testa(K x) {
  std::cerr << "m=torch::nn::MultiheadAttention( torch::nn::MultiheadAttentionOptions(64,8).kdim(128))\n";
  for(auto& a:m->named_parameters())
   std::cerr << a.key() << " " << a.value().sizes() << "\n";
+
+ torch::nn::TransformerDecoder a=nullptr;
+ std::cerr << a.is_empty() << "\n";
  return (K)0;
 }
 
