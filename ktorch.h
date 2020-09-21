@@ -109,7 +109,7 @@ using Modulestack=std::stack<Moduleptr>;
 class SeqNest;
 class SeqJoin;
 
-// define a kind of union for modules used to build sequences
+// define a kind of union for modules: containers used to build sequences and type-erased anymodule
 using Layer=c10::variant<Sequential, SeqNest, SeqJoin, ModuleList, AnyModule>;
 using Layers=std::stack<Layer>;
 
@@ -267,11 +267,6 @@ struct TORCH_API Kmodule : public Ktag {
  Kmodule(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
 };
 
-struct TORCH_API KModule : public Ktag {
- Moduleptr m;       // single module or container of many modules, e.g. Sequential
- KModule(Cast x,const Moduleptr& y) : m(std::move(y)) {a=Class::module; c=x;}
-};
-
 struct TORCH_API Kloss : public Ktag {
  Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
@@ -386,8 +381,6 @@ bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
 Kmodule* xmodule(K);
 Kmodule* xmodule(K,J);
-KModule* xModule(K);
-KModule* xModule(K,J);
 Kloss* xloss(K);
 Kloss* xloss(K,J);
 Kopt* xoptim(K);

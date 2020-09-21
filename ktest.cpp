@@ -21,6 +21,10 @@ KAPI testa(K x) {
  return (K)0;
 }
 
+Moduleptr mcreate(J n) {
+ return torch::nn::Linear(n,n).ptr();
+}
+
 static void anytest() {
  auto n=Module("somename");
  std::cerr << n << "\n";
@@ -31,6 +35,23 @@ static void anytest() {
  // fatal error: no member named 'forward' in 'torch::nn::ModuleListImpl'
  // auto c=AnyModule(torch::nn::Sequential());
  //any.h:217:16: fatal error: no matching member function for call to 'make_holder' : content_(make_holder(
+ torch::nn::ModuleList m;
+ auto p=m->shared_from_this();
+ std::cerr << *p << "\n";
+ torch::nn::ModuleList list(torch::nn::Linear(10, 3), torch::nn::Conv2d(1, 2, 3), torch::nn::Dropout2d(0.5));
+ for(auto& m:list->named_children())
+  std::cerr << m.key() << ": " << *m.value() << "\n";
+ torch::nn::ModuleList alist(*AnyModule(torch::nn::Linear(10, 3)).ptr(), 
+                             *AnyModule(torch::nn::Conv2d(1, 2, 3)).ptr(),
+                             *AnyModule(torch::nn::Dropout2d(0.5)).ptr());
+ for(auto& m:alist->named_children())
+  std::cerr << m.key() << ": " << *m.value() << "\n";
+ torch::nn::ModuleList L;
+ L->push_back(mcreate(2));
+ //AnyModule A(mcreate(3));
+ //L->push_back(AnyModule(mcreate(3).get()));
+ for(auto& m:L->named_children())
+  std::cerr << m.key() << ": " << *m.value() << "\n";
 }
 
 KAPI testany(K x) {

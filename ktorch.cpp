@@ -492,9 +492,6 @@ bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
 Kmodule* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Kmodule*)g : nullptr;}
 Kmodule* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
 
-KModule* xModule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (KModule*)g : nullptr;}
-KModule* xModule(K x,J i) {return xind(x,i) ? xModule(kK(x)[i]) : nullptr;}
-
 Kloss* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kloss*)g : nullptr;}
 Kloss* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
 
