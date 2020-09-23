@@ -40,7 +40,6 @@ std::string mlabel(const Module& x) {
  return s;
 }
 
-
 // ----------------------------------------------------------------------------
 // append a module option to a k dictionary given dict,name & value
 // ----------------------------------------------------------------------------
@@ -144,6 +143,7 @@ KAPI seq(K x) {
 
 // -----------------------------------------------------------------------------------
 // container - given module/module cast, return true if container module
+// newcontainer - create new container (no options, parameters or buffers required)
 // -----------------------------------------------------------------------------------
 static bool container(Cast c) {
  switch(c) {
@@ -164,25 +164,7 @@ static bool container(const Module& m) {
  else                        return false;
 }
 
-static bool defines_children(Cast c) {
- switch(c) {
-  case Cast::attention:
-  case Cast::decoder:
-  case Cast::decoderlayer:
-  case Cast::encoder:
-  case Cast::encoderlayer:
-  case Cast::transformer:
-   return true;
-  default: return false;
- }
-}
-// -------------------------------------------------------------------------------------------------
-// parent - given type, return new, empty container module
-//        - given stack, pop back to one remaining module, return as overall parent in struct for k
-//        - also, given generic module, convert back into Layer variant (for repopulating stack)
-// mstack - given overall container layer, populate stack of all intermediate container layers
-// -------------------------------------------------------------------------------------------------
-static Layer parent(Cast c) {
+static Layer newcontainer(Cast c) {
  switch(c) {
   case Cast::sequential:  return Sequential();
   case Cast::seqnest:     return SeqNest();
@@ -192,27 +174,28 @@ static Layer parent(Cast c) {
  }
 }
 
-static K parent(Cast c,Layers& q) {
- if(q.size()) {
-  while(q.size()>1) q.pop();
-  return kmodule(c, q.top());
- } else {
-  return (K)0;
- }
+// -------------------------------------------------------------------------------------------------
+// rootlayer - given stack, pop back to root module, return as in struct to k
+// makelayer - given generic module, convert back into Layer variant (for repopulating stack)
+// mstack - given overall container layer, populate stack of all intermediate container layers
+// -------------------------------------------------------------------------------------------------
+static K rootlayer(Cast c,Layers& q) {
+ while(q.size()>1) q.pop();
+ return q.size() ? kmodule(c,q.top()) : (K)0;
 }
 
-static Layer parent(Module& m) {
+static Layer makelayer(Module& m) {
  if     (m.as<Sequential>()) return Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(m.shared_from_this()));
- else if(m.as<SeqNest>())    return SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
- else if(m.as<SeqJoin>())    return SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
- //else if(m.as<ModuleList>()) return ModuleList(std::dynamic_pointer_cast<ModuleList>(m.shared_from_this()));
+ else if(m.as<SeqNest>())    return    SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
+ else if(m.as<SeqJoin>())    return    SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
+ else if(m.as<ModuleList>()) return ModuleList(std::dynamic_pointer_cast<nn::ModuleListImpl>(m.shared_from_this()));
  else AT_ERROR("unable to create parent layer from ",m.name());
 }
 
 static void mstack(size_t d,Module& m,Layers& q) {
  while(q.size()>d) q.pop();
  if(container(m)) {
-  q.push(parent(m));
+  q.push(makelayer(m));
   for(auto& i:m.children())
    mstack(d+1,*i,q);
  }
@@ -270,7 +253,7 @@ K mforward(Layer& m,K a) {
    AT_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
   }
  } else {
-  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: model/layer(s) & up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
+  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: module & model and up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
   if(!xten(a,1,x))            x=kput(a,1);
   if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
   if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
@@ -2463,7 +2446,7 @@ static void addparent(Cast c,S s,Layers& q,K x,K y,K z) {
  TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
  TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
- auto a=parent(c);         // create parent module
+ auto a=newcontainer(c);   // create new container module, e.g. sequential
  addname(mref(a),s);       // add name if supplied
  addparent(a,q);           // add to any previous parent, push on stack
 }
@@ -2475,19 +2458,23 @@ static void addchild(const Layer& a,Layers& q) {
   q.push(a);
 }
 
-static void addchild(Cast c,S s,Layers& q,K x,J i,K y=nullptr,K z=nullptr);
-static void addchild(Cast c,S s,Layers& q,K x,J i,K y,K z) {
- auto a=anymodule(x,i,c);           // create module from cast, options & offset
- addname(mref(a),s);                      // add name if supplied
- if(y||z) mparms(c,*a.ptr(),y,z);   // add any supplied parms or buffers
- addchild(a,q);                     // add to immediate parent container on stack
+static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
+static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
+ J i=xdict(x) ? -1 : (s ? 2 : 1); // offset into x when processing args
+ auto a=anymodule(x,i,c);         // create module from cast, options & offset
+ auto& m=*a.ptr();                // generic module reference
+ addname(m,s);                    // add name if supplied
+ if(y||z) mparms(c,m,y,z);        // add any supplied parms or buffers
+ addchild(a,q);                   // add to immediate parent container on stack
+ return m.modules(false).size();  // return count of all sub-modules created
 }
 
-// -----------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 // msyms - parse module and optional name symbol from k arg(s), throw error if not found
+// mfind - match state w'sub-modules that are part of explicitly defined layers
 // mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
 // mpush - add new parent/child module to network stored in stack of layers
-// -----------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 static void msyms(K x,S& s,S& nm) {
  nm=nullptr;
  if(x->t == -KS) {
@@ -2506,37 +2493,48 @@ static void msyms(K x,S& s,S& nm) {
  }
 }
 
-void mdepth(Cast c,size_t d,Layers& q) {
- if(q.size())  {
-  const auto& m=mref(q.top());
-  std::cerr << "parent: " << c10::demangle(typeid(m).name()) << ", name: " << m.name() << "\n";
-  std::cerr << m << "\n";
+static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
+ TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
+ TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
+ auto p=mref(q.top()).named_children().back();    // get last name & module defined in container
+ J i=-1;                                          // named modules includes parent, want i=0 for 1st child
+ for(auto& a:p.value()->named_modules(p.key())) { // search through all child modules (all levels)
+  if(i==j) {                                      // 
+   std::cerr << a.key() << "\n";
+   if(y||z) mparms(c,*a.value(),y,z);        // add any supplied parms or buffers
+   return;
+  }
+  i++;
  }
+ AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(*p.value())," layer at depth ",d);
+}
+
+static void mdepth(Cast c,size_t d,Layers& q) {
  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
  while(q.size()>d) q.pop();
 }
 
-Cast mpush(Layers& q,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
-Cast mpush(Layers& q,J d,S s,S nm,K x,K y,K z) {
- TORCH_WARN("mpush depth: ",d,", module: ",s,", args: ",kstring(x),"\n");
+static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
+static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
  Cast c=msym(s);
- if(q.size() && mref(q.top()).children().size() && !container(mref(q.top()))) {
-  std::cerr << "not a container, but parent has children already defined\n";
-  return c;
+ if(d>q.size()) {
+  mfind(c,j,d,nm,q,x,y,z); j++;
+ } else {
+  mdepth(c,d,q); j=0;
+  if(container(c))
+   addparent(c,nm,q,x,y,z);
+  else
+   addchild(c,nm,q,x,y,z);
  }
- mdepth(c,d,q);
- J i=xdict(x) ? -1 : (nm ? 2 : 1);
- if(container(c))
-  addparent(c,nm,q,x,y,z);
- else if(defines_children(c))
-  std::cerr << "defined children:\n", addchild(c,nm,q,x,i,y,z);
- else
-  addchild(c,nm,q,x,i,y,z);
- return c;
+ return std::make_tuple(c,j);
 }
 
-static Cast mpush(Layers& q,J d,K x) {std::cerr << "mpush(stack,d,x)\n"; S s,nm; msyms(x,s,nm); return mpush(q,d,s,nm,x);}
+static Cast mpush(Layers& q,J d,K x) {
+ J j; S s,nm; Cast c;
+ msyms(x,s,nm);
+ std::tie(c,j)=mpush(q,0,d,s,nm,x);
+ return c;}
 
 // -----------------------------------------------------------------------------
 // mtree - parse nested tree of layers -- type,name,options -- to build modules
@@ -2557,10 +2555,10 @@ static K mtree(K x,J d=0,Kmodule *l=nullptr); // higher-level call, can add to e
 static K mtree(K x,J d,Kmodule *l) {
  Layers q; if(l) mstack(l,q);
  Cast c=mtree(x,d ? d : q.size(),q);
- return l ? (K)0 : parent(c,q);
+ return l ? (K)0 : rootlayer(c,q);
 }
 
-Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
+static Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
  Cast c,p=Cast::undefined; J d,m=n<0 ? 0 : n; K v;
  for(J i=n<0 ? -1 : 0;i<m;++i) {
   d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v);
@@ -2569,27 +2567,27 @@ Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. 
  return p;  // return module type of overall parent container
 }
 
-K mdv(K x,J n,Kmodule *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
-K mdv(K x,J n,Kmodule *l,J d,K v) {
+static K mdv(K x,J n,Kmodule *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
+static K mdv(K x,J n,Kmodule *l,J d,K v) {
  Cast c; Layers q; if(l) mstack(l,q);
  c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
- return l ? (K)0 : parent(c,q);
+ return l ? (K)0 : rootlayer(c,q);
 }
 
-Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
- Cast c,p=Cast::undefined; J n=x->t==99 ? 1 : xlen(x);
+static Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
+ Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
  for(J i=0;i<n;++i) {
-  c=mpush(q, statedepth(x,i),   statemodule(x,i), statename(x,i),
-             stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
+  std::tie(c,j)=mpush(q, j, statedepth(x,i), statemodule(x,i), statename(x,i),
+                            stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
   if(p==Cast::undefined) p=c;
  }
  return p;
 }
 
-K mtable(K x,Kmodule *l=nullptr);  //higher-level call, can also add to existing module
-K mtable(K x,Kmodule *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : parent(c,q);}
+static K mtable(K x,Kmodule *l=nullptr);  //higher-level call, can also add to existing module if supplied
+static K mtable(K x,Kmodule *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : rootlayer(c,q);}
 
-void mextend(Layer& a,Cast c,J d,Layers& q) {
+static void mextend(Layer& a,Cast c,J d,Layers& q) {
  if(d) mdepth(c,d,q);
  if(container(c))
   addparent(a,q);
@@ -2597,8 +2595,8 @@ void mextend(Layer& a,Cast c,J d,Layers& q) {
   addchild(a,q);
 }
 
-void mextend(Kmodule *x,Kmodule *y,J d=0);
-void mextend(Kmodule *x,Kmodule *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
+static void mextend(Kmodule *x,Kmodule *y,J d=0);
+static void mextend(Kmodule *x,Kmodule *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
 
 // --------------------------------------------------------------------------------------------
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
@@ -2761,7 +2759,6 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
 K mget(bool a,bool b,const Module& m) {  
 // a-true for all options else non-defaults, b-true for full state w'parms & buffers, s-name
  K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
- //if(container(m)) {
  if(container(m) || m.children().size()) {
   for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
   mget(a,0,mname(m),true,m,v);

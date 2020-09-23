@@ -587,6 +587,9 @@ KAPI metrictest(K x) {
 }
 
 KAPI ksizes(K x) {
+ std::cerr << "type_info: " << sizeof(std::type_info) << "\n";
+ J j; auto h=typeid(j).hash_code();
+ std::cerr << "hash_code: " << sizeof(h) << "\n";
  std::cerr << "k0:      " << sizeof(k0) << "\n";
  std::cerr << "Tensor:  " << sizeof(Tensor) << "\n";
  std::cerr << "Module:  " << sizeof(Module) << "\n";

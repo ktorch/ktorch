@@ -285,7 +285,7 @@ struct TORCH_API Kmodel : public Ktag {
  Cast mc;          // type of module, typically a container module, e.g. Sequential
  Cast lc;          // type of loss fn
  Cast oc;          // type of optimizer
- Layer m;          // layer(s), e.g. Sequential
+ Layer m;          // layer, e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
  Kmodel(Kmodule *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}

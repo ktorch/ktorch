@@ -286,7 +286,7 @@ KAPI training(K x) {
  KTRY
   bool b; Ktag *g;
   TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && x->n==2 && xbool(x,1,b)),
-              "training: unrecognized arg(s), expects module layer(s) or model and optional flag");
+              "training: unrecognized arg(s), expects module or model and optional flag");
   auto& m=mref(g);
   return (x->n==2) ? m.train(b),(K)0 : kb(m.is_training());
  KCATCH("training");
