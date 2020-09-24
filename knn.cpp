@@ -2259,8 +2259,11 @@ static void getsize(bool a,K x,const SizeOptions& o) {
 }
 
 // ----------------------------------------------------------------------------------------------------
+// optstart  - offset in args: -1 if dictionary of options, 1 if no name else 2
 // anymodule - define module from supplied options, return as generic AnyModule 
 // ----------------------------------------------------------------------------------------------------
+static J optstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
+
 AnyModule anymodule(K x,J i,Cast c) {
  switch(c) {
   case Cast::batchnorm1d:  return AnyModule(nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)));
@@ -2382,221 +2385,6 @@ AnyModule anymodule(K x,J i,Cast c) {
   default: AT_ERROR("unrecognized module: ",(I)c);
  }
 }
-
-// ----------------------------------------------------------------------------------
-// mparms - set module parms/buffers from k values in dictionary with matching names
-// ----------------------------------------------------------------------------------
-static void mparms(Cast c,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
- K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
- for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
-  J i=kfind(k,a.key());
-  TORCH_CHECK(i>-1, msym(c), ": unable to find ",(p ? " parameter" : " buffer"),": ",a.key());
-  Tensor t=v->t ? V[i] : kput(kK(v)[i]);
-  if(a.value().defined()) {
-   torch::NoGradGuard g;
-   TORCH_CHECK(a.value().dtype() == t.dtype(), msym(c), ": type mismatch, ", a.key(), " is ", a.value().dtype(), ", input is ", t.dtype());
-   TORCH_CHECK(a.value().is_same_size(t),      msym(c), ": size mismatch, ", a.key(), " is ", a.value().sizes(), ", input is ", t.sizes());
-   if (a.value().device() != t.device())
-    a.value().set_data(t);
-   else
-    a.value().set_(t);
-  } else {
-   a.value()=std::move(t);
-  }
- }
-}
-
-void mparms(Cast c,Module &m,K p,K f) {
- if(p) mparms(c,m,p,true);   // if parms dictionary, set module parms from k dictionary
- if(f) mparms(c,m,f,false);  // if buffers defined,  set buffers from k dictionary
-}
-
-// -----------------------------------------------------------------------------------------
-// addmodule - given parent & layer variants, add allowable combinations, else error
-// addparent - create container, add to any previous parent layer, push on stack
-// addchild - add a child layer to existing parent or push single layer to stack
-// -----------------------------------------------------------------------------------------
-static void addmodule(Layer& x,const Layer& y) {
- const char* s=mname(y);
- c10::visit(
-  make_overload(
-   [&s](Sequential& x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const Sequential& y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   []  (ModuleList& x, const auto&       y)  {x->push_back(y.ptr());},
-   [](auto& x,const auto& y) {AT_ERROR("unable to add a ", mlabel(mref(y)),
-                                       " module as a child of a ", mlabel(mref(x)), " module");}),
-   x,y);
-}
-
-static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
- 
-static void addparent(const Layer& a,Layers& q) {
- if(q.size()) addmodule(q.top(),a);  // add to previous parent, if any
- q.push(a);                          // add new parent container to stack
-}
-
-static void addparent(Cast c,S s,Layers& q,K x=nullptr,K y=nullptr,K z=nullptr);
-static void addparent(Cast c,S s,Layers& q,K x,K y,K z) {
- TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
- TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
- TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
- auto a=newcontainer(c);   // create new container module, e.g. sequential
- addname(mref(a),s);       // add name if supplied
- addparent(a,q);           // add to any previous parent, push on stack
-}
-
-static void addchild(const Layer& a,Layers& q) {
- if(q.size())
-  addmodule(q.top(),a);
- else
-  q.push(a);
-}
-
-static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
-static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
- J i=xdict(x) ? -1 : (s ? 2 : 1); // offset into x when processing args
- auto a=anymodule(x,i,c);         // create module from cast, options & offset
- auto& m=*a.ptr();                // generic module reference
- addname(m,s);                    // add name if supplied
- if(y||z) mparms(c,m,y,z);        // add any supplied parms or buffers
- addchild(a,q);                   // add to immediate parent container on stack
- return m.modules(false).size();  // return count of all sub-modules created
-}
-
-// --------------------------------------------------------------------------------------------
-// msyms - parse module and optional name symbol from k arg(s), throw error if not found
-// mfind - match state w'sub-modules that are part of explicitly defined layers
-// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
-// mpush - add new parent/child module to network stored in stack of layers
-// --------------------------------------------------------------------------------------------
-static void msyms(K x,S& s,S& nm) {
- nm=nullptr;
- if(x->t == -KS) {
-  s=x->s;
- } else if(x->t == KS) {
-  TORCH_CHECK(x->n>0, "module: empty symbol list");
-  s=kS(x)[0];
-  if(x->n>1) nm=kS(x)[1];
- } else if(!x->t) {
-  TORCH_CHECK(x->n>0, "module: empty list");
-  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
-  s=kK(x)[0]->s;
-  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
- } else {
-  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
- }
-}
-
-static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
- TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
- TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
- auto p=mref(q.top()).named_children().back();    // get last name & module defined in container
- J i=-1;                                          // named modules includes parent, want i=0 for 1st child
- for(auto& a:p.value()->named_modules(p.key())) { // search through all child modules (all levels)
-  if(i==j) {                                      // 
-   std::cerr << a.key() << "\n";
-   if(y||z) mparms(c,*a.value(),y,z);        // add any supplied parms or buffers
-   return;
-  }
-  i++;
- }
- AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(*p.value())," layer at depth ",d);
-}
-
-static void mdepth(Cast c,size_t d,Layers& q) {
- TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
- TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
- while(q.size()>d) q.pop();
-}
-
-static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
-static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
- Cast c=msym(s);
- if(d>q.size()) {
-  mfind(c,j,d,nm,q,x,y,z); j++;
- } else {
-  mdepth(c,d,q); j=0;
-  if(container(c))
-   addparent(c,nm,q,x,y,z);
-  else
-   addchild(c,nm,q,x,y,z);
- }
- return std::make_tuple(c,j);
-}
-
-static Cast mpush(Layers& q,J d,K x) {
- J j; S s,nm; Cast c;
- msyms(x,s,nm);
- std::tie(c,j)=mpush(q,0,d,s,nm,x);
- return c;}
-
-// -----------------------------------------------------------------------------
-// mtree - parse nested tree of layers -- type,name,options -- to build modules
-// mdv - parse (depth;value) pair(s) to build module(s)
-// mtable - modules from table of options & depth, optional name,parms & buffers
-// mextend - add a created module to existing module(s) at optional depth
-// -----------------------------------------------------------------------------
-static Cast mtree(K x,size_t d,Layers& q) {
- K y=x->t || !x->n ? x : kK(x)[0];
- Cast c=mpush(q,d,y);    // get type of overall container module
- if(!x->t)               // process any child modules
-  for(J i=1;i<x->n;i++)
-   mtree(kK(x)[i],d+1,q);
- return c;
-}
-
-static K mtree(K x,J d=0,Kmodule *l=nullptr); // higher-level call, can add to existing module
-static K mtree(K x,J d,Kmodule *l) {
- Layers q; if(l) mstack(l,q);
- Cast c=mtree(x,d ? d : q.size(),q);
- return l ? (K)0 : rootlayer(c,q);
-}
-
-static Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
- Cast c,p=Cast::undefined; J d,m=n<0 ? 0 : n; K v;
- for(J i=n<0 ? -1 : 0;i<m;++i) {
-  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v);
-  if(p==Cast::undefined) p=c;
- }
- return p;  // return module type of overall parent container
-}
-
-static K mdv(K x,J n,Kmodule *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
-static K mdv(K x,J n,Kmodule *l,J d,K v) {
- Cast c; Layers q; if(l) mstack(l,q);
- c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
- return l ? (K)0 : rootlayer(c,q);
-}
-
-static Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
- Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
- for(J i=0;i<n;++i) {
-  std::tie(c,j)=mpush(q, j, statedepth(x,i), statemodule(x,i), statename(x,i),
-                            stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
-  if(p==Cast::undefined) p=c;
- }
- return p;
-}
-
-static K mtable(K x,Kmodule *l=nullptr);  //higher-level call, can also add to existing module if supplied
-static K mtable(K x,Kmodule *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : rootlayer(c,q);}
-
-static void mextend(Layer& a,Cast c,J d,Layers& q) {
- if(d) mdepth(c,d,q);
- if(container(c))
-  addparent(a,q);
- else
-  addchild(a,q);
-}
-
-static void mextend(Kmodule *x,Kmodule *y,J d=0);
-static void mextend(Kmodule *x,Kmodule *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
 
 // --------------------------------------------------------------------------------------------
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
@@ -2727,6 +2515,237 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  }
  return std::make_tuple(c,x);
 }
+
+// ----------------------------------------------------------------------------------
+// mparms - set module parms/buffers from k values in dictionary with matching names
+// ----------------------------------------------------------------------------------
+static void mparms(Cast c,S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
+ K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
+ for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
+  J i=kfind(k,a.key());
+  TORCH_CHECK(i>-1, msym(c), ": unable to find ",(p ? " parameter" : " buffer"),": ",a.key());
+  Tensor t=v->t ? V[i] : kput(kK(v)[i]);
+  if(a.value().defined()) {
+   torch::NoGradGuard g;
+   TORCH_CHECK(a.value().dtype() == t.dtype(), (s ? s : msym(c)), ": type mismatch, ", a.key(), " is ", a.value().dtype(), ", input is ", t.dtype());
+   TORCH_CHECK(a.value().is_same_size(t),      (s ? s : msym(c)), ": size mismatch, ", a.key(), " is ", a.value().sizes(), ", input is ", t.sizes());
+   if (a.value().device() != t.device())
+    a.value().set_data(t);
+   else
+    a.value().set_(t);
+  } else {
+   a.value()=std::move(t);
+  }
+ }
+}
+
+static void mparms(Cast c,Module &m,K p,K f,S s=nullptr);  // s is full module name (see mfind)
+static void mparms(Cast c,Module &m,K p,K f,S s) {
+ if(p) mparms(c,s,m,p,true);   // if parms dictionary, set module parms from k dictionary
+ if(f) mparms(c,s,m,f,false);  // if buffers defined,  set buffers from k dictionary
+}
+
+// -----------------------------------------------------------------------------------------
+// addmodule - given parent & layer variants, add allowable combinations, else error
+// addparent - create container, add to any previous parent layer, push on stack
+// addchild - add a child layer to existing parent or push single layer to stack
+// -----------------------------------------------------------------------------------------
+static void addmodule(Layer& x,const Layer& y) {
+ const char* s=mname(y);
+ c10::visit(
+  make_overload(
+   [&s](Sequential& x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](Sequential& x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](Sequential& x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqJoin&    x, const Sequential& y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqJoin&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
+   []  (ModuleList& x, const auto&       y)  {x->push_back(y.ptr());},
+   [](auto& x,const auto& y) {AT_ERROR("unable to add a ", mlabel(mref(y)),
+                                       " module as a child of a ", mlabel(mref(x)), " module");}),
+   x,y);
+}
+
+static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
+ 
+static void addparent(const Layer& a,Layers& q) {
+ if(q.size()) addmodule(q.top(),a);  // add to previous parent, if any
+ q.push(a);                          // add new parent container to stack
+}
+
+static void addparent(Cast c,S s,Layers& q,K x=nullptr,K y=nullptr,K z=nullptr);
+static void addparent(Cast c,S s,Layers& q,K x,K y,K z) {
+ TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
+ TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
+ TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
+ auto a=newcontainer(c);   // create new container module, e.g. sequential
+ addname(mref(a),s);       // add name if supplied
+ addparent(a,q);           // add to any previous parent, push on stack
+}
+
+static void addchild(const Layer& a,Layers& q) {
+ if(q.size())
+  addmodule(q.top(),a);
+ else
+  q.push(a);
+}
+
+static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
+static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
+ auto a=anymodule(x,optstart(x,s),c); // create module from cast, options & offset
+ auto& m=*a.ptr();                    // generic module reference
+ addname(m,s);                        // add name if supplied
+ if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
+ addchild(a,q);                       // add to immediate parent container on stack
+ return m.modules(false).size();      // return count of all sub-modules created
+}
+
+// --------------------------------------------------------------------------------------------
+// msyms - parse module and optional name symbol from k arg(s), throw error if not found
+// mfind - match state w'sub-modules that are part of explicitly defined layers
+// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
+// mpush - add new parent/child module to network stored in stack of layers
+// --------------------------------------------------------------------------------------------
+static void msyms(K x,S& s,S& nm) {
+ nm=nullptr;
+ if(x->t == -KS) {
+  s=x->s;
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0, "module: empty symbol list");
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(!x->t) {
+  TORCH_CHECK(x->n>0, "module: empty list");
+  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
+ }
+}
+
+static bool mfindname(const std::string& x,const std::string& y) {
+ return x.size()>=y.size() && !x.compare(x.size()-y.size(),y.size(),y);
+}
+
+static bool mcompare(Cast c,const Module& m,const AnyModule& a) {
+ bool b=false; Cast v,w; K x,y,z;
+ std::tie(v,x)=mopt(true,m);
+ std::tie(w,y)=mopt(true,*a.ptr());
+ if(v==w) {
+  z=k(0,(S)"~",x,y,0); b=z->g; r0(z);
+ }
+ return b;
+}
+
+static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
+ TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
+ TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
+ auto p=mref(q.top()).named_children().back();    // get last name & module defined in container
+ J i=-1;                                          // named modules includes parent, want i=0 for 1st child
+ for(auto& a:p.value()->named_modules(p.key())) { // search through all child modules (all levels)
+  if(i==j) {
+   TORCH_CHECK(mfindname(a.key(),s), "child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
+   auto& m=*a.value();
+   TORCH_CHECK(mcompare(c,m,anymodule(x,optstart(x,s),c)), "child module ", a.key(), " mismatch with given options");
+   if(y||z) mparms(c,m,y,z,(S)a.key().c_str());    // add any supplied parms or buffers
+   return;
+  }
+  i++;
+ }
+ AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(*p.value())," layer at depth ",d);
+}
+
+static void mdepth(Cast c,size_t d,Layers& q) {
+ TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
+ TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
+ while(q.size()>d) q.pop();
+}
+
+static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
+static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
+ Cast c=msym(s);
+ if(d>q.size()) {
+  mfind(c,j,d,nm,q,x,y,z); j++;
+ } else {
+  mdepth(c,d,q); j=0;
+  if(container(c))
+   addparent(c,nm,q,x,y,z);
+  else
+   addchild(c,nm,q,x,y,z);
+ }
+ return std::make_tuple(c,j);
+}
+
+static Cast mpush(Layers& q,J d,K x) {
+ J j; S s,nm; Cast c;
+ msyms(x,s,nm);
+ std::tie(c,j)=mpush(q,0,d,s,nm,x);
+ return c;}
+
+// -----------------------------------------------------------------------------
+// mtree - parse nested tree of layers -- type,name,options -- to build modules
+// mdv - parse (depth;value) pair(s) to build module(s)
+// mtable - modules from table of options & depth, optional name,parms & buffers
+// mextend - add a created module to existing module(s) at optional depth
+// -----------------------------------------------------------------------------
+static Cast mtree(K x,size_t d,Layers& q) {
+ K y=x->t || !x->n ? x : kK(x)[0];
+ Cast c=mpush(q,d,y);    // get type of overall container module
+ if(!x->t)               // process any child modules
+  for(J i=1;i<x->n;i++)
+   mtree(kK(x)[i],d+1,q);
+ return c;
+}
+
+static K mtree(K x,J d=0,Kmodule *l=nullptr); // higher-level call, can add to existing module
+static K mtree(K x,J d,Kmodule *l) {
+ Layers q; if(l) mstack(l,q);
+ Cast c=mtree(x,d ? d : q.size(),q);
+ return l ? (K)0 : rootlayer(c,q);
+}
+
+static Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
+ Cast c,p=Cast::undefined; J d,m=n<0 ? 0 : n; K v;
+ for(J i=n<0 ? -1 : 0;i<m;++i) {
+  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v);
+  if(p==Cast::undefined) p=c;
+ }
+ return p;  // return module type of overall parent container
+}
+
+static K mdv(K x,J n,Kmodule *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
+static K mdv(K x,J n,Kmodule *l,J d,K v) {
+ Cast c; Layers q; if(l) mstack(l,q);
+ c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
+ return l ? (K)0 : rootlayer(c,q);
+}
+
+static Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
+ Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
+ for(J i=0;i<n;++i) {
+  std::tie(c,j)=mpush(q, j, statedepth(x,i), statemodule(x,i), statename(x,i),
+                            stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
+  if(p==Cast::undefined) p=c;
+ }
+ return p;
+}
+
+static K mtable(K x,Kmodule *l=nullptr);  //higher-level call, can also add to existing module if supplied
+static K mtable(K x,Kmodule *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : rootlayer(c,q);}
+
+static void mextend(Layer& a,Cast c,J d,Layers& q) {
+ if(d) mdepth(c,d,q);
+ if(container(c))
+  addparent(a,q);
+ else
+  addchild(a,q);
+}
+
+static void mextend(Kmodule *x,Kmodule *y,J d=0);
+static void mextend(Kmodule *x,Kmodule *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
 
 // --------------------------------------------------------------------------------------------
 // mget - extract module options and, optionally, parameters & buffers to k array
