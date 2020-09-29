@@ -52,6 +52,7 @@ template <class... Fs> auto make_overload(Fs... fs) {
 
 #define KFN(f) reinterpret_cast<void *>(f)
 #define KERR(e) krr((S)e)
+#define KDICT xD(ktn(KS,0),ktn(0,0))
 
 #define KTRY \
  try {
@@ -198,13 +199,13 @@ enum class Setting:char {
  addbias,  addzero,
  affine,   align,   alpha,    amsgrad,   batchfirst, beta,     beta1,     
  beta2,    bi,      bias,     blank,     ceiling,    centered, changetol, 
- channels, cols,    countpad, dampening, decay,      dilate,   dim,       
- divisor,  dropout, end,      eps,       eval,       fn,       freeze,    
+ channels, cols,    countpad, dampening, decay,      decoder,  dilate,   dim,       
+ divisor,  dropout, encoder,  end,       eps,        eval,     fn,       freeze,    
  full,     gradtol, groups,   heads,     hidden,     history,  ignore,    
  in,       in1,     in2,      indices,   init,       inplace,  iter,      
  k,        kdim,    keepdim,  kvbias,    kvzeros,    lambda,   lastoffset,
  layers,   log,     lower,    lr,        lrdecay,    margin,   max,       
- maxnorm,  min,     mode,     momentum,  nesterov,   out,      outpad,    
+ maxnorm,  min,     mode,     momentum,  nesterov,   norm,     out,      outpad,    
  outsize,  p,       pad,      padindex,  padmode,    ratio,    reduce,    
  rescale,  rows,    scale,    shape,     size,       slope,    sparse,    
  start,    stride,  swap,     threshold, track,      train,    transpose, 
@@ -789,7 +790,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),       Cast::zeropad2d)
  }};
 
- std::array<std::tuple<S,Setting>,70> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,73> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),    Setting::addbias),
   std::make_tuple(cs("addzero"),    Setting::addzero),
   std::make_tuple(cs("affine"),     Setting::affine),
@@ -803,10 +804,12 @@ typedef struct {
   std::make_tuple(cs("channels"),   Setting::channels),
   std::make_tuple(cs("cols"),       Setting::cols),
   std::make_tuple(cs("countpad"),   Setting::countpad),
+  std::make_tuple(cs("decoder"),    Setting::decoder),
   std::make_tuple(cs("dilate"),     Setting::dilate),
   std::make_tuple(cs("divisor"),    Setting::divisor),
   std::make_tuple(cs("dim"),        Setting::dim),
   std::make_tuple(cs("dropout"),    Setting::dropout),
+  std::make_tuple(cs("encoder"),    Setting::encoder),
   std::make_tuple(cs("end"),        Setting::end),
   std::make_tuple(cs("eps"),        Setting::eps),
   std::make_tuple(cs("fn"),         Setting::fn),
@@ -834,6 +837,7 @@ typedef struct {
   std::make_tuple(cs("min"),        Setting::min),
   std::make_tuple(cs("mode"),       Setting::mode),
   std::make_tuple(cs("momentum"),   Setting::momentum),
+  std::make_tuple(cs("norm"),       Setting::norm),
   std::make_tuple(cs("out"),        Setting::out),
   std::make_tuple(cs("outpad"),     Setting::outpad),
   std::make_tuple(cs("outsize"),    Setting::outsize),

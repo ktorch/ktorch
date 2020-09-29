@@ -473,13 +473,14 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O> static void batchnorm(bool a,K x,const O& o) {
- O d(o.num_features());
+template<typename O> static K batchnorm(bool a,const O& o) {
+ K x=KDICT; O d(o.num_features());
  OPTION(x, in, kj(o.num_features()));
  if(a || (o.eps()      != d.eps()))      OPTION(x, eps,       kf(o.eps()));
  if(a || (o.momentum() != d.momentum())) OPTION(x, momentum,  kf(momentum(o.momentum())));
  if(a || (o.affine()   != d.affine()))   OPTION(x, affine,    kb(o.affine()));
  if(a || (o.track_running_stats() != d.track_running_stats())) OPTION(x, track, kb(o.track_running_stats()));
+ return x;
 }
 
 // -------------------------------------------------------------------------------------
@@ -508,12 +509,13 @@ template<typename O> static O localnorm(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O> static void localnorm(bool a,K x,Cast c,const O& o) {
- O d(o.size());
+template<typename O> static K localnorm(bool a,Cast c,const O& o) {
+ K x=KDICT; O d(o.size());
  OPTION(x, size, kj(o.size()));
  if(a || (o.alpha() != d.alpha())) OPTION(x, alpha, kf(o.alpha()));
  if(a || (o.beta()  != d.beta()))  OPTION(x, beta,  kf(o.beta()));
  if(a || (o.k()     != d.k()))     OPTION(x, k,     c==Cast::localnorm ? kf(o.k()) : kj(o.k()));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -543,12 +545,13 @@ static nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
  return o;
 }
 
-static void groupnorm(bool a,K x,const nn::GroupNormOptions& o) {
- nn::GroupNormOptions d(o.num_groups(),o.num_channels());
+static K groupnorm(bool a,const nn::GroupNormOptions& o) {
+ K x=KDICT; nn::GroupNormOptions d(o.num_groups(),o.num_channels());
  OPTION(x, groups,   kj(o.num_groups()));
  OPTION(x, channels, kj(o.num_channels()));
  if(a || (o.eps()    != d.eps()))    OPTION(x, eps,    kf(o.eps()));
  if(a || (o.affine() != d.affine())) OPTION(x, affine, kb(o.affine()));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -574,11 +577,12 @@ static nn::LayerNormOptions layernorm(K x,J i,Cast c) {
  return o;
 }
 
-static void layernorm(bool a,K x,const nn::LayerNormOptions& o) {
- nn::LayerNormOptions d(o.normalized_shape());
+static K layernorm(bool a,const nn::LayerNormOptions& o) {
+ K x=KDICT; nn::LayerNormOptions d(o.normalized_shape());
  OPTION(x, shape, klist(o.normalized_shape().size(),o.normalized_shape().data()));
  if(a || (o.eps()    != d.eps())) OPTION(x, eps, kf(o.eps()));
  if(a || (o.elementwise_affine() != d.elementwise_affine())) OPTION(x, affine, kb(o.elementwise_affine()));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -709,8 +713,8 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D> static void conv(bool a,K x,const nn::detail::ConvNdOptions<D>& o) {
- nn::detail::ConvNdOptions<D> d(o.in_channels(),o.out_channels(),o.kernel_size());
+template<size_t D> static K conv(bool a,const nn::detail::ConvNdOptions<D>& o) {
+ K x=KDICT; nn::detail::ConvNdOptions<D> d(o.in_channels(),o.out_channels(),o.kernel_size());
  bool t=o.transposed();
  OPTION(x, in,   kj(o.in_channels()));
  OPTION(x, out,  kj(o.out_channels()));
@@ -728,6 +732,7 @@ template<size_t D> static void conv(bool a,K x,const nn::detail::ConvNdOptions<D
   if(a || (*o.dilation() != *d.dilation())) OPTION(x, dilate, KEX(o.dilation()));
  }
  if(a || o.padding_mode().index() != d.padding_mode().index()) OPTION(x, padmode, ks(ESYM(o.padding_mode())));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -759,13 +764,14 @@ static nn::FoldOptions fold(K x,J i,Cast c) {
  return o;
 }
 
-static void fold(bool a,K x,const nn::FoldOptions& o) {
- nn::FoldOptions d(o.output_size(),o.kernel_size());
+static K fold(bool a,const nn::FoldOptions& o) {
+ K x=KDICT; nn::FoldOptions d(o.output_size(),o.kernel_size());
  OPTION(x, out,  KEX(o.output_size()));
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || (*o.dilation() != *d.dilation())) OPTION(x, dilate, KEX(o.dilation()));
  if(a || (*o.padding()  != *d.padding()))  OPTION(x, pad,    KEX(o.padding()));
  if(a || (*o.stride()   != *d.stride()))   OPTION(x, stride, KEX(o.stride()));
+ return x;
 }
 
 static nn::UnfoldOptions unfold(K x,J i,Cast c) {
@@ -791,12 +797,13 @@ static nn::UnfoldOptions unfold(K x,J i,Cast c) {
  return o;
 }
 
-static void unfold(bool a,K x,const nn::UnfoldOptions& o) {
- nn::UnfoldOptions d(o.kernel_size());
+static K unfold(bool a,const nn::UnfoldOptions& o) {
+ K x=KDICT; nn::UnfoldOptions d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || (*o.dilation() != *d.dilation())) OPTION(x, dilate, KEX(o.dilation()));
  if(a || (*o.padding()  != *d.padding()))  OPTION(x, pad,    KEX(o.padding()));
  if(a || (*o.stride()   != *d.stride()))   OPTION(x, stride, KEX(o.stride()));
+ return x;
 }
 
 static K kfold(K x,Cast c) {
@@ -881,8 +888,8 @@ template<typename O>static O upsample(K x,J i,Cast c) {
  return o;
 }
 
-static void upsample(bool a,K x,const nn::UpsampleOptions& o) {
- nn::UpsampleOptions d;
+static K upsample(bool a,const nn::UpsampleOptions& o) {
+ K x=KDICT; nn::UpsampleOptions d;
  if(a || o.size())
   OPTION(x, size, o.size() ? ((*o.size()).size()==1 ? kj((*o.size())[0]) : kget(*o.size())) : ktn(0,0));
  if(a || o.scale_factor())
@@ -892,6 +899,7 @@ static void upsample(bool a,K x,const nn::UpsampleOptions& o) {
          (d.align_corners() == o.align_corners() &&
           o.align_corners() && *o.align_corners() != *d.align_corners()))
   OPTION(x, align, o.align_corners() ? kb(*o.align_corners()) : ktn(0,0));
+ return x;
 }
 
 KAPI kinterpolate(K x) {
@@ -924,10 +932,11 @@ static nn::DropoutOptions drop(K x,J i,Cast c) {
  return o;
 }
 
-static void drop(bool a,K x,const nn::DropoutOptions& o) {
- nn::DropoutOptions d;
+static K drop(bool a,const nn::DropoutOptions& o) {
+ K x=KDICT; nn::DropoutOptions d;
  if(a || o.p()       != d.p())       OPTION(x, p,       kf(o.p()));
  if(a || o.inplace() != d.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -1071,8 +1080,8 @@ static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingBagOptions& 
   OPTION(x, lastoffset, kb(o.include_last_offset()));
 }
 
-template<typename O>static void embed(bool a,K x,Cast c,const O& o,const Tensor& w) {
- O d(o.num_embeddings(),o.embedding_dim());
+template<typename O>static K embed(bool a,Cast c,const O& o,const Tensor& w) {
+ K x=KDICT; O d(o.num_embeddings(),o.embedding_dim());
  if(o._weight().defined()) {
   OPTION(x, weight, kget(o._weight()));
   OPTION(x, freeze, kb(!w.requires_grad()));
@@ -1087,6 +1096,7 @@ template<typename O>static void embed(bool a,K x,Cast c,const O& o,const Tensor&
  embedget(a,x,c,Setting::mode,o,d); //EmbeddingBag only
  if(a || o.sparse()             != d.sparse())             OPTION(x, sparse,  kb(o.sparse()));
  embedget(a,x,c,Setting::lastoffset,o,d);
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -1114,11 +1124,12 @@ static nn::LinearOptions linear(K x,J i,Cast c) {
  return nn::LinearOptions(in,out).bias(b);
 }
 
-static void linear(bool a,K x,const nn::LinearImpl *m) {
- nn::LinearOptions o=m->options, d(o.in_features(),o.out_features());
+static K linear(bool a,const nn::LinearImpl *m) {
+ K x=KDICT; nn::LinearOptions o=m->options, d(o.in_features(),o.out_features());
  OPTION(x, in,  kj(o.in_features()));
  OPTION(x, out, kj(o.out_features()));
  if(a || (o.bias() != d.bias())) OPTION(x, bias, kb(o.bias()));
+ return x;
 }
 
 KAPI Linear(K x) {
@@ -1161,12 +1172,13 @@ static nn::BilinearOptions bilinear(K x,J i,Cast c) {
  return nn::BilinearOptions(in1,in2,out).bias(b);
 }
 
-static void bilinear(bool a,K x,const nn::BilinearImpl *m) {
- nn::BilinearOptions o=m->options, d(o.in1_features(),o.in2_features(),o.out_features());
+static K bilinear(bool a,const nn::BilinearImpl *m) {
+ K x=KDICT; nn::BilinearOptions o=m->options, d(o.in1_features(),o.in2_features(),o.out_features());
  OPTION(x, in1,  kj(o.in1_features()));
  OPTION(x, in2,  kj(o.in2_features()));
  OPTION(x, out, kj(o.out_features()));
  if(a || (o.bias() != d.bias())) OPTION(x, bias, kb(o.bias()));
+ return x;
 }
 
 KAPI Bilinear(K x) {
@@ -1295,13 +1307,14 @@ template<size_t D> static nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D,typename M> static void maxpool(bool a,K x,const M* m) {
- nn::MaxPoolOptions<D> o=m->options, d(o.kernel_size());
+template<size_t D,typename M> static K maxpool(bool a,const M* m) {
+ K x=KDICT; nn::MaxPoolOptions<D> o=m->options, d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()   != *d.stride())   OPTION(x, stride,  KEX(o.stride()));
  if(a || *o.padding()  != *d.padding())  OPTION(x, pad,     KEX(o.padding()));
  if(a || *o.dilation() != *d.dilation()) OPTION(x, dilate,  KEX(o.dilation()));
  if(a || o.ceil_mode() != d.ceil_mode()) OPTION(x, ceiling, kb(o.ceil_mode()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1336,14 +1349,15 @@ template<size_t D> static nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D,typename M> static void avgpool(bool a,K x,const M* m) {
- nn::AvgPoolOptions<D> o=m->options, d(o.kernel_size());
+template<size_t D,typename M> static K avgpool(bool a,const M* m) {
+ K x=KDICT; nn::AvgPoolOptions<D> o=m->options, d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()           != *d.stride())           OPTION(x, stride,   KEX(o.stride()));
  if(a || *o.padding()          != *d.padding())          OPTION(x, pad,      KEX(o.padding()));
  if(a || o.ceil_mode()         != d.ceil_mode())         OPTION(x, ceiling,  kb(o.ceil_mode()));
  if(a || o.count_include_pad() != d.count_include_pad()) OPTION(x, countpad, kb(o.count_include_pad()));
  if(a || o.divisor_override().has_value())               OPTION(x, divisor,  kj(o.divisor_override() ? o.divisor_override().value() : nj));
+ return x;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1376,8 +1390,10 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  return o;
 }
 
-template<typename M> static void adapt(K x,const M* m) {
+template<typename M> static K adapt(const M* m) {
+ K x=KDICT;
  OPTION(x, size, KEX(m->options.output_size()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1410,11 +1426,12 @@ template<size_t D> static nn::FractionalMaxPoolOptions<D> fpool(K x,J i,Cast c) 
  return o;
 }
 
-template<size_t D,typename M> static void fpool(bool a,K x,const M* m) {
- nn::FractionalMaxPoolOptions<D> o=m->options;
+template<size_t D,typename M> static K fpool(bool a,const M* m) {
+ K x=KDICT; nn::FractionalMaxPoolOptions<D> o=m->options;
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || o.output_size().has_value())    OPTION(x, outsize, o.output_size() ? KEX(o.output_size().value())  : ktn(0,0));
  if(a || o.output_ratio().has_value())   OPTION(x, ratio,   o.output_ratio()? KEX(o.output_ratio().value()) : ktn(0,0));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1446,12 +1463,13 @@ template<size_t D> static nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D,typename M> static void lppool(bool a,K x,const M* m) {
- nn::LPPoolOptions<D> o=m->options, d(o.norm_type(),o.kernel_size());
+template<size_t D,typename M> static K lppool(bool a,const M* m) {
+ K x=KDICT; nn::LPPoolOptions<D> o=m->options, d(o.norm_type(),o.kernel_size());
  OPTION(x, p,    kf(o.norm_type()));
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()   != *d.stride())   OPTION(x, stride,  KEX(o.stride()));
  if(a || o.ceil_mode() != d.ceil_mode()) OPTION(x, ceiling, kb(o.ceil_mode()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1540,11 +1558,12 @@ static fnn::PadFuncOptions pad(K x,J i,Cast c) {
  return o;
 }
 
-static void pad(bool a,K x,const PadImpl* m) {
- const fnn::PadFuncOptions d({}), &o=m->options;
+static K pad(bool a,const PadImpl* m) {
+ K x=KDICT; const fnn::PadFuncOptions d({}), &o=m->options;
  OPTION(x, pad, klist(o.pad().size(),o.pad().data()));
  if(a || o.mode().index() != d.mode().index()) OPTION(x, mode,  ks(ESYM(o.mode())));
  if(a || o.value()        != d.value())        OPTION(x, value, kf(o.value()));
+ return x;
 }
 
 KAPI kpad(K x) {
@@ -1577,9 +1596,11 @@ template<size_t D,typename M> static M cpad(K x,J i,Cast c) {
  return o;
 }
 
-template<typename M> static void cpad(K x,const M* m) {
+template<typename M> static K cpad(const M* m) {
+ K x=KDICT;
  OPTION(x, pad, KEX(m->options.padding()));
  OPTION(x, value, kf(m->options.value()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1602,8 +1623,10 @@ template<size_t D,typename M> static M npad(K x,J i,Cast c) {
  return o;
 }
 
-template<typename M> static void npad(K x,const M* m) {
+template<typename M> static K npad(const M* m) {
+ K x=KDICT;
  OPTION(x, pad, KEX(m->options.padding()));
+ return x;
 }
 
 // ------------------------------------------------------------------------------------
@@ -2179,8 +2202,8 @@ static nn::MultiheadAttentionOptions attention(K x,J i,Cast c) {
  return o;
 }
 
-static void attention(bool a,K x,const nn::MultiheadAttentionOptions& o) {
- nn::MultiheadAttentionOptions d(o.embed_dim(),o.num_heads());
+static K attention(bool a,const nn::MultiheadAttentionOptions& o) {
+ K x=KDICT; nn::MultiheadAttentionOptions d(o.embed_dim(),o.num_heads());
  OPTION(x, dim,   kj(o.embed_dim()));
  OPTION(x, heads, kj(o.num_heads()));
  if(a || (o.dropout()       != d.dropout()))       OPTION(x, dropout, kf(o.dropout()));
@@ -2189,6 +2212,7 @@ static void attention(bool a,K x,const nn::MultiheadAttentionOptions& o) {
  if(a || (o.add_zero_attn() != d.add_zero_attn())) OPTION(x, addzero, kb(o.add_zero_attn()));
  if(a || (o.kdim()          != d.kdim()))          OPTION(x, kdim,    kj(o.kdim()));
  if(a || (o.vdim()          != d.vdim()))          OPTION(x, vdim,    kj(o.vdim()));
+ return x;
 }
 
 // --------------------------------------------------------------------------------------
@@ -2228,13 +2252,62 @@ template<typename O>static O codelayer(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O>static void codelayer(bool a,K x,const O& o) {
- O d(o.d_model(),o.nhead());
+template<typename O>static K codelayer(bool a,const O& o) {
+ K x=KDICT; O d(o.d_model(),o.nhead());
  OPTION(x, in,    kj(o.d_model()));
  OPTION(x, heads, kj(o.nhead()));
  if(a || (o.dim_feedforward()    != d.dim_feedforward()))    OPTION(x, dim,     kj(o.dim_feedforward()));
  if(a || (o.dropout()            != d.dropout()))            OPTION(x, dropout, kf(o.dropout()));
  if(a || (o.activation().index() != d.activation().index())) OPTION(x, fn,      ks(ESYM(o.activation())));
+ return x;
+}
+
+// ----------------------------------------------------------------------------------------------------
+//  transformer encoder/decoder layers
+// ----------------------------------------------------------------------------------------------------
+static K codenorm(bool a,const AnyModule& m) {
+ return m.is_empty() ? KDICT : layernorm(a,m.get<nn::LayerNorm>()->options);
+}
+
+static K decoder(bool a,const nn::TransformerDecoderOptions& o) {
+ K x=KDICT;
+ OPTION(x, decoder, codelayer(a,o.decoder_layer()->options));
+ OPTION(x, layers,  kj(o.num_layers()));
+ OPTION(x, norm,    codenorm(a,o.norm()));
+ return x;
+}
+
+static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
+ K x=KDICT;
+ OPTION(x, encoder, codelayer(a,o.encoder_layer()->options));
+ OPTION(x, layers,  kj(o.num_layers()));
+ OPTION(x, norm,    codenorm(a,o.norm()));
+ return x;
+}
+ /*
+   // This constructor will keep a shallow copy of encoder_layer, so it keeps all the data in encoder_layer.
+    TransformerEncoderOptions(TransformerEncoderLayer encoder_layer, int64_t num_layers);
+    TransformerEncoderOptions(const TransformerEncoderLayerOptions& encoder_layer_options, int64_t num_layers);
+    TORCH_ARG(TransformerEncoderLayer, encoder_layer) = nullptr;
+    TORCH_ARG(int64_t, num_layers);
+    TORCH_ARG(AnyModule, norm);
+
+    TransformerDecoderOptions(TransformerDecoderLayer decoder_layer, int64_t num_layers);
+    TransformerDecoderOptions(const TransformerDecoderLayerOptions& decoder_layer_options, int64_t num_layers);
+    TORCH_ARG(TransformerDecoderLayer, decoder_layer) = nullptr;
+    TORCH_ARG(int64_t, num_layers);
+    TORCH_ARG(AnyModule, norm);
+*/
+
+KAPI transformer(K x) {
+ auto m=nn::TransformerEncoderLayer(64,8);
+ auto e=nn::TransformerEncoder(nn::TransformerEncoderOptions(m,2));
+ std::cerr << e << "\n";
+ auto l=nn::TransformerDecoderLayer(64,8);
+ auto d=nn::TransformerDecoder(l,2);
+ std::cerr << d << "\n";
+ //return decoder(true,d->options);
+ return mget(true,true,*d);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2396,75 +2469,77 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
  } else if(g.as<ModuleList>())  { c=Cast::modulelist;
 
- } else if(auto* m=g.as<nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm1d>())    { c=Cast::instancenorm1d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm2d>())    { c=Cast::instancenorm2d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm3d>())    { c=Cast::instancenorm3d; batchnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::GroupNorm>())         { c=Cast::groupnorm;      groupnorm(a,x,m->options);
- } else if(auto* m=g.as<nn::LayerNorm>())         { c=Cast::layernorm;      layernorm(a,x,m->options);
- } else if(auto* m=g.as<nn::LocalResponseNorm>()) { c=Cast::localnorm;      localnorm(a,x,c,m->options);
- } else if(auto* m=g.as<nn::CrossMapLRN2d>())     { c=Cast::crossmap2d;     localnorm(a,x,c,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm1d>())    { c=Cast::instancenorm1d; x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm2d>())    { c=Cast::instancenorm2d; x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::InstanceNorm3d>())    { c=Cast::instancenorm3d; x=batchnorm(a,m->options);
+ } else if(auto* m=g.as<nn::GroupNorm>())         { c=Cast::groupnorm;      x=groupnorm(a,m->options);
+ } else if(auto* m=g.as<nn::LayerNorm>())         { c=Cast::layernorm;      x=layernorm(a,m->options);
+ } else if(auto* m=g.as<nn::LocalResponseNorm>()) { c=Cast::localnorm;      x=localnorm(a,c,m->options);
+ } else if(auto* m=g.as<nn::CrossMapLRN2d>())     { c=Cast::crossmap2d;     x=localnorm(a,c,m->options);
 
- } else if(auto* m=g.as<nn::Embedding>())         { c=Cast::embed;    embed(a,x,c,m->options,m->weight);
- } else if(auto* m=g.as<nn::EmbeddingBag>())      { c=Cast::embedbag; embed(a,x,c,m->options,m->weight);
- } else if(auto* m=g.as<nn::Linear>())            { c=Cast::linear;   linear(a,x,m);
- } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; bilinear(a,x,m);
+ } else if(auto* m=g.as<nn::Embedding>())         { c=Cast::embed;    x=embed(a,c,m->options,m->weight);
+ } else if(auto* m=g.as<nn::EmbeddingBag>())      { c=Cast::embedbag; x=embed(a,c,m->options,m->weight);
+ } else if(auto* m=g.as<nn::Linear>())            { c=Cast::linear;   x=linear(a,m);
+ } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; x=bilinear(a,m);
 
- } else if(auto* m=g.as<nn::Dropout>())             { c=Cast::drop;   drop(a,x,m->options);
- } else if(auto* m=g.as<nn::Dropout2d>())           { c=Cast::drop2d; drop(a,x,m->options);
- } else if(auto* m=g.as<nn::Dropout3d>())           { c=Cast::drop3d; drop(a,x,m->options);
- } else if(auto* m=g.as<nn::AlphaDropout>())        { c=Cast::adrop;  drop(a,x,m->options);
- } else if(auto* m=g.as<nn::FeatureAlphaDropout>()) { c=Cast::fadrop; drop(a,x,m->options);
+ } else if(auto* m=g.as<nn::Dropout>())             { c=Cast::drop;   x=drop(a,m->options);
+ } else if(auto* m=g.as<nn::Dropout2d>())           { c=Cast::drop2d; x=drop(a,m->options);
+ } else if(auto* m=g.as<nn::Dropout3d>())           { c=Cast::drop3d; x=drop(a,m->options);
+ } else if(auto* m=g.as<nn::AlphaDropout>())        { c=Cast::adrop;  x=drop(a,m->options);
+ } else if(auto* m=g.as<nn::FeatureAlphaDropout>()) { c=Cast::fadrop; x=drop(a,m->options);
 
- } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d; conv<1>(a,x,m->options);
- } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d; conv<2>(a,x,m->options);
- } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d; conv<3>(a,x,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; conv<1>(a,x,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; conv<2>(a,x,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; conv<3>(a,x,m->options);
+ } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d;          x=conv<1>(a,m->options);
+ } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d;          x=conv<2>(a,m->options);
+ } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d;          x=conv<3>(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; x=conv<1>(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; x=conv<2>(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; x=conv<3>(a,m->options);
 
- } else if(auto* m=g.as<nn::Fold>())           { c=Cast::fold;     fold(a,x,m->options);
- } else if(auto* m=g.as<nn::Unfold>())         { c=Cast::unfold;   unfold(a,x,m->options);
- } else if(auto* m=g.as<nn::Upsample>())       { c=Cast::upsample; upsample(a,x,m->options);
+ } else if(auto* m=g.as<nn::Fold>())           { c=Cast::fold;     x=fold(a,m->options);
+ } else if(auto* m=g.as<nn::Unfold>())         { c=Cast::unfold;   x=unfold(a,m->options);
+ } else if(auto* m=g.as<nn::Upsample>())       { c=Cast::upsample; x=upsample(a,m->options);
 
- } else if(auto* m=g.as<nn::MaxPool1d>())      { c=Cast::maxpool1d; maxpool<1,nn::MaxPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::MaxPool2d>())      { c=Cast::maxpool2d; maxpool<2,nn::MaxPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::MaxPool3d>())      { c=Cast::maxpool3d; maxpool<3,nn::MaxPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::MaxPool1d>())      { c=Cast::maxpool1d; x=maxpool<1,nn::MaxPool1dImpl>(a,m);
+ } else if(auto* m=g.as<nn::MaxPool2d>())      { c=Cast::maxpool2d; x=maxpool<2,nn::MaxPool2dImpl>(a,m);
+ } else if(auto* m=g.as<nn::MaxPool3d>())      { c=Cast::maxpool3d; x=maxpool<3,nn::MaxPool3dImpl>(a,m);
 
- } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; avgpool<1,nn::AvgPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; avgpool<2,nn::AvgPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; avgpool<3,nn::AvgPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; x=avgpool<1,nn::AvgPool1dImpl>(a,m);
+ } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; x=avgpool<2,nn::AvgPool2dImpl>(a,m);
+ } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; x=avgpool<3,nn::AvgPool3dImpl>(a,m);
 
- } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; adapt<nn::AdaptiveMaxPool1dImpl>(x,m);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; adapt<nn::AdaptiveMaxPool2dImpl>(x,m);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; adapt<nn::AdaptiveMaxPool3dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; x=adapt<nn::AdaptiveMaxPool1dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; x=adapt<nn::AdaptiveMaxPool2dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; x=adapt<nn::AdaptiveMaxPool3dImpl>(m);
 
- } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptmax1d; adapt<nn::AdaptiveAvgPool1dImpl>(x,m);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptmax2d; adapt<nn::AdaptiveAvgPool2dImpl>(x,m);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptmax3d; adapt<nn::AdaptiveAvgPool3dImpl>(x,m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptmax1d; x=adapt<nn::AdaptiveAvgPool1dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptmax2d; x=adapt<nn::AdaptiveAvgPool2dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptmax3d; x=adapt<nn::AdaptiveAvgPool3dImpl>(m);
 
- } else if(auto* m=g.as<nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; fpool<2,nn::FractionalMaxPool2dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; fpool<3,nn::FractionalMaxPool3dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; x=fpool<2,nn::FractionalMaxPool2dImpl>(a,m);
+ } else if(auto* m=g.as<nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; x=fpool<3,nn::FractionalMaxPool3dImpl>(a,m);
 
- } else if(auto* m=g.as<nn::LPPool1d>())         { c=Cast::lppool1d; lppool<1,nn::LPPool1dImpl>(a,x,m);
- } else if(auto* m=g.as<nn::LPPool2d>())         { c=Cast::lppool2d; lppool<2,nn::LPPool2dImpl>(a,x,m);
+ } else if(auto* m=g.as<nn::LPPool1d>())         { c=Cast::lppool1d; x=lppool<1,nn::LPPool1dImpl>(a,m);
+ } else if(auto* m=g.as<nn::LPPool2d>())         { c=Cast::lppool2d; x=lppool<2,nn::LPPool2dImpl>(a,m);
 
- } else if(auto* m=g.as<Pad>())                  { c=Cast::pad;         pad(a,x,m);
- } else if(auto* m=g.as<nn::ConstantPad1d>())    { c=Cast::pad1d;       cpad(x,m);
- } else if(auto* m=g.as<nn::ConstantPad2d>())    { c=Cast::pad2d;       cpad(x,m);
- } else if(auto* m=g.as<nn::ConstantPad3d>())    { c=Cast::pad3d;       cpad(x,m);
- } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   npad(x,m);
- } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   npad(x,m);
- } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; npad(x,m);
- } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; npad(x,m);
- } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; npad(x,m);
- } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   npad(x,m);
+ } else if(auto* m=g.as<Pad>())                  { c=Cast::pad;         x=pad(a,m);
+ } else if(auto* m=g.as<nn::ConstantPad1d>())    { c=Cast::pad1d;       x=cpad(m);
+ } else if(auto* m=g.as<nn::ConstantPad2d>())    { c=Cast::pad2d;       x=cpad(m);
+ } else if(auto* m=g.as<nn::ConstantPad3d>())    { c=Cast::pad3d;       x=cpad(m);
+ } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   x=npad(m);
+ } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   x=npad(m);
+ } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; x=npad(m);
+ } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; x=npad(m);
+ } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; x=npad(m);
+ } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   x=npad(m);
 
- } else if(auto* m=g.as<nn::MultiheadAttention>())      { c=Cast::attention;    attention(a,x,m->options);
- } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; codelayer(a,x,m->options);
- } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; codelayer(a,x,m->options);
+ } else if(auto* m=g.as<nn::MultiheadAttention>())      { c=Cast::attention;    x=attention(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; x=codelayer(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; x=codelayer(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerEncoder>())      { c=Cast::encoder;      x=encoder(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerDecoder>())      { c=Cast::decoder;      x=decoder(a,m->options);
 
  } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn(a,x,m->options);
  } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn(a,x,m->options);
@@ -2513,7 +2588,7 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<nn::Module>())            { AT_ERROR("generic module");
  } else { AT_ERROR("unrecognized module: ",g.name());
  }
- return std::make_tuple(c,x);
+ return std::make_tuple(c,x ? x : KDICT);
 }
 
 // ----------------------------------------------------------------------------------
