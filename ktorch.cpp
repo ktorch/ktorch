@@ -347,8 +347,16 @@ bool xdev(K x,torch::Device &d) {
 
 bool xdev(K x,J i,torch::Device &d) {return xind(x,i) && xdev(kK(x)[i],d);}
 
-bool xint64(K x,int64_t &j) {return (x->t == -KJ) ? j=x->j,true : false;}  //convert J -> int64_t
-bool xint64(K x,J i,int64_t &j) {return xind(x,i) && xint64(kK(x)[i],j);}  //mac doesn't differentiate, linux does
+bool xint64(K x,int64_t &j) {return (x->t == -KJ) ? j=x->j,true : false;}  //J -> int64_t (linux differentiates)
+bool xint64(K x,J i,int64_t &j) {
+ if(xind(x,i))                // i'th element of general list exists
+  return xint64(kK(x)[i],j);  // check if long scalar, set & return true
+ else if(xind(x,i,KJ))        // check for long list and valid index i
+  return j=kJ(x)[i],true;
+ else
+  return false;
+}
+//bool xint64(K x,J i,int64_t &j) {return xind(x,i) && xint64(kK(x)[i],j);}
 
 bool xlong(K x,J &j) {return (x->t == -KJ) ? j=x->j,true : false;}       //check k scalar
 bool xlong(K x,J i,J &j) {return xind(x,i) && xlong(kK(x)[i],j);}        //check k list element

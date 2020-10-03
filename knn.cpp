@@ -35,7 +35,7 @@ std::string mlabel(const Module& x) {
  auto s=c10::demangle(typeid(x).name());
  if(!s.find("struct "))     s.erase(s.begin(),s.begin()+7);
  if(!s.find("class "))      s.erase(s.begin(),s.begin()+6);
- if(!s.find("nn::")) s.erase(s.begin(),s.begin()+11);
+ if(!s.find("torch::nn::")) s.erase(s.begin(),s.begin()+11);
  if(s.find("Impl",s.size()-4)==s.size()-4) s.erase(s.size()-4,s.size());
  return s;
 }
@@ -1265,8 +1265,8 @@ template<typename O> static O rnn(K x,J i,Cast c) {
 static S rnnfn(const nn::RNNOptions& o) {return ESYM(o.nonlinearity());}
 template<typename O>static S rnnfn(const O& o) {return nullptr;}
 
-template<typename O> static void rnn(bool a,K x,const O& o) {
- O d(o.input_size(),o.hidden_size()); S s=rnnfn(o);
+template<typename O> static K rnn(bool a,const O& o) {
+ K x=KDICT; O d(o.input_size(),o.hidden_size()); S s=rnnfn(o);
  OPTION(x, in,     kj(o.input_size()));
  OPTION(x, hidden, kj(o.hidden_size()));
  if(a || (o.num_layers()    != d.num_layers()))   OPTION(x, layers,     kj(o.num_layers()));
@@ -1275,6 +1275,7 @@ template<typename O> static void rnn(bool a,K x,const O& o) {
  if(a || (o.batch_first()   != d.batch_first()))  OPTION(x, batchfirst, kb(o.batch_first()));
  if(a || (o.dropout()       != d.dropout()))      OPTION(x, dropout,    kf(o.dropout()));
  if(a || (o.bidirectional() != d.bidirectional()))OPTION(x, bi,         kb(o.bidirectional()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------
@@ -1660,7 +1661,7 @@ static bool inplace(K x,J i,Cast c) {
  return b;
 }
 
-static void inplace(bool a,K x,bool b) {if(a || b) OPTION(x, inplace, kb(b));}
+static K inplace(bool a,bool b) {K x=KDICT; if(a || b) OPTION(x, inplace, kb(b)); return x;}
 
 // ------------------------------------------------------------------------------------
 //  elu,celu - exponential & continuously differentiable linear unit
@@ -1688,10 +1689,11 @@ template<typename O> static O alpha(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O>static void alpha(bool a,Cast c,K x,const O& o) {
- O d;
+template<typename O>static K alpha(bool a,Cast c,const O& o) {
+ K x=KDICT; O d;
  if(a || o.alpha()   != d.alpha())   OPTION(x, alpha,   kf(o.alpha()));
  if(a || o.inplace() != d.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // ------------------------------------------------------------------------------------
@@ -1719,10 +1721,11 @@ static nn::LeakyReLUOptions slope(K x,J i,Cast c) {
  return o;
 }
 
-static void slope(bool a,Cast c,K x,const nn::LeakyReLUOptions& o) {
- nn::LeakyReLUOptions d;
+static K slope(bool a,Cast c,const nn::LeakyReLUOptions& o) {
+ K x=KDICT; nn::LeakyReLUOptions d;
  if(a || o.negative_slope()   != d.negative_slope()) OPTION(x, slope,   kf(o.negative_slope()));
  if(a || o.inplace()          != d.inplace())        OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // ------------------------------------------------------------------------------------
@@ -1743,7 +1746,11 @@ static double lambda(K x,J i,Cast c) {
  return l;
 }
 
-static void lambda(bool a,Cast c,K x,double l) {if(a || l != lambda(c)) OPTION(x,lambda,kf(l));}
+static K lambda(bool a,Cast c,double l) {
+ K x=KDICT;
+ if(a || l != lambda(c)) OPTION(x,lambda,kf(l));
+ return x;
+}
 
 // ------------------------------------------------------------------------------------
 // cat, glu & softmax,softmax,logsoftmax (modules only) accept single dimension arg
@@ -1767,7 +1774,10 @@ static int64_t dim(K x,J i,Cast c) {
  return d;
 }
 
-static void dim(bool a,Cast c,K x,int64_t d) {if(a || d != dim(c)) OPTION(x,dim,kj(d));}
+static K dim(bool a,Cast c,int64_t d) {
+ K x=KDICT;
+ if(a || d != dim(c)) OPTION(x,dim,kj(d));
+ return x;}
 
 // ----------------------------------------------------------------------------------
 // softmax,softmin,logsoftmax: functional form requires dim & optional data type
@@ -1826,11 +1836,12 @@ static nn::RReLUOptions rrelu(K x,J i,Cast c) {
 }
 
 // retrieve options from rrelu module
-static void rrelu(bool a,K x,const nn::RReLUOptions& o) {
- nn::RReLUOptions d;
+static K rrelu(bool a,const nn::RReLUOptions& o) {
+ K x=KDICT; nn::RReLUOptions d;
  if(a || d.lower()   != o.lower())   OPTION(x, lower,   kf(o.lower()));
  if(a || d.upper()   != o.upper())   OPTION(x, upper,   kf(o.upper()));
  if(a || d.inplace() != o.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1855,11 +1866,12 @@ static nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
  return o.min_val(v1).max_val(v2).inplace(b);
 }
 
-static void hardtanh(bool a,K x,const nn::HardtanhOptions& o) {
- nn::HardtanhOptions d;
+static K hardtanh(bool a,const nn::HardtanhOptions& o) {
+ K x=KDICT; nn::HardtanhOptions d;
  if(a || d.min_val() != o.min_val()) OPTION(x, min,     kf(o.min_val()));
  if(a || d.max_val() != o.max_val()) OPTION(x, max,     kf(o.max_val()));
  if(a || d.inplace() != o.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1880,10 +1892,11 @@ static nn::SoftplusOptions softplus(K x,J i,Cast c) {
  return o.beta(v1).threshold(v2);
 }
 
-static void softplus(bool a,K x,const nn::SoftplusOptions& o) {
- nn::SoftplusOptions d;
+static K softplus(bool a,const nn::SoftplusOptions& o) {
+ K x=KDICT; nn::SoftplusOptions d;
  if(a || d.beta()      != o.beta())      OPTION(x, beta,      kf(o.beta()));
  if(a || d.threshold() != o.threshold()) OPTION(x, threshold, kf(o.threshold()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -1908,10 +1921,12 @@ static nn::ThresholdOptions threshold(K x,J i,Cast c) {
  return nn::ThresholdOptions(v1,v2).inplace(b);
 }
 
-static void threshold(bool a,K x,const nn::ThresholdOptions& o) {
+static K threshold(bool a,const nn::ThresholdOptions& o) {
+ K x=KDICT;
  OPTION(x, threshold, kf(o.threshold()));
  OPTION(x, value,     kf(o.value()));
  if(a || o.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1999,10 +2014,11 @@ static nn::PReLUOptions prelu(K x,J i,Cast c) {
  return o.num_parameters(m).init(w);
 }
 
-static void prelu(bool a,K x,const nn::PReLUOptions& o) {
- nn::PReLUOptions d;
+static K prelu(bool a,const nn::PReLUOptions& o) {
+ K x=KDICT; nn::PReLUOptions d;
  if(a || d.num_parameters() != o.num_parameters()) OPTION(x, in,   kj(o.num_parameters()));
  if(a || d.init()           != o.init())           OPTION(x, init, kf(o.init()));
+ return x;
 }
 
 KAPI Prelu(K x) {
@@ -2046,6 +2062,8 @@ void similar(bool a,K x,const nn::CosineSimilarityOptions& o) {
  if(a || (o.eps() != d.eps())) OPTION(x, eps, kf(o.eps()));
 }
 
+static K similar(bool a,const nn::CosineSimilarityOptions& o) {K x=KDICT; similar(a,x,o); return x;}
+
 nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
  Pairs p; J n=xargc(x,i,p); nn::PairwiseDistanceOptions o;
  for(J j=0;j<n;++j)
@@ -2071,6 +2089,8 @@ void pairwise(bool a,K x,const nn::PairwiseDistanceOptions& o) {
  if(a || (o.eps()     != d.eps()))     OPTION(x, eps,     kf(o.eps()));
  if(a || (o.keepdim() != d.keepdim())) OPTION(x, keepdim, kb(o.keepdim()));
 }
+
+static K pairwise(bool a,const nn::PairwiseDistanceOptions& o) {K x=KDICT; pairwise(a,x,o); return x;}
 
 // ------------------------------------------------------------------------
 // functional form of the distance calculations
@@ -2117,10 +2137,11 @@ static nn::FlattenOptions flatten(K x,J i,Cast c) {
  return o.start_dim(s).end_dim(e);
 }
 
-static void flatten(bool a,K x,const nn::FlattenImpl* m) {
- nn::FlattenOptions d,o=m->options;
+static K flatten(bool a,const nn::FlattenImpl* m) {
+ K x=KDICT; nn::FlattenOptions d,o=m->options;
  if(a || d.start_dim() != o.start_dim()) OPTION(x, start, kj(o.start_dim()));
  if(a || d.end_dim()   != o.end_dim())   OPTION(x, end,   kj(o.end_dim()));
+ return x;
 }
 
 KAPI kflatten(K x) {
@@ -2160,9 +2181,11 @@ static SqueezeOptions squeeze(K x,J i,Cast c) {
  return o;
 }
 
-static void squeeze(bool a,K x,const SqueezeOptions& o) {
+static K squeeze(bool a,const SqueezeOptions& o) {
+ K x=KDICT;
  if(o.dim().has_value()) OPTION(x, dim,     kj(o.dim().value()));
  if(a || o.inplace())    OPTION(x, inplace, kb(o.inplace()));
+ return x;
 }
  
 // --------------------------------------------------------------------------------------
@@ -2263,42 +2286,99 @@ template<typename O>static K codelayer(bool a,const O& o) {
 }
 
 // ----------------------------------------------------------------------------------------------------
-//  transformer encoder/decoder layers
+// create transformer encoder/decoder layers:
+// codeoff - get offset for processing sum-module arg(s), e.g. (`encodelayer;512;8) -> offset=1
+// coder - template for creating encoder/decoder layers with submodule, layer count, optional norm 
+// encoder,decoder - invoke template 'coder' with encoder/decoder layer & option types
 // ----------------------------------------------------------------------------------------------------
+static J codeoff(K x,Cast c) {
+ J i=0; S s=nullptr;
+ switch(x->t) {
+  case 0:   if(xsym(x,0,s)) i=xsym(x,1) ? 2 : 1; break;
+  case -KS: s=x->s, i=1; break;
+  case KS:  if(x->n) s=kS(x)[0], i=(2<x->n) ? 2 : x->n; break;
+  case 99:  i=-1; break;
+ }
+ if(s) { // module sym not required; if given, check if one of `encoderlayer`decoderlayer`layernorm
+  auto m=msym(s);
+  TORCH_CHECK(m==Cast::layernorm || m==(c==Cast::encoder ? Cast::encoderlayer : Cast::decoderlayer),
+              msym(c), ": unexpected layer '", s, "'");
+ }
+ return i;
+}
+ 
+template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
+ Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr;
+ for(J j=0;j<n;++j) {
+  K y=kK(x)[i+j];
+  switch(j) {
+   case 0: m1=L(codelayer<O>(y,codeoff(y,c),Cast::encoderlayer)); break;
+   case 1: l=int64(x,i+j,c,Setting::layers); break;
+   case 2: m2=nn::LayerNorm(y->t==-KJ ? nn::LayerNormOptions({y->j}) : layernorm(y,codeoff(y,c),Cast::layernorm)); break;
+   default: AT_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
+  }
+ }
+ while(xpair(p)) {
+  switch(mset(p.k,c)) {
+   case Setting::decoderlayer:
+    TORCH_CHECK(c==Cast::decoder, msym(c),": cannot create a decoder layer");
+    m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::decoderlayer)); 
+    break;
+   case Setting::encoderlayer:
+    TORCH_CHECK(c==Cast::encoder, msym(c),": cannot create an encoder layer");
+    m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::encoderlayer)); 
+    break;
+   case Setting::layers:
+    l=int64(p,c);
+    break;
+   case Setting::layernorm:
+    TORCH_CHECK(p.v || p.t==-KJ, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
+    m2=nn::LayerNorm(p.t==-KJ ? nn::LayerNormOptions({p.j}) : layernorm(p.v,codeoff(p.v,c),Cast::layernorm)); 
+    break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ }
+ TORCH_CHECK(l>=0, msym(c), ": number of layers cannot be less than zero");
+ return m2.is_empty() ? R(m1,l) : R(m1,l).norm(AnyModule(m2));
+}
+
+static nn::TransformerDecoderOptions decoder(K x,J i,Cast c) {
+ return coder<nn::TransformerDecoderOptions,
+              nn::TransformerDecoderLayer,  
+              nn::TransformerDecoderLayerOptions>(x,i,c);
+}  
+
+static nn::TransformerEncoderOptions encoder(K x,J i,Cast c) {
+ return coder<nn::TransformerEncoderOptions,
+              nn::TransformerEncoderLayer,  
+              nn::TransformerEncoderLayerOptions>(x,i,c);
+}  
+
+// -----------------------------------------------------------------------------
+// codenorm - retrieve dictionary of options in layer norm module if not empty
+// coder - templated retrieval of common options of encoder/decoder layer
+// decoder,encoder - retrieve options of encoder/decoder layer,layer count,norm
+// -----------------------------------------------------------------------------
 static K codenorm(bool a,const AnyModule& m) {
  return m.is_empty() ? KDICT : layernorm(a,m.get<nn::LayerNorm>()->options);
 }
 
+template<typename O> static void coder(bool a,K x,const O& o) {
+ OPTION(x, layers,    kj(o.num_layers()));
+ OPTION(x, layernorm, codenorm(a,o.norm()));
+}
+
 static K decoder(bool a,const nn::TransformerDecoderOptions& o) {
- K x=KDICT;
- OPTION(x, decoder, codelayer(a,o.decoder_layer()->options));
- OPTION(x, layers,  kj(o.num_layers()));
- OPTION(x, norm,    codenorm(a,o.norm()));
- return x;
+ K x=KDICT; OPTION(x, decoderlayer, codelayer(a,o.decoder_layer()->options)); coder(a,x,o); return x;
 }
 
 static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
- K x=KDICT;
- OPTION(x, encoder, codelayer(a,o.encoder_layer()->options));
- OPTION(x, layers,  kj(o.num_layers()));
- OPTION(x, norm,    codenorm(a,o.norm()));
- return x;
+ K x=KDICT; OPTION(x, encoderlayer, codelayer(a,o.encoder_layer()->options)); coder(a,x,o); return x;
 }
- /*
-   // This constructor will keep a shallow copy of encoder_layer, so it keeps all the data in encoder_layer.
-    TransformerEncoderOptions(TransformerEncoderLayer encoder_layer, int64_t num_layers);
-    TransformerEncoderOptions(const TransformerEncoderLayerOptions& encoder_layer_options, int64_t num_layers);
-    TORCH_ARG(TransformerEncoderLayer, encoder_layer) = nullptr;
-    TORCH_ARG(int64_t, num_layers);
-    TORCH_ARG(AnyModule, norm);
 
-    TransformerDecoderOptions(TransformerDecoderLayer decoder_layer, int64_t num_layers);
-    TransformerDecoderOptions(const TransformerDecoderLayerOptions& decoder_layer_options, int64_t num_layers);
-    TORCH_ARG(TransformerDecoderLayer, decoder_layer) = nullptr;
-    TORCH_ARG(int64_t, num_layers);
-    TORCH_ARG(AnyModule, norm);
-*/
-
+// -----------------------------------------------------------------------------
+//  transformer
+// -----------------------------------------------------------------------------
 KAPI transformer(K x) {
  auto m=nn::TransformerEncoderLayer(64,8);
  auto e=nn::TransformerEncoder(nn::TransformerEncoderOptions(m,2));
@@ -2327,15 +2407,17 @@ static SizeOptions getsize(K x,J i,Cast c) {
  return o;
 }
 
-static void getsize(bool a,K x,const SizeOptions& o) {
+static K getsize(bool a,const SizeOptions& o) {
+ K x=KDICT;
  OPTION(x, size, klist(o.size().size(),o.size().data()));
+ return x;
 }
 
 // ----------------------------------------------------------------------------------------------------
-// optstart  - offset in args: -1 if dictionary of options, 1 if no name else 2
+// argstart  - offset in args: -1 if dictionary of options, 1 if no name else 2
 // anymodule - define module from supplied options, return as generic AnyModule 
 // ----------------------------------------------------------------------------------------------------
-static J optstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
+static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
 
 AnyModule anymodule(K x,J i,Cast c) {
  switch(c) {
@@ -2409,8 +2491,10 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::zeropad2d:    return AnyModule(nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)));
 
   case Cast::attention:    return AnyModule(nn::MultiheadAttention(attention(x,i,c)));
-  case Cast::encoderlayer: return AnyModule(nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)));
   case Cast::decoderlayer: return AnyModule(nn::TransformerDecoderLayer(codelayer<nn::TransformerDecoderLayerOptions>(x,i,c)));
+  case Cast::encoderlayer: return AnyModule(nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)));
+  case Cast::decoder:      return AnyModule(nn::TransformerDecoder(decoder(x,i,c)));
+  case Cast::encoder:      return AnyModule(nn::TransformerEncoder(encoder(x,i,c)));
 
   case Cast::rnn:          return AnyModule(nn::RNN(rnn(x,i,c)));
   case Cast::gru:          return AnyModule(nn::GRU(rnn<nn::GRUOptions>(x,i,c)));
@@ -2463,7 +2547,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
 // --------------------------------------------------------------------------------------------
 std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
- Cast c=Cast::undefined; K x=xD(ktn(KS,0),ktn(0,0));
+ Cast c=Cast::undefined; K x=nullptr;
  if       (g.as<Sequential>())  { c=Cast::sequential;
  } else if(g.as<SeqNest>())     { c=Cast::seqnest;
  } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
@@ -2541,9 +2625,9 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<nn::TransformerEncoder>())      { c=Cast::encoder;      x=encoder(a,m->options);
  } else if(auto* m=g.as<nn::TransformerDecoder>())      { c=Cast::decoder;      x=decoder(a,m->options);
 
- } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  rnn(a,x,m->options);
- } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  rnn(a,x,m->options);
- } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; rnn(a,x,m->options);
+ } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  x=rnn(a,m->options);
+ } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  x=rnn(a,m->options);
+ } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; x=rnn(a,m->options);
 
  } else if(g.as<nn::Identity>())      { c=Cast::identity;
  } else if(g.as<nn::LogSigmoid>())    { c=Cast::logsigmoid;
@@ -2555,36 +2639,36 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(g.as<nn::GELU>())          { c=Cast::gelu;
  } else if(g.as<Mul>())               { c=Cast::mul;
 
- } else if(auto* m=g.as<nn::ReLU>())  { c=Cast::relu;  inplace(a,x,m->options.inplace());
- } else if(auto* m=g.as<nn::SELU>())  { c=Cast::selu;  inplace(a,x,m->options.inplace());
- } else if(auto* m=g.as<nn::ReLU6>()) { c=Cast::relu6; inplace(a,x,m->options.inplace());
+ } else if(auto* m=g.as<nn::ReLU>())  { c=Cast::relu;  x=inplace(a,m->options.inplace());
+ } else if(auto* m=g.as<nn::SELU>())  { c=Cast::selu;  x=inplace(a,m->options.inplace());
+ } else if(auto* m=g.as<nn::ReLU6>()) { c=Cast::relu6; x=inplace(a,m->options.inplace());
 
- } else if(auto* m=g.as<nn::Softmax>())    { c=Cast::softmax;    OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<nn::Softmin>())    { c=Cast::softmin;    OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<nn::LogSoftmax>()) { c=Cast::logsoftmax; OPTION(x, dim, kj(m->options.dim()));
- } else if(auto* m=g.as<nn::Flatten>())    { c=Cast::flatten;    flatten(a,x,m);
+ } else if(auto* m=g.as<nn::Softmax>())    { c=Cast::softmax;    x=dim(a,c,m->options.dim());
+ } else if(auto* m=g.as<nn::Softmin>())    { c=Cast::softmin;    x=dim(a,c,m->options.dim());
+ } else if(auto* m=g.as<nn::LogSoftmax>()) { c=Cast::logsoftmax; x=dim(a,c,m->options.dim());
+ } else if(auto* m=g.as<nn::Flatten>())    { c=Cast::flatten;    x=flatten(a,m);
 
- } else if(auto* m=g.as<Squeeze>())    { c=Cast::squeeze;    squeeze(a,x,m->options);
- } else if(auto* m=g.as<Unsqueeze>())  { c=Cast::unsqueeze;  squeeze(a,x,m->options);
- } else if(auto* m=g.as<Expand>())     { c=Cast::expand;     getsize(a,x,m->options);
- } else if(auto* m=g.as<Reshape>())    { c=Cast::reshape;    getsize(a,x,m->options);
- } else if(auto* m=g.as<Cat>())        { c=Cast::cat;        dim(a,c,x,m->options.dim());
+ } else if(auto* m=g.as<Squeeze>())    { c=Cast::squeeze;    x=squeeze(a,m->options);
+ } else if(auto* m=g.as<Unsqueeze>())  { c=Cast::unsqueeze;  x=squeeze(a,m->options);
+ } else if(auto* m=g.as<Expand>())     { c=Cast::expand;     x=getsize(a,m->options);
+ } else if(auto* m=g.as<Reshape>())    { c=Cast::reshape;    x=getsize(a,m->options);
+ } else if(auto* m=g.as<Cat>())        { c=Cast::cat;        x=dim(a,c,m->options.dim());
 
- } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;  alpha(a,c,x,m->options);
- } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu; alpha(a,c,x,m->options);
- } else if(auto* m=g.as<nn::LeakyReLU>())  { c=Cast::leakyrelu;  slope(a,c,x,m->options);
- } else if(auto* m=g.as<nn::GLU>())        { c=Cast::glu;        dim(a,c,x,m->options.dim());
- } else if(auto* m=g.as<nn::Hardshrink>()) { c=Cast::hardshrink; lambda(a,c,x,m->options.lambda());
- } else if(auto* m=g.as<nn::Softshrink>()) { c=Cast::softshrink; lambda(a,c,x,m->options.lambda());
+ } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;        x=alpha(a,c,m->options);
+ } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu;       x=alpha(a,c,m->options);
+ } else if(auto* m=g.as<nn::LeakyReLU>())  { c=Cast::leakyrelu;  x=slope(a,c,m->options);
+ } else if(auto* m=g.as<nn::GLU>())        { c=Cast::glu;        x=dim(a,c,m->options.dim());
+ } else if(auto* m=g.as<nn::Hardshrink>()) { c=Cast::hardshrink; x=lambda(a,c,m->options.lambda());
+ } else if(auto* m=g.as<nn::Softshrink>()) { c=Cast::softshrink; x=lambda(a,c,m->options.lambda());
 
- } else if(auto* m=g.as<nn::PReLU>())      { c=Cast::prelu;      prelu(a,x,m->options);
- } else if(auto* m=g.as<nn::RReLU>())      { c=Cast::rrelu;      rrelu(a,x,m->options);
- } else if(auto* m=g.as<nn::Hardtanh>())   { c=Cast::hardtanh;   hardtanh(a,x,m->options);
- } else if(auto* m=g.as<nn::Softplus>())   { c=Cast::softplus;   softplus(a,x,m->options);
- } else if(auto* m=g.as<nn::Threshold>())  { c=Cast::threshold;  threshold(a,x,m->options);
+ } else if(auto* m=g.as<nn::PReLU>())      { c=Cast::prelu;      x=prelu(a,m->options);
+ } else if(auto* m=g.as<nn::RReLU>())      { c=Cast::rrelu;      x=rrelu(a,m->options);
+ } else if(auto* m=g.as<nn::Hardtanh>())   { c=Cast::hardtanh;   x=hardtanh(a,m->options);
+ } else if(auto* m=g.as<nn::Softplus>())   { c=Cast::softplus;   x=softplus(a,m->options);
+ } else if(auto* m=g.as<nn::Threshold>())  { c=Cast::threshold;  x=threshold(a,m->options);
 
- } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; pairwise(a,x,m->options);
- } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  similar(a,x,m->options);
+ } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; x=pairwise(a,m->options);
+ } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  x=similar(a,m->options);
  } else if(auto* m=g.as<nn::Module>())            { AT_ERROR("generic module");
  } else { AT_ERROR("unrecognized module: ",g.name());
  }
@@ -2669,7 +2753,7 @@ static void addchild(const Layer& a,Layers& q) {
 
 static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
 static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
- auto a=anymodule(x,optstart(x,s),c); // create module from cast, options & offset
+ auto a=anymodule(x,argstart(x,s),c); // create module from cast, options & offset
  auto& m=*a.ptr();                    // generic module reference
  addname(m,s);                        // add name if supplied
  if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
@@ -2724,7 +2808,7 @@ static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
   if(i==j) {
    TORCH_CHECK(mfindname(a.key(),s), "child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,anymodule(x,optstart(x,s),c)), "child module ", a.key(), " mismatch with given options");
+   TORCH_CHECK(mcompare(c,m,anymodule(x,argstart(x,s),c)), "child module ", a.key(), " mismatch with given options");
    if(y||z) mparms(c,m,y,z,(S)a.key().c_str());    // add any supplied parms or buffers
    return;
   }
@@ -2760,12 +2844,12 @@ static Cast mpush(Layers& q,J d,K x) {
  std::tie(c,j)=mpush(q,0,d,s,nm,x);
  return c;}
 
-// -----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 // mtree - parse nested tree of layers -- type,name,options -- to build modules
 // mdv - parse (depth;value) pair(s) to build module(s)
-// mtable - modules from table of options & depth, optional name,parms & buffers
+// mtable - module(s) from table of options & depth, optional name,parms & buffers
 // mextend - add a created module to existing module(s) at optional depth
-// -----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 static Cast mtree(K x,size_t d,Layers& q) {
  K y=x->t || !x->n ? x : kK(x)[0];
  Cast c=mpush(q,d,y);    // get type of overall container module
@@ -2801,7 +2885,7 @@ static K mdv(K x,J n,Kmodule *l,J d,K v) {
 static Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
  Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
  for(J i=0;i<n;++i) {
-  std::tie(c,j)=mpush(q, j, statedepth(x,i), statemodule(x,i), statename(x,i),
+  std::tie(c,j)=mpush(q, j, statedepth(x,i),   statemodule(x,i), statename(x,i),
                             stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
   if(p==Cast::undefined) p=c;
  }
