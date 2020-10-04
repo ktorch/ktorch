@@ -2763,31 +2763,12 @@ static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
  return m.modules(false).size();      // return count of all sub-modules created
 }
 
-// --------------------------------------------------------------------------------------------
-// msyms - parse module and optional name symbol from k arg(s), throw error if not found
-// mfind - match state w'sub-modules that are part of explicitly defined layers
-// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
-// mpush - add new parent/child module to network stored in stack of layers
-// --------------------------------------------------------------------------------------------
-static void msyms(K x,S& s,S& nm) {
- nm=nullptr;
- if(x->t == -KS) {
-  s=x->s;
- } else if(x->t == KS) {
-  TORCH_CHECK(x->n>0, "module: empty symbol list");
-  s=kS(x)[0];
-  if(x->n>1) nm=kS(x)[1];
- } else if(!x->t) {
-  TORCH_CHECK(x->n>0, "module: empty list");
-  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
-  s=kK(x)[0]->s;
-  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
- } else {
-  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
- }
-}
-
-static bool mfindname(const std::string& x,const std::string& y) {
+// --------------------------------------------------------------------------------------
+// msuffix - compare submodule name from newly created module with stored suffix
+// mcompare - compare options from two modules, return true if all match exactly
+// mfind - match previous state w'sub-modules that are part of explicitly defined layers
+// --------------------------------------------------------------------------------------
+static bool msuffix(const std::string& x,const std::string& y) {
  return x.size()>=y.size() && !x.compare(x.size()-y.size(),y.size(),y);
 }
 
@@ -2808,7 +2789,7 @@ static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
  std::string p; if(b) p=mc.key();
  for(auto& a:b ? mc.value()->named_modules(p,false) : m.named_modules(p,false)) {
   if(i==j) {
-   TORCH_CHECK(mfindname(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
+   TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
    TORCH_CHECK(mcompare(c,m,container(c) ? mref(newcontainer(c)) : *anymodule(x,argstart(x,s),c).ptr()),
                "child module ", a.key(), " mismatch with given options");
@@ -2818,6 +2799,29 @@ static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
   i++;
  }
  AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(b ? *mc.value() : m)," layer at depth ",d);
+}
+
+// --------------------------------------------------------------------------------------------
+// msyms - parse module and optional name symbol from k arg(s), throw error if not found
+// mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
+// mpush - add new parent/child module to network stored in stack of layers
+// --------------------------------------------------------------------------------------------
+static void msyms(K x,S& s,S& nm) {
+ nm=nullptr;
+ if(x->t == -KS) {
+  s=x->s;
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0, "module: empty symbol list");
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(!x->t) {
+  TORCH_CHECK(x->n>0, "module: empty list");
+  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
+ }
 }
 
 static void mdepth(Cast c,size_t d,Layers& q) {
