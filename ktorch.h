@@ -106,7 +106,6 @@ using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;
 using ModuleList=torch::nn::ModuleList;
 using Moduleptr=std::shared_ptr<Module>;
-using Modulestack=std::stack<Moduleptr>;
 class SeqNest;
 class SeqJoin;
 

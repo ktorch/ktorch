@@ -67,7 +67,7 @@ K to(Kmodule* x,const TensorOptions& o,bool a) {
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized module: ",(I)c);
+ AT_ERROR("unrecognized module: cannot translate enumeration ",(I)c," to symbol");
 }
 
 static Cast msym(S s) {
@@ -163,6 +163,8 @@ static bool container(const Module& m) {
  else if(m.as<ModuleList>()) return true;
  else                        return false;
 }
+
+static bool container(const Layer& l) {return container(mref(l));}
 
 static Layer newcontainer(Cast c) {
  switch(c) {
@@ -2539,7 +2541,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 
   case Cast::pairwise:     return AnyModule(nn::PairwiseDistance(pairwise(x,i,c)));
   case Cast::similar:      return AnyModule(nn::CosineSimilarity(similar(x,i,c)));
-  default: AT_ERROR("unrecognized module: ",(I)c);
+  default: AT_ERROR("unrecognized module: cannot create module from enumeration ",(I)c);
  }
 }
 
@@ -2669,7 +2671,7 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
 
  } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; x=pairwise(a,m->options);
  } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  x=similar(a,m->options);
- } else if(auto* m=g.as<nn::Module>())            { AT_ERROR("generic module");
+ } else if(auto* m=g.as<nn::Module>())            { AT_ERROR("generic module, unable to retrieve options");
  } else { AT_ERROR("unrecognized module: ",g.name());
  }
  return std::make_tuple(c,x ? x : KDICT);
@@ -2789,10 +2791,10 @@ static bool mfindname(const std::string& x,const std::string& y) {
  return x.size()>=y.size() && !x.compare(x.size()-y.size(),y.size(),y);
 }
 
-static bool mcompare(Cast c,const Module& m,const AnyModule& a) {
+static bool mcompare(Cast c,const Module& m1,const Module& m2) {
  bool b=false; Cast v,w; K x,y,z;
- std::tie(v,x)=mopt(true,m);
- std::tie(w,y)=mopt(true,*a.ptr());
+ std::tie(v,x)=mopt(true,m1);
+ std::tie(w,y)=mopt(true,m2);
  if(v==w) {
   z=k(0,(S)"~",x,y,0); b=z->g; r0(z);
  }
@@ -2802,19 +2804,20 @@ static bool mcompare(Cast c,const Module& m,const AnyModule& a) {
 static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
  TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
  TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
- auto p=mref(q.top()).named_children().back();    // get last name & module defined in container
- J i=-1;                                          // named modules includes parent, want i=0 for 1st child
- for(auto& a:p.value()->named_modules(p.key())) { // search through all child modules (all levels)
+ J i=0; auto& m=mref(q.top()); bool b=container(m); auto mc=m.named_children().back();
+ std::string p; if(b) p=mc.key();
+ for(auto& a:b ? mc.value()->named_modules(p,false) : m.named_modules(p,false)) {
   if(i==j) {
-   TORCH_CHECK(mfindname(a.key(),s), "child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
+   TORCH_CHECK(mfindname(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,anymodule(x,argstart(x,s),c)), "child module ", a.key(), " mismatch with given options");
-   if(y||z) mparms(c,m,y,z,(S)a.key().c_str());    // add any supplied parms or buffers
+   TORCH_CHECK(mcompare(c,m,container(c) ? mref(newcontainer(c)) : *anymodule(x,argstart(x,s),c).ptr()),
+               "child module ", a.key(), " mismatch with given options");
+   if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
    return;
   }
   i++;
  }
- AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(*p.value())," layer at depth ",d);
+ AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(b ? *mc.value() : m)," layer at depth ",d);
 }
 
 static void mdepth(Cast c,size_t d,Layers& q) {
@@ -2826,7 +2829,7 @@ static void mdepth(Cast c,size_t d,Layers& q) {
 static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
 static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
  Cast c=msym(s);
- if(d>q.size()) {
+ if(d>q.size() || (q.size() && !container(q.top()))) {
   mfind(c,j,d,nm,q,x,y,z); j++;
  } else {
   mdepth(c,d,q); j=0;
