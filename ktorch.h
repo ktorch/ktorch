@@ -195,20 +195,23 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- addbias,      addzero,      affine,   align,    alpha,     amsgrad,    batchfirst,
- beta,         beta1,        beta2,    bi,       bias,      blank,      ceiling,   
- centered,     changetol,    channels, cols,     countpad,  dampening,  decay,     
- decoder,      decoderlayer, dilate,   dim,      divisor,   dropout,    encoder,   
- encoderlayer, end,          eps,      eval,     fn,        freeze,     full,      
- gradtol,      groups,       heads,    hidden,   history,   ignore,     in,        
- in1,          in2,          indices,  init,     inplace,   iter,       k,         
- kdim,         keepdim,      kvbias,   kvzeros,  lambda,    lastoffset, layernorm, 
- layers,       log,          lower,    lr,       lrdecay,   margin,     max,       
- maxnorm,      min,          mode,     momentum, nesterov,  norm,       out,       
- outpad,       outsize,      p,        pad,      padindex,  padmode,    ratio,     
- reduce,       rescale,      rows,     scale,    shape,     size,       slope,     
- sparse,       start,        stride,   swap,     threshold, track,      train,     
- transpose,    type,         upper,    value,    vdim,      weight,     zeroinf    
+ addbias,      addzero,   affine,     align,     alpha,        amsgrad,
+ batchfirst,   beta,      beta1,      beta2,     bi,           bias,   
+ blank,        ceiling,   centered,   changetol, channels,     cols,   
+ countpad,     dampening, decay,      decoder,   decoderlayer, dilate, 
+ dim,          divisor,   dlayers,    dropout,   elayers,      encoder,
+ encoderlayer, end,       eps,        eval,      fn,           freeze, 
+ full,         gradtol,   groups,     heads,     hidden,       history,
+ ignore,       in,        in1,        in2,       indices,      init,   
+ inplace,      iter,      k,          kdim,      keepdim,      kvbias, 
+ kvzeros,      lambda,    lastoffset, layernorm, layers,       log,    
+ lower,        lr,        lrdecay,    margin,    max,          maxnorm,
+ min,          mode,      momentum,   nesterov,  norm,         out,    
+ outpad,       outsize,   p,          pad,       padindex,     padmode,
+ ratio,        reduce,    rescale,    rows,      scale,        shape,  
+ size,         slope,     sparse,     start,     stride,       swap,   
+ threshold,    track,     train,      transpose, type,         upper,  
+ value,        vdim,      weight,     zeroinf
 };
 
 enum class State:char {
@@ -789,7 +792,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),       Cast::zeropad2d)
  }};
 
- std::array<std::tuple<S,Setting>,76> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,78> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -808,7 +811,9 @@ typedef struct {
   std::make_tuple(cs("dilate"),       Setting::dilate),
   std::make_tuple(cs("divisor"),      Setting::divisor),
   std::make_tuple(cs("dim"),          Setting::dim),
+  std::make_tuple(cs("dlayers"),      Setting::dlayers),
   std::make_tuple(cs("dropout"),      Setting::dropout),
+  std::make_tuple(cs("elayers"),      Setting::elayers),
   std::make_tuple(cs("encoder"),      Setting::encoder),
   std::make_tuple(cs("encoderlayer"), Setting::encoderlayer),
   std::make_tuple(cs("end"),          Setting::end),

@@ -842,7 +842,7 @@ static void plen(const Pairs& p,J n,J m) {
 
 S psym(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return p.s;}
 ScalarType ptype(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return torch::typeMetaToScalarType(mtype(p.s));}
-bool pempty(const Pairs& p) {return p.t>=0 && p.v && !p.v->n;}
+bool pempty(const Pairs& p) {return p.t>=0 && p.v && !xlen(p.v);}
 bool pbool(const Pairs& p) {if(p.t!=-KB) perr(p,"boolean"); return p.b;}
 J plong(const Pairs& p) {if(p.t!=-KJ) perr(p,"long integer"); return p.j;}
 

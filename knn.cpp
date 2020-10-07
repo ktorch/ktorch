@@ -14,7 +14,7 @@ Layer& lref(Ktag *g) {
  switch(g->a) {
   case Class::module: return ((Kmodule*)g)->m;
   case Class::model:  return ((Kmodel*)g)->m;
-  default: AT_ERROR("unable to retrieve module layers from ",mapclass(g->a));
+  default: AT_ERROR("unable to retrieve module from ",mapclass(g->a));
  }
 }
 
@@ -40,10 +40,16 @@ std::string mlabel(const Module& x) {
  return s;
 }
 
-// ----------------------------------------------------------------------------
-// append a module option to a k dictionary given dict,name & value
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
+// OPTION - macro to append a module option to a k dictionary given dict,name & value
+// argstart - return offset in k list to begin processing module args
+// anymodule - forward declare function to create a module from k args, offset & cast
+// mopt - forward declare function to return module settings as k dictionary
+// ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
+static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
+static AnyModule anymodule(K x,J i,Cast c);
+static std::tuple<Cast,K> mopt(bool a,const Module& g);
 
 // ----------------------------------------------------------------------------
 // kmodule - allocate an object to store a pointer to a layer
@@ -62,6 +68,7 @@ K to(Kmodule* x,const TensorOptions& o,bool a) {
 
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
+// msyms - parse module and optional name symbol from k arg(s), throw error if not found
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
 // mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
 // -----------------------------------------------------------------------------------
@@ -73,6 +80,24 @@ static S msym(Cast c) {
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  AT_ERROR("unrecognized module: ",s);
+}
+
+static void msyms(K x,S& s,S& nm) {
+ nm=nullptr;
+ if(x->t == -KS) {
+  s=x->s;
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0, "module: empty symbol list");
+  s=kS(x)[0];
+  if(x->n>1) nm=kS(x)[1];
+ } else if(!x->t) {
+  TORCH_CHECK(x->n>0, "module: empty list");
+  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
+  s=kK(x)[0]->s;
+  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
+ } else {
+  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
+ }
 }
 
 static S mset(Setting x) {
@@ -2252,6 +2277,7 @@ static c10::variant<torch::enumtype::kReLU, torch::enumtype::kGELU> codefn(Cast 
 }
 
 template<typename O>static O codelayer(K x,J i,Cast c) {
+ TORCH_CHECK(x->t>=0 || x->t==99, msym(c),": unrecognized  or insufficient arg(s), ",kname(x),", ",kstring(x));
  Pairs p; J n=xargc(x,i,p); O o(0,0);
  for(J j=0;j<n;++j) {
   switch(j) {
@@ -2310,13 +2336,18 @@ static J codeoff(K x,Cast c) {
 }
  
 template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
+ TORCH_CHECK(x->t==0 || x->t==99, msym(c),": unrecognized  or insufficient arg(s), ",kname(x),", ",kstring(x));
+ std::cerr << "args i: " << i << " " << kstring(x) << "\n";
  Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr;
  for(J j=0;j<n;++j) {
   K y=kK(x)[i+j];
   switch(j) {
    case 0: m1=L(codelayer<O>(y,codeoff(y,c),Cast::encoderlayer)); break;
    case 1: l=int64(x,i+j,c,Setting::layers); break;
-   case 2: m2=nn::LayerNorm(y->t==-KJ ? nn::LayerNormOptions({y->j}) : layernorm(y,codeoff(y,c),Cast::layernorm)); break;
+   case 2: 
+    if(!xempty(y))
+     m2=nn::LayerNorm(y->t==-KJ ? nn::LayerNormOptions({y->j}) : layernorm(y,codeoff(y,c),Cast::layernorm));
+     break;
    default: AT_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
   }
  }
@@ -2334,13 +2365,15 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
     l=int64(p,c);
     break;
    case Setting::layernorm:
-    TORCH_CHECK(p.v || p.t==-KJ, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
-    m2=nn::LayerNorm(p.t==-KJ ? nn::LayerNormOptions({p.j}) : layernorm(p.v,codeoff(p.v,c),Cast::layernorm)); 
+    if(!pempty(p)) {
+     TORCH_CHECK(p.v || p.t==-KJ, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
+     m2=nn::LayerNorm(p.t==-KJ ? nn::LayerNormOptions({p.j}) : layernorm(p.v,codeoff(p.v,c),Cast::layernorm)); 
+    }
     break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  }
- TORCH_CHECK(l>=0, msym(c), ": number of layers cannot be less than zero");
+ TORCH_CHECK(l>=0, msym(c), ": non-negative number of layers must be defined");
  return m2.is_empty() ? R(m1,l) : R(m1,l).norm(AnyModule(m2));
 }
 
@@ -2381,15 +2414,65 @@ static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
 // -----------------------------------------------------------------------------
 //  transformer
 // -----------------------------------------------------------------------------
-KAPI transformer(K x) {
- auto m=nn::TransformerEncoderLayer(64,8);
- auto e=nn::TransformerEncoder(nn::TransformerEncoderOptions(m,2));
- std::cerr << e << "\n";
- auto l=nn::TransformerDecoderLayer(64,8);
- auto d=nn::TransformerDecoder(l,2);
- std::cerr << d << "\n";
- //return decoder(true,d->options);
- return mget(true,true,*d);
+static AnyModule customcoder(K x) {
+ S s,nm; msyms(x,s,nm);
+ return anymodule(x,argstart(x,nm),msym(s));
+}
+
+static nn::TransformerOptions transformer(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); nn::TransformerOptions o;
+ for(J j=0;j<n;++j) {
+  switch(j) {
+   case 0: o.d_model(int64(x,i+j,c,Setting::in)); break;
+   case 1: o.nhead(int64(x,i+j,c,Setting::heads)); break;
+   case 2: o.num_encoder_layers(int64(x,i+j,c,Setting::elayers)); break;
+   case 3: o.num_decoder_layers(int64(x,i+j,c,Setting::dlayers)); break;
+   case 4: o.dim_feedforward(int64(x,i+j,c,Setting::dim)); break;
+   case 5: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
+   case 6: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
+   case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j])); break;
+   case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j])); break;
+   default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
+  }
+ }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::in:      o.d_model(int64(p,c)); break;
+   case Setting::heads:   o.nhead(int64(p,c)); break;
+   case Setting::elayers: o.num_encoder_layers(int64(p,c)); break;
+   case Setting::dlayers: o.num_decoder_layers(int64(p,c)); break;
+   case Setting::dim:     o.dim_feedforward(int64(p,c)); break;
+   case Setting::dropout: o.dropout(mdouble(p,c)); break;
+   case Setting::fn:      o.activation(codefn(c,code(p,c))); break;
+   case Setting::encoder:
+   case Setting::decoder:
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
+ TORCH_CHECK(  o.nhead()>0, msym(c), ": positive number of heads required");
+ return o;
+}
+
+static K transformer(bool a,const nn::TransformerOptions& o) {
+ Cast c; K x=KDICT,y; nn::TransformerOptions d;
+ if(a || (o.d_model()            != d.d_model()))            OPTION(x, in,      kj(o.d_model()));
+ if(a || (o.nhead()              != d.nhead()))              OPTION(x, heads,   kj(o.nhead()));
+ if(a || (o.num_encoder_layers() != d.num_encoder_layers())) OPTION(x, elayers, kj(o.num_encoder_layers()));
+ if(a || (o.num_decoder_layers() != d.num_decoder_layers())) OPTION(x, dlayers, kj(o.num_decoder_layers()));
+ if(a || (o.dim_feedforward()    != d.dim_feedforward()))    OPTION(x, dim,     kj(o.dim_feedforward()));
+ if(a || (o.dropout()            != d.dropout()))            OPTION(x, dropout, kf(o.dropout()));
+ if(a || (o.activation().index() != d.activation().index())) OPTION(x, fn,      ks(ESYM(o.activation())));
+ if(o.custom_encoder().is_empty()) {
+  if(a) OPTION(x, encoder, KDICT);
+ } else { 
+  std::tie(c,y)=mopt(a,*o.custom_encoder().ptr()); OPTION(x, encoder, y);
+ }
+ if(o.custom_decoder().is_empty()) {
+  if(a) OPTION(x, decoder, KDICT);
+ } else { 
+  std::tie(c,y)=mopt(a,*o.custom_decoder().ptr()); OPTION(x, decoder, y);
+ }
+ return x;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2416,12 +2499,9 @@ static K getsize(bool a,const SizeOptions& o) {
 }
 
 // ----------------------------------------------------------------------------------------------------
-// argstart  - offset in args: -1 if dictionary of options, 1 if no name else 2
 // anymodule - define module from supplied options, return as generic AnyModule 
 // ----------------------------------------------------------------------------------------------------
-static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
-
-AnyModule anymodule(K x,J i,Cast c) {
+static AnyModule anymodule(K x,J i,Cast c) {
  switch(c) {
   case Cast::batchnorm1d:  return AnyModule(nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)));
   case Cast::batchnorm2d:  return AnyModule(nn::BatchNorm2d(batchnorm<nn::BatchNormOptions>(x,i,c)));
@@ -2497,6 +2577,7 @@ AnyModule anymodule(K x,J i,Cast c) {
   case Cast::encoderlayer: return AnyModule(nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)));
   case Cast::decoder:      return AnyModule(nn::TransformerDecoder(decoder(x,i,c)));
   case Cast::encoder:      return AnyModule(nn::TransformerEncoder(encoder(x,i,c)));
+  case Cast::transformer:  return AnyModule(nn::Transformer(transformer(x,i,c)));
 
   case Cast::rnn:          return AnyModule(nn::RNN(rnn(x,i,c)));
   case Cast::gru:          return AnyModule(nn::GRU(rnn<nn::GRUOptions>(x,i,c)));
@@ -2548,7 +2629,7 @@ AnyModule anymodule(K x,J i,Cast c) {
 // --------------------------------------------------------------------------------------------
 // mopt - given module, cast at runtime to known type and extract options as k dictionary
 // --------------------------------------------------------------------------------------------
-std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
+static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
  Cast c=Cast::undefined; K x=nullptr;
  if       (g.as<Sequential>())  { c=Cast::sequential;
  } else if(g.as<SeqNest>())     { c=Cast::seqnest;
@@ -2626,6 +2707,7 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
  } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; x=codelayer(a,m->options);
  } else if(auto* m=g.as<nn::TransformerEncoder>())      { c=Cast::encoder;      x=encoder(a,m->options);
  } else if(auto* m=g.as<nn::TransformerDecoder>())      { c=Cast::decoder;      x=decoder(a,m->options);
+ } else if(auto* m=g.as<nn::Transformer>())             { c=Cast::transformer;  x=transformer(a,m->options);
 
  } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  x=rnn(a,m->options);
  } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  x=rnn(a,m->options);
@@ -2671,7 +2753,7 @@ std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if tr
 
  } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; x=pairwise(a,m->options);
  } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  x=similar(a,m->options);
- } else if(auto* m=g.as<nn::Module>())            { AT_ERROR("generic module, unable to retrieve options");
+ } else if(g.as<nn::Module>()) { AT_ERROR("generic module, unable to retrieve options");
  } else { AT_ERROR("unrecognized module: ",g.name());
  }
  return std::make_tuple(c,x ? x : KDICT);
@@ -2763,11 +2845,12 @@ static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
  return m.modules(false).size();      // return count of all sub-modules created
 }
 
-// --------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 // msuffix - compare submodule name from newly created module with stored suffix
 // mcompare - compare options from two modules, return true if all match exactly
-// mfind - match previous state w'sub-modules that are part of explicitly defined layers
-// --------------------------------------------------------------------------------------
+// mfind - match previous state of implicitly defined submodules 
+//       - e.g. the self attention layer of an explicitly defined decoder layer
+// -------------------------------------------------------------------------------
 static bool msuffix(const std::string& x,const std::string& y) {
  return x.size()>=y.size() && !x.compare(x.size()-y.size(),y.size(),y);
 }
@@ -2802,28 +2885,9 @@ static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
 }
 
 // --------------------------------------------------------------------------------------------
-// msyms - parse module and optional name symbol from k arg(s), throw error if not found
 // mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
 // mpush - add new parent/child module to network stored in stack of layers
 // --------------------------------------------------------------------------------------------
-static void msyms(K x,S& s,S& nm) {
- nm=nullptr;
- if(x->t == -KS) {
-  s=x->s;
- } else if(x->t == KS) {
-  TORCH_CHECK(x->n>0, "module: empty symbol list");
-  s=kS(x)[0];
-  if(x->n>1) nm=kS(x)[1];
- } else if(!x->t) {
-  TORCH_CHECK(x->n>0, "module: empty list");
-  TORCH_CHECK(kK(x)[0]->t==-KS, "module: no symbol found, ",kstring(x));
-  s=kK(x)[0]->s;
-  if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
- } else {
-  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
- }
-}
-
 static void mdepth(Cast c,size_t d,Layers& q) {
  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
@@ -2832,9 +2896,9 @@ static void mdepth(Cast c,size_t d,Layers& q) {
 
 static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
 static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
- Cast c=msym(s);
- if(d>q.size() || (q.size() && !container(q.top()))) {
-  mfind(c,j,d,nm,q,x,y,z); j++;
+ Cast c=msym(s); J n=q.size();
+ if(d>n || (n && !container(q.top()))) {
+  mfind(c,j,d,nm,q,x,y,z); j++;  // previous module has self-contained child modules
  } else {
   mdepth(c,d,q); j=0;
   if(container(c))

@@ -117,7 +117,7 @@ K kget(const TensorDeque& v) {
 K kget(const TensorVector& v,K x) { // x-nullptr by default, else indices
  if(!x) {
   K r=ktn(0,v.size());
-  for(J i=0; i<v.size(); ++i) kK(r)[i]=kget(v[i]);
+  for(J i=0; i<r->n; ++i) kK(r)[i]=kget(v[i]);
   return razelist(r);
  } else if(x->t == -KJ) {
   return kget(v.at(x->j));
