@@ -709,12 +709,12 @@ bool xpairs(K x,Pairs& p) {   // initialize Pairs structure from k value
   if(y->t==KS || !(y->t || y->n))
    p.a=1, p.n=y->n;
   else
-   AT_ERROR("unexpected name,value dictionary with ",kname(kK(x)[0]->t)," as keys");
+   AT_ERROR("unexpected name,value dictionary with ",kname(kK(x)[0]->t)," as keys: ",kstring(x));
  } else if(x->t==KS) {
   if(x->n%2==0)
    p.a=4, p.n=x->n/2;
   else
-   AT_ERROR("uneven no. of symbols for name,value pairs: ",x->n);
+   AT_ERROR("uneven no. of symbols for name,value pairs: ", kstring(x));
  } else if(!x->t) {
   if(!x->n) {                      // empty list
    p.a=2, p.n=0;
@@ -722,7 +722,7 @@ bool xpairs(K x,Pairs& p) {   // initialize Pairs structure from k value
    if(x->n%2==0)
     p.a=3, p.n=x->n/2;
    else
-    AT_ERROR("uneven no. of elements for name,value pairs in list: ",x->n);
+    AT_ERROR("uneven no. of elements for name,value pairs in list: ",kstring(x));
   } else {                         // assume list of pairs if symbol in first pair
    K y=kK(x)[0];
    if(y->n==2 && (y->t==KS || (!y->t && kK(y)[0]->t==-KS)))
