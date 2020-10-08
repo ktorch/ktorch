@@ -2337,7 +2337,6 @@ static J codeoff(K x,Cast c) {
  
 template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
  TORCH_CHECK(x->t==0 || x->t==99, msym(c),": unrecognized  or insufficient arg(s), ",kname(x),", ",kstring(x));
- std::cerr << "args i: " << i << " " << kstring(x) << "\n";
  Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr;
  for(J j=0;j<n;++j) {
   K y=kK(x)[i+j];
@@ -2355,10 +2354,12 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
   switch(mset(p.k,c)) {
    case Setting::decoderlayer:
     TORCH_CHECK(c==Cast::decoder, msym(c),": cannot create a decoder layer");
+    TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for decoder layer (",kname(p.t),")");
     m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::decoderlayer)); 
     break;
    case Setting::encoderlayer:
     TORCH_CHECK(c==Cast::encoder, msym(c),": cannot create an encoder layer");
+    TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for encoder layer (",kname(p.t),")");
     m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::encoderlayer)); 
     break;
    case Setting::layers:
@@ -2366,7 +2367,7 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
     break;
    case Setting::layernorm:
     if(!pempty(p)) {
-     TORCH_CHECK(p.v || p.t==-KJ, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
+     TORCH_CHECK(p.t==-KJ || p.t>=0, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
      m2=nn::LayerNorm(p.t==-KJ ? nn::LayerNormOptions({p.j}) : layernorm(p.v,codeoff(p.v,c),Cast::layernorm)); 
     }
     break;
@@ -2411,16 +2412,22 @@ static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
  K x=KDICT; OPTION(x, encoderlayer, codelayer(a,o.encoder_layer()->options)); coder(a,x,o); return x;
 }
 
-// -----------------------------------------------------------------------------
-//  transformer
-// -----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
+// customcoder - create or retrieve options from custom encoder/decoder for transformer
+// transformer - create transformer or retrieve options from existing transformer module
+// -------------------------------------------------------------------------------------
 static AnyModule customcoder(K x) {
- S s,nm; msyms(x,s,nm);
- return anymodule(x,argstart(x,nm),msym(s));
+ K y; J i; S s,nm;
+ if(xdict(x)) {
+  i=-1; s=statemodule(x,i); nm=statename(x,i), y=stateoptions(x,i);
+ } else {
+  y=x; msyms(y,s,nm); i=argstart(y,nm);
+ }
+ return anymodule(y,i,msym(s));
 }
 
 static nn::TransformerOptions transformer(K x,J i,Cast c) {
- Pairs p; J n=xargc(x,i,p); nn::TransformerOptions o;
+ Pairs p; Setting s; J n=xargc(x,i,p); nn::TransformerOptions o;
  for(J j=0;j<n;++j) {
   switch(j) {
    case 0: o.d_model(int64(x,i+j,c,Setting::in)); break;
@@ -2436,7 +2443,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
   }
  }
  while(xpair(p))
-  switch(mset(p.k,c)) {
+  switch((s=mset(p.k,c))) {
    case Setting::in:      o.d_model(int64(p,c)); break;
    case Setting::heads:   o.nhead(int64(p,c)); break;
    case Setting::elayers: o.num_encoder_layers(int64(p,c)); break;
@@ -2444,8 +2451,14 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case Setting::dim:     o.dim_feedforward(int64(p,c)); break;
    case Setting::dropout: o.dropout(mdouble(p,c)); break;
    case Setting::fn:      o.activation(codefn(c,code(p,c))); break;
-   case Setting::encoder:
+   case Setting::encoder: 
    case Setting::decoder:
+    if(!pempty(p)) {
+     TORCH_CHECK(p.t==-KS || p.t>=0, msym(c), ": unrecognized arg(s) for custom ",p.k);
+     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v);
+     s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
+    }
+    break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
@@ -2453,8 +2466,16 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
  return o;
 }
 
+static K customcoder(bool a,const AnyModule& m) {
+ K x,k=ktn(KS,2),v=ktn(0,2); Cast c;
+ std::tie(c,x)=mopt(a,*m.ptr());
+ kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(msym(c));
+ kS(k)[1]=statekey(State::options); kK(v)[1]=x;
+ return xD(k,v);
+}
+
 static K transformer(bool a,const nn::TransformerOptions& o) {
- Cast c; K x=KDICT,y; nn::TransformerOptions d;
+ K x=KDICT; nn::TransformerOptions d;
  if(a || (o.d_model()            != d.d_model()))            OPTION(x, in,      kj(o.d_model()));
  if(a || (o.nhead()              != d.nhead()))              OPTION(x, heads,   kj(o.nhead()));
  if(a || (o.num_encoder_layers() != d.num_encoder_layers())) OPTION(x, elayers, kj(o.num_encoder_layers()));
@@ -2465,12 +2486,12 @@ static K transformer(bool a,const nn::TransformerOptions& o) {
  if(o.custom_encoder().is_empty()) {
   if(a) OPTION(x, encoder, KDICT);
  } else { 
-  std::tie(c,y)=mopt(a,*o.custom_encoder().ptr()); OPTION(x, encoder, y);
+  OPTION(x, encoder, customcoder(a,o.custom_encoder()));
  }
  if(o.custom_decoder().is_empty()) {
   if(a) OPTION(x, decoder, KDICT);
  } else { 
-  std::tie(c,y)=mopt(a,*o.custom_decoder().ptr()); OPTION(x, decoder, y);
+  OPTION(x, decoder, customcoder(a,o.custom_decoder()));
  }
  return x;
 }
@@ -2619,10 +2640,14 @@ static AnyModule anymodule(K x,J i,Cast c) {
   case Cast::hardtanh:     return AnyModule(nn::Hardtanh(hardtanh(x,i,c)));
   case Cast::softplus:     return AnyModule(nn::Softplus(softplus(x,i,c)));
   case Cast::threshold:    return AnyModule(nn::Threshold(threshold(x,i,c)));
-
   case Cast::pairwise:     return AnyModule(nn::PairwiseDistance(pairwise(x,i,c)));
   case Cast::similar:      return AnyModule(nn::CosineSimilarity(similar(x,i,c)));
-  default: AT_ERROR("unrecognized module: cannot create module from enumeration ",(I)c);
+
+  default:
+   if(container(c))
+    AT_ERROR("cannot create container module: ",msym(c));
+   else
+    AT_ERROR("unrecognized module: cannot create module from unrecognized enumeration ",(I)c);
  }
 }
 
