@@ -2316,6 +2316,8 @@ template<typename O>static K codelayer(bool a,const O& o) {
 // ----------------------------------------------------------------------------------------------------
 // create transformer encoder/decoder layers:
 // codeoff - get offset for processing sum-module arg(s), e.g. (`encodelayer;512;8) -> offset=1
+// codelayer - process a created layer module or args to define one
+// codenorm - process a created layernorm module or arg(s) to define one
 // coder - template for creating encoder/decoder layers with submodule, layer count, optional norm 
 // encoder,decoder - invoke template 'coder' with encoder/decoder layer & option types
 // ----------------------------------------------------------------------------------------------------
@@ -2335,18 +2337,42 @@ static J codeoff(K x,Cast c) {
  return i;
 }
  
+template<typename L,typename O> static L codelayer(K x,Cast c) {
+ Kmodule *m=xmodule(x); bool e=c == Cast::encoder;
+ if(m) {
+  auto *l=mref(m->m).as<L>();
+  TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding layer" : "decoding layer"),
+                         " given ",mlabel(mref(m->m))," module");
+  return L(*l);
+ } else {
+  return L(codelayer<O>(x,codeoff(x,c),e ? Cast::encoderlayer : Cast::decoderlayer));
+ }
+}
+
+static nn::LayerNorm codenorm(K x,J n,Cast c) {
+ if(x) {
+  auto *m=xmodule(x);
+  if(m) {
+   auto *l=mref(m->m).as<nn::LayerNorm>();
+   TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(mref(m->m))," module");
+   return nn::LayerNorm(*l);
+  } else {
+   return nn::LayerNorm(x->t==-KJ ? nn::LayerNormOptions({x->j}) : layernorm(x,codeoff(x,c),Cast::layernorm));
+  }
+ } else {
+  return nn::LayerNorm(nn::LayerNormOptions({n}));
+ }
+}
+
 template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
  TORCH_CHECK(x->t==0 || x->t==99, msym(c),": unrecognized  or insufficient arg(s), ",kname(x),", ",kstring(x));
  Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr;
  for(J j=0;j<n;++j) {
   K y=kK(x)[i+j];
   switch(j) {
-   case 0: m1=L(codelayer<O>(y,codeoff(y,c),Cast::encoderlayer)); break;
+   case 0: m1=codelayer<L,O>(y,c); break;
    case 1: l=int64(x,i+j,c,Setting::layers); break;
-   case 2: 
-    if(!xempty(y))
-     m2=nn::LayerNorm(y->t==-KJ ? nn::LayerNormOptions({y->j}) : layernorm(y,codeoff(y,c),Cast::layernorm));
-     break;
+   case 2: if(!xempty(y)) m2=codenorm(x,0,c); break;
    default: AT_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
   }
  }
@@ -2355,12 +2381,12 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
    case Setting::decoderlayer:
     TORCH_CHECK(c==Cast::decoder, msym(c),": cannot create a decoder layer");
     TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for decoder layer (",kname(p.t),")");
-    m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::decoderlayer)); 
+    m1=codelayer<L,O>(p.v,c);
     break;
    case Setting::encoderlayer:
     TORCH_CHECK(c==Cast::encoder, msym(c),": cannot create an encoder layer");
     TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for encoder layer (",kname(p.t),")");
-    m1=L(codelayer<O>(p.v,codeoff(p.v,c),Cast::encoderlayer)); 
+    m1=codelayer<L,O>(p.v,c);
     break;
    case Setting::layers:
     l=int64(p,c);
@@ -2368,7 +2394,7 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
    case Setting::layernorm:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KJ || p.t>=0, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
-     m2=nn::LayerNorm(p.t==-KJ ? nn::LayerNormOptions({p.j}) : layernorm(p.v,codeoff(p.v,c),Cast::layernorm)); 
+     m2=codenorm(p.t==-KJ ? nullptr : p.v, p.j, c);
     }
     break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
@@ -2416,14 +2442,20 @@ static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
 // customcoder - create or retrieve options from custom encoder/decoder for transformer
 // transformer - create transformer or retrieve options from existing transformer module
 // -------------------------------------------------------------------------------------
-static AnyModule customcoder(K x) {
- K y; J i; S s,nm;
- if(xdict(x)) {
-  i=-1; s=statemodule(x,i); nm=statename(x,i), y=stateoptions(x,i);
+static AnyModule customcoder(K x,Setting t) {
+ K y; J i; S s,nm; AnyModule a; Kmodule *m=xmodule(x);
+ if(m) {
+  TORCH_CHECK(c10::holds_alternative<AnyModule>(m->m), "unable to add ",mlabel(mref(m->m))," module as custom ",mset(t));
+  a=c10::get<AnyModule>(m->m).clone(); // kfree(x);
  } else {
-  y=x; msyms(y,s,nm); i=argstart(y,nm);
+  if(xdict(x)) {
+   i=-1; s=statemodule(x,i); nm=statename(x,i), y=stateoptions(x,i);
+  } else {
+   y=x; msyms(y,s,nm); i=argstart(y,nm);
+  }
+  a=anymodule(y,i,msym(s));
  }
- return anymodule(y,i,msym(s));
+ return a;
 }
 
 static nn::TransformerOptions transformer(K x,J i,Cast c) {
@@ -2437,8 +2469,8 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case 4: o.dim_feedforward(int64(x,i+j,c,Setting::dim)); break;
    case 5: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
    case 6: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
-   case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j])); break;
-   case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j])); break;
+   case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j],Setting::encoder)); break;
+   case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j],Setting::decoder)); break;
    default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  }
@@ -2455,7 +2487,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case Setting::decoder:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KS || p.t>=0, msym(c), ": unrecognized arg(s) for custom ",p.k);
-     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v);
+     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s);
      s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
     }
     break;
