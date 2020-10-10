@@ -496,6 +496,7 @@ J objbytes(const Module&);
 
 bool kfree(K);
 bool kfree(K,J);
+void kfree(const std::vector<K>&);
 void fn(K,const char*,void*,I);
 void randomfn(K);
 void mathfn(K);

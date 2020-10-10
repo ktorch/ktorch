@@ -23,9 +23,12 @@ bool xind(K x,J i) {return !x->t && -1<i && i<x->n;}
 bool xind(K x,J i,Ktype k) {return x->t==k && -1<i && i<x->n;}
 K kptr(void *v){J j=(intptr_t)v; pointer().insert(j); return knk(1,kj(j));}
 
+bool ptrtype(K x) {return !x->t && x->n==1 && kK(x)[0]->t==-KJ;}
+bool ptrflag(K x) {return pointer().count(kK(x)[0]->j);}
+
 bool xptr(K x) {
- if(!x->t && x->n==1 && kK(x)[0]->t==-KJ) {
-  TORCH_CHECK(pointer().count(kK(x)[0]->j), "stale pointer");
+ if(ptrtype(x)) {
+  TORCH_CHECK(ptrflag(x), "stale pointer");
   return true;
  } else {
   return false;
@@ -1062,7 +1065,7 @@ KAPI tree(K x) {
 
 // -----------------------------------------------------------------------------------------
 // addref - add a new kptr to a shared tensor/module/optimizer, incrementing reference count
-// kfree - free allocated object and remove from active pointer set
+// kfree - free allocated object/vector of objects and remove from active pointer set
 // Kfree - k-api fn to free a previously allocated object or all allocated objects
 // -----------------------------------------------------------------------------------------
 KAPI addref(K x) {
@@ -1087,6 +1090,19 @@ bool kfree(K x) {
 }
 
 bool kfree(K x,J i) {return xind(x,i) ? kfree(kK(x)[i]) : false;}
+
+void kfree(const std::vector<K>& v) {
+ for(auto x:v) // vector may have duplicates, no error for stale pointers
+  if(ptrtype(x) && ptrflag(x)) kfree(x);
+}
+
+KAPI f(K x,K y) {
+ std::vector<K> v;
+ v.push_back(x);
+ v.push_back(y);
+ kfree(v);
+ return (K)0;
+}
 
 KAPI Kfree(K x){
  KTRY

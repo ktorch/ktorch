@@ -2337,24 +2337,26 @@ static J codeoff(K x,Cast c) {
  return i;
 }
  
-template<typename L,typename O> static L codelayer(K x,Cast c) {
+template<typename L,typename O> static L codelayer(K x,Cast c,std::vector<K>& v) {
  Kmodule *m=xmodule(x); bool e=c == Cast::encoder;
  if(m) {
   auto *l=mref(m->m).as<L>();
   TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding layer" : "decoding layer"),
                          " given ",mlabel(mref(m->m))," module");
+  v.push_back(x);
   return L(*l);
  } else {
   return L(codelayer<O>(x,codeoff(x,c),e ? Cast::encoderlayer : Cast::decoderlayer));
  }
 }
 
-static nn::LayerNorm codenorm(K x,J n,Cast c) {
+static nn::LayerNorm codenorm(K x,J n,Cast c,std::vector<K>& v) {
  if(x) {
   auto *m=xmodule(x);
   if(m) {
    auto *l=mref(m->m).as<nn::LayerNorm>();
    TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(mref(m->m))," module");
+   v.push_back(x);
    return nn::LayerNorm(*l);
   } else {
    return nn::LayerNorm(x->t==-KJ ? nn::LayerNormOptions({x->j}) : layernorm(x,codeoff(x,c),Cast::layernorm));
@@ -2366,13 +2368,13 @@ static nn::LayerNorm codenorm(K x,J n,Cast c) {
 
 template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
  TORCH_CHECK(x->t==0 || x->t==99, msym(c),": unrecognized  or insufficient arg(s), ",kname(x),", ",kstring(x));
- Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr;
+ Pairs p; J l=-1,n=xargc(x,i,p); L m1=nullptr; nn::LayerNorm m2=nullptr; std::vector<K> v;
  for(J j=0;j<n;++j) {
   K y=kK(x)[i+j];
   switch(j) {
-   case 0: m1=codelayer<L,O>(y,c); break;
+   case 0: m1=codelayer<L,O>(y,c,v); break;
    case 1: l=int64(x,i+j,c,Setting::layers); break;
-   case 2: if(!xempty(y)) m2=codenorm(x,0,c); break;
+   case 2: if(!xempty(y)) m2=codenorm(x,0,c,v); break;
    default: AT_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
   }
  }
@@ -2381,12 +2383,12 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
    case Setting::decoderlayer:
     TORCH_CHECK(c==Cast::decoder, msym(c),": cannot create a decoder layer");
     TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for decoder layer (",kname(p.t),")");
-    m1=codelayer<L,O>(p.v,c);
+    m1=codelayer<L,O>(p.v,c,v);
     break;
    case Setting::encoderlayer:
     TORCH_CHECK(c==Cast::encoder, msym(c),": cannot create an encoder layer");
     TORCH_CHECK(p.t>=0, msym(c),": unrecognized arg(s) for encoder layer (",kname(p.t),")");
-    m1=codelayer<L,O>(p.v,c);
+    m1=codelayer<L,O>(p.v,c,v);
     break;
    case Setting::layers:
     l=int64(p,c);
@@ -2394,14 +2396,16 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
    case Setting::layernorm:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KJ || p.t>=0, msym(c),": unrecognized arg(s) for layer normalization (",kname(p.t),")");
-     m2=codenorm(p.t==-KJ ? nullptr : p.v, p.j, c);
+     m2=codenorm(p.t==-KJ ? nullptr : p.v, p.j, c, v);
     }
     break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  }
  TORCH_CHECK(l>=0, msym(c), ": non-negative number of layers must be defined");
- return m2.is_empty() ? R(m1,l) : R(m1,l).norm(AnyModule(m2));
+ auto r=m2.is_empty() ? R(m1,l) : R(m1,l).norm(AnyModule(m2));
+ if(v.size()) kfree(v);
+ return r;
 }
 
 static nn::TransformerDecoderOptions decoder(K x,J i,Cast c) {
@@ -2442,11 +2446,12 @@ static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
 // customcoder - create or retrieve options from custom encoder/decoder for transformer
 // transformer - create transformer or retrieve options from existing transformer module
 // -------------------------------------------------------------------------------------
-static AnyModule customcoder(K x,Setting t) {
+static AnyModule customcoder(K x,Setting t,std::vector<K>& v) {
  K y; J i; S s,nm; AnyModule a; Kmodule *m=xmodule(x);
  if(m) {
   TORCH_CHECK(c10::holds_alternative<AnyModule>(m->m), "unable to add ",mlabel(mref(m->m))," module as custom ",mset(t));
-  a=c10::get<AnyModule>(m->m).clone(); // kfree(x);
+  a=c10::get<AnyModule>(m->m).clone();
+  v.push_back(x);
  } else {
   if(xdict(x)) {
    i=-1; s=statemodule(x,i); nm=statename(x,i), y=stateoptions(x,i);
@@ -2459,7 +2464,7 @@ static AnyModule customcoder(K x,Setting t) {
 }
 
 static nn::TransformerOptions transformer(K x,J i,Cast c) {
- Pairs p; Setting s; J n=xargc(x,i,p); nn::TransformerOptions o;
+ Pairs p; Setting s; J n=xargc(x,i,p); nn::TransformerOptions o; std::vector<K> v;
  for(J j=0;j<n;++j) {
   switch(j) {
    case 0: o.d_model(int64(x,i+j,c,Setting::in)); break;
@@ -2469,8 +2474,8 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case 4: o.dim_feedforward(int64(x,i+j,c,Setting::dim)); break;
    case 5: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
    case 6: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
-   case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j],Setting::encoder)); break;
-   case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j],Setting::decoder)); break;
+   case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j],Setting::encoder,v)); break;
+   case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j],Setting::decoder,v)); break;
    default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  }
@@ -2487,7 +2492,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case Setting::decoder:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KS || p.t>=0, msym(c), ": unrecognized arg(s) for custom ",p.k);
-     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s);
+     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s,v);
      s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
     }
     break;
@@ -2495,6 +2500,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
   }
  TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
  TORCH_CHECK(  o.nhead()>0, msym(c), ": positive number of heads required");
+ if(v.size()) kfree(v);  // free any allocated submodules
  return o;
 }
 
