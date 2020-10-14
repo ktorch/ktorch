@@ -1652,6 +1652,8 @@ static Class helpclass(S s) {
 }
 
 static K helpcast(S s) {
+ for(auto& a:env().module)
+  if(std::get<0>(a)==s) return modulehelp(std::get<1>(a));
  for(auto& a:env().opt)
   if(std::get<0>(a)==s) return opthelp(std::get<1>(a));
  AT_ERROR("no help found: ",s);

@@ -569,6 +569,7 @@ K mget(bool,bool,const Module&);
 K mforward(Layer&,K);
 Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
 K mattr(const Layer&,Ktype,Attr);
+K modulehelp(Cast);
 void nnfn(K);
 
 // loss functions:

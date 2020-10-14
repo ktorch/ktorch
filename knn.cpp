@@ -1377,8 +1377,8 @@ template<size_t D> static nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
  return o;
 }
 
-template<size_t D,typename M> static K avgpool(bool a,const M* m) {
- K x=KDICT; nn::AvgPoolOptions<D> o=m->options, d(o.kernel_size());
+template<typename O> static K avgpool(bool a,const O& o) {
+ K x=KDICT; O d(o.kernel_size());
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || *o.stride()           != *d.stride())           OPTION(x, stride,   KEX(o.stride()));
  if(a || *o.padding()          != *d.padding())          OPTION(x, pad,      KEX(o.padding()));
@@ -1418,9 +1418,9 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  return o;
 }
 
-template<typename M> static K adapt(const M* m) {
+template<typename O> static K adapt(const O& o) {
  K x=KDICT;
- OPTION(x, size, KEX(m->options.output_size()));
+ OPTION(x, size, KEX(o.output_size()));
  return x;
 }
 
@@ -2736,17 +2736,17 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(auto* m=g.as<nn::MaxPool2d>())      { c=Cast::maxpool2d; x=maxpool<2,nn::MaxPool2dImpl>(a,m);
  } else if(auto* m=g.as<nn::MaxPool3d>())      { c=Cast::maxpool3d; x=maxpool<3,nn::MaxPool3dImpl>(a,m);
 
- } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; x=avgpool<1,nn::AvgPool1dImpl>(a,m);
- } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; x=avgpool<2,nn::AvgPool2dImpl>(a,m);
- } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; x=avgpool<3,nn::AvgPool3dImpl>(a,m);
+ } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; x=avgpool(a,m->options);
+ } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; x=avgpool(a,m->options);
+ } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; x=avgpool(a,m->options);
 
- } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; x=adapt<nn::AdaptiveMaxPool1dImpl>(m);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; x=adapt<nn::AdaptiveMaxPool2dImpl>(m);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; x=adapt<nn::AdaptiveMaxPool3dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; x=adapt(m->options);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; x=adapt(m->options);
+ } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; x=adapt(m->options);
 
- } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptmax1d; x=adapt<nn::AdaptiveAvgPool1dImpl>(m);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptmax2d; x=adapt<nn::AdaptiveAvgPool2dImpl>(m);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptmax3d; x=adapt<nn::AdaptiveAvgPool3dImpl>(m);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptavg1d; x=adapt(m->options);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptavg2d; x=adapt(m->options);
+ } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptavg3d; x=adapt(m->options);
 
  } else if(auto* m=g.as<nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; x=fpool<2,nn::FractionalMaxPool2dImpl>(a,m);
  } else if(auto* m=g.as<nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; x=fpool<3,nn::FractionalMaxPool3dImpl>(a,m);
@@ -3117,6 +3117,26 @@ KAPI module(K x) {
    return mtree(x);                              // nested tree representation
   }
  KCATCH("module");
+}
+
+K modulehelp(Cast c) {
+ switch(c) {
+  case Cast::adaptavg1d:  return adapt(nn::AdaptiveAvgPool1dOptions(3));
+  case Cast::adaptavg2d:  return adapt(nn::AdaptiveAvgPool2dOptions({3,2}));
+  case Cast::adaptavg3d:  return adapt(nn::AdaptiveAvgPool3dOptions({3,2,4}));
+  case Cast::adaptmax1d:  return adapt(nn::AdaptiveMaxPool1dOptions(3));
+  case Cast::adaptmax2d:  return adapt(nn::AdaptiveMaxPool2dOptions({3,2}));
+  case Cast::adaptmax3d:  return adapt(nn::AdaptiveMaxPool3dOptions({3,2,4}));
+  case Cast::adrop:       return drop(true,nn::AlphaDropoutOptions());
+  case Cast::attention:   return attention(true,nn::MultiheadAttentionOptions(2048,8));
+  case Cast::avgpool1d:   return avgpool(true,nn::AvgPool1dOptions(3));
+  case Cast::avgpool2d:   return avgpool(true,nn::AvgPool2dOptions({3,2}));
+  case Cast::avgpool3d:   return avgpool(true,nn::AvgPool3dOptions({3,2,2}));
+  case Cast::batchnorm1d:
+  case Cast::batchnorm2d:
+  case Cast::batchnorm3d: return batchnorm(true,nn::BatchNormOptions(32));
+  default: AT_ERROR("nyi");
+ }
 }
 
 // ----------------------------------
