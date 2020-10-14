@@ -9,7 +9,6 @@
 // kptr - given void *, add to pointer list & return k list of one long scalar = (intptr_t)void *
 // xptr - given k value, return true if enclosed scalar and in pointer set
 // xtag - if enclosed integer ptr detected from k, return pointer to tag structure
-// xhelp - check for single argument: `help, or 2 symbols, e.g. `help`conv2d
 // --------------------------------------------------------------------------------------------------
 S krrbuf(const char *s) {
  static C thread_local b[4096]; b[0]=0; 
@@ -39,14 +38,6 @@ bool xptr(K x,J i) {return xind(x,i) && xptr(kK(x)[i]);}
 
 Ktag* xtag(K x) {return xptr(x) ? (Ktag*)kK(x)[0]->j : nullptr;}
 Ktag* xtag(K x,J i) {return xind(x,i) ? xtag(kK(x)[i]) : nullptr;}
-
-bool xhelp(K x) {return x->t == -KS && x->s == env().help;}
-bool xhelp(K x,S &s) {
- if(x->t==KS && x->n == 2 && kS(x)[0]==env().help)
-  return s=kS(x)[1],true;
- else
-  return false;
-}
 
 // ------------------------------------------------------------------------------------------
 // null - true if null for given type
@@ -1096,14 +1087,6 @@ void kfree(const std::vector<K>& v) {
   if(ptrtype(x) && ptrflag(x)) kfree(x);
 }
 
-KAPI f(K x,K y) {
- std::vector<K> v;
- v.push_back(x);
- v.push_back(y);
- kfree(v);
- return (K)0;
-}
-
 KAPI Kfree(K x){
  KTRY
   if(xempty(x)) {
@@ -1646,6 +1629,47 @@ static void kinit() {
  }
 }
 
+// ---------------------------------------------------------------------------------
+// helpsym - return list of symbols for overall class help
+// helpclass - look for class symbol, return class enumeration or 'undefined'
+// helpcast - match symbol to module, optimizer, etc, returns help or 'not found'
+// help - k api function, accepts symbol, returns k list/dictionary/table with help
+// ---------------------------------------------------------------------------------
+static K helpsym(void) {
+ K x=ktn(KS,4);
+ for(auto& a:env().kclass)
+  if(std::get<1>(a)==Class::tensor)         kS(x)[0]=std::get<0>(a);
+  else if(std::get<1>(a)==Class::module)    kS(x)[1]=std::get<0>(a);
+  else if(std::get<1>(a)==Class::loss)      kS(x)[2]=std::get<0>(a);
+  else if(std::get<1>(a)==Class::optimizer) kS(x)[3]=std::get<0>(a);
+ return x;
+}
+ 
+static Class helpclass(S s) {
+ for(auto& a:env().kclass)
+  if(std::get<0>(a)==s) return std::get<1>(a);
+ return Class::undefined;
+}
+
+static K helpcast(S s) {
+ for(auto& a:env().opt)
+  if(std::get<0>(a)==s) return opthelp(std::get<1>(a));
+ AT_ERROR("no help found: ",s);
+}
+
+KAPI help(K x) {
+ KTRY
+  TORCH_CHECK(x->t==-KS, "help: expects a symbol, given ",kname(x));
+  if(!strlen(x->s))
+   return helpsym();
+  switch(helpclass(x->s)) {
+   case Class::optimizer: return opthelp(Cast::undefined);
+   default: break;
+  }
+  return helpcast(x->s);
+ KCATCH("help");
+}
+
 // -----------------------------------------------------------------------------------------
 // fn - given dictionary, along with name, fn & arg count, adds function to dictionary
 // fns - returns K dictionary with function names and code
@@ -1691,6 +1715,8 @@ KAPI fns(K x){
  fn(x, "pinned",      KFN(pinned),      1);
  fn(x, "size",        KFN(size),        1);
  fn(x, "stride",      KFN(stride),      1);
+
+ fn(x, "help",        KFN(help),        1);
 
  tensorfn(x);
  mathfn(x);

@@ -202,3 +202,15 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  torch::nn::AnyModule  join;
 };
 TORCH_MODULE(SeqJoin);
+
+// ---------------------------------------------------------------------
+// generic module to accept tensor parameters, buffers and child modules
+// ---------------------------------------------------------------------
+class TORCH_API XModuleImpl : public torch::nn::Cloneable<XModuleImpl> {
+ public:
+ XModuleImpl() = default;
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "XModule";}
+};
+TORCH_MODULE(XModule);
+

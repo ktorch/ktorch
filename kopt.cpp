@@ -704,6 +704,23 @@ K optattr(const Optptr& o,Ktype k,Attr a) {
  }
 }
 
+K opthelp(Cast c) {
+ switch(c) {
+  case Cast::adagrad: return adagrad(true,AdagradOptions());
+  case Cast::adam:    return adam(true,AdamOptions());
+  case Cast::adamw:   return adam(true,AdamWOptions());
+  case Cast::lbfgs:   return lbfgs(true,LBFGSOptions());
+  case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
+  case Cast::sgd:     return sgd(true,SGDOptions(SGDlr));
+  default: {
+   auto& e=env().opt;
+   J i=0; K k=ktn(KS,e.size()),v=ktn(0,e.size());
+   for(auto& a:e) {auto c=std::get<1>(a); kS(k)[i]=omap(c); kK(v)[i]=opthelp(c); ++i;}
+  return xD(k,v);
+  }
+ }
+}
+
 // -------------------------------------------------------------------------------------------
 // add optimizer api functions to library dictionary
 // -------------------------------------------------------------------------------------------

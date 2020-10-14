@@ -1,12 +1,15 @@
 #include "ktorch.h"
 
-KAPI transform(K x) {
- auto m=torch::nn::Transformer(torch::nn::TransformerOptions(512,8));
- for(auto& a:m->named_parameters())
-  std::cerr << a.key() << " " << a.value().sizes() << "\n";
- return (K)0;
+KAPI f(K x) {
+ KTRY
+  XModule m;
+  m->register_module("linear",torch::nn::Linear(1,2));
+  m->register_parameter("tensor",torch::randn(10));
+  std::cerr << *m << "\n";
+  return kdict(m->named_parameters());
+ KCATCH("xmodule")
 }
- 
+
 KAPI cb(K x,K y) {
  KTRY
   auto *l=xloss(x);
@@ -871,24 +874,6 @@ K help(bool b,const char* s) {return b ? KERR(s) : (fprintf(stderr,"%s\n",s), (K
    AT_WARN(__VA_ARGS__);  \
   else                    \
    AT_ERROR(__VA_ARGS__); \
-
-/*
-KAPI helptest(K x) {
-KTRY
- const char* a="some FN";
-// if(!x || xhelp(x)) {
- if(!x || xempty(x)) {
-  KHELP(x,"This is one part,",a,"\n"
-          " another part.."
-          " more parts.\n"
-          " last part\n")
-  return(K)0;
-  } else {
-   return helptest(nullptr);
-  }
-KCATCH("help test");
-}
-*/
 
 typedef struct {
  std::array<std::tuple<S,Cast,std::function<Tensor(Tensor)>>,2> fn = {{

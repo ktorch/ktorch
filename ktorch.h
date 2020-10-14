@@ -586,6 +586,7 @@ K kopt(Cast,const Optptr&);
 K optstate(Ktag*,K);
 K optstate(bool,bool,Cast,const Optimizer&);
 K optattr(const Optptr&,Ktype,Attr);
+K opthelp(Cast);
 void optstep(Cast,Optptr&);
 void optstep(Kopt*);
 void optstep(Kmodel*);
@@ -601,7 +602,6 @@ typedef struct {
  I cuda;             // number of CUDA devices
  bool frame=false;      // if true, error message returns stack frame
  bool alloptions=true;  // if true, return all option settings, else only non-defaults
- S help=cs("help");
 
  std::vector<std::tuple<S,torch::Device>> device;
 
@@ -646,13 +646,13 @@ typedef struct {
 */
 
  std::array<std::tuple<S,Class>,7> kclass = {{
-  std::make_tuple(cs("tensor"),     Class::tensor),          
-  std::make_tuple(cs("vector"),     Class::vector),
-  std::make_tuple(cs("dict"),       Class::dict),
-  std::make_tuple(cs("module"),     Class::module),
-  std::make_tuple(cs("loss"),       Class::loss),
-  std::make_tuple(cs("optimizer"),  Class::optimizer),
-  std::make_tuple(cs("model"),      Class::model)
+  std::make_tuple(cs("tensor"),  Class::tensor),          
+  std::make_tuple(cs("vector"),  Class::vector),
+  std::make_tuple(cs("dict"),    Class::dict),
+  std::make_tuple(cs("module"),  Class::module),
+  std::make_tuple(cs("loss"),    Class::loss),
+  std::make_tuple(cs("opt"),     Class::optimizer),
+  std::make_tuple(cs("model"),   Class::model)
  }};
 
  std::array<std::tuple<S,Class>,3> model = {{
