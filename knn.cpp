@@ -1199,8 +1199,8 @@ static nn::BilinearOptions bilinear(K x,J i,Cast c) {
  return nn::BilinearOptions(in1,in2,out).bias(b);
 }
 
-static K bilinear(bool a,const nn::BilinearImpl *m) {
- K x=KDICT; nn::BilinearOptions o=m->options, d(o.in1_features(),o.in2_features(),o.out_features());
+static K bilinear(bool a,const nn::BilinearOptions& o) {
+ K x=KDICT; nn::BilinearOptions d(o.in1_features(),o.in2_features(),o.out_features());
  OPTION(x, in1,  kj(o.in1_features()));
  OPTION(x, in2,  kj(o.in2_features()));
  OPTION(x, out, kj(o.out_features()));
@@ -1716,7 +1716,7 @@ template<typename O> static O alpha(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O>static K alpha(bool a,Cast c,const O& o) {
+template<typename O>static K alpha(bool a,const O& o) {
  K x=KDICT; O d;
  if(a || o.alpha()   != d.alpha())   OPTION(x, alpha,   kf(o.alpha()));
  if(a || o.inplace() != d.inplace()) OPTION(x, inplace, kb(o.inplace()));
@@ -2713,7 +2713,7 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(auto* m=g.as<nn::Embedding>())         { c=Cast::embed;    x=embed(a,c,m->options,m->weight);
  } else if(auto* m=g.as<nn::EmbeddingBag>())      { c=Cast::embedbag; x=embed(a,c,m->options,m->weight);
  } else if(auto* m=g.as<nn::Linear>())            { c=Cast::linear;   x=linear(a,m);
- } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; x=bilinear(a,m);
+ } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; x=bilinear(a,m->options);
 
  } else if(auto* m=g.as<nn::Dropout>())             { c=Cast::drop;   x=drop(a,m->options);
  } else if(auto* m=g.as<nn::Dropout2d>())           { c=Cast::drop2d; x=drop(a,m->options);
@@ -2721,12 +2721,12 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(auto* m=g.as<nn::AlphaDropout>())        { c=Cast::adrop;  x=drop(a,m->options);
  } else if(auto* m=g.as<nn::FeatureAlphaDropout>()) { c=Cast::fadrop; x=drop(a,m->options);
 
- } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d;          x=conv<1>(a,m->options);
- } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d;          x=conv<2>(a,m->options);
- } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d;          x=conv<3>(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; x=conv<1>(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; x=conv<2>(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; x=conv<3>(a,m->options);
+ } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d;          x=conv(a,m->options);
+ } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d;          x=conv(a,m->options);
+ } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d;          x=conv(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; x=conv(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; x=conv(a,m->options);
+ } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; x=conv(a,m->options);
 
  } else if(auto* m=g.as<nn::Fold>())           { c=Cast::fold;     x=fold(a,m->options);
  } else if(auto* m=g.as<nn::Unfold>())         { c=Cast::unfold;   x=unfold(a,m->options);
@@ -2801,8 +2801,8 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(auto* m=g.as<Reshape>())    { c=Cast::reshape;    x=getsize(a,m->options);
  } else if(auto* m=g.as<Cat>())        { c=Cast::cat;        x=dim(a,c,m->options.dim());
 
- } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;        x=alpha(a,c,m->options);
- } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu;       x=alpha(a,c,m->options);
+ } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;        x=alpha(a,m->options);
+ } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu;       x=alpha(a,m->options);
  } else if(auto* m=g.as<nn::LeakyReLU>())  { c=Cast::leakyrelu;  x=slope(a,c,m->options);
  } else if(auto* m=g.as<nn::GLU>())        { c=Cast::glu;        x=dim(a,c,m->options.dim());
  } else if(auto* m=g.as<nn::Hardshrink>()) { c=Cast::hardshrink; x=lambda(a,c,m->options.lambda());
@@ -3121,20 +3121,57 @@ KAPI module(K x) {
 
 K modulehelp(Cast c) {
  switch(c) {
-  case Cast::adaptavg1d:  return adapt(nn::AdaptiveAvgPool1dOptions(3));
-  case Cast::adaptavg2d:  return adapt(nn::AdaptiveAvgPool2dOptions({3,2}));
-  case Cast::adaptavg3d:  return adapt(nn::AdaptiveAvgPool3dOptions({3,2,4}));
-  case Cast::adaptmax1d:  return adapt(nn::AdaptiveMaxPool1dOptions(3));
-  case Cast::adaptmax2d:  return adapt(nn::AdaptiveMaxPool2dOptions({3,2}));
-  case Cast::adaptmax3d:  return adapt(nn::AdaptiveMaxPool3dOptions({3,2,4}));
-  case Cast::adrop:       return drop(true,nn::AlphaDropoutOptions());
-  case Cast::attention:   return attention(true,nn::MultiheadAttentionOptions(2048,8));
-  case Cast::avgpool1d:   return avgpool(true,nn::AvgPool1dOptions(3));
-  case Cast::avgpool2d:   return avgpool(true,nn::AvgPool2dOptions({3,2}));
-  case Cast::avgpool3d:   return avgpool(true,nn::AvgPool3dOptions({3,2,2}));
+  case Cast::adaptavg1d:      return adapt(nn::AdaptiveAvgPool1dOptions(3));
+  case Cast::adaptavg2d:      return adapt(nn::AdaptiveAvgPool2dOptions({3,2}));
+  case Cast::adaptavg3d:      return adapt(nn::AdaptiveAvgPool3dOptions({3,2,4}));
+  case Cast::adaptmax1d:      return adapt(nn::AdaptiveMaxPool1dOptions(3));
+  case Cast::adaptmax2d:      return adapt(nn::AdaptiveMaxPool2dOptions({3,2}));
+  case Cast::adaptmax3d:      return adapt(nn::AdaptiveMaxPool3dOptions({3,2,4}));
+  case Cast::adrop:           return drop(true,nn::AlphaDropoutOptions());
+  case Cast::attention:       return attention(true,nn::MultiheadAttentionOptions(2048,8));
+  case Cast::avgpool1d:       return avgpool(true,nn::AvgPool1dOptions(3));
+  case Cast::avgpool2d:       return avgpool(true,nn::AvgPool2dOptions({3,2}));
+  case Cast::avgpool3d:       return avgpool(true,nn::AvgPool3dOptions({3,2,2}));
   case Cast::batchnorm1d:
   case Cast::batchnorm2d:
-  case Cast::batchnorm3d: return batchnorm(true,nn::BatchNormOptions(32));
+  case Cast::batchnorm3d:     return batchnorm(true,nn::BatchNormOptions(32));
+  case Cast::bilinear:        return bilinear(true,nn::BilinearOptions(20,30,40));
+  case Cast::cat:             return dim(true,c,CatOptions().dim());
+  case Cast::celu:            return alpha(true,nn::CELUOptions());
+  case Cast::conv1d:          return conv(true,nn::detail::ConvNdOptions<1>(16,32,3));
+  case Cast::conv2d:          return conv(true,nn::detail::ConvNdOptions<2>(16,32,{3,5}));
+  case Cast::conv3d:          return conv(true,nn::detail::ConvNdOptions<3>(16,32,{3,5,2}));
+  case Cast::convtranspose1d: return conv(true,nn::detail::ConvNdOptions<1>(128,64,5).transposed(true));
+  case Cast::convtranspose2d: return conv(true,nn::detail::ConvNdOptions<2>(128,64,{3,5}).transposed(true));
+  case Cast::convtranspose3d: return conv(true,nn::detail::ConvNdOptions<3>(128,64,{3,5,2}).transposed(true));
+  case Cast::crossmap2d:      return localnorm(true,c,nn::CrossMapLRN2dOptions(2));
+  case Cast::decoder:         return decoder(true,nn::TransformerDecoderOptions(
+                                             nn::TransformerDecoderLayerOptions(512,8),6)
+                                             .norm(AnyModule(nn::LayerNorm(nn::LayerNormOptions({512})))));
+  case Cast::decoderlayer:    return codelayer(true,nn::TransformerDecoderLayerOptions(512,8));
+
+  case Cast::encoder:         return encoder(true,nn::TransformerEncoderOptions(
+                                             nn::TransformerEncoderLayerOptions(512,8),6)
+                                             .norm(AnyModule(nn::LayerNorm(nn::LayerNormOptions({512})))));
+  case Cast::encoderlayer:    return codelayer(true,nn::TransformerEncoderLayerOptions(512,8));
+  case Cast::elu:             return alpha(true,nn::ELUOptions());
+  case Cast::glu:             return dim(true,c,nn::GLUOptions().dim());
+  case Cast::localnorm:       return localnorm(true,c,nn::LocalResponseNormOptions(2));
+  case Cast::logsoftmax:      return dim(true,c,nn::LogSoftmaxOptions(1).dim());
+  case Cast::softmax:         return dim(true,c,nn::SoftmaxOptions(1).dim());
+  case Cast::softmin:         return dim(true,c,nn::SoftminOptions(1).dim());
+
+/*
+ } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; x=codelayer(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; x=codelayer(a,m->options);
+ } else if(auto* m=g.as<nn::TransformerEncoder>())      { c=Cast::encoder;      x=encoder(a,m->options);
+ } else if(auto* m=g.as<nn::Transformer>())             { c=Cast::transformer;  x=transformer(a,m->options);
+
+ } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  x=rnn(a,m->options);
+ } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  x=rnn(a,m->options);
+ } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; x=rnn(a,m->options);
+*/
+
   default: AT_ERROR("nyi");
  }
 }
