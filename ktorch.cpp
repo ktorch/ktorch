@@ -1665,6 +1665,7 @@ KAPI help(K x) {
   if(!strlen(x->s))
    return helpsym();
   switch(helpclass(x->s)) {
+   case Class::module:    return modulehelp(Cast::undefined);
    case Class::optimizer: return opthelp(Cast::undefined);
    default: break;
   }

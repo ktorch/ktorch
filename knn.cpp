@@ -613,7 +613,7 @@ static K layernorm(bool a,const nn::LayerNormOptions& o) {
 }
 
 // --------------------------------------------------------------------------------------
-// normalize - pytorch has functional form only
+// normalize - pytorch has functional form only, no module as of version 1.7
 // --------------------------------------------------------------------------------------
 static fnn::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
  Pairs p; J n=xargc(x,i,p); fnn::NormalizeFuncOptions o;
@@ -636,6 +636,14 @@ static fnn::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
  if(r.defined()) 
   o.out(r);
  return o;
+}
+
+static K normalize(bool a,const fnn::NormalizeFuncOptions& o) {
+ K x=KDICT; const fnn::NormalizeFuncOptions d;
+ if(a || o.p()   != d.p())   OPTION(x, p, kf(o.p()));
+ if(a || o.dim() != d.dim()) OPTION(x, dim, kj(o.dim()));
+ if(a || o.eps() != d.eps()) OPTION(x, eps, kj(o.eps()));
+ return x;
 }
 
 KAPI Normalize(K x) {
@@ -915,8 +923,8 @@ template<typename O>static O upsample(K x,J i,Cast c) {
  return o;
 }
 
-static K upsample(bool a,const nn::UpsampleOptions& o) {
- K x=KDICT; nn::UpsampleOptions d;
+template<typename O> static K interp(bool a,const O& o) {
+ K x=KDICT; O d;
  if(a || o.size())
   OPTION(x, size, o.size() ? ((*o.size()).size()==1 ? kj((*o.size())[0]) : kget(*o.size())) : ktn(0,0));
  if(a || o.scale_factor())
@@ -926,6 +934,14 @@ static K upsample(bool a,const nn::UpsampleOptions& o) {
          (d.align_corners() == o.align_corners() &&
           o.align_corners() && *o.align_corners() != *d.align_corners()))
   OPTION(x, align, o.align_corners() ? kb(*o.align_corners()) : ktn(0,0));
+ return x;
+}
+
+static K upsample(bool a,const nn::UpsampleOptions& o) {return interp(a,o);}
+
+static K interpolate(bool a,const fnn::InterpolateFuncOptions& o) {
+ K x=interp(a,o);
+ OPTION(x, rescale, o.recompute_scale_factor() ? kb(*o.recompute_scale_factor()) : ktn(0,0));
  return x;
 }
 
@@ -1586,8 +1602,8 @@ static fnn::PadFuncOptions pad(K x,J i,Cast c) {
  return o;
 }
 
-static K pad(bool a,const PadImpl* m) {
- K x=KDICT; const fnn::PadFuncOptions d({}), &o=m->options;
+static K pad(bool a,const fnn::PadFuncOptions& o) {
+ K x=KDICT; const fnn::PadFuncOptions d({});
  OPTION(x, pad, klist(o.pad().size(),o.pad().data()));
  if(a || o.mode().index() != d.mode().index()) OPTION(x, mode,  ks(ESYM(o.mode())));
  if(a || o.value()        != d.value())        OPTION(x, value, kf(o.value()));
@@ -1651,9 +1667,9 @@ template<size_t D,typename M> static M npad(K x,J i,Cast c) {
  return o;
 }
 
-template<typename M> static K npad(const M* m) {
+template<typename O> static K npad(const O& o) {
  K x=KDICT;
- OPTION(x, pad, KEX(m->options.padding()));
+ OPTION(x, pad, KEX(o.padding()));
  return x;
 }
 
@@ -2754,16 +2770,16 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(auto* m=g.as<nn::LPPool1d>())         { c=Cast::lppool1d; x=lppool(a,m->options);
  } else if(auto* m=g.as<nn::LPPool2d>())         { c=Cast::lppool2d; x=lppool(a,m->options);
 
- } else if(auto* m=g.as<Pad>())                  { c=Cast::pad;         x=pad(a,m);
+ } else if(auto* m=g.as<Pad>())                  { c=Cast::pad;         x=pad(a,m->options);
  } else if(auto* m=g.as<nn::ConstantPad1d>())    { c=Cast::pad1d;       x=cpad(m->options);
  } else if(auto* m=g.as<nn::ConstantPad2d>())    { c=Cast::pad2d;       x=cpad(m->options);
  } else if(auto* m=g.as<nn::ConstantPad3d>())    { c=Cast::pad3d;       x=cpad(m->options);
- } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   x=npad(m);
- } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   x=npad(m);
- } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; x=npad(m);
- } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; x=npad(m);
- } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; x=npad(m);
- } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   x=npad(m);
+ } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   x=npad(m->options);
+ } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   x=npad(m->options);
+ } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; x=npad(m->options);
+ } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; x=npad(m->options);
+ } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; x=npad(m->options);
+ } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   x=npad(m->options);
 
  } else if(auto* m=g.as<nn::MultiheadAttention>())      { c=Cast::attention;    x=attention(a,m->options);
  } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; x=codelayer(a,m->options);
@@ -3159,8 +3175,6 @@ K modulehelp(Cast c) {
                                              nn::TransformerEncoderLayerOptions(512,8),6)
                                              .norm(AnyModule(nn::LayerNorm(nn::LayerNormOptions({512})))));
   case Cast::encoderlayer:    return codelayer(true,nn::TransformerEncoderLayerOptions(512,8));
-
-
   case Cast::expand:          return getsize(true,SizeOptions({-1,-1,28,28}));
   case Cast::fadrop:          return drop(true,nn::FeatureAlphaDropoutOptions());
   case Cast::flatten:         return flatten(true,nn::FlattenOptions());
@@ -3177,7 +3191,7 @@ K modulehelp(Cast c) {
   case Cast::instancenorm1d:
   case Cast::instancenorm2d:
   case Cast::instancenorm3d:  return batchnorm(true,nn::InstanceNormOptions(100));
-//case Cast::interpolate:
+  case Cast::interpolate:     return interpolate(true,fnn::InterpolateFuncOptions().size(std::vector<int64_t>({4})));
   case Cast::layernorm:       return layernorm(true,nn::LayerNormOptions({32,10}));
   case Cast::leakyrelu:       return slope(true,c,nn::LeakyReLUOptions());
   case Cast::linear:          return linear(true,nn::LinearOptions(784,10));
@@ -3187,39 +3201,63 @@ K modulehelp(Cast c) {
   case Cast::lppool1d:        return lppool(true,nn::LPPool1dOptions(2,3));
   case Cast::lppool2d:        return lppool(true,nn::LPPool2dOptions(1.2,{2,3}));
   case Cast::lstm:            return rnn(true,nn::LSTMOptions(10,20));
-  case Cast::maxpool1d:       return maxpool(true,nn::MaxPool2dOptions(3));
+  case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
   case Cast::maxpool3d:       return maxpool(true,nn::MaxPool3dOptions({3,2,2}));
   case Cast::modulelist:      return KDICT;
   case Cast::mul:             return KDICT;
-//case Cast::normalize:       
-
+  case Cast::normalize:       return normalize(true,fnn::NormalizeFuncOptions());
+  case Cast::pad:             return pad(true,fnn::PadFuncOptions({1, 2, 2, 1, 1, 2}));
   case Cast::pad1d:           return cpad(nn::ConstantPad1dOptions({1,2},0));
   case Cast::pad2d:           return cpad(nn::ConstantPad2dOptions({1,1,2,2},0));
   case Cast::pad3d:           return cpad(nn::ConstantPad3dOptions({3,3,6,6,0,1}, 3.5));
-
-  case Cast::sigmoid:         return KDICT;
+  case Cast::pairwise:        return pairwise(true,nn::PairwiseDistanceOptions());
+  case Cast::prelu:           return prelu(true,nn::PReLUOptions());
+  case Cast::reflect1d:       return npad(nn::ReflectionPad1dOptions({1,2}));
+  case Cast::reflect2d:       return npad(nn::ReflectionPad2dOptions({1,1,2,0}));
+  case Cast::relu:            return inplace(true,nn::ReLUOptions().inplace());
+  case Cast::relu6:           return inplace(true,nn::ReLU6Options().inplace());
+  case Cast::replicate1d:     return npad(nn::ReplicationPad1dOptions({1,2}));
+  case Cast::replicate2d:     return npad(nn::ReplicationPad2dOptions({1,1,2,0}));
+  case Cast::replicate3d:     return npad(nn::ReplicationPad3dOptions({3,3,6,6,1,1}));
   case Cast::reshape:         return getsize(true,SizeOptions({-1,1,28,28}));
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
+  case Cast::rrelu:           return rrelu(true,nn::RReLUOptions());
+  case Cast::selu:            return inplace(true,nn::SELUOptions().inplace());
+  case Cast::seqjoin:
+  case Cast::seqnest:
+  case Cast::sequential:      return KDICT;
+  case Cast::sigmoid:         return KDICT;
+  case Cast::similar:         return similar(true,nn::CosineSimilarityOptions());
   case Cast::softmax:         return dim(true,c,nn::SoftmaxOptions(1).dim());
   case Cast::softmax2d:       return KDICT;
   case Cast::softmin:         return dim(true,c,nn::SoftminOptions(1).dim());
+  case Cast::softplus:        return softplus(true,nn::SoftplusOptions());
+  case Cast::softshrink:      return lambda(true,c,nn::SoftshrinkOptions().lambda());
   case Cast::softsign:        return KDICT;
+  case Cast::squeeze:         return squeeze(true,SqueezeOptions(1));
   case Cast::tanh:            return KDICT;
   case Cast::tanhshrink:      return KDICT;
+  case Cast::threshold:       return threshold(true,nn::ThresholdOptions(.1,0));
+  case Cast::transformer:     return transformer(true,nn::TransformerOptions());
+  case Cast::unfold:          return unfold(true,nn::UnfoldOptions({2,3}));
+  case Cast::unsqueeze:       return squeeze(true,SqueezeOptions(0));
+  case Cast::upsample:        return upsample(true,nn::UpsampleOptions());
+  case Cast::zeropad2d:       return npad(nn::ZeroPad2dOptions({1,1,2,0}));
 
-/*
- } else if(auto* m=g.as<nn::ReLU>())  { c=Cast::relu;  x=inplace(a,m->options.inplace());
- } else if(auto* m=g.as<nn::SELU>())  { c=Cast::selu;  x=inplace(a,m->options.inplace());
- } else if(auto* m=g.as<nn::ReLU6>()) { c=Cast::relu6; x=inplace(a,m->options.inplace());
-
- } else if(auto* m=g.as<Squeeze>())    { c=Cast::squeeze;    x=squeeze(a,m->options);
- } else if(auto* m=g.as<Unsqueeze>())  { c=Cast::unsqueeze;  x=squeeze(a,m->options);
-
- } else if(auto* m=g.as<nn::Transformer>())             { c=Cast::transformer;  x=transformer(a,m->options);
-*/
-
-  default: AT_ERROR("nyi");
+  case Cast::undefined: {
+   const auto& e=env().module; J n=e.size(),i=0;
+   K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
+   kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
+   for(auto& a:e) {
+    kS(s)[i]=std::get<0>(a);
+    kK(d)[i]=kp((S)std::get<2>(a).c_str());
+    kK(o)[i]=modulehelp(std::get<1>(a)); ++i;
+   }
+   return xT(xD(k,knk(3,s,d,o)));
+  }
+  break;
+  default: AT_ERROR("no help implemented for module enumeration: ",(I)c);
  }
 }
 
@@ -3284,6 +3322,5 @@ normalize, interpolate  -- functional form implemented, add module?
 pairwise distance & cosine similarity: in both module & functional form but forward method needs 2 input tensors
 fractional pool -- try with indices registered as buffer?
 embeddingbag -- forward w'defaults should work with sequential
-multi-head attention -- not in 1.4, wait for patch or 1.5
-1.7 adds SiLU, UnFlatten, transformer modules..
+1.7 adds SiLU, UnFlatten
 */
