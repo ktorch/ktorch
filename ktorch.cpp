@@ -1654,6 +1654,8 @@ static Class helpclass(S s) {
 static K helpcast(S s) {
  for(auto& a:env().module)
   if(std::get<0>(a)==s) return modulehelp(std::get<1>(a));
+ for(auto& a:env().loss)
+  if(std::get<0>(a)==s) return losshelp(std::get<1>(a));
  for(auto& a:env().opt)
   if(std::get<0>(a)==s) return opthelp(std::get<1>(a));
  AT_ERROR("no help found: ",s);
@@ -1666,6 +1668,7 @@ KAPI help(K x) {
    return helpsym();
   switch(helpclass(x->s)) {
    case Class::module:    return modulehelp(Cast::undefined);
+   case Class::loss:      return losshelp(Cast::undefined);
    case Class::optimizer: return opthelp(Cast::undefined);
    default: break;
   }

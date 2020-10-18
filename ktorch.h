@@ -546,8 +546,8 @@ void tensorfn(K);
 // distance module arg set/get (for use in loss functions)
 torch::nn::CosineSimilarityOptions  similar(K,J,Cast);
 torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
-void  similar(bool,K,const torch::nn::CosineSimilarityOptions&);
-void pairwise(bool,K,const torch::nn::PairwiseDistanceOptions&);
+K  similar(bool,const torch::nn::CosineSimilarityOptions&);
+K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
 K kmodule(Cast,const Layer&);
 K to(Kmodule*,const TensorOptions&,bool);
@@ -579,6 +579,7 @@ K lossdict(Ktag*,K);
 K lossdict(bool,bool,Cast,AnyModule&);
 K to(Kloss*,const TensorOptions&,bool);
 K lossattr(const AnyModule&,Ktype,Attr);
+K losshelp(Cast);
 void lossfn(K);
 
 // optimization functions:
@@ -884,27 +885,27 @@ typedef struct {
   std::make_tuple(cs("buffers"), State::buffers)
  }};
 
- std::array<std::tuple<S,Cast>,20> loss = {{             // loss: map symbol -> enum
-  std::make_tuple(cs("bce"),          Cast::bce),
-  std::make_tuple(cs("bcelogits"),    Cast::bcelogits),
-  std::make_tuple(cs("ce"),           Cast::ce),
-  std::make_tuple(cs("cosineloss"),   Cast::cosineloss),
-  std::make_tuple(cs("ctc"),          Cast::ctc),
-  std::make_tuple(cs("hinge"),        Cast::hinge),
-  std::make_tuple(cs("kl"),           Cast::kl),
-  std::make_tuple(cs("l1"),           Cast::l1),
-  std::make_tuple(cs("margin"),       Cast::margin),
-  std::make_tuple(cs("mse"),          Cast::mse),
-  std::make_tuple(cs("multilabel"),   Cast::multilabel),
-  std::make_tuple(cs("multimargin"),  Cast::multimargin),
-  std::make_tuple(cs("multisoft"),    Cast::multisoft),
-  std::make_tuple(cs("nll"),          Cast::nll),
-  std::make_tuple(cs("pairwise"),     Cast::pairwise),
-  std::make_tuple(cs("poissonloss"),  Cast::poissonloss),
-  std::make_tuple(cs("similar"),      Cast::similar),
-  std::make_tuple(cs("smoothl1"),     Cast::smoothl1),
-  std::make_tuple(cs("softmargin"),   Cast::softmargin),
-  std::make_tuple(cs("triplet"),      Cast::triplet)
+ std::array<std::tuple<S,Cast,std::string>,20> loss = {{             // loss: map symbol -> enum
+  std::make_tuple(cs("bce"),         Cast::bce,         "torch.nn.BCELoss"),
+  std::make_tuple(cs("bcelogits"),   Cast::bcelogits,   "torch.nn.BCEWithLogitsLoss"),
+  std::make_tuple(cs("ce"),          Cast::ce,          "torch.nn.CrossEntropyLoss"),
+  std::make_tuple(cs("cosineloss"),  Cast::cosineloss,  "torch.nn.CosineEmbeddingLoss"),
+  std::make_tuple(cs("ctc"),         Cast::ctc,         "torch.nn.CTCLoss"),
+  std::make_tuple(cs("hinge"),       Cast::hinge,       "torch.nn.HingeEmbeddingLoss"),
+  std::make_tuple(cs("kl"),          Cast::kl,          "torch.nn.KLDivLoss"),
+  std::make_tuple(cs("l1"),          Cast::l1,          "torch.nn.L1Loss"),
+  std::make_tuple(cs("margin"),      Cast::margin,      "torch.nn.MarginRankingLoss"),
+  std::make_tuple(cs("mse"),         Cast::mse,         "torch.nn.MSELoss"),
+  std::make_tuple(cs("multilabel"),  Cast::multilabel,  "torch.nn.MultiLabelMarginLoss"),
+  std::make_tuple(cs("multimargin"), Cast::multimargin, "torch.nn.MultiMarginLoss"),
+  std::make_tuple(cs("multisoft"),   Cast::multisoft,   "torch.nn.MultiLabelSoftMarginLoss"),
+  std::make_tuple(cs("nll"),         Cast::nll,         "torch.nn.NLLLoss"),
+  std::make_tuple(cs("pairwise"),    Cast::pairwise,    "torch.nn.PairwiseDistance"),
+  std::make_tuple(cs("poissonloss"), Cast::poissonloss, "torch.nn.PoissonNLLLoss"),
+  std::make_tuple(cs("similar"),     Cast::similar,     "torch.nn.CosineSimilarity"),
+  std::make_tuple(cs("smoothl1"),    Cast::smoothl1,    "torch.nn.SmoothL1Loss"),
+  std::make_tuple(cs("softmargin"),  Cast::softmargin,  "torch.nn.SoftMarginLoss"),
+  std::make_tuple(cs("triplet"),     Cast::triplet,     "torch.nn.TripletMarginLoss")
  }};
 
  std::array<std::tuple<S,Setting>,11> lset = {{          // loss option sym -> enum
@@ -921,13 +922,13 @@ typedef struct {
   std::make_tuple(cs("zeroinf"),   Setting::zeroinf)
  }};
 
- std::array<std::tuple<S,Cast>,6> opt = {{        //optimizer: map symbol -> enum
-  std::make_tuple(cs("adagrad"), Cast::adagrad),
-  std::make_tuple(cs("adam"),    Cast::adam),
-  std::make_tuple(cs("adamw"),   Cast::adamw),
-  std::make_tuple(cs("lbfgs"),   Cast::lbfgs),
-  std::make_tuple(cs("rmsprop"), Cast::rmsprop),
-  std::make_tuple(cs("sgd"),     Cast::sgd)
+ std::array<std::tuple<S,Cast,std::string>,6> opt = {{        //optimizer: map symbol -> enum
+  std::make_tuple(cs("adagrad"), Cast::adagrad, "torch.optim.Adagrad"),
+  std::make_tuple(cs("adam"),    Cast::adam,    "torch.optim.Adam"),
+  std::make_tuple(cs("adamw"),   Cast::adamw,   "torch.optim.AdamW"),
+  std::make_tuple(cs("lbfgs"),   Cast::lbfgs,   "torch.optim.LBFGS"),
+  std::make_tuple(cs("rmsprop"), Cast::rmsprop, "torch.optim.RMSprop"),
+  std::make_tuple(cs("sgd"),     Cast::sgd,     "torch.optim.SGD")
  }};
 
  std::array<std::tuple<S,Setting>,17> oset = {{         //optimizer setting: map symbol -> enum

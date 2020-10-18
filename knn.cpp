@@ -2099,13 +2099,13 @@ nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
  return o;
 }
 
-void similar(bool a,K x,const nn::CosineSimilarityOptions& o) {
- nn::CosineSimilarityOptions d; 
+// also used w'loss functions in kloss.cpp
+K similar(bool a,const nn::CosineSimilarityOptions& o) {
+ K x=KDICT; nn::CosineSimilarityOptions d; 
  if(a || (o.dim() != o.dim())) OPTION(x, dim, kj(o.dim()));
  if(a || (o.eps() != d.eps())) OPTION(x, eps, kf(o.eps()));
+ return x;
 }
-
-static K similar(bool a,const nn::CosineSimilarityOptions& o) {K x=KDICT; similar(a,x,o); return x;}
 
 nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
  Pairs p; J n=xargc(x,i,p); nn::PairwiseDistanceOptions o;
@@ -2126,14 +2126,14 @@ nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
  return o;
 }
 
-void pairwise(bool a,K x,const nn::PairwiseDistanceOptions& o) {
- nn::PairwiseDistanceOptions d; 
+// also used w'loss functions in kloss.cpp
+K pairwise(bool a,const nn::PairwiseDistanceOptions& o) {
+ K x=KDICT; nn::PairwiseDistanceOptions d; 
  if(a || (o.p()       != d.p()))       OPTION(x, p,       kf(o.p()));
  if(a || (o.eps()     != d.eps()))     OPTION(x, eps,     kf(o.eps()));
  if(a || (o.keepdim() != d.keepdim())) OPTION(x, keepdim, kb(o.keepdim()));
+ return x;
 }
-
-static K pairwise(bool a,const nn::PairwiseDistanceOptions& o) {K x=KDICT; pairwise(a,x,o); return x;}
 
 // ------------------------------------------------------------------------
 // functional form of the distance calculations
@@ -3246,7 +3246,7 @@ K modulehelp(Cast c) {
   case Cast::zeropad2d:       return npad(nn::ZeroPad2dOptions({1,1,2,0}));
 
   case Cast::undefined: {
-   const auto& e=env().module; J n=e.size(),i=0;
+   const auto& e=env().module; J i=0,n=e.size();
    K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
    kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
    for(auto& a:e) {
@@ -3256,7 +3256,6 @@ K modulehelp(Cast c) {
    }
    return xT(xD(k,knk(3,s,d,o)));
   }
-  break;
   default: AT_ERROR("no help implemented for module enumeration: ",(I)c);
  }
 }

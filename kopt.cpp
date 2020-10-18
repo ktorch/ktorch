@@ -712,12 +712,19 @@ K opthelp(Cast c) {
   case Cast::lbfgs:   return lbfgs(true,LBFGSOptions());
   case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
   case Cast::sgd:     return sgd(true,SGDOptions(SGDlr));
-  default: {
-   auto& e=env().opt;
-   J i=0; K k=ktn(KS,e.size()),v=ktn(0,e.size());
-   for(auto& a:e) {auto c=std::get<1>(a); kS(k)[i]=omap(c); kK(v)[i]=opthelp(c); ++i;}
-  return xD(k,v);
+
+  case Cast::undefined: {
+   const auto& e=env().opt; J i=0,n=e.size();
+   K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
+   kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
+   for(auto& a:e) {
+    kS(s)[i]=std::get<0>(a);
+    kK(d)[i]=kp((S)std::get<2>(a).c_str());
+    kK(o)[i]=opthelp(std::get<1>(a)); ++i;
+   }
+   return xT(xD(k,knk(3,s,d,o)));
   }
+  default: AT_ERROR("no help implemented for optimizer enumeration: ",(I)c);
  }
 }
 

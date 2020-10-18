@@ -141,6 +141,9 @@ template<typename O> static void reduce(bool a,K x,const O& o,const O d) {
   OPTION(x, reduce, ks(ESYM(o.reduction())));
 }
 
+template<typename O> static K reduce(bool a,const O& o,const O d=O());
+template<typename O> static K reduce(bool a,const O& o,const O d) {K x=KDICT; reduce(a,x,o,d); return x;}
+
 // ------------------------------------------------------------------------------------------------------
 // lossfunc - call loss function with x,y tensors/arrays and optional reduction mode
 // bce - binary cross entropy has option of batch weights, so function parses (x;y) or (x;y;wt)
@@ -262,21 +265,26 @@ template<typename O> O classwt(K x,J i,Cast c) {
 // ------------------------------------------------------------------------------------------------------
 // classwt - get optional class weights & reduction mode, also index to ignore for some losses
 // ------------------------------------------------------------------------------------------------------
-static void classwt(bool a,K x,const BCEWithLogitsLossOptions& o) {
+static K classwt(bool a,const BCEWithLogitsLossOptions& o) {
+ K x=KDICT;
  if(a || o.pos_weight().defined()) OPTION(x,weight,kget(o.pos_weight()));
  reduce(a,x,o);
+ return x;
 }
 
-static void classwt(bool a,K x,const torch::nn::MultiLabelSoftMarginLossOptions& o) {
+static K classwt(bool a,const torch::nn::MultiLabelSoftMarginLossOptions& o) {
+ K x=KDICT;
  if(a || o.weight().defined()) OPTION(x,weight,kget(o.weight()));
  reduce(a,x,o);
+ return x;
 }
 
-template<typename O> static void classwt(bool a,K x,const O& o) {
- const O d;
+template<typename O> static K classwt(bool a,const O& o) {
+ K x=KDICT; const O d;
  if(a || o.weight().defined()) OPTION(x, weight, kget(o.weight()));
  if(a || d.ignore_index() != o.ignore_index()) OPTION(x, ignore, kj(o.ignore_index()));
  reduce(a,x,o,d);
+ return x;
 }
 
 // ------------------------------------------------------------------------------------------------------
@@ -345,10 +353,11 @@ template<typename O> static O margin(K x,J i,Cast c) {
  return o;
 }
 
-template<typename O> static void margin(bool a,K x,const O& o) {
- const O d;
+template<typename O> static K margin(bool a,const O& o) {
+ K x=KDICT; const O d;
  if(a || d.margin() != o.margin()) OPTION(x, margin, kf(o.margin()));
  reduce(a,x,o,d);
+ return x;
 }
 
 static K marginloss(K a,Cast c) {
@@ -411,12 +420,13 @@ static torch::nn::MultiMarginLossOptions multi(K x,J i,Cast c) {
  return o;
 }
 
-static void multi(bool a,K x,const torch::nn::MultiMarginLossOptions& o) {
- const torch::nn::MultiMarginLossOptions d;
+static K multi(bool a,const torch::nn::MultiMarginLossOptions& o) {
+ K x=KDICT; const torch::nn::MultiMarginLossOptions d;
  if(a || d.p()      != o.p())      OPTION(x, p,      kj(o.p()));
  if(a || d.margin() != o.margin()) OPTION(x, margin, kf(o.margin()));
  if(a || o.weight().defined())     OPTION(x, weight, kget(o.weight()));
  reduce(a,x,o,d);
+ return x;
 }
 
 KAPI multimargin(K a) {
@@ -458,13 +468,14 @@ static torch::nn::TripletMarginLossOptions triplet(K x,J i,Cast c) {
  return o;
 }
 
-static void triplet(bool a,K x,const torch::nn::TripletMarginLossOptions& o) {
- const torch::nn::TripletMarginLossOptions d;
+static K triplet(bool a,const torch::nn::TripletMarginLossOptions& o) {
+ K x=KDICT; const torch::nn::TripletMarginLossOptions d;
  if(a || d.margin() != o.margin()) OPTION(x, margin, kf(o.margin()));
  if(a || d.p()      != o.p())      OPTION(x, p,      kf(o.p()));
  if(a || d.eps()    != o.eps())    OPTION(x, eps,    kf(o.eps()));
  if(a || d.swap()   != o.swap())   OPTION(x, swap,   kb(o.swap()));
  reduce(a,x,o,d);
+ return x;
 }
 
 KAPI Triplet(K a) {
@@ -505,12 +516,13 @@ static torch::nn::PoissonNLLLossOptions poisson(K x,J i,Cast c) {
  return o;
 }
 
-static void poisson(bool a,K x,const torch::nn::PoissonNLLLossOptions& o) {
- const torch::nn::PoissonNLLLossOptions d;
+static K poisson(bool a,const torch::nn::PoissonNLLLossOptions& o) {
+ K x=KDICT; const torch::nn::PoissonNLLLossOptions d;
  if(a || d.log_input() != o.log_input()) OPTION(x, log,  kb(o.log_input()));
  if(a || d.full()      != o.full())      OPTION(x, full, kb(o.full()));
  if(a || d.eps()       != o.eps())       OPTION(x, eps,  kf(o.eps()));
  reduce(a,x,o,d);
+ return x;
 }
 
 KAPI poissonloss(K a) {
@@ -549,11 +561,12 @@ static torch::nn::CTCLossOptions ctc(K x,J i,Cast c) {
  return o;
 }
 
-static void ctc(bool a,K x,const torch::nn::CTCLossOptions& o) {
- const torch::nn::CTCLossOptions d;
+static K ctc(bool a,const torch::nn::CTCLossOptions& o) {
+ K x=KDICT; const torch::nn::CTCLossOptions d;
  if(a || d.blank()         != o.blank())         OPTION(x, blank,   kj(o.blank()));
  if(a || d.zero_infinity() != o.zero_infinity()) OPTION(x, zeroinf, kb(o.zero_infinity()));
  reduce(a,x,o,d);
+ return x;
 }
 
 KAPI Ctc(K a) {
@@ -609,35 +622,33 @@ static AnyModule lossinit(Cast c,K x,J i) {
 
 static K lossopt(bool a,Cast c,AnyModule& m) {
  namespace nn=torch::nn;
- K x=xD(ktn(KS,0),ktn(0,0));
  switch(c) {
-  case Cast::bce:        reduce(a, x, m.get<BCELoss>()->options); break;
-  case Cast::kl:         reduce(a, x, m.get<nn::KLDivLoss>()->options); break;
-  case Cast::l1:         reduce(a, x, m.get<nn::L1Loss>()->options); break;
-  case Cast::mse:        reduce(a, x, m.get<nn::MSELoss>()->options); break;
-  case Cast::multilabel: reduce(a, x, m.get<nn::MultiLabelMarginLoss>()->options); break;
-  case Cast::smoothl1:   reduce(a, x, m.get<nn::SmoothL1Loss>()->options); break;
-  case Cast::softmargin: reduce(a, x, m.get<nn::SoftMarginLoss>()->options); break;
+  case Cast::bce:         return reduce(a,m.get<BCELoss>()->options);
+  case Cast::kl:          return reduce(a,m.get<nn::KLDivLoss>()->options);
+  case Cast::l1:          return reduce(a,m.get<nn::L1Loss>()->options);
+  case Cast::mse:         return reduce(a,m.get<nn::MSELoss>()->options);
+  case Cast::multilabel:  return reduce(a,m.get<nn::MultiLabelMarginLoss>()->options);
+  case Cast::smoothl1:    return reduce(a,m.get<nn::SmoothL1Loss>()->options);
+  case Cast::softmargin:  return reduce(a,m.get<nn::SoftMarginLoss>()->options);
 
-  case Cast::bcelogits:  classwt(a, x, m.get<BCEWithLogitsLoss>()->options); break;
-  case Cast::multisoft:  classwt(a, x, m.get<nn::MultiLabelSoftMarginLoss>()->options); break;
-  case Cast::ce:         classwt(a, x, m.get<nn::CrossEntropyLoss>()->options); break;
-  case Cast::nll:        classwt(a, x, m.get<nn::NLLLoss>()->options); break;
+  case Cast::bcelogits:   return classwt(a,m.get<BCEWithLogitsLoss>()->options);
+  case Cast::multisoft:   return classwt(a,m.get<nn::MultiLabelSoftMarginLoss>()->options);
+  case Cast::ce:          return classwt(a,m.get<nn::CrossEntropyLoss>()->options);
+  case Cast::nll:         return classwt(a,m.get<nn::NLLLoss>()->options);
 
-  case Cast::hinge:       margin(a, x, m.get<nn::HingeEmbeddingLoss>()->options); break;
-  case Cast::cosineloss:  margin(a, x, m.get<nn::CosineEmbeddingLoss>()->options); break;
-  case Cast::margin:      margin(a, x, m.get<nn::MarginRankingLoss>()->options); break;
+  case Cast::hinge:       return margin(a,m.get<nn::HingeEmbeddingLoss>()->options);
+  case Cast::cosineloss:  return margin(a,m.get<nn::CosineEmbeddingLoss>()->options);
+  case Cast::margin:      return margin(a,m.get<nn::MarginRankingLoss>()->options);
 
-  case Cast::multimargin: multi(a, x, m.get<nn::MultiMarginLoss>()->options); break;
-  case Cast::triplet:     triplet(a, x, m.get<nn::TripletMarginLoss>()->options); break;
-  case Cast::poissonloss: poisson(a, x, m.get<nn::PoissonNLLLoss>()->options); break;
-  case Cast::ctc:         ctc(a, x, m.get<nn::CTCLoss>()->options); break;
-  case Cast::pairwise:    pairwise(a, x, m.get<torch::nn::PairwiseDistance>()->options); break;
-  case Cast::similar:     similar (a, x, m.get<torch::nn::CosineSimilarity>()->options); break;
+  case Cast::multimargin: return multi(a,m.get<nn::MultiMarginLoss>()->options);
+  case Cast::triplet:     return triplet(a,m.get<nn::TripletMarginLoss>()->options);
+  case Cast::poissonloss: return poisson(a,m.get<nn::PoissonNLLLoss>()->options);
+  case Cast::ctc:         return ctc(a,m.get<nn::CTCLoss>()->options);
+  case Cast::pairwise:    return pairwise(a,m.get<nn::PairwiseDistance>()->options);
+  case Cast::similar:     return similar(a,m.get<torch::nn::CosineSimilarity>()->options);
 
-  default: AT_ERROR("unrecognized loss module"); break;
+  default: AT_ERROR("unrecognized loss module");
  }
- return x;
 }
 
 K lossdict(bool a,bool b,Cast c,AnyModule &m) {
@@ -708,6 +719,44 @@ K lossattr(const AnyModule& m,Ktype k,Attr a) {
   case Attr::ptr:     return kj((intptr_t)p.get());
   case Attr::device:  return ks(objdevice(p->buffers(), optsym(torch::Device(torch::kCPU))));
   default: AT_ERROR(mapattr(a),": not implemented for loss modules");
+ }
+}
+
+K losshelp(Cast c) {
+ switch(c) {
+  case Cast::bce:         return reduce(true,nn::BCELossOptions());
+  case Cast::bcelogits:   return classwt(true,BCEWithLogitsLossOptions());
+  case Cast::ce:          return classwt(true,nn::CrossEntropyLossOptions());
+  case Cast::cosineloss:  return margin(true,nn::CosineEmbeddingLossOptions()); 
+  case Cast::ctc:         return ctc(true,nn::CTCLossOptions());
+  case Cast::hinge:       return margin(true,nn::HingeEmbeddingLossOptions()); 
+  case Cast::kl:          return reduce(true,nn::KLDivLossOptions());
+  case Cast::l1:          return reduce(true,nn::L1LossOptions());
+  case Cast::margin:      return margin(true,nn::MarginRankingLossOptions()); 
+  case Cast::mse:         return reduce(true,nn::MSELossOptions());
+  case Cast::multilabel:  return reduce(true,nn::MultiLabelMarginLossOptions());
+  case Cast::multimargin: return multi(true,nn::MultiMarginLossOptions());
+  case Cast::multisoft:   return classwt(true,nn::MultiLabelSoftMarginLossOptions());
+  case Cast::nll:         return classwt(true,nn::NLLLossOptions());
+  case Cast::pairwise:    return modulehelp(c);
+  case Cast::poissonloss: return poisson(true,nn::PoissonNLLLossOptions());
+  case Cast::similar:     return modulehelp(c);
+  case Cast::smoothl1:    return reduce(true,nn::SmoothL1LossOptions());
+  case Cast::softmargin:  return reduce(true,nn::SoftMarginLossOptions());
+  case Cast::triplet:     return triplet(true,nn::TripletMarginLossOptions());
+
+  case Cast::undefined: {
+   const auto& e=env().loss; J i=0,n=e.size();
+   K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
+   kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
+   for(auto& a:e) {
+    kS(s)[i]=std::get<0>(a);
+    kK(d)[i]=kp((S)std::get<2>(a).c_str());
+    kK(o)[i]=losshelp(std::get<1>(a)); ++i;
+   }
+   return xT(xD(k,knk(3,s,d,o)));
+  }
+  default: AT_ERROR("no help implemented for loss enumeration: ",(I)c);
  }
 }
 
