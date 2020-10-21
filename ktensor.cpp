@@ -742,8 +742,6 @@ KAPI unsqueeze(K x) {return ksqueeze(x, false, "unsqueeze");}
 // tensorflag - tensor/vector attributes returned to k as a boolean, e.g. leaf
 // tensorsize - tensor/vector attributes returned to k as a long list, e.g. size/stride
 // tensorattr - handle tensor attribute queries according to k datatype returned
-// vectorattr - handle tensor vector attribute queries according to k datatype returned
-// options - return dictionary/table of tensor/vector attributes
 // ----------------------------------------------------------------------------------------------
 static J storlong(const Storage& s,Attr a) {
  switch(a) {
@@ -783,6 +781,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
  switch(a) {
   case Attr::coalesced:  return t.is_sparse() ? t.is_coalesced() : false;
   case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
+  case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
   case Attr::pinned:     return t.is_pinned();
   default: AT_ERROR(mapattr(a),": not implemented for tensors");
@@ -807,7 +806,13 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
  }
 }
 
-K vectorattr(const TensorVector &v,Ktype k,Attr a) {
+// ----------------------------------------------------------------------------------------------
+// attr - handle vector/dictionary values or other iterable to extract attributes -> k list
+// vectorattr - handle tensor vector attribute queries according to k datatype returned
+// dictattr - handle tensor dictionary queries, return dictionary of attribute values
+// options - return dictionary/table of tensor/vector attributes
+// ----------------------------------------------------------------------------------------------
+template<typename V> static K vattr(const V &v,Ktype k,Attr a) {
  size_t i=0; K x=ktn(k<0 ? abs(k) : 0, v.size());
  try {
   for(auto&t:v) {
@@ -825,6 +830,17 @@ K vectorattr(const TensorVector &v,Ktype k,Attr a) {
   throw;
  }
  return x;
+}
+
+K vectorattr(const TensorVector &v,Ktype k,Attr a) {
+ return vattr(v,k,a);
+}
+
+K dictattr(const TensorDict& d,Ktype k,Attr a) {
+ K y=vattr(d.values(),k,a);
+ J i=0; K x=ktn(KS,d.size());
+ for(auto& s:d.keys()) kS(x)[i++]=cs(s.c_str());
+ return xD(x,y);
 }
 
 KAPI options(K x) {
@@ -1311,6 +1327,28 @@ KAPI kgrad(K x) {
  KCATCH("unable to get gradient");
 }
 
+KAPI gradflag(K x) {
+ KTRY
+  bool b; Ktag *k=xtag(x); if(!k) k=xtag(x,0);
+  if(k && x->n==1) {
+   return attr(x, -KB, Attr::gradflag);
+  } else if(k && x->n==2 && xbool(x,1,b)) {
+   switch(k->a) {
+    case Class::tensor:
+     ((Kten*)k)->t.set_requires_grad(b); break;
+    case Class::vector: 
+     for(auto& t:((Kvec*)k)->v) t.set_requires_grad(b); break;
+    case Class::dict:
+     for(auto& t:((Kdict*)k)->d.values()) t.set_requires_grad(b); break;
+    default: AT_ERROR("gradflag: not implemented for ",mapclass(k->a));
+   }
+   return (K)0;
+  } else {
+   AT_ERROR("gradflag: unrecognized arg(s), expecting tensor/vector/dictionary and optional flag");
+  }
+ KCATCH("gradflag");
+}
+
 K tensorback(K x) {
  Tensor t; bool ok=false;
  if(xten(x,t)) {
@@ -1360,6 +1398,7 @@ void tensorfn(K x) {
  fn(x, "use",          KFN(use),           2);
  fn(x, "copy",         KFN(tensorcopy_),   1);
  fn(x, "grad",         KFN(kgrad),         1);
+ fn(x, "gradflag",     KFN(gradflag),      1);
  fn(x, "detach",       KFN(detach),        1);
  fn(x, "same",         KFN(same),          1);
  fn(x, "vector",       KFN(vector),        1);

@@ -2,14 +2,16 @@
 
 KAPI f(K x) {
  KTRY
-  XModule m;
+  BaseModule m;
   m->register_module("linear",torch::nn::Linear(1,2));
   m->register_parameter("tensor",torch::randn(10));
+  auto a=AnyModule(m);
   std::cerr << *m << "\n";
   return kdict(m->named_parameters());
  KCATCH("xmodule")
 }
 
+/*
 KAPI cb(K x,K y) {
  KTRY
   auto *l=xloss(x);
@@ -28,7 +30,7 @@ KAPI fw(K x) {
   return k(0,(S)l->cb.c_str(),r1(x),0);
  KCATCH("callback");
 }
-
+*/
 
 KAPI parms(K x) {
  KTRY

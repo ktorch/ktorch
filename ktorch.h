@@ -110,7 +110,7 @@ class SeqNest;
 class SeqJoin;
 
 // define a kind of union for modules: containers used to build sequences and type-erased anymodule
-using Layer=c10::variant<Sequential, SeqNest, SeqJoin, ModuleList, AnyModule>;
+using Layer=c10::variant<Sequential, SeqNest, SeqJoin, ModuleList, BaseModule, AnyModule>;
 using Layers=std::stack<Layer>;
 
 using Optimizer=torch::optim::Optimizer;
@@ -154,7 +154,7 @@ enum class Cast:short {
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
- avgpool3d,      batchnorm1d,     batchnorm2d,     batchnorm3d,
+ avgpool3d,      base,            batchnorm1d,     batchnorm2d,     batchnorm3d,
  bilinear,       cat,             celu,            conv1d,          conv2d,
  conv3d,         convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d,
  decoder,        decoderlayer,    drop,            drop2d,          drop3d,
@@ -222,7 +222,7 @@ enum class Attr:char {
  undefined = 0,
  dim, itemsize, numel,  offset, ptr, ref, sparsedim, weakref, // long scalars
  device, dtype, gradfn, gradient, layout,                     // symbol
- coalesced, contiguous, leaf, pinned,                         // boolean
+ coalesced, contiguous, gradflag, leaf, pinned,               // boolean
  size, stride,                                                // long list
  data, storage                                                // other: list,dict,..
 };
@@ -273,7 +273,6 @@ struct TORCH_API Kmodule : public Ktag {
 struct TORCH_API Kloss : public Ktag {
  Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
- std::string cb;
 };
 
 struct TORCH_API Kopt : public Ktag {
@@ -500,6 +499,7 @@ void kfree(const std::vector<K>&);
 void fn(K,const char*,void*,I);
 void randomfn(K);
 void mathfn(K);
+K attr(K,Ktype,Attr);
 
 // tensor & vector routines:
 K kget(const Tensor&);
@@ -523,6 +523,7 @@ S tensorsym(const Tensor&,Attr);
 K tensorsize(const Tensor&,Attr);
 K tensorattr(const Tensor&,Ktype,Attr);
 K vectorattr(const TensorVector&,Ktype,Attr);
+K dictattr(const TensorDict&,Ktype,Attr);
 K tensorinfo(const Tensor&,bool);
 K vectorinfo(const TensorVector&,bool);
 void tensorcopy(Tensor&,const Tensor&,bool async=false);
@@ -689,7 +690,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,std::string>,103> module = {{               // module sym -> enum, pytorch name
+ std::array<std::tuple<S,Cast,std::string>,104> module = {{      // module sym -> enum, pytorch name
   std::make_tuple(cs("adaptavg1d"),      Cast::adaptavg1d,       "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),      Cast::adaptavg2d,       "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),      Cast::adaptavg3d,       "torch.nn.AdaptiveAvgPool3d"),
@@ -701,6 +702,7 @@ typedef struct {
   std::make_tuple(cs("avgpool1d"),       Cast::avgpool1d,        "torch.nn.AvgPool1d"),
   std::make_tuple(cs("avgpool2d"),       Cast::avgpool2d,        "torch.nn.AvgPool2d"),
   std::make_tuple(cs("avgpool3d"),       Cast::avgpool3d,        "torch.nn.AvgPool3d"),
+  std::make_tuple(cs("base"),            Cast::base,             "torch.nn.Module"),
   std::make_tuple(cs("batchnorm1d"),     Cast::batchnorm1d,      "torch.nn.BatchNorm1d"),
   std::make_tuple(cs("batchnorm2d"),     Cast::batchnorm2d,      "torch.nn.BatchNorm2d"),
   std::make_tuple(cs("batchnorm3d"),     Cast::batchnorm3d,      "torch.nn.BatchNorm3d"),
@@ -951,13 +953,14 @@ typedef struct {
   std::make_tuple(cs("nesterov"),   Setting::nesterov)
  }};
 
- std::array<std::tuple<S,Attr>,21> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,22> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
   std::make_tuple(cs("data"),        Attr::data),
   std::make_tuple(cs("device"),      Attr::device),
   std::make_tuple(cs("dim"),         Attr::dim),
   std::make_tuple(cs("dtype"),       Attr::dtype),
+  std::make_tuple(cs("gradflag"),    Attr::gradflag),
   std::make_tuple(cs("gradfn"),      Attr::gradfn),
   std::make_tuple(cs("gradient"),    Attr::gradient),
   std::make_tuple(cs("itemsize"),    Attr::itemsize),

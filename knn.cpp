@@ -186,6 +186,7 @@ static bool container(const Module& m) {
  else if(m.as<SeqNest>())    return true;
  else if(m.as<SeqJoin>())    return true;
  else if(m.as<ModuleList>()) return true;
+ else if(m.as<BaseModule>()) return true;
  else                        return false;
 }
 
@@ -197,6 +198,7 @@ static Layer newcontainer(Cast c) {
   case Cast::seqnest:     return SeqNest();
   case Cast::seqjoin:     return SeqJoin();
   case Cast::modulelist:  return ModuleList();
+  case Cast::base:        return BaseModule();
   default: AT_ERROR("unrecognized container: ", (I)c);
  }
 }
@@ -216,6 +218,7 @@ static Layer makelayer(Module& m) {
  else if(m.as<SeqNest>())    return    SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
  else if(m.as<SeqJoin>())    return    SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
  else if(m.as<ModuleList>()) return ModuleList(std::dynamic_pointer_cast<nn::ModuleListImpl>(m.shared_from_this()));
+ else if(m.as<BaseModule>()) return BaseModule(std::dynamic_pointer_cast<BaseModuleImpl>(m.shared_from_this()));
  else AT_ERROR("unable to create parent layer from ",m.name());
 }
 
@@ -256,6 +259,7 @@ Tensor mforward(Layer& m,const Tensor& x,const Tensor& y,const Tensor& z) {
     return m->forward(x,y);
    },
    [](ModuleList& m) { AT_ERROR("No forward function for ModuleList"); return Tensor();},
+   [](BaseModule& m) { AT_ERROR("No forward function implemented yet for BaseModule"); return Tensor();},
    [&x,&y,&z](auto& m) {
     return y.defined() ? (z.defined() ? m->forward(x,y,z) : m->forward(x,y)) : m->forward(x);
    }
@@ -2714,6 +2718,7 @@ static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returne
  } else if(g.as<SeqNest>())     { c=Cast::seqnest;
  } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
  } else if(g.as<ModuleList>())  { c=Cast::modulelist;
+ } else if(g.as<BaseModule>())  { c=Cast::base;
 
  } else if(auto* m=g.as<nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    x=batchnorm(a,m->options);
  } else if(auto* m=g.as<nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    x=batchnorm(a,m->options);
@@ -3148,6 +3153,7 @@ K modulehelp(Cast c) {
   case Cast::avgpool1d:       return avgpool(true,nn::AvgPool1dOptions(3));
   case Cast::avgpool2d:       return avgpool(true,nn::AvgPool2dOptions({3,2}));
   case Cast::avgpool3d:       return avgpool(true,nn::AvgPool3dOptions({3,2,2}));
+  case Cast::base:            return KDICT;
   case Cast::batchnorm1d:
   case Cast::batchnorm2d:
   case Cast::batchnorm3d:     return batchnorm(true,nn::BatchNormOptions(32));
@@ -3322,4 +3328,5 @@ pairwise distance & cosine similarity: in both module & functional form but forw
 fractional pool -- try with indices registered as buffer?
 embeddingbag -- forward w'defaults should work with sequential
 1.7 adds SiLU, UnFlatten
+BaseModule - push_back ? / forward ?
 */

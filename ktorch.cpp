@@ -1538,13 +1538,14 @@ KAPI kseed(K x) {
 // -----------------------------------------------------------------------------------------
 // query object attributes, e.g. tensor/vector and other object attributes
 // -----------------------------------------------------------------------------------------
-static K attr(K x,Ktype k,Attr a) {
+K attr(K x,Ktype k,Attr a) {
  KTRY
   auto* g=xtag(x);
   TORCH_CHECK(g, mapattr(a),": unrecognized arg(s) - ",kname(x->t));
   switch(g->a) {
    case Class::tensor:    return tensorattr(((Kten*)g)->t,k,a);
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
+   case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
    case Class::module:    return mattr(((Kmodule*)g)->m,k,a);
    case Class::loss:      return lossattr(((Kloss*)g)->m,k,a);
    case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
