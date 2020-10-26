@@ -7,8 +7,21 @@ KAPI f(K x) {
   m->register_parameter("tensor",torch::randn(10));
   auto a=AnyModule(m);
   std::cerr << *m << "\n";
-  return kdict(m->named_parameters());
+  //return kdict(m->named_parameters());
+  return mget(true,true,*m);
  KCATCH("xmodule")
+}
+
+KAPI g(K x) {
+ K r=ktn(KJ,6);
+ torch::optim::Adagrad g(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[0]=g.param_groups().size();
+ torch::optim::Adam    a(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[1]=a.param_groups().size();
+ torch::optim::AdamW   w(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[2]=w.param_groups().size();
+ torch::optim::LBFGS   l(std::vector<Tensor>{}); l.param_groups().clear();  kJ(r)[3]=l.param_groups().size();
+ torch::optim::RMSprop m(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[4]=m.param_groups().size();
+ torch::optim::SGD     s(std::vector<torch::optim::OptimizerParamGroup>{},torch::optim::SGDOptions(.01)); kJ(r)[5]=s.param_groups().size();
+ //return r;
+ return optstate(true,true,Cast::adam,a);
 }
 
 /*
@@ -224,8 +237,6 @@ KAPI knull(K x) {
 }
 // void dictadd(K x, const char* s, K v){std::cerr << "dictadd\n"; K *k=kK(x); js(&k[0],cs(s)); std::cerr << "mid..";jk(&k[1],v); std::cerr << "dict exit\n";}
 
-K getbuffers(Cast,const torch::optim::OptimizerParamState&);
-
 K findbuffer(K x,const std::string &s,short t=nh);
 K findbuffer(K x,const std::string &s,short t) {
  TORCH_CHECK(xdict(x), "dictionary expected, ",kname(x)," given, unable to find parameter ",s);
@@ -287,81 +298,6 @@ void putbuffers(K x,Cast c,const Tensor& t,const torch::optim::OptimizerParamSta
 */
   default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to set parameter state");
  }
-}
-
-KAPI o1(K x) {
- KTRY
-  auto m=torch::nn::Linear(1,2);
-  auto o=torch::optim::Adam(m->parameters(),.025);
-  auto x=torch::randn({5,1});
-  auto y=torch::randn({5,2});
-  auto yhat=m->forward(x);
-  auto l=torch::nn::functional::mse_loss(y,yhat);
-  l.backward();
-  o.zero_grad();
-  o.step();
-  yhat=m->forward(x*2);
-  l=torch::nn::functional::mse_loss(y,yhat);
-  l.backward();
-  o.zero_grad();
-  o.step();
-  yhat=m->forward(x*.5);
-  l=torch::nn::functional::mse_loss(y,yhat);
-  l.backward();
-  o.zero_grad();
-  o.step();
-  auto& s=o.state();
-  J i; K v=ktn(0,3), *k=kK(v);
-  for(i=0; i<v->n; ++i) kK(v)[i]=ktn(i<2 ? KJ : 0, 0);
-  i=-1;
-  for(auto& g:o.param_groups()) {
-   i++;
-   for(auto& p:g.params()) {
-    auto* t=p.unsafeGetTensorImpl();
-    J j=(intptr_t)t;
-    ja(&k[0], &j);
-    ja(&k[1], &i);
-    jk(&k[2], getbuffers(Cast::adam, *s[c10::guts::to_string(t)]));
-   }
-  }
-  torch::save(o,"adam.pt");
-  return v;
- KCATCH("otest");
-}
-
-KAPI oread(K x) {
- auto m=torch::nn::Linear(1,2);
- auto o=torch::optim::Adam(m->parameters(),.025);
- auto pt=std::string("adam.pt");
- torch::load(o,pt);
-  auto& s=o.state();
-   J i; K v=ktn(0,3), *k=kK(v);
-  for(i=0; i<v->n; ++i) kK(v)[i]=ktn(i<2 ? KJ : 0, 0);
-  i=-1;
-  for(auto& g:o.param_groups()) {
-   i++;
-   for(auto& p:g.params()) {
-    auto* t=p.unsafeGetTensorImpl();
-    J j=(intptr_t)t;
-    ja(&k[0], &j);
-    ja(&k[1], &i);
-    jk(&k[2], getbuffers(Cast::adam, *s[c10::guts::to_string(t)]));
-   }
-  }
-  return v;
-}
- 
-KAPI o2(K x) {
- KTRY
-  auto m=torch::nn::Linear(1,2);
-  //auto o=torch::optim::Adagrad(m->parameters(),.025);
-  auto o=torch::optim::Adagrad(std::vector<Tensor>({}), .025);
-  for(auto& m:o.state()) {
-   std::cerr << m.first << "\n";
-   auto s=static_cast<const torch::optim::AdagradParamState&>(*m.second);
-  }
-  return (K)0;
- KCATCH("o2");
 }
 
 enum TensorPair {TensorPair};

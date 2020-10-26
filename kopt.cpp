@@ -26,6 +26,7 @@ using SGDParamState     = torch::optim::SGDParamState;
 // kopt - given optimizer type & shared pointer to newly created optimizer, return k ptr
 // omap - map to/from optimizer symbol/enumeration
 // oset - optimizer settings, map sym <-> enum
+// osize - optimizer size, i.e. number of parameters defined
 // --------------------------------------------------------------------------------------
 K kopt(Cast x,const Optptr& y) {return kptr(new Kopt(x,y));}
 
@@ -51,6 +52,12 @@ static S oset(Setting e) {
  for(auto& m:env().oset) if(e==std::get<1>(m)) return std::get<0>(m);
  AT_ERROR("unrecognized optimizer setting: ",(I)e);
 }
+
+static size_t osize(const Optimizer& o) {
+  size_t n=0; for(const auto& g:o.param_groups()) n+=g.params().size(); return n;
+}
+
+static size_t osize(const Optptr& o) {return osize(*o);}
 
 // --------------------------------------------------------------------------------------
 // bget - find buffer (vector of longs/tensors) from dictionary given name
@@ -286,7 +293,7 @@ static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default optio
  K x=xD(ktn(KS,0),ktn(0,0)); LBFGSOptions d;
  if(a || d.lr()               != o.lr())               OPTSET(x, lr,        kf(o.lr()));
  if(a || d.max_iter()         != o.max_iter())         OPTSET(x, iter,      kj(o.max_iter()));
- // PATCH: if(a || d.max_eval()         != o.max_eval())         OPTSET(x, eval,      kj(o.max_eval()));
+ if(a || o.max_eval())                                 OPTSET(x, eval,      kj(o.max_eval() ? *o.max_eval() : nj));
  if(a || d.tolerance_grad()   != o.tolerance_grad())   OPTSET(x, gradtol,   kf(o.tolerance_grad()));
  if(a || d.tolerance_change() != o.tolerance_change()) OPTSET(x, changetol, kf(o.tolerance_change()));
  if(a || d.history_size()     != o.history_size())     OPTSET(x, history,   kj(o.history_size()));
@@ -480,21 +487,27 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 }
 
 // --------------------------------------------------------------------------------------
-// bufferkeys - return columns for table describing optimizer parameter groups & buffers
-// getbuffers - given optimizer type and parameter state, return buffers as k dictonary
+// parmkeys - return columns for table describing optimizer parameter groups & buffers
+// getparms - given optimizer type and parameter state, return buffers as k dictonary
 // --------------------------------------------------------------------------------------
-static K bufferkeys(bool b) {
- K x=ktn(KS, b ? 6 : 5);
- kS(x)[0]=cs("id");
- kS(x)[1]=cs("group");
- kS(x)[2]=statekey(State::module);
- kS(x)[3]=statekey(State::name);
- kS(x)[4]=cs("size");
- if(b) kS(x)[5]=statekey(State::buffers);
+static K parmkeys(bool b) {
+ K x=ktn(KS, b ? 5 : 4);
+ kS(x)[0]=statekey(State::id);
+ kS(x)[1]=statekey(State::group);
+ kS(x)[2]=statekey(State::name);
+ kS(x)[3]=statekey(State::size);
+ if(b) kS(x)[4]=statekey(State::buffers);
  return x;
 }
 
-K getbuffers(Cast c,const torch::optim::OptimizerParamState& p) {
+static S parmname(const Tensor& p,const Module& m) {
+ for(const auto& a:m.named_parameters())
+  if(a.value().is_same(p))
+   return cs(a.key().c_str());
+ return cs("");
+}
+
+K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adaget(static_cast<const AdagradParamState&>(p));
   case Cast::adam:    return  adamget(static_cast<const AdamParamState&>(p));
@@ -506,24 +519,42 @@ K getbuffers(Cast c,const torch::optim::OptimizerParamState& p) {
  }
 }
 
-K getbuffers(Cast c,const Optimizer& o) {
- J g=0,i; K k,v=ktn(0,6),*w=kK(v);
- for(i=0; i<v->n; ++i) kK(v)[i]=ktn((i<3) ? KJ : (i<4 ? KS : 0), 0);
+static K getparms(Cast c,const Optimizer& o) {
+ J g=0,i; K v=ktn(0,5),*w=kK(v);
+ for(i=0; i<v->n; ++i) kK(v)[i]=ktn((i<2) ? KJ : (i<3 ? KS : 0), 0);
  const auto& s=o.state();
  for(auto& gp:o.param_groups()) {
   for(auto& p:gp.params()) {
     auto *t=p.unsafeGetTensorImpl();
-    J j=(intptr_t)t, m=nj;
+    J j=(intptr_t)t;
     ja(&w[0], &j);
     ja(&w[1], &g);
-    ja(&w[2], &m);
-    js(&w[3], cs(""));
-    jk(&w[4], tensorsize(p, Attr::size));
-    jk(&w[5], s.size() ? getbuffers(c, *s.at(c10::guts::to_string(t))) : xD(ktn(KS,0),ktn(0,0)));
+    js(&w[2], cs(""));
+    jk(&w[3], tensorsize(p, Attr::size));
+    jk(&w[4], s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : xD(ktn(KS,0),ktn(0,0)));
   }
   g++;
  }
- return xT(xD(bufferkeys(true),v));
+ return xT(xD(parmkeys(true),v));
+}
+
+static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
+ J g=0,i=0,n=osize(o);
+ K id=ktn(KJ,n),gp=ktn(KJ,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
+ const auto& s=o.state();
+ for(auto& pg:o.param_groups()) {
+  for(auto& p:pg.params()) {
+    auto *t=p.unsafeGetTensorImpl();
+    kJ(id)[i]=(intptr_t)t;
+    kJ(gp)[i]=g;
+    kS(nm)[i]=parmname(p,m);
+    kK(sz)[i]=tensorsize(p,Attr::size);
+    if(b) kK(bf)[i]=s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : KDICT;
+    i++;
+  }
+  g++;
+ }
+ return xT(xD(parmkeys(b),b ? knk(5,id,gp,nm,sz,bf) : knk(4,id,gp,nm,sz)));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -532,6 +563,24 @@ K getbuffers(Cast c,const Optimizer& o) {
 // optstate - return optimizer name & options and optionally, internal buffer values
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
+static void optparms(K x,Module& m) {
+ xempty(x);
+ bool a=false; Ktag *k=xtag(x); 
+ if(!k){
+  k=xtag(x,0);
+  a=true;
+ }
+ TORCH_CHECK(k,"opt: supply module/module/tensor parameters");
+ switch(k->a) {
+  case Class::tensor:
+  case Class::vector:
+  case Class::dict:
+  case Class::module:
+  case Class::model:
+  default: AT_ERROR("opt: unable to derive parameters from ",mapclass(k->a));
+ }
+}
+
 static TensorVector optparms(K x,J i) {
  if(auto *a=xmodule(x,i))
   return mref(a->m).parameters();
@@ -572,9 +621,17 @@ K optstate(bool a,bool b,Cast c,const Optimizer &o) {
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
  kS(k)[1]=statekey(State::options); kK(v)[1]=x;
  if(b) {
-   kS(k)[2]=statekey(State::buffers);
-   kK(v)[2]=getbuffers(c,o);
+   kS(k)[2]=statekey(State::parms);
+   kK(v)[2]=getparms(c,o);
  }
+ return xD(k,v);
+}
+
+K optstatem(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
+ K k=ktn(KS,3),v=ktn(0,3);
+ kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
+ kS(k)[1]=statekey(State::options); kK(v)[1]=optdict(a,c,o);
+ kS(k)[2]=statekey(State::parms);   kK(v)[2]=getparms(b,c,o,m);
  return xD(k,v);
 }
 
@@ -582,9 +639,17 @@ K optstate(bool a,bool b,Cast c,const Optimizer &o) {
 K optstate(Ktag *g,K x) {
  bool a=env().alloptions;
  if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return optstate(a,true,g->c,*((Kopt*)g)->o);
+  return optstatem(a,true,g->c,*((Kopt*)g)->o,*((Kopt*)g)->m);
  else
   AT_ERROR("optimizer state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
+}
+
+KAPI optstate2(K x,K y) {
+ KTRY
+  Kopt* o=xoptim(x); Kmodule *m=xmodule(y);
+  TORCH_CHECK(o && m, "need optimizer & module");
+  return optstatem(true,true,o->c,*o->o,mref(m->m));
+ KCATCH("optstate");
 }
 
 // ---------------------------------------------------------------------------------------
@@ -604,7 +669,7 @@ KAPI opt(K x) {
    K d=kK(x)[0];
    return optinit(statemodule(d),stateoptions(d),statebuffers(d));
   } else if((o=xoptim(x)) || (xbool(x,1,a) && (o=xoptim(x,0)) && x->n==2)) {
-   return optstate(a,false,o->c,*o->o);
+   return optstatem(a,false,o->c,*o->o,*o->m);
   } else if((o=xoptim(x,0)) && xptr(x,1) && x->n==2) {
    return o->get()->add_parameters(optparms(x,1)), (K)0;
   } else if((m=xmodel(x))) {
@@ -699,7 +764,7 @@ K optattr(const Optptr& o,Ktype k,Attr a) {
  switch(a) {
   case Attr::ptr:  return kj((intptr_t)o.get());
   case Attr::ref:  return kj(o.use_count());
-  case Attr::size: return kj(o->state().size());
+  case Attr::size: return kj(osize(o));
   default: AT_ERROR(mapattr(a),": not implemented for optimizers");
  }
 }

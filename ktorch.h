@@ -115,8 +115,8 @@ using Layers=std::stack<Layer>;
 
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
-using TorchObj=c10::variant<Tensor,Layer>;
-using TorchDict=torch::OrderedDict<std::string, TorchObj>;
+//using TorchObj=c10::variant<Tensor,Layer>;
+//using TorchDict=torch::OrderedDict<std::string, TorchObj>;
 
 typedef struct {
  Ktype a = 0;  // type: 1-dict, 2-list of pairs, 3-general list, 4-sym list
@@ -215,7 +215,7 @@ enum class Setting:char {
 };
 
 enum class State:char {
- Class,depth,module,name,options,parms,buffers
+ buffers, depth, group, id, module, name, options, parms, size
 };
 
 enum class Attr:char {
@@ -277,7 +277,7 @@ struct TORCH_API Kloss : public Ktag {
 
 struct TORCH_API Kopt : public Ktag {
  Optptr o;
- TorchDict d;
+ BaseModule m;
  Kopt(Cast x,const Optptr& y) : o(std::move(y)) {a=Class::optimizer; c=x;}
  bool is_empty() const noexcept {return o == nullptr;}
  Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
@@ -290,7 +290,10 @@ struct TORCH_API Kmodel : public Ktag {
  Layer m;          // layer, e.g. Sequential
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
- Kmodel(Kmodule *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o) {a=Class::model; c=Cast::model;}
+ BaseModule om;    // basic container module to hold all modules/tensors managed by optimizer
+ Kmodel(Kmodule *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
+  a=Class::model; c=Cast::model;
+ }
 };
 
 S krrbuf(const char *);
@@ -878,13 +881,16 @@ typedef struct {
   std::make_tuple(cs("weight"),       Setting::weight)
  }};
 
- std::array<std::tuple<S,State>,6> state = {{        //module state dictionary keys: map symbol -> enum
+ std::array<std::tuple<S,State>,9> state = {{        //module state dictionary keys: map symbol -> enum
+  std::make_tuple(cs("buffers"), State::buffers),
   std::make_tuple(cs("depth"),   State::depth),
+  std::make_tuple(cs("grp"),     State::group),
+  std::make_tuple(cs("id"),      State::id),
   std::make_tuple(cs("module"),  State::module),
   std::make_tuple(cs("name"),    State::name),
   std::make_tuple(cs("options"), State::options),
   std::make_tuple(cs("parms"),   State::parms),
-  std::make_tuple(cs("buffers"), State::buffers)
+  std::make_tuple(cs("size"),    State::size)
  }};
 
  std::array<std::tuple<S,Cast,std::string>,20> loss = {{             // loss: map symbol -> enum

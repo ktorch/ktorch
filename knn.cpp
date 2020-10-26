@@ -176,6 +176,7 @@ static bool container(Cast c) {
   case Cast::seqnest:
   case Cast::seqjoin:
   case Cast::modulelist:
+  case Cast::base:
    return true;
   default: return false;
  }
@@ -2890,6 +2891,7 @@ static void addmodule(Layer& x,const Layer& y) {
    [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
    [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
    []  (ModuleList& x, const auto&       y)  {x->push_back(y.ptr());},
+   [&s](BaseModule& x, const auto&       y)  {x->register_module(s ? s : c10::to_string(x->children().size()),y.ptr());},
    [](auto& x,const auto& y) {AT_ERROR("unable to add a ", mlabel(mref(y)),
                                        " module as a child of a ", mlabel(mref(x)), " module");}),
    x,y);
