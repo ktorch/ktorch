@@ -28,7 +28,7 @@ using SGDParamState     = torch::optim::SGDParamState;
 // oset - optimizer settings, map sym <-> enum
 // osize - optimizer size, i.e. number of parameters defined
 // --------------------------------------------------------------------------------------
-K kopt(Cast x,const Optptr& y) {return kptr(new Kopt(x,y));}
+K kopt(Cast x,const Optptr& y,const BaseModule& z) {return kptr(new Kopt(x,y,z));}
 
 static Cast omap(S s) {
  for(auto& m:env().opt)
@@ -501,13 +501,14 @@ static K parmkeys(bool b) {
 }
 
 static S parmname(const Tensor& p,const Module& m) {
- for(const auto& a:m.named_parameters())
+ bool b=m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
+ for(const auto& a:(b ? *m.children()[0] : m).named_parameters())
   if(a.value().is_same(p))
    return cs(a.key().c_str());
- return cs("");
+ return env().nullsym;
 }
 
-K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
+static K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adaget(static_cast<const AdagradParamState&>(p));
   case Cast::adam:    return  adamget(static_cast<const AdamParamState&>(p));
@@ -517,25 +518,6 @@ K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
   case Cast::sgd:     return   sgdget(static_cast<const SGDParamState&>(p));
   default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
  }
-}
-
-static K getparms(Cast c,const Optimizer& o) {
- J g=0,i; K v=ktn(0,5),*w=kK(v);
- for(i=0; i<v->n; ++i) kK(v)[i]=ktn((i<2) ? KJ : (i<3 ? KS : 0), 0);
- const auto& s=o.state();
- for(auto& gp:o.param_groups()) {
-  for(auto& p:gp.params()) {
-    auto *t=p.unsafeGetTensorImpl();
-    J j=(intptr_t)t;
-    ja(&w[0], &j);
-    ja(&w[1], &g);
-    js(&w[2], cs(""));
-    jk(&w[3], tensorsize(p, Attr::size));
-    jk(&w[4], s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : xD(ktn(KS,0),ktn(0,0)));
-  }
-  g++;
- }
- return xT(xD(parmkeys(true),v));
 }
 
 static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
@@ -563,20 +545,44 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
 // optstate - return optimizer name & options and optionally, internal buffer values
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
+static void parmcheck(const std::string& s,const Tensor& t,const Module& m) {
+ for(const auto& c:m.named_parameters())
+  if(t.is_same(c.value()))
+   AT_ERROR("opt: parameter already added, with name '", c.key(), "'");
+  else if(!s.compare(c.key()))
+   AT_ERROR("opt: parameter name '",s,"' already defined");
+}
+   
+static void addmodule(Module& a,Module& m) {
+ for(const auto& c:m.children()) if(c.get() == &m) return; //module already added
+ S s=mname(a); m.register_module(s ? s : c10::to_string(m.children().size()),a.shared_from_this());
+}
+
+static void addtensor(S s,const Tensor& t,Module& m) {
+ for(const auto& p:m.parameters()) if(p.is_same(t)) return; //tensor already added
+ m.register_parameter(s ? s : c10::to_string(m.parameters().size()),t);
+}
+
 static void optparms(K x,Module& m) {
  xempty(x);
- bool a=false; Ktag *k=xtag(x); 
+ K y=nullptr; Ktag *k=xtag(x); 
  if(!k){
   k=xtag(x,0);
-  a=true;
+  TORCH_CHECK(k,"opt: expecting module, model or tensor(s) for optimizer, given ",kname(x));
+  TORCH_CHECK(x->n==2,"opt: expecting 2nd arg to describe parameters from ",mapclass(k->a)," but given ",x->n," args");
+  y=kK(x)[1];
  }
- TORCH_CHECK(k,"opt: supply module/module/tensor parameters");
  switch(k->a) {
   case Class::tensor:
-  case Class::vector:
-  case Class::dict:
+   AT_ERROR("nyi");
+  case Class::vector: AT_ERROR("nyi");
+  case Class::dict: AT_ERROR("nyi");
   case Class::module:
-  case Class::model:
+  case Class::model: {
+   auto& a=mref(k->a==Class::module ? ((Kmodule*)k)->m : ((Kmodel*)k)->m);
+   addmodule(a,m);
+   break;
+  }
   default: AT_ERROR("opt: unable to derive parameters from ",mapclass(k->a));
  }
 }
@@ -602,7 +608,7 @@ static K optinit(S s,K x,K y) {
  if(!(x->t==-KS || xdict(x) || xempty(x,1) || xptr(x,1)))
   AT_ERROR("optimizer ",s," expects args of form:\n",
            "name\n", "(name; parm(s); option(s)..)\n" "(saved state; parm(s))");
- auto w=optparms(x,1); Optptr o;
+ auto w=optparms(x,1); Kmodule *k; Optptr o; BaseModule m;
  switch(c) {
   case Cast::adagrad: {auto a=AdagradOptions();  adagrad(x,i,a); o=adagrad(w,a,y); break;}
   case Cast::adam:    {auto a=AdamOptions();     adam(x,i,a);    o=adam<Adam>(w,a,y);  break;}
@@ -612,22 +618,12 @@ static K optinit(S s,K x,K y) {
   case Cast::sgd:     {auto a=SGDOptions(SGDlr); sgd(x,i,a);     o=sgd(w,a,y);     break;}
   default: AT_ERROR("unrecognized optimizer: ",s); break;
  }
- return kopt(c,o);
+ if((k=xmodule(x,1)))
+  addmodule(mref(k),*m);
+ return kopt(c,o,m);
 }
 
-K optstate(bool a,bool b,Cast c,const Optimizer &o) {
- K k,v,x=optdict(a,c,o);
- k=ktn(KS,2+b),v=ktn(0,2+b);
- kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
- kS(k)[1]=statekey(State::options); kK(v)[1]=x;
- if(b) {
-   kS(k)[2]=statekey(State::parms);
-   kK(v)[2]=getparms(c,o);
- }
- return xD(k,v);
-}
-
-K optstatem(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
+K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
  kS(k)[1]=statekey(State::options); kK(v)[1]=optdict(a,c,o);
@@ -639,7 +635,7 @@ K optstatem(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
 K optstate(Ktag *g,K x) {
  bool a=env().alloptions;
  if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return optstatem(a,true,g->c,*((Kopt*)g)->o,*((Kopt*)g)->m);
+  return optstate(a,true,g->c,*((Kopt*)g)->o,*((Kopt*)g)->m);
  else
   AT_ERROR("optimizer state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
 }
@@ -648,7 +644,7 @@ KAPI optstate2(K x,K y) {
  KTRY
   Kopt* o=xoptim(x); Kmodule *m=xmodule(y);
   TORCH_CHECK(o && m, "need optimizer & module");
-  return optstatem(true,true,o->c,*o->o,mref(m->m));
+  return optstate(true,true,o->c,*o->o,mref(m->m));
  KCATCH("optstate");
 }
 
@@ -669,11 +665,11 @@ KAPI opt(K x) {
    K d=kK(x)[0];
    return optinit(statemodule(d),stateoptions(d),statebuffers(d));
   } else if((o=xoptim(x)) || (xbool(x,1,a) && (o=xoptim(x,0)) && x->n==2)) {
-   return optstatem(a,false,o->c,*o->o,*o->m);
+   return optstate(a,false,o->c,*o->o,*o->m);
   } else if((o=xoptim(x,0)) && xptr(x,1) && x->n==2) {
    return o->get()->add_parameters(optparms(x,1)), (K)0;
   } else if((m=xmodel(x))) {
-   return kopt(m->oc,m->o);
+   return kopt(m->oc,m->o,m->om);
   } else {
    AT_ERROR("unrecognized optimizer arg(s)");
   }

@@ -1067,7 +1067,7 @@ KAPI addref(K x) {
    case Class::tensor:    return kten(((Kten*)g)->t);
    case Class::module:    return kmodule(g->c,((Kmodule*)g)->m);
    case Class::loss:      return kloss(g->c, ((Kloss*)g)->m);
-   case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o);
+   case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o, ((Kopt*)g)->m);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
   }
  KCATCH("addref");
@@ -1115,7 +1115,7 @@ S objdevice(const Optimizer& o,S s) {
 }
 
 static S objdevice(Ktag *x) {
- S s=cs("");
+ S s=env().nullsym;
  switch(x->a) {
   case Class::tensor:    return objdevice(((Kten*)x)->t);
   case Class::vector:    return objdevice(((Kvec*)x)->v, s);
@@ -1206,7 +1206,7 @@ KAPI kobj(K x) {
    kK(kK(v)[0])[i] = knk(1,kj(j));
    kS(kK(v)[1])[i] = mapclass(g->a);
    kS(kK(v)[2])[i] = objdevice(g);
-   kS(kK(v)[3])[i] = g->a == Class::tensor ? tensorsym(((Kten*)g)->t, Attr::dtype)  : cs("");
+   kS(kK(v)[3])[i] = g->a == Class::tensor ? tensorsym(((Kten*)g)->t, Attr::dtype)  : env().nullsym;
    kK(kK(v)[4])[i] = objsize(g);
    kJ(kK(v)[5])[i] = objnum(g);
    kJ(kK(v)[6])[i] = objbytes(g);

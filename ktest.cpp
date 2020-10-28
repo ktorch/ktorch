@@ -21,7 +21,7 @@ KAPI g(K x) {
  torch::optim::RMSprop m(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[4]=m.param_groups().size();
  torch::optim::SGD     s(std::vector<torch::optim::OptimizerParamGroup>{},torch::optim::SGDOptions(.01)); kJ(r)[5]=s.param_groups().size();
  //return r;
- return optstate(true,true,Cast::adam,a);
+ return optstate(true,true,Cast::adam,a,*BaseModule());
 }
 
 /*

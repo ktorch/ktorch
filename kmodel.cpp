@@ -29,7 +29,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, mget(a,b,mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,*m->o)));
+ return xD(modelkeys(), knk(3, mget(a,b,mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,*m->o,*m->om)));
 }
 
 // this version of modelstate called from generic state function in k-level api

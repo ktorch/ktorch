@@ -49,7 +49,7 @@ std::string mlabel(const Module& x) {
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
 static AnyModule anymodule(K x,J i,Cast c);
-static std::tuple<Cast,K> mopt(bool a,const Module& g);
+static K mopt(bool,Cast,const Module&);
 
 // ----------------------------------------------------------------------------
 // kmodule - allocate an object to store a pointer to a layer
@@ -114,7 +114,7 @@ static Setting mset(S x,Cast c) {
   AT_ERROR(msym(c),": unrecognized option `",x);
 }
 
-K mkeys(bool b) {
+static K mkeys(bool b) {
  K x=ktn(KS, b ? 6 : 4);
  kS(x)[0]=statekey(State::depth);
  kS(x)[1]=statekey(State::module);
@@ -126,6 +126,25 @@ K mkeys(bool b) {
  }
  return x;
 }
+
+// --------------------------------------------------------------
+// mcast - given generic module, return api symbol or enumeration
+// --------------------------------------------------------------
+Cast mcast(size_t h) {
+ for(const auto& m:env().module)
+  if(std::get<2>(m)==h) return std::get<1>(m);
+ return Cast::undefined;
+}
+
+Cast mcast(const Module& m) {return mcast(typeid(m).hash_code());}
+
+S msym(size_t h) {
+ for(const auto& m:env().module)
+  if(std::get<2>(m)==h) return std::get<0>(m);
+ return env().nullsym;
+}
+
+S msym(const Module& m) {return msym(typeid(m).hash_code());}
 
 // -----------------------------------------------------------------------------------
 // seqlist - enlist x, only allow symbol scalar
@@ -2525,11 +2544,10 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
  return o;
 }
 
-static K customcoder(bool a,const AnyModule& m) {
- K x,k=ktn(KS,2),v=ktn(0,2); Cast c;
- std::tie(c,x)=mopt(a,*m.ptr());
+static K customcoder(bool a,const AnyModule& y) {
+ K k=ktn(KS,2),v=ktn(0,2); const Module& m=*y.ptr(); Cast c=mcast(m);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(msym(c));
- kS(k)[1]=statekey(State::options); kK(v)[1]=x;
+ kS(k)[1]=statekey(State::options); kK(v)[1]=mopt(a,c,m);
  return xD(k,v);
 }
 
@@ -2711,137 +2729,140 @@ static AnyModule anymodule(K x,J i,Cast c) {
 }
 
 // --------------------------------------------------------------------------------------------
-// mopt - given module, cast at runtime to known type and extract options as k dictionary
+// mopt - given enumeration and generic module, return options as k dictionary
 // --------------------------------------------------------------------------------------------
-static std::tuple<Cast,K> mopt(bool a,const Module& g) { //a:all options returned if true, else only non-default
- Cast c=Cast::undefined; K x=nullptr;
- if       (g.as<Sequential>())  { c=Cast::sequential;
- } else if(g.as<SeqNest>())     { c=Cast::seqnest;
- } else if(g.as<SeqJoin>())     { c=Cast::seqjoin;
- } else if(g.as<ModuleList>())  { c=Cast::modulelist;
- } else if(g.as<BaseModule>())  { c=Cast::base;
+static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true, else only non-default
+ switch(c) {
+  case Cast::sequential:      //container modules w'out options
+  case Cast::seqnest:
+  case Cast::seqjoin:
+  case Cast::modulelist:
+  case Cast::base:
+  case Cast::gelu:            //pointwise activation fns w'out options
+  case Cast::identity:
+  case Cast::logsigmoid:
+  case Cast::mul:
+  case Cast::sigmoid:
+  case Cast::softsign:
+  case Cast::softmax2d:
+  case Cast::tanh:
+  case Cast::tanhshrink:
+   return KDICT;
 
- } else if(auto* m=g.as<nn::BatchNorm1d>())       { c=Cast::batchnorm1d;    x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::BatchNorm2d>())       { c=Cast::batchnorm2d;    x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::BatchNorm3d>())       { c=Cast::batchnorm3d;    x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm1d>())    { c=Cast::instancenorm1d; x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm2d>())    { c=Cast::instancenorm2d; x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::InstanceNorm3d>())    { c=Cast::instancenorm3d; x=batchnorm(a,m->options);
- } else if(auto* m=g.as<nn::GroupNorm>())         { c=Cast::groupnorm;      x=groupnorm(a,m->options);
- } else if(auto* m=g.as<nn::LayerNorm>())         { c=Cast::layernorm;      x=layernorm(a,m->options);
- } else if(auto* m=g.as<nn::LocalResponseNorm>()) { c=Cast::localnorm;      x=localnorm(a,c,m->options);
- } else if(auto* m=g.as<nn::CrossMapLRN2d>())     { c=Cast::crossmap2d;     x=localnorm(a,c,m->options);
+  case Cast::batchnorm1d:      return batchnorm(a,m.as<nn::BatchNorm1d>()->options);
+  case Cast::batchnorm2d:      return batchnorm(a,m.as<nn::BatchNorm2d>()->options);
+  case Cast::batchnorm3d:      return batchnorm(a,m.as<nn::BatchNorm3d>()->options);
+  case Cast::instancenorm1d:   return batchnorm(a,m.as<nn::InstanceNorm1d>()->options);
+  case Cast::instancenorm2d:   return batchnorm(a,m.as<nn::InstanceNorm2d>()->options);
+  case Cast::instancenorm3d:   return batchnorm(a,m.as<nn::InstanceNorm3d>()->options);
+  case Cast::groupnorm:        return groupnorm(a,m.as<nn::GroupNorm>()->options);
+  case Cast::layernorm:        return layernorm(a,m.as<nn::LayerNorm>()->options);
+  case Cast::localnorm:        return localnorm(a,c,m.as<nn::LocalResponseNorm>()->options);
+  case Cast::crossmap2d:       return localnorm(a,c,m.as<nn::CrossMapLRN2d>()->options);
 
- } else if(auto* m=g.as<nn::Embedding>())         { c=Cast::embed;    x=embed(a,c,m->options,m->weight);
- } else if(auto* m=g.as<nn::EmbeddingBag>())      { c=Cast::embedbag; x=embed(a,c,m->options,m->weight);
- } else if(auto* m=g.as<nn::Linear>())            { c=Cast::linear;   x=linear(a,m->options);
- } else if(auto* m=g.as<nn::Bilinear>())          { c=Cast::bilinear; x=bilinear(a,m->options);
+  case Cast::embed:    {auto* e=m.as<nn::Embedding>();    return embed(a,c,e->options,e->weight);}
+  case Cast::embedbag: {auto* e=m.as<nn::EmbeddingBag>(); return embed(a,c,e->options,e->weight);}
 
- } else if(auto* m=g.as<nn::Dropout>())             { c=Cast::drop;   x=drop(a,m->options);
- } else if(auto* m=g.as<nn::Dropout2d>())           { c=Cast::drop2d; x=drop(a,m->options);
- } else if(auto* m=g.as<nn::Dropout3d>())           { c=Cast::drop3d; x=drop(a,m->options);
- } else if(auto* m=g.as<nn::AlphaDropout>())        { c=Cast::adrop;  x=drop(a,m->options);
- } else if(auto* m=g.as<nn::FeatureAlphaDropout>()) { c=Cast::fadrop; x=drop(a,m->options);
+  case Cast::linear:           return linear(a,m.as<nn::Linear>()->options);
+  case Cast::bilinear:         return bilinear(a,m.as<nn::Bilinear>()->options);
 
- } else if(auto* m=g.as<nn::Conv1d>())         { c=Cast::conv1d;          x=conv(a,m->options);
- } else if(auto* m=g.as<nn::Conv2d>())         { c=Cast::conv2d;          x=conv(a,m->options);
- } else if(auto* m=g.as<nn::Conv3d>())         { c=Cast::conv3d;          x=conv(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose1d>()){ c=Cast::convtranspose1d; x=conv(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose2d>()){ c=Cast::convtranspose2d; x=conv(a,m->options);
- } else if(auto* m=g.as<nn::ConvTranspose3d>()){ c=Cast::convtranspose3d; x=conv(a,m->options);
+  case Cast::drop:             return drop(a,m.as<nn::Dropout>()->options);
+  case Cast::drop2d:           return drop(a,m.as<nn::Dropout2d>()->options);
+  case Cast::drop3d:           return drop(a,m.as<nn::Dropout3d>()->options);
+  case Cast::adrop:            return drop(a,m.as<nn::AlphaDropout>()->options);
+  case Cast::fadrop:           return drop(a,m.as<nn::FeatureAlphaDropout>()->options);
 
- } else if(auto* m=g.as<nn::Fold>())           { c=Cast::fold;     x=fold(a,m->options);
- } else if(auto* m=g.as<nn::Unfold>())         { c=Cast::unfold;   x=unfold(a,m->options);
- } else if(auto* m=g.as<nn::Upsample>())       { c=Cast::upsample; x=upsample(a,m->options);
+  case Cast::conv1d:           return conv(a,m.as<nn::Conv1d>()->options);
+  case Cast::conv2d:           return conv(a,m.as<nn::Conv2d>()->options);
+  case Cast::conv3d:           return conv(a,m.as<nn::Conv3d>()->options);
+  case Cast::convtranspose1d:  return conv(a,m.as<nn::ConvTranspose1d>()->options);
+  case Cast::convtranspose2d:  return conv(a,m.as<nn::ConvTranspose2d>()->options);
+  case Cast::convtranspose3d:  return conv(a,m.as<nn::ConvTranspose3d>()->options);
 
- } else if(auto* m=g.as<nn::MaxPool1d>())      { c=Cast::maxpool1d; x=maxpool(a,m->options);
- } else if(auto* m=g.as<nn::MaxPool2d>())      { c=Cast::maxpool2d; x=maxpool(a,m->options);
- } else if(auto* m=g.as<nn::MaxPool3d>())      { c=Cast::maxpool3d; x=maxpool(a,m->options);
+  case Cast::fold:             return fold(a,m.as<nn::Fold>()->options);
+  case Cast::unfold:           return unfold(a,m.as<nn::Unfold>()->options);
+  case Cast::upsample:         return upsample(a,m.as<nn::Upsample>()->options);
 
- } else if(auto* m=g.as<nn::AvgPool1d>())      { c=Cast::avgpool1d; x=avgpool(a,m->options);
- } else if(auto* m=g.as<nn::AvgPool2d>())      { c=Cast::avgpool2d; x=avgpool(a,m->options);
- } else if(auto* m=g.as<nn::AvgPool3d>())      { c=Cast::avgpool3d; x=avgpool(a,m->options);
+  case Cast::maxpool1d:        return maxpool(a,m.as<nn::MaxPool1d>()->options);
+  case Cast::maxpool2d:        return maxpool(a,m.as<nn::MaxPool2d>()->options);
+  case Cast::maxpool3d:        return maxpool(a,m.as<nn::MaxPool3d>()->options);
 
- } else if(auto* m=g.as<nn::AdaptiveMaxPool1d>())   { c=Cast::adaptmax1d; x=adapt(m->options);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool2d>())   { c=Cast::adaptmax2d; x=adapt(m->options);
- } else if(auto* m=g.as<nn::AdaptiveMaxPool3d>())   { c=Cast::adaptmax3d; x=adapt(m->options);
+  case Cast::avgpool1d:        return avgpool(a,m.as<nn::AvgPool1d>()->options);
+  case Cast::avgpool2d:        return avgpool(a,m.as<nn::AvgPool2d>()->options);
+  case Cast::avgpool3d:        return avgpool(a,m.as<nn::AvgPool3d>()->options);
 
- } else if(auto* m=g.as<nn::AdaptiveAvgPool1d>())   { c=Cast::adaptavg1d; x=adapt(m->options);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool2d>())   { c=Cast::adaptavg2d; x=adapt(m->options);
- } else if(auto* m=g.as<nn::AdaptiveAvgPool3d>())   { c=Cast::adaptavg3d; x=adapt(m->options);
+  case Cast::adaptmax1d:       return adapt(m.as<nn::AdaptiveMaxPool1d>()->options);
+  case Cast::adaptmax2d:       return adapt(m.as<nn::AdaptiveMaxPool2d>()->options);
+  case Cast::adaptmax3d:       return adapt(m.as<nn::AdaptiveMaxPool3d>()->options);
 
- } else if(auto* m=g.as<nn::FractionalMaxPool2d>()) { c=Cast::fmaxpool2d; x=fpool(a,m->options);
- } else if(auto* m=g.as<nn::FractionalMaxPool3d>()) { c=Cast::fmaxpool3d; x=fpool(a,m->options);
+  case Cast::adaptavg1d:       return adapt(m.as<nn::AdaptiveAvgPool1d>()->options);
+  case Cast::adaptavg2d:       return adapt(m.as<nn::AdaptiveAvgPool2d>()->options);
+  case Cast::adaptavg3d:       return adapt(m.as<nn::AdaptiveAvgPool3d>()->options);
 
- } else if(auto* m=g.as<nn::LPPool1d>())         { c=Cast::lppool1d; x=lppool(a,m->options);
- } else if(auto* m=g.as<nn::LPPool2d>())         { c=Cast::lppool2d; x=lppool(a,m->options);
+  case Cast::fmaxpool2d:       return fpool(a,m.as<nn::FractionalMaxPool2d>()->options);
+  case Cast::fmaxpool3d:       return fpool(a,m.as<nn::FractionalMaxPool3d>()->options);
 
- } else if(auto* m=g.as<Pad>())                  { c=Cast::pad;         x=pad(a,m->options);
- } else if(auto* m=g.as<nn::ConstantPad1d>())    { c=Cast::pad1d;       x=cpad(m->options);
- } else if(auto* m=g.as<nn::ConstantPad2d>())    { c=Cast::pad2d;       x=cpad(m->options);
- } else if(auto* m=g.as<nn::ConstantPad3d>())    { c=Cast::pad3d;       x=cpad(m->options);
- } else if(auto* m=g.as<nn::ReflectionPad1d>())  { c=Cast::reflect1d;   x=npad(m->options);
- } else if(auto* m=g.as<nn::ReflectionPad2d>())  { c=Cast::reflect2d;   x=npad(m->options);
- } else if(auto* m=g.as<nn::ReplicationPad1d>()) { c=Cast::replicate1d; x=npad(m->options);
- } else if(auto* m=g.as<nn::ReplicationPad2d>()) { c=Cast::replicate2d; x=npad(m->options);
- } else if(auto* m=g.as<nn::ReplicationPad3d>()) { c=Cast::replicate3d; x=npad(m->options);
- } else if(auto* m=g.as<nn::ZeroPad2d>())        { c=Cast::zeropad2d;   x=npad(m->options);
+  case Cast::lppool1d:         return lppool(a,m.as<nn::LPPool1d>()->options);
+  case Cast::lppool2d:         return lppool(a,m.as<nn::LPPool2d>()->options);
 
- } else if(auto* m=g.as<nn::MultiheadAttention>())      { c=Cast::attention;    x=attention(a,m->options);
- } else if(auto* m=g.as<nn::TransformerEncoderLayer>()) { c=Cast::encoderlayer; x=codelayer(a,m->options);
- } else if(auto* m=g.as<nn::TransformerDecoderLayer>()) { c=Cast::decoderlayer; x=codelayer(a,m->options);
- } else if(auto* m=g.as<nn::TransformerEncoder>())      { c=Cast::encoder;      x=encoder(a,m->options);
- } else if(auto* m=g.as<nn::TransformerDecoder>())      { c=Cast::decoder;      x=decoder(a,m->options);
- } else if(auto* m=g.as<nn::Transformer>())             { c=Cast::transformer;  x=transformer(a,m->options);
+  case Cast::pad:              return pad(a,m.as<Pad>()->options);
+  case Cast::pad1d:            return cpad(m.as<nn::ConstantPad1d>()->options);
+  case Cast::pad2d:            return cpad(m.as<nn::ConstantPad2d>()->options);
+  case Cast::pad3d:            return cpad(m.as<nn::ConstantPad3d>()->options);
+  case Cast::reflect1d:        return npad(m.as<nn::ReflectionPad1d>()->options);
+  case Cast::reflect2d:        return npad(m.as<nn::ReflectionPad2d>()->options);
+  case Cast::replicate1d:      return npad(m.as<nn::ReplicationPad1d>()->options);
+  case Cast::replicate2d:      return npad(m.as<nn::ReplicationPad2d>()->options);
+  case Cast::replicate3d:      return npad(m.as<nn::ReplicationPad3d>()->options);
+  case Cast::zeropad2d:        return npad(m.as<nn::ZeroPad2d>()->options);
 
- } else if(auto* m=g.as<nn::RNN>())   { c=Cast::rnn;  x=rnn(a,m->options);
- } else if(auto* m=g.as<nn::GRU>())   { c=Cast::gru;  x=rnn(a,m->options);
- } else if(auto* m=g.as<nn::LSTM>())  { c=Cast::lstm; x=rnn(a,m->options);
+  case Cast::attention:        return attention(a,m.as<nn::MultiheadAttention>()->options);
+  case Cast::encoderlayer:     return codelayer(a,m.as<nn::TransformerEncoderLayer>()->options);
+  case Cast::decoderlayer:     return codelayer(a,m.as<nn::TransformerDecoderLayer>()->options);
+  case Cast::encoder:          return encoder(a,m.as<nn::TransformerEncoder>()->options);
+  case Cast::decoder:          return decoder(a,m.as<nn::TransformerDecoder>()->options);
+  case Cast::transformer:      return transformer(a,m.as<nn::Transformer>()->options);
 
- } else if(g.as<nn::Identity>())      { c=Cast::identity;
- } else if(g.as<nn::LogSigmoid>())    { c=Cast::logsigmoid;
- } else if(g.as<nn::Sigmoid>())       { c=Cast::sigmoid;
- } else if(g.as<nn::Softsign>())      { c=Cast::softsign;
- } else if(g.as<nn::Softmax2d>())     { c=Cast::softmax2d;
- } else if(g.as<nn::Tanh>())          { c=Cast::tanh;
- } else if(g.as<nn::Tanhshrink>())    { c=Cast::tanhshrink;
- } else if(g.as<nn::GELU>())          { c=Cast::gelu;
- } else if(g.as<Mul>())               { c=Cast::mul;
+  case Cast::rnn:              return rnn(a,m.as<nn::RNN>()->options);
+  case Cast::gru:              return rnn(a,m.as<nn::GRU>()->options);
+  case Cast::lstm:             return rnn(a,m.as<nn::LSTM>()->options);
 
- } else if(auto* m=g.as<nn::ReLU>())  { c=Cast::relu;  x=inplace(a,m->options.inplace());
- } else if(auto* m=g.as<nn::SELU>())  { c=Cast::selu;  x=inplace(a,m->options.inplace());
- } else if(auto* m=g.as<nn::ReLU6>()) { c=Cast::relu6; x=inplace(a,m->options.inplace());
+  case Cast::relu:             return inplace(a,m.as<nn::ReLU>()->options.inplace());
+  case Cast::selu:             return inplace(a,m.as<nn::SELU>()->options.inplace());
+  case Cast::relu6:            return inplace(a,m.as<nn::ReLU6>()->options.inplace());
 
- } else if(auto* m=g.as<nn::Softmax>())    { c=Cast::softmax;    x=dim(a,c,m->options.dim());
- } else if(auto* m=g.as<nn::Softmin>())    { c=Cast::softmin;    x=dim(a,c,m->options.dim());
- } else if(auto* m=g.as<nn::LogSoftmax>()) { c=Cast::logsoftmax; x=dim(a,c,m->options.dim());
- } else if(auto* m=g.as<nn::Flatten>())    { c=Cast::flatten;    x=flatten(a,m->options);
+  case Cast::softmax:          return dim(a,c,m.as<nn::Softmax>()->options.dim());
+  case Cast::softmin:          return dim(a,c,m.as<nn::Softmin>()->options.dim());
+  case Cast::logsoftmax:       return dim(a,c,m.as<nn::LogSoftmax>()->options.dim());
+  case Cast::flatten:          return flatten(a,m.as<nn::Flatten>()->options);
 
- } else if(auto* m=g.as<Squeeze>())    { c=Cast::squeeze;    x=squeeze(a,m->options);
- } else if(auto* m=g.as<Unsqueeze>())  { c=Cast::unsqueeze;  x=squeeze(a,m->options);
- } else if(auto* m=g.as<Expand>())     { c=Cast::expand;     x=getsize(a,m->options);
- } else if(auto* m=g.as<Reshape>())    { c=Cast::reshape;    x=getsize(a,m->options);
- } else if(auto* m=g.as<Cat>())        { c=Cast::cat;        x=dim(a,c,m->options.dim());
+  case Cast::squeeze:          return squeeze(a,m.as<Squeeze>()->options);
+  case Cast::unsqueeze:        return squeeze(a,m.as<Unsqueeze>()->options);
+  case Cast::expand:           return getsize(a,m.as<Expand>()->options);
+  case Cast::reshape:          return getsize(a,m.as<Reshape>()->options);
+  case Cast::cat:              return dim(a,c,m.as<Cat>()->options.dim());
 
- } else if(auto* m=g.as<nn::ELU>())        { c=Cast::elu;        x=alpha(a,m->options);
- } else if(auto* m=g.as<nn::CELU>())       { c=Cast::celu;       x=alpha(a,m->options);
- } else if(auto* m=g.as<nn::LeakyReLU>())  { c=Cast::leakyrelu;  x=slope(a,c,m->options);
- } else if(auto* m=g.as<nn::GLU>())        { c=Cast::glu;        x=dim(a,c,m->options.dim());
- } else if(auto* m=g.as<nn::Hardshrink>()) { c=Cast::hardshrink; x=lambda(a,c,m->options.lambda());
- } else if(auto* m=g.as<nn::Softshrink>()) { c=Cast::softshrink; x=lambda(a,c,m->options.lambda());
+  case Cast::elu:              return alpha(a,m.as<nn::ELU>()->options);
+  case Cast::celu:             return alpha(a,m.as<nn::CELU>()->options);
+  case Cast::leakyrelu:        return slope(a,c,m.as<nn::LeakyReLU>()->options);
+  case Cast::glu:              return dim(a,c,m.as<nn::GLU>()->options.dim());
+  case Cast::hardshrink:       return lambda(a,c,m.as<nn::Hardshrink>()->options.lambda());
+  case Cast::softshrink:       return lambda(a,c,m.as<nn::Softshrink>()->options.lambda());
 
- } else if(auto* m=g.as<nn::PReLU>())      { c=Cast::prelu;      x=prelu(a,m->options);
- } else if(auto* m=g.as<nn::RReLU>())      { c=Cast::rrelu;      x=rrelu(a,m->options);
- } else if(auto* m=g.as<nn::Hardtanh>())   { c=Cast::hardtanh;   x=hardtanh(a,m->options);
- } else if(auto* m=g.as<nn::Softplus>())   { c=Cast::softplus;   x=softplus(a,m->options);
- } else if(auto* m=g.as<nn::Threshold>())  { c=Cast::threshold;  x=threshold(a,m->options);
+  case Cast::prelu:            return prelu(a,m.as<nn::PReLU>()->options);
+  case Cast::rrelu:            return rrelu(a,m.as<nn::RReLU>()->options);
+  case Cast::hardtanh:         return hardtanh(a,m.as<nn::Hardtanh>()->options);
+  case Cast::softplus:         return softplus(a,m.as<nn::Softplus>()->options);
+  case Cast::threshold:        return threshold(a,m.as<nn::Threshold>()->options);
+  case Cast::pairwise:         return pairwise(a,m.as<nn::PairwiseDistance>()->options);
+  case Cast::similar:          return similar(a,m.as<nn::CosineSimilarity>()->options);
 
- } else if(auto* m=g.as<nn::PairwiseDistance>())  { c=Cast::pairwise; x=pairwise(a,m->options);
- } else if(auto* m=g.as<nn::CosineSimilarity>())  { c=Cast::similar;  x=similar(a,m->options);
- } else if(g.as<nn::Module>()) { AT_ERROR("generic module, unable to retrieve options");
- } else { AT_ERROR("unrecognized module: ",g.name());
+  default:
+   if(m.as<nn::Module>()) 
+    AT_ERROR("generic module, unable to retrieve options");
+   else 
+    AT_ERROR("unrecognized module: ",m.name());
  }
- return std::make_tuple(c,x ? x : KDICT);
 }
 
 // ----------------------------------------------------------------------------------
@@ -2942,9 +2963,7 @@ static bool msuffix(const std::string& x,const std::string& y) {
 }
 
 static bool mcompare(Cast c,const Module& m1,const Module& m2) {
- bool b=false; Cast v,w; K x,y,z;
- std::tie(v,x)=mopt(true,m1);
- std::tie(w,y)=mopt(true,m2);
+ bool b=false; Cast v=mcast(m1),w=mcast(m2); K x=mopt(true,v,m1),y=mopt(true,w,m2),z;
  if(v==w) {
   z=k(0,(S)"~",x,y,0); b=z->g; r0(z);
  }
@@ -3067,7 +3086,7 @@ static void mextend(Kmodule *x,Kmodule *y,J d) {Layers q; mstack(x,q); mextend(y
 // mget - extract module options and, optionally, parameters & buffers to k array
 // --------------------------------------------------------------------------------------------
 void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
- Cast c; K o,*k=kK(x); std::tie(c,o)=mopt(a,m);
+ Cast c=mcast(m); K o=mopt(a,c,m),*k=kK(x);
  if(!s) s="";
  if(t) {
   ja(&k[0], &d);
@@ -3259,7 +3278,7 @@ K modulehelp(Cast c) {
    kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
    for(auto& a:e) {
     kS(s)[i]=std::get<0>(a);
-    kK(d)[i]=kp((S)std::get<2>(a).c_str());
+    kK(d)[i]=kp((S)std::get<3>(a).c_str());
     kK(o)[i]=modulehelp(std::get<1>(a)); ++i;
    }
    return xT(xD(k,knk(3,s,d,o)));
