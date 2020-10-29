@@ -127,10 +127,11 @@ static K mkeys(bool b) {
  return x;
 }
 
-// --------------------------------------------------------------
-// mcast - given generic module, return api symbol or enumeration
-// --------------------------------------------------------------
-Cast mcast(size_t h) {
+// -----------------------------------------------------------------------
+// mcast - given generic module, return api enumeration, e.g. Cast::linear
+// msym  - given generic module, return api symbol, e.g. `linear
+// -----------------------------------------------------------------------
+static Cast mcast(size_t h) {
  for(const auto& m:env().module)
   if(std::get<2>(m)==h) return std::get<1>(m);
  return Cast::undefined;
@@ -138,7 +139,7 @@ Cast mcast(size_t h) {
 
 Cast mcast(const Module& m) {return mcast(typeid(m).hash_code());}
 
-S msym(size_t h) {
+static S msym(size_t h) {
  for(const auto& m:env().module)
   if(std::get<2>(m)==h) return std::get<0>(m);
  return env().nullsym;

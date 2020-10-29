@@ -491,13 +491,21 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 // getparms - given optimizer type and parameter state, return buffers as k dictonary
 // --------------------------------------------------------------------------------------
 static K parmkeys(bool b) {
- K x=ktn(KS, b ? 5 : 4);
+ K x=ktn(KS, b ? 6 : 5);
  kS(x)[0]=statekey(State::id);
  kS(x)[1]=statekey(State::group);
- kS(x)[2]=statekey(State::name);
- kS(x)[3]=statekey(State::size);
- if(b) kS(x)[4]=statekey(State::buffers);
+ kS(x)[2]=statekey(State::module);
+ kS(x)[3]=statekey(State::name);
+ kS(x)[4]=statekey(State::size);
+ if(b) kS(x)[5]=statekey(State::buffers);
  return x;
+}
+
+static S modulename(const Tensor& p,const Module& m) {
+ for(const auto& a:m.modules(false))
+  for(const auto& t:a->parameters(false))
+   if(t.is_same(p)) return msym(*a);
+ return env().nullsym;
 }
 
 static S parmname(const Tensor& p,const Module& m) {
@@ -522,13 +530,14 @@ static K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
 
 static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
  J g=0,i=0,n=osize(o);
- K id=ktn(KJ,n),gp=ktn(KJ,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
+ K id=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
  const auto& s=o.state();
  for(auto& pg:o.param_groups()) {
   for(auto& p:pg.params()) {
     auto *t=p.unsafeGetTensorImpl();
     kJ(id)[i]=(intptr_t)t;
     kJ(gp)[i]=g;
+    kS(md)[i]=modulename(p,m);
     kS(nm)[i]=parmname(p,m);
     kK(sz)[i]=tensorsize(p,Attr::size);
     if(b) kK(bf)[i]=s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : KDICT;
@@ -536,7 +545,7 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
   }
   g++;
  }
- return xT(xD(parmkeys(b),b ? knk(5,id,gp,nm,sz,bf) : knk(4,id,gp,nm,sz)));
+ return xT(xD(parmkeys(b),b ? knk(6,id,gp,md,nm,sz,bf) : knk(5,id,gp,md,nm,sz)));
 }
 
 // ---------------------------------------------------------------------------------------
