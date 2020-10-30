@@ -488,6 +488,9 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 
 // --------------------------------------------------------------------------------------
 // parmkeys - return columns for table describing optimizer parameter groups & buffers
+// modulename - given parameter, attempt to find parent module in which it is defined
+// parmname - given parameter, search containing module(s), return name if found
+// parmsym - return string from parmname as symbol
 // getparms - given optimizer type and parameter state, return buffers as k dictonary
 // --------------------------------------------------------------------------------------
 static K parmkeys(bool b) {
@@ -508,12 +511,17 @@ static S modulename(const Tensor& p,const Module& m) {
  return env().nullsym;
 }
 
-static S parmname(const Tensor& p,const Module& m) {
+static std::string parmname(const Tensor& p,const Module& m) {
  bool b=m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
  for(const auto& a:(b ? *m.children()[0] : m).named_parameters())
   if(a.value().is_same(p))
-   return cs(a.key().c_str());
- return env().nullsym;
+   return a.key();
+ return {};
+}
+
+static S parmsym(const Tensor& p,const Module& m) {
+ auto s=parmname(p,m);
+ return s.size() ? cs(s.c_str()) : env().nullsym;
 }
 
 static K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
@@ -538,7 +546,7 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
     kJ(id)[i]=(intptr_t)t;
     kJ(gp)[i]=g;
     kS(md)[i]=modulename(p,m);
-    kS(nm)[i]=parmname(p,m);
+    kS(nm)[i]=parmsym(p,m);
     kK(sz)[i]=tensorsize(p,Attr::size);
     if(b) kK(bf)[i]=s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : KDICT;
     i++;
@@ -549,10 +557,10 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
 }
 
 // ---------------------------------------------------------------------------------------
-// optparms - return vector of parameters from given tensor/sequential ptr
-// optinit - initialize one of the supported optimizers, return pointer to k
-// optstate - return optimizer name & options and optionally, internal buffer values
-// opt - main optimizer interface function for q
+// parmcheck -
+// addmodule -
+// parmcheck -
+// moduleindex -
 // ---------------------------------------------------------------------------------------
 static void parmcheck(const std::string& s,const Tensor& t,const Module& m) {
  for(const auto& c:m.named_parameters())
@@ -572,6 +580,90 @@ static void addtensor(S s,const Tensor& t,Module& m) {
  m.register_parameter(s ? s : c10::to_string(m.parameters().size()),t);
 }
 
+static bool parmcheck(const TensorVector &v,const Tensor &p) {
+ for(const auto& t:v)
+  if(t.is_same(p)) return false;
+ return true;
+}
+
+static TensorVector addparms(const Module& m,J n,J *j) {
+ TensorVector v;
+ const auto& a=m.modules(false);
+ for(J i=0;i<n;++i) {
+  J k=j[i];
+  TORCH_CHECK(k>=0, "opt: module[",k,"] invalid");
+  TORCH_CHECK(k<a.size(), "opt: module[",k,"] out of bounds, index must be less than ",a.size());
+  const auto& p=a.at(k)->parameters();
+  for(const auto& t:p)
+   TORCH_CHECK(parmcheck(v,t), "opt: duplicate parameter(s) with module[",k,"]");
+  v.insert(v.end(), p.begin(), p.end());
+ }
+ return v;
+}
+
+static TensorVector addparms(const Module& m,J n,S *s) {
+ TensorVector v;
+ const auto& a=m.named_modules("",false);
+ const auto& z=m.named_parameters(true);
+ for(J i=0;i<n;++i) {
+  S k=s[i];
+  if(a.contains(k)) {
+   const auto& p=a[k]->parameters();
+   for(const auto& t:p)
+    TORCH_CHECK(parmcheck(v,t), "opt: duplicate parameter(s) with module[`",k,"]");
+   v.insert(v.end(), p.begin(), p.end());
+  } else if(z.contains(k)) {
+   const auto& p=z[k];
+   TORCH_CHECK(parmcheck(v,p), "opt: duplicate parameter `",k);
+   v.push_back(p);
+  } else {
+   AT_ERROR("opt: no module or parameter named `",k," found");
+  }
+ }
+ return v;
+}
+
+static void errormsg(const Module& m,const Tensor& p,size_t g,size_t i) {
+ std::string s;
+ for(const auto& a:m.named_parameters())
+  if(p.is_same(a.value())) {s=a.key(); break;}
+ AT_ERROR("opt: parameter[",i,"] already in group ", g);
+}
+
+static void parmcheck(const Optimizer& o,const Module& m,const TensorVector& v) {
+ size_t i=0,j;
+ for(const auto& t:v) {
+  j=0;
+  for(const auto& g:o.param_groups()) {
+   for(const auto& p:g.params())
+    if(t.is_same(p))
+     AT_ERROR("opt: parameter already defined in group ",j);
+   j++;
+  }
+  i++;
+ }
+}
+
+KAPI mtest(K x,K y) {
+ KTRY
+  Kmodule* k=xmodule(x);  TensorVector v;
+  TORCH_CHECK(k,"1st arg of module required");
+  const auto& m=mref(k->m);
+  if(y->t==KJ || y->t==-KJ) {
+   v=y->t==KJ ? addparms(m,y->n,kJ(y)) : addparms(m,1,&y->j);
+  } else if(y->t==KS || y->t==-KS) {
+   v=y->t==KS ? addparms(m,y->n,kS(y)) : addparms(m,1,&y->s);
+  }
+  return kvec(v);
+ KCATCH("mtest");
+}
+
+// ---------------------------------------------------------------------------------------
+// optparms - return vector of parameters from given tensor/sequential ptr
+// optinit - initialize one of the supported optimizers, return pointer to k
+// optstate - return optimizer name & options and optionally, internal buffer values
+// opt - main optimizer interface function for q
+// ---------------------------------------------------------------------------------------
 static void optparms(K x,Module& m) {
  xempty(x);
  K y=nullptr; Ktag *k=xtag(x); 
@@ -630,6 +722,19 @@ static K optinit(S s,K x,K y) {
  if((k=xmodule(x,1)))
   addmodule(mref(k),*m);
  return kopt(c,o,m);
+}
+
+Optptr optinit(Cast c) {
+ using grp=std::vector<torch::optim::OptimizerParamGroup>;
+ switch(c) {
+  case Cast::adagrad: return std::make_shared<Adagrad>(grp{});
+  case Cast::adam:    return std::make_shared<Adam>(grp{});
+  case Cast::adamw:   return std::make_shared<AdamW>(grp{});
+  case Cast::lbfgs:   return std::make_shared<LBFGS>(TensorVector{});
+  case Cast::rmsprop: return std::make_shared<RMSprop>(grp{});
+  case Cast::sgd:     return std::make_shared<SGD>(grp{},SGDOptions(SGDlr));
+  default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
+ }
 }
 
 K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
