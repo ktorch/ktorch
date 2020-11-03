@@ -3,6 +3,7 @@
 #define OPTBUFFER(x,o,k) dictadd(x, #k, kget(o->k))
 #define OPTSET(x,k,v) dictadd(x, oset(Setting::k), v)
 
+using OptimizerOptions  = torch::optim::OptimizerOptions;
 using Adagrad           = torch::optim::Adagrad;
 using AdagradOptions    = torch::optim::AdagradOptions;
 using AdagradParamState = torch::optim::AdagradParamState;
@@ -270,6 +271,7 @@ static void lbfgs(K x,J i,LBFGSOptions& o) {
    case Setting::history:   j=plong(p);   if(j!=nj) o.history_size(j); break;
    default: AT_ERROR("unrecognized option: ",p.k," for LBFGS optimization"); break;
   }
+ if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
 }
 
 static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
@@ -648,7 +650,7 @@ static TensorVector moduleparms(const Module& m,J n,S *s) {
    TORCH_CHECK(!duplicate(v,p), "opt: duplicate parameter `",k);
    v.push_back(p);
   } else {
-   AT_ERROR("opt: no module or parameter named `",k," found");
+   AT_ERROR("opt: no module or parameter named `",k);
   }
  }
  return v;
@@ -665,6 +667,24 @@ static TensorVector moduleparms(K x,const Module& m) {
   AT_ERROR("opt: ",msym(m)," module supplied with unrecognized ",kname(x)," arg(s)");
 }
  
+// -------------------------------------------------------------
+// dictparms - add parms from a dictionary w'optional parm keys
+// -------------------------------------------------------------
+static TensorVector dictparms(const TensorDict& d,J n,S *s) {
+ TensorVector v;
+ for(J i=0;i<n;++i) {
+  S k=s[i];
+  if(d.contains(k)) {
+   const auto& t=d[k];
+   TORCH_CHECK(!duplicate(v,t), "opt: duplicate parameter dict[`",k,"]");
+   v.push_back(t);
+  } else {
+   AT_ERROR("opt: no dictionary parameter named `",k);
+  }
+ }
+ return v;
+}
+
 KAPI mtest(K x,K y) {
  KTRY
   Kmodule* k=xmodule(x);
@@ -746,13 +766,13 @@ static K optinit(S s,K x,K y) {
  return kopt(c,o,m);
 }
 
-Optptr optinit(Cast c) {
+Optptr optinit(Cast c,const OptimizerOptions& o) {
  using grp=std::vector<torch::optim::OptimizerParamGroup>;
  switch(c) {
   case Cast::adagrad: return std::make_shared<Adagrad>(grp{});
   case Cast::adam:    return std::make_shared<Adam>(grp{});
   case Cast::adamw:   return std::make_shared<AdamW>(grp{});
-  case Cast::lbfgs:   return std::make_shared<LBFGS>(TensorVector{});
+  case Cast::lbfgs:   return std::make_shared<LBFGS>(TensorVector{},static_cast<const LBFGSOptions&>(o));
   case Cast::rmsprop: return std::make_shared<RMSprop>(grp{});
   case Cast::sgd:     return std::make_shared<SGD>(grp{},SGDOptions(SGDlr));
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
@@ -796,7 +816,9 @@ KAPI opt(K x) {
   if(xsym(x,s) || (xsym(x,0,s) && (xptr(x,1) || xempty(x,1)))) {
    return optinit(s,x);
   } else if(xdict(x)) {
-   return optinit(statemodule(x),stateoptions(x));
+   K y=stateoptlist(x);
+   TORCH_CHECK(y && y->n, "opt: no options found");
+   return optinit(statemodule(x), kK(y)[0]);
   } else if(xdict(x,0) && x->n==2 && (xptr(x,1) || xempty(x,1))) {
    K d=kK(x)[0];
    return optinit(statemodule(d),stateoptions(d),statebuffers(d));
@@ -810,6 +832,34 @@ KAPI opt(K x) {
    AT_ERROR("unrecognized optimizer arg(s)");
   }
  KCATCH("optimizer error");
+}
+
+KAPI opt2(K x) {
+ KTRY
+  J g=0; bool a=env().alloptions,b=xlong(x,1,g); S s; Kopt *k;
+  if(xsym(x,s) || xsym(x,0,s)) {
+   TORCH_CHECK(x->n<4+b, "opt: ",s," optimizer definition expecting up to ",3+b,
+                         " args(name;",(b? "group;" : ""),"parms;options) but ",x->n," given");
+   //Cast c=omap(s); K y=(x->n>=2+b) ? kK(x)[1+b] : nullptr, z=(x->n==3+b) ? kK(x)[2+b] : nullptr;
+   // c & z return an optimizer pointer
+   //return kopt(..)   optinit(c,g,y,z);
+  } else if(((k=xoptim(x))) || ((k=xoptim(x,0)))) {
+   if(x->n==1 || (x->n==2 && xbool(x,1,a))) {
+    return optstate(a,false,k->c,*k->o,*k->m);
+   } else {
+    //Cast c=omap(s); K y=(x->n>=2+b) ? kK(x)[1+b] : nullptr, z=(x->n==3+b) ? kK(x)[2+b] : nullptr;
+    return (K)0;
+   }
+  } else if(xdict(x) || xdict(x,0)) {
+   // initialize from dictonary and module(s)..?
+   // count of groups: count of options list & highest group in k table
+   // loop through options and create empty-vectored parameter group
+   // 
+  } else {
+   AT_ERROR("opt: unrecognized arg(s)");
+  }
+  return(K)0;
+ KCATCH("opt");
 }
 
 void optstep(Cast c,Optptr& o) {
@@ -930,6 +980,7 @@ K opthelp(Cast c) {
 // -------------------------------------------------------------------------------------------
 void optfn(K x) {
  fn(x, "opt",  KFN(opt),1);
+ fn(x, "opt2",  KFN(opt2),1);
  fn(x, "step", KFN(kstep),1);
  fn(x, "lr",   KFN(lr),1);
 }

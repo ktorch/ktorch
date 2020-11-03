@@ -260,10 +260,16 @@ static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/ta
  if(i<0) return nullptr;
  K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
  if(x->t == 99) j=i;
- TORCH_CHECK(!v->t, statekey(e),": expected dictionary, given ",kname(v));
+ TORCH_CHECK(!v->t, statekey(e),": expected general list, given ",kname(v));
  TORCH_CHECK(-1<j && j<v->n, statekey(e),"[",j,"] index beyond ",v->n,"-row table");
  v=kK(v)[j];
- TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
+ if(e==State::optlist) {
+  TORCH_CHECK(!v->t, statekey(e),": expected list of dictionaries, given ",kname(v));
+  for(J i=0; i<v->n; ++i)
+   TORCH_CHECK(kK(v)[i]->t==99, statekey(e),": expected list of dictionaries but list[",i,"] is ",kname(kK(v)[i]));
+ } else {
+  TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
+ }
  return v;
 }
 
@@ -274,6 +280,7 @@ J statedepth(K x,J j)   {return statelong(State::depth,true,x,j);}
 S statemodule(K x,J j)  {return statesym(State::module,true,x,j);}
 S statename(K x,J j)    {return statesym(State::name,false,x,j);}
 K stateoptions(K x,J j) {return statedict(State::options,x,j);}
+K stateoptlist(K x,J j) {return statedict(State::optlist,x,j);}
 K stateparms(K x,J j)   {return statedict(State::parms,x,j);}
 K statebuffers(K x,J j) {return statedict(State::buffers,x,j);}
 

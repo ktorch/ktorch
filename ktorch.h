@@ -215,7 +215,7 @@ enum class Setting:char {
 };
 
 enum class State:char {
- buffers, depth, group, id, module, name, options, parms, size
+ buffers, depth, group, id, module, name, options, optlist, parms, size
 };
 
 enum class Attr:char {
@@ -331,6 +331,7 @@ J statedepth(K x,J j=-1);
 S statemodule(K x,J j=-1);
 S statename(K x,J j=-1);
 K stateoptions(K x,J j=-1);
+K stateoptlist(K x,J j=-1);
 K stateparms(K x,J j=-1);
 K statebuffers(K x,J j=-1);
 void stateparms(S,Module&,K,bool);
@@ -884,7 +885,7 @@ typedef struct {
   std::make_tuple(cs("weight"),       Setting::weight)
  }};
 
- std::array<std::tuple<S,State>,9> state = {{        //module state dictionary keys: map symbol -> enum
+ std::array<std::tuple<S,State>,10> state = {{        //module state dictionary keys: map symbol -> enum
   std::make_tuple(cs("buffers"), State::buffers),
   std::make_tuple(cs("depth"),   State::depth),
   std::make_tuple(cs("grp"),     State::group),
@@ -892,6 +893,7 @@ typedef struct {
   std::make_tuple(cs("module"),  State::module),
   std::make_tuple(cs("name"),    State::name),
   std::make_tuple(cs("options"), State::options),
+  std::make_tuple(cs("options"), State::optlist),
   std::make_tuple(cs("parms"),   State::parms),
   std::make_tuple(cs("size"),    State::size)
  }};
