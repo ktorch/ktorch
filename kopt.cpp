@@ -3,7 +3,12 @@
 #define OPTBUFFER(x,o,k) dictadd(x, #k, kget(o->k))
 #define OPTSET(x,k,v) dictadd(x, oset(Setting::k), v)
 
-using OptimizerOptions  = torch::optim::OptimizerOptions;
+const double LR = 0.01; // default learning rate
+
+using Options    = torch::optim::OptimizerOptions;
+using ParamGroup = torch::optim::OptimizerParamGroup;
+using ParamState = torch::optim::OptimizerParamState;
+
 using Adagrad           = torch::optim::Adagrad;
 using AdagradOptions    = torch::optim::AdagradOptions;
 using AdagradParamState = torch::optim::AdagradParamState;
@@ -27,7 +32,8 @@ using SGDParamState     = torch::optim::SGDParamState;
 // kopt - given optimizer type & shared pointer to newly created optimizer, return k ptr
 // omap - map to/from optimizer symbol/enumeration
 // oset - optimizer settings, map sym <-> enum
-// osize - optimizer size, i.e. number of parameters defined
+// osize - optimizer size, i.e. number of parameters defined 
+//        (defined in pytorch, but marked with "obsolete" warning)
 // --------------------------------------------------------------------------------------
 K kopt(Cast x,const Optptr& y,const BaseModule& z) {return kptr(new Kopt(x,y,z));}
 
@@ -59,6 +65,19 @@ static size_t osize(const Optimizer& o) {
 }
 
 static size_t osize(const Optptr& o) {return osize(*o);}
+
+// --------------------------------------------------------------------------------------
+//  getoptions - set defaults if parameter group options undefined, return reference
+// --------------------------------------------------------------------------------------
+static SGDOptions& getoptions(ParamGroup& g) {
+ if(!g.has_options()) g.set_options(std::make_unique<SGDOptions>(LR));
+ return static_cast<SGDOptions&>(g.options());
+}
+
+template<typename O> static O& getoptions(ParamGroup& g) {
+ if(!g.has_options()) g.set_options(std::make_unique<O>());
+ return static_cast<O&>(g.options());
+}
 
 // --------------------------------------------------------------------------------------
 // bget - find buffer (vector of longs/tensors) from dictionary given name
@@ -143,6 +162,21 @@ static void adagrad(K x,J i,AdagradOptions& o) {
   }
 }
 
+static void adagrad(K x,ParamGroup& g) {
+ auto& o=getoptions<AdagradOptions>(g); Pairs p; J i=0,n=xargc(x,0,p); double f;
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr_decay(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
+ if(n) AT_ERROR("unrecognized arg(s) for Adagrad optimizer");
+ while(xpair(p))
+  switch(oset(p.k)) {
+   case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
+   case Setting::lrdecay: f=pdouble(p); if(f==f) o.lr_decay(f); break;
+   case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for Adagrad optimization"); break;
+  }
+}
+
 static Optptr adagrad(const TensorVector& w,const AdagradOptions& a,K y) {
  auto o=std::make_shared<Adagrad>(w,a);
  auto n=o->state().size();
@@ -179,6 +213,27 @@ static K adaget(const AdagradParamState& s) {
 // ----------------------------------------------------------------------------------------
 template<typename A> static void adam(K x,J i,A& o) {
  Pairs p; J n=xargc(x,i,p); bool b; double f;
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f));}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
+ if(n && xbool(x,i,b)){i++; n--; o.amsgrad(b);}
+ if(n) AT_ERROR("unrecognized arg(s) for Adam optimizer");
+ while(xpair(p))
+  switch(oset(p.k)) {
+   case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
+   case Setting::beta1:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas()))); break;
+   case Setting::beta2:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f)); break;
+   case Setting::eps:     f=pdouble(p); if(f==f) o.eps(f); break;
+   case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
+   case Setting::amsgrad: o.amsgrad(pbool(p)); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for Adam optimization"); break;
+  }
+}
+
+template<typename O> static void adam(K x,ParamGroup& g) {
+ auto& o=getoptions<O>(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f));}
@@ -274,6 +329,28 @@ static void lbfgs(K x,J i,LBFGSOptions& o) {
  if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
 }
 
+static void lbfgs(K x,ParamGroup& g) {
+ auto& o=getoptions<LBFGSOptions>(g); Pairs p; J i=0,j,n=xargc(x,0,p); double f;
+ if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.lr(f);}
+ if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_iter(j);}
+ if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_eval(j);}
+ if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_grad(f);}
+ if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_change(f);}
+ if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.history_size(j);}
+ if(n) AT_ERROR("unrecognized arg(s) for LBFGS optimizer");
+ while(xpair(p))
+  switch(oset(p.k)) {
+   case Setting::lr:        f=pdouble(p); if(f==f)  o.lr(f); break;
+   case Setting::iter:      j=plong(p);   if(j!=nj) o.max_iter(j); break;
+   case Setting::eval:      j=plong(p);   if(j!=nj) o.max_eval(j); break;
+   case Setting::gradtol:   f=pdouble(p); if(f==f)  o.tolerance_grad(f); break;
+   case Setting::changetol: f=pdouble(p); if(f==f)  o.tolerance_change(f); break;
+   case Setting::history:   j=plong(p);   if(j!=nj) o.history_size(j); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for LBFGS optimization"); break;
+  }
+ if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
+}
+
 static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
  auto o=std::make_shared<LBFGS>(w,a);
  //auto n=o->state().size();
@@ -314,7 +391,7 @@ static J lbfgssize(bool b,const LBFGSParamState& s) {
       objbytes(s.al());                                                             // optional vector of tensors
 }
 
-static K lbfgsget(const torch::optim::LBFGSParamState& s) {
+static K lbfgsget(const LBFGSParamState& s) {
  K x=xD(ktn(KS,0),ktn(0,0));
  dictadd(x, "func_evals",     kj(s.func_evals()));
  dictadd(x, "n_iter",         kj(s.n_iter()));
@@ -335,6 +412,27 @@ static K lbfgsget(const torch::optim::LBFGSParamState& s) {
 // ----------------------------------------------------------------------------------------
 static void rmsprop(K x,J i,RMSpropOptions& o) {
  Pairs p; J n=xargc(x,i,p); bool b; double f;
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.alpha(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
+ if(n && xbool(x,i,b)){i++; n--; o.centered(b);}
+ if(n) AT_ERROR("unrecognized arg(s) for RMSprop optimizer");
+ while(xpair(p))
+  switch(oset(p.k)) {
+   case Setting::lr:        f=pdouble(p); if(f==f) o.lr(f); break;
+   case Setting::alpha:     f=pdouble(p); if(f==f) o.alpha(f); break;
+   case Setting::eps:       f=pdouble(p); if(f==f) o.eps(f); break;
+   case Setting::decay:     f=pdouble(p); if(f==f) o.weight_decay(f); break;
+   case Setting::momentum:  f=pdouble(p); if(f==f) o.momentum(f); break;
+   case Setting::centered:  o.centered(pbool(p)); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for RMSprop optimization"); break;
+  }
+}
+
+static void rmsprop(K x,ParamGroup& g) {
+ auto& o=getoptions<RMSpropOptions>(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.alpha(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
@@ -396,10 +494,27 @@ static K rmsget(const RMSpropParamState& s) {
 // ----------------------------------------------------------------------------------------
 // SGD parse args (lr;momentum;dampening;wtdecay;nesterov) or (..;name-value pairs/dict)
 // ----------------------------------------------------------------------------------------
-const double SGDlr = 0.01;
-
 static void sgd(K x,J i,SGDOptions& o) {
  Pairs p; J n=xargc(x,i,p); bool b; double f;
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.dampening(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
+ if(n && xbool(x,i,b)){i++; n--; o.nesterov(b);}
+ if(n) AT_ERROR("unrecognized arg(s) for SGD optimizer");
+ while(xpair(p))
+  switch(oset(p.k)) {
+   case Setting::lr:        f=pdouble(p); if(f==f) o.lr(f); break;
+   case Setting::momentum:  f=pdouble(p); if(f==f) o.momentum(f); break;
+   case Setting::dampening: f=pdouble(p); if(f==f) o.dampening(f); break;
+   case Setting::decay:     f=pdouble(p); if(f==f) o.weight_decay(f); break;
+   case Setting::nesterov:  o.nesterov(pbool(p)); break;
+   default: AT_ERROR("unrecognized option: ",p.k," for SGD optimization"); break;
+  }
+}
+
+static void sgd(K x,ParamGroup& g) {
+ auto o=getoptions(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.dampening(f);}
@@ -427,7 +542,7 @@ static Optptr sgd(const TensorVector& w,const SGDOptions& a,K y) {
 }
 
 static K sgd(bool a,const SGDOptions& o) { //return all or non-default options as k dictionary
- K x=xD(ktn(KS,0),ktn(0,0)); SGDOptions d(SGDlr);
+ K x=xD(ktn(KS,0),ktn(0,0)); SGDOptions d(LR);
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,        kf(o.lr()));
  if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum,  kf(o.momentum()));
  if(a || d.dampening()    != o.dampening())    OPTSET(x, dampening, kf(o.dampening()));
@@ -469,7 +584,7 @@ K optdict(bool a,Cast c,const Optimizer& o) {
 // ---------------------------------------------------------------------------------
 // buffersize - number of elements or bytes of optimizer buffers for each parameter
 // ---------------------------------------------------------------------------------
-static J buffersize(bool b,Cast c,const torch::optim::OptimizerParamState& p) {
+static J buffersize(bool b,Cast c,const ParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adasize(b, static_cast<const AdagradParamState&>(p));
   case Cast::adam:    return  adamsize(b, static_cast<const AdamParamState&>(p));
@@ -528,7 +643,7 @@ static S parmsym(const Tensor& p,const Module& m) {
 // --------------------------------------------------------------------------------------
 // getparms - given optimizer type and parameter state, return buffers as k dictonary
 // --------------------------------------------------------------------------------------
-static K getparms(Cast c,const torch::optim::OptimizerParamState& p) {
+static K getparms(Cast c,const ParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adaget(static_cast<const AdagradParamState&>(p));
   case Cast::adam:    return  adamget(static_cast<const AdamParamState&>(p));
@@ -758,7 +873,7 @@ static K optinit(S s,K x,K y) {
   case Cast::adamw:   {auto a=AdamWOptions();    adam(x,i,a);    o=adam<AdamW>(w,a,y); break;}
   case Cast::lbfgs:   {auto a=LBFGSOptions();    lbfgs(x,i,a);   o=lbfgs(w,a,y);   break;}
   case Cast::rmsprop: {auto a=RMSpropOptions();  rmsprop(x,i,a); o=rmsprop(w,a,y); break;}
-  case Cast::sgd:     {auto a=SGDOptions(SGDlr); sgd(x,i,a);     o=sgd(w,a,y);     break;}
+  case Cast::sgd:     {auto a=SGDOptions(LR); sgd(x,i,a);     o=sgd(w,a,y);     break;}
   default: AT_ERROR("unrecognized optimizer: ",s); break;
  }
  if((k=xmodule(x,1)))
@@ -766,15 +881,15 @@ static K optinit(S s,K x,K y) {
  return kopt(c,o,m);
 }
 
-Optptr optinit(Cast c,const OptimizerOptions& o) {
- using grp=std::vector<torch::optim::OptimizerParamGroup>;
+Optptr optinit(Cast c,const Options& o) {
+ using grp=std::vector<ParamGroup>;
  switch(c) {
   case Cast::adagrad: return std::make_shared<Adagrad>(grp{});
   case Cast::adam:    return std::make_shared<Adam>(grp{});
   case Cast::adamw:   return std::make_shared<AdamW>(grp{});
   case Cast::lbfgs:   return std::make_shared<LBFGS>(TensorVector{},static_cast<const LBFGSOptions&>(o));
   case Cast::rmsprop: return std::make_shared<RMSprop>(grp{});
-  case Cast::sgd:     return std::make_shared<SGD>(grp{},SGDOptions(SGDlr));
+  case Cast::sgd:     return std::make_shared<SGD>(grp{},SGDOptions(LR));
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
  }
 }
@@ -803,6 +918,50 @@ KAPI optstate2(K x,K y) {
   return optstate(true,true,o->c,*o->o,mref(m->m));
  KCATCH("optstate");
 }
+
+// ---------------------------------------------------------------------------------------
+//  optgroups -- groupinit, groupset
+// 3 cases: new (`sgd;parms;options) (o;g;parms;options) - new & existing group
+// ---------------------------------------------------------------------------------------
+static void setoptions(Cast c,K x,ParamGroup& g) {
+ switch(c) {
+  case Cast::adagrad: adagrad(x,g); break;
+  case Cast::adam:    adam<AdamOptions>(x,g); break;
+  case Cast::adamw:   adam<AdamWOptions>(x,g); break;
+  case Cast::lbfgs:   lbfgs(x,g); break;
+  case Cast::rmsprop: rmsprop(x,g); break;
+  case Cast::sgd:     sgd(x,g); break;
+  default: AT_ERROR("unrecognized optimizer enumeration: ",(I)c);
+ }
+}
+
+std::vector<ParamGroup> optgroups(Cast c,K x) {
+ std::vector<ParamGroup> v;
+ TORCH_CHECK(x && x->n, "no options..");
+ for(J i=0; i<x->n; ++i) {
+  ParamGroup g({});
+  setoptions(c,kK(x)[i],g);
+  v.push_back(g);
+ }
+ return v;
+}
+
+/*
+optparms(Groups p,K x)
+ TORCH_CHECK(x,"no parm table..");
+ for(i..)
+  g=
+  TORCH_CHECK(-1<g && g<p.size(), "opt: parameter group [",g,"] is not defined");
+  s=
+  for(const auto &a:m.named_parameters())
+   if(!a.key().compare(s)) {
+    //check size..
+    p[g].params().push_back(a.value());
+   }
+  }
+ }
+}
+*/
 
 // ---------------------------------------------------------------------------------------
 // opt - main optimizer interface function for q
@@ -887,7 +1046,7 @@ KAPI kstep(K x) {
 // lrset - set each parameter group's learning rate from scalar/list input
 // lr - function to query/set learning rate from k
 // ---------------------------------------------------------------------------------------
-static K lrget(const std::vector<torch::optim::OptimizerParamGroup>& v,Cast c) {
+static K lrget(const std::vector<ParamGroup>& v,Cast c) {
  J i=0; F r; K x=ktn(KF,v.size());
  for(auto& g:v) {
   TORCH_CHECK(g.has_options(), "parameter group options not defined");
@@ -904,7 +1063,7 @@ static K lrget(const std::vector<torch::optim::OptimizerParamGroup>& v,Cast c) {
  return x;
 }
 
-static void lrset(std::vector<torch::optim::OptimizerParamGroup>& v,Cast c,J n,double *lr) {
+static void lrset(std::vector<ParamGroup>& v,Cast c,J n,double *lr) {
  TORCH_CHECK(n==1 || (unsigned)n==v.size(),"length error: ",n," learning rates given for ",v.size()," parameter group",(v.size() !=1 ? "s" : ""));
  int64_t i=0; double r;
  for(auto& g:v) {
@@ -958,7 +1117,7 @@ K opthelp(Cast c) {
   case Cast::adamw:   return adam(true,AdamWOptions());
   case Cast::lbfgs:   return lbfgs(true,LBFGSOptions());
   case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
-  case Cast::sgd:     return sgd(true,SGDOptions(SGDlr));
+  case Cast::sgd:     return sgd(true,SGDOptions(LR));
 
   case Cast::undefined: {
    const auto& e=env().opt; J i=0,n=e.size();
