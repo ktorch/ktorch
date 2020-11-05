@@ -5,9 +5,10 @@
 
 const double LR = 0.01; // default learning rate
 
-using Options    = torch::optim::OptimizerOptions;
-using ParamGroup = torch::optim::OptimizerParamGroup;
-using ParamState = torch::optim::OptimizerParamState;
+using Options     = torch::optim::OptimizerOptions;
+using ParamState  = torch::optim::OptimizerParamState;
+using ParamGroup  = torch::optim::OptimizerParamGroup;
+using ParamGroups = std::vector<ParamGroup>;
 
 using Adagrad           = torch::optim::Adagrad;
 using AdagradOptions    = torch::optim::AdagradOptions;
@@ -920,8 +921,7 @@ KAPI optstate2(K x,K y) {
 }
 
 // ---------------------------------------------------------------------------------------
-//  optgroups -- groupinit, groupset
-// 3 cases: new (`sgd;parms;options) (o;g;parms;options) - new & existing group
+// setoptions -
 // ---------------------------------------------------------------------------------------
 static void setoptions(Cast c,K x,ParamGroup& g) {
  switch(c) {
@@ -935,6 +935,22 @@ static void setoptions(Cast c,K x,ParamGroup& g) {
  }
 }
 
+static K optinit(Cast c,K x,K y) {
+ BaseModule b; auto& m=mref(b); Optptr o;
+ ParamGroup g(moduleparms(x,m)); setoptions(c,y,g);
+ switch(c) {
+  case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
+  case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
+  case Cast::adamw:   o=std::make_shared<AdamW>  (ParamGroups{g}); break;
+  case Cast::lbfgs:   o=std::make_shared<LBFGS>  (ParamGroups{g}); break;
+  case Cast::rmsprop: o=std::make_shared<RMSprop>(ParamGroups{g}); break;
+  case Cast::sgd:     o=std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR}); break;
+  default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
+ }
+ return kopt(c,o,b);
+}
+
+/*
 std::vector<ParamGroup> optgroups(Cast c,K x) {
  std::vector<ParamGroup> v;
  TORCH_CHECK(x && x->n, "no options..");
@@ -946,7 +962,6 @@ std::vector<ParamGroup> optgroups(Cast c,K x) {
  return v;
 }
 
-/*
 optparms(Groups p,K x)
  TORCH_CHECK(x,"no parm table..");
  for(i..)
