@@ -3,7 +3,7 @@
 #define OPTBUFFER(x,o,k) dictadd(x, #k, kget(o->k))
 #define OPTSET(x,k,v) dictadd(x, oset(Setting::k), v)
 
-const double LR = 0.01; // default learning rate
+const double LR = 0.01; // default learning rate, used with SGD, which has no default
 
 using Options     = torch::optim::OptimizerOptions;
 using ParamState  = torch::optim::OptimizerParamState;
@@ -68,7 +68,7 @@ static size_t osize(const Optimizer& o) {
 static size_t osize(const Optptr& o) {return osize(*o);}
 
 // --------------------------------------------------------------------------------------
-//  getoptions - set defaults if parameter group options undefined, return reference
+// getoptions - set defaults if undefined, return reference to optimizer-specific options
 // --------------------------------------------------------------------------------------
 static SGDOptions& getoptions(ParamGroup& g) {
  if(!g.has_options()) g.set_options(std::make_unique<SGDOptions>(LR));
@@ -563,9 +563,10 @@ static K sgdget(const SGDParamState& s) {
 }
 
 // -------------------------------------------------------------------------------
-//  optdict - 
+// optdict - return a list of dictionaries, one per group of optimizer settings
+// buffersize - number of elements or bytes of optimizer buffers for each parameter
 // -------------------------------------------------------------------------------
-K optdict(bool a,Cast c,const Optimizer& o) {
+static K optdict(bool a,Cast c,const Optimizer& o) {
  size_t i=0,n=o.param_groups().size(); K x,r=ktn(0,n);
  for(const auto&g:o.param_groups()) {
   switch(c) {
@@ -582,9 +583,6 @@ K optdict(bool a,Cast c,const Optimizer& o) {
  return r;
 }
 
-// ---------------------------------------------------------------------------------
-// buffersize - number of elements or bytes of optimizer buffers for each parameter
-// ---------------------------------------------------------------------------------
 static J buffersize(bool b,Cast c,const ParamState& p) {
  switch(c) {
   case Cast::adagrad: return   adasize(b, static_cast<const AdagradParamState&>(p));
@@ -607,6 +605,7 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 // --------------------------------------------------------------------------------------
 // parmkeys - return columns for table describing optimizer parameter groups & buffers
 // moduletype - given parameter, attempt to find parent module type
+// basemodule - return single module if container has only one child, no parms or buffers
 // parmname - given parameter, search containing module(s), return name if found
 // parmsym - return string from parmname as symbol
 // --------------------------------------------------------------------------------------
@@ -628,9 +627,15 @@ static S moduletype(const Tensor& p,const Module& m) {
  return env().nullsym;
 }
 
+static const Module& basemodule(const Module& m) {
+ if(m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0) 
+  return *m.children()[0];  // container has only one child module, remove a layer
+ else
+  return m;
+}
+
 static std::string parmname(const Tensor& p,const Module& m) {
- bool b=m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
- for(const auto& a:(b ? *m.children()[0] : m).named_parameters())
+ for(const auto& a:basemodule(m).named_parameters())
   if(a.value().is_same(p))
    return a.key();
  return {};
@@ -643,6 +648,7 @@ static S parmsym(const Tensor& p,const Module& m) {
 
 // --------------------------------------------------------------------------------------
 // getparms - given optimizer type and parameter state, return buffers as k dictonary
+//            also, get size, attempt to find name and type of containing module
 // --------------------------------------------------------------------------------------
 static K getparms(Cast c,const ParamState& p) {
  switch(c) {
@@ -677,19 +683,9 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
 }
 
 // ---------------------------------------------------------------------------------------
-// parmcheck -
 // addmodule -
-// parmcheck -
-// moduleindex -
+// addtensor -
 // ---------------------------------------------------------------------------------------
-static void parmcheck(const std::string& s,const Tensor& t,const Module& m) {
- for(const auto& c:m.named_parameters())
-  if(t.is_same(c.value()))
-   AT_ERROR("opt: parameter already added, with name '", c.key(), "'");
-  else if(!s.compare(c.key()))
-   AT_ERROR("opt: parameter name '",s,"' already defined");
-}
-   
 static void addmodule(Module& a,Module& m) {
  for(const auto& c:m.children()) if(c.get() == &m) return; //module already added
  S s=mname(a); m.register_module(s ? s : c10::to_string(m.children().size()),a.shared_from_this());
@@ -700,11 +696,11 @@ static void addtensor(S s,const Tensor& t,Module& m) {
  m.register_parameter(s ? s : c10::to_string(m.parameters().size()),t);
 }
 
-// ---------------------------------------------------------------------------------------------
-// duperror - signal thet specified parm already in optimizer's group, attempt to get name, etc.
+// -------------------------------------------------------------------------------------------
+// duperror - signal specified parm already in optimizer's group, attempt to get name, etc.
 // duplicate - return true if vector already contains given tensor
 //           - check if each tensor in vector already defined in optimizer parameter group(s) 
-// ---------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 static void duperror(const Module& m,const Tensor& p,size_t i,size_t g) {
  std::string s1=moduletype(p,m), s2=parmname(p,m);
  if(s1.size() || s2.size())
@@ -780,7 +776,7 @@ static TensorVector moduleparms(K x,const Module& m) {
  else if(x->t==KS || x->t==-KS) 
    return x->t==KS ? moduleparms(m,x->n,kS(x)) : moduleparms(m,1,&x->s);
  else
-  AT_ERROR("opt: ",msym(m)," module supplied with unrecognized ",kname(x)," arg(s)");
+  AT_ERROR("opt: ",msym(m)," module supplied with unrecognized ",kname(x)," selector(s)");
 }
  
 // -------------------------------------------------------------
@@ -882,19 +878,6 @@ static K optinit(S s,K x,K y) {
  return kopt(c,o,m);
 }
 
-Optptr optinit(Cast c,const Options& o) {
- using grp=std::vector<ParamGroup>;
- switch(c) {
-  case Cast::adagrad: return std::make_shared<Adagrad>(grp{});
-  case Cast::adam:    return std::make_shared<Adam>(grp{});
-  case Cast::adamw:   return std::make_shared<AdamW>(grp{});
-  case Cast::lbfgs:   return std::make_shared<LBFGS>(TensorVector{},static_cast<const LBFGSOptions&>(o));
-  case Cast::rmsprop: return std::make_shared<RMSprop>(grp{});
-  case Cast::sgd:     return std::make_shared<SGD>(grp{},SGDOptions(LR));
-  default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
- }
-}
-
 K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
@@ -921,9 +904,63 @@ KAPI optstate2(K x,K y) {
 }
 
 // ---------------------------------------------------------------------------------------
-// setoptions -
+// addparms - 
+// addoptions - parse k args into optimizer-specific options stored in a parameter group
+// optinit - create a parameter group (vector of parameters & optimizer options)
+//           from the parameter group initialize the optimizer 
+//           and "base" module which stores requisite module(s) & parameters needed to
+//           recreate the optimizer group(s)
 // ---------------------------------------------------------------------------------------
-static void setoptions(Cast c,K x,ParamGroup& g) {
+/*
+static void addparms(Optimizer *o,J i,const Module& m,const TensorVector& v) {
+ if(o) {
+  duplicate(*o,m,v);
+  auto& p=o->param_groups();
+  if(i<p.size()) {
+   auto& g=p[i];
+   //V.insert(V.end(), v.begin(), v.end());
+   //return g ??
+  } else {
+   auto g=ParamGroup({v});
+   g.add
+  }
+}
+*/
+
+static TensorVector addparms(K x,J g,J i) {
+ K y=nullptr; Ktag *k; TensorVector v;
+ if(!(k=xtag(x))) {
+  k=xtag(x,0);
+  TORCH_CHECK(k, "opt: expecting module, model or tensor(s) as ",(i==1 ? "2nd" : "3rd")," arg, given ",kname(x));
+  TORCH_CHECK(x->n==2,"opt: expecting 2 args to describe parameters from ",mapclass(k->a)," but given ",x->n);
+  K y=kK(x)[1];
+ }
+ switch(k->a) {
+  case Class::tensor:
+  case Class::vector:
+  case Class::dict:   AT_ERROR("nyi");
+  case Class::module:
+  case Class::model: {
+   auto& a=mref(k->a==Class::module ? ((Kmodule*)k)->m : ((Kmodel*)k)->m);
+   v=moduleparms(y,a);
+/*
+   if(o) {
+    p=o->param_groups();
+    if(g<p.size())
+    //if(g<o->
+    //o->param_groups[g].params().update...
+   // if(o) check on v
+   // add v to group
+   // check on v(needs o), then add to m
+*/
+   break;
+  }
+  default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
+ }
+ return v;
+}
+
+static void addoptions(Cast c,K x,ParamGroup& g) {
  switch(c) {
   case Cast::adagrad: adagrad(x,g); break;
   case Cast::adam:    adam<AdamOptions>(x,g); break;
@@ -935,9 +972,14 @@ static void setoptions(Cast c,K x,ParamGroup& g) {
  }
 }
 
+// ----------------------------------------------------------------------
+// optnew optadd optedit.. ?
+// optinit - create new optimizer given parameter and option arg(s)
+// optedit - edit existing optimizer group or add new group of parameters & options
+// ----------------------------------------------------------------------
 static K optinit(Cast c,K x,K y) {
  BaseModule b; auto& m=mref(b); Optptr o;
- ParamGroup g(moduleparms(x,m)); setoptions(c,y,g);
+ ParamGroup g(moduleparms(x,m)); addoptions(c,y,g);
  switch(c) {
   case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
   case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
@@ -950,13 +992,61 @@ static K optinit(Cast c,K x,K y) {
  return kopt(c,o,b);
 }
 
+static void optedit(K x,K y,J i,Cast c,Module& m,Optimizer* o) {
+ auto& p=o->param_groups();
+ if(i<p.size()) {
+  auto g=p[i];
+ } else {
+  ParamGroup g(moduleparms(x,m)); addoptions(c,y,g);
+  o->add_param_group(g);
+ }
+}
+
+KAPI otest(K a,K x,K y) {
+ KTRY
+  TORCH_CHECK(a->t==-KS && x->t==0 && y->t==0, "bad args");
+  Cast c=omap(a->s);
+  return optinit(c,x,y);
+ KCATCH("otest");
+}
+ 
+KAPI gtest(K x) {
+ KTRY
+  J i=0;
+  Adam a({torch::rand({1,2})});
+  ParamGroup g({torch::rand({1,3})});
+  a.add_param_group(g);
+  auto& p=a.param_groups();
+  for(const auto& g:p) {
+   std::cerr << "group: " << i << ", lr: " << static_cast<const AdamOptions&>(g.options()).lr() << "\n";
+   for(const auto& t:g.params())
+    std::cerr << "tensor: " << tensorlong(t,Attr::ptr) << ", " << t << "\n";
+   i++;
+  }
+  ParamGroup h=p[1];
+  h.params().emplace_back(torch::rand({1,4}));         //add parm(s)
+  auto& o=getoptions<AdamOptions>(h); o.lr(1.234);     //modify option(s)
+  p[1].params()=h.params();                            //rewrite previus group with new one
+  p[1].set_options(h.options().clone());
+
+  i=0; std::cerr <<"\n";
+  for(const auto& g:p) {
+   std::cerr << "group: " << i << ", lr: " << static_cast<const AdamOptions&>(g.options()).lr() << "\n";
+   for(const auto& t:g.params())
+    std::cerr << "tensor: " << tensorlong(t,Attr::ptr) << ", " << t << "\n";
+   i++;
+  }
+  return (K)0;
+ KCATCH("otest");
+}
+ 
 /*
 std::vector<ParamGroup> optgroups(Cast c,K x) {
  std::vector<ParamGroup> v;
  TORCH_CHECK(x && x->n, "no options..");
  for(J i=0; i<x->n; ++i) {
   ParamGroup g({});
-  setoptions(c,kK(x)[i],g);
+  addoptions(c,kK(x)[i],g);
   v.push_back(g);
  }
  return v;
