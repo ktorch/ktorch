@@ -683,25 +683,46 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
 }
 
 // ---------------------------------------------------------------------------------------
-// addmodule -
-// addtensor -
+// addtensor - add tensor w'optional name if not already registered in target module
+// addvector - add vector of tensors if not already registered in target module
+// adddict - add named tensors if not already registered in target module
+// addmodule - add child module if not already registered in target module
 // ---------------------------------------------------------------------------------------
+static void addtensor(const Tensor& t,Module& m,std::string s={});
+static void addtensor(const Tensor& t,Module& m,std::string s) {
+ for(const auto& p:m.parameters()) if(p.is_same(t)) return; //tensor already added
+ m.register_parameter(s.size() ? s : c10::to_string(m.parameters().size()),t);
+}
+
+static void addvector(const TensorVector& v,Module& m) {
+ for(const auto& t:v) addtensor(t,m);
+}
+
+static void adddict(const TensorDict& d,Module& m) {
+ for(const auto& a:d) addtensor(a.value(),m,a.key());
+}
+
+static void adddict(const TensorDict& d,J n,S *s,Module& m) {
+ for(J i=0; i<n; ++i) addtensor(d[s[i]],m,s[i]);
+}
+
 static void addmodule(Module& a,Module& m) {
- for(const auto& c:m.children()) if(c.get() == &m) return; //module already added
+ for(const auto& c:m.children()) if(c.get() == &a) return; //module already added
  S s=mname(a); m.register_module(s ? s : c10::to_string(m.children().size()),a.shared_from_this());
 }
 
-static void addtensor(S s,const Tensor& t,Module& m) {
- for(const auto& p:m.parameters()) if(p.is_same(t)) return; //tensor already added
- m.register_parameter(s ? s : c10::to_string(m.parameters().size()),t);
+// -------------------------------------------------------------------------------------------
+// duplicate - return true if vector already contains given tensor
+// parmerror - signal specified parm already in optimizer group, attempt to get name, etc.
+// parmcheck - check if each tensor in vector already defined in optimizer parameter group(s) 
+// -------------------------------------------------------------------------------------------
+static bool duplicate(const TensorVector &v,const Tensor &p) {
+ for(const auto& t:v)
+  if(t.is_same(p)) return true;
+ return false;
 }
 
-// -------------------------------------------------------------------------------------------
-// duperror - signal specified parm already in optimizer's group, attempt to get name, etc.
-// duplicate - return true if vector already contains given tensor
-//           - check if each tensor in vector already defined in optimizer parameter group(s) 
-// -------------------------------------------------------------------------------------------
-static void duperror(const Module& m,const Tensor& p,size_t i,size_t g) {
+static void parmerror(const Module& m,const Tensor& p,size_t i,size_t g) {
  std::string s1=moduletype(p,m), s2=parmname(p,m);
  if(s1.size() || s2.size())
   AT_ERROR("opt: parameter[",i,"] already in group ",g, " (",s1," module parameter `",s2,")");
@@ -709,27 +730,24 @@ static void duperror(const Module& m,const Tensor& p,size_t i,size_t g) {
   AT_ERROR("opt: parameter[",i,"] already in group ", g);
 }
 
-static bool duplicate(const TensorVector &v,const Tensor &p) {
- for(const auto& t:v)
-  if(t.is_same(p)) return true;
- return false;
-}
-
-static void duplicate(const Optimizer& o,const Module& m,const TensorVector& v) {
- size_t i=0,g;
+static void parmcheck(Optimizer *o,const Module& m,const TensorVector& v) {
+ size_t i=0;
  for(const auto& p:v) {
-  g=0;
-  for(const auto& gp:o.param_groups()) {
-   if(duplicate(gp.params(),p))
-    duperror(m,p,i,g);
-   g++;
+  TORCH_CHECK(p.is_leaf(), "opt: parameter[",i,"] is a not a leaf tensor");
+  if(o) {
+   J j=0;
+   for(const auto& g:o->param_groups()) {
+    if(duplicate(g.params(),p))
+     parmerror(m,p,i,j);
+    j++;
+   }
   }
   i++;
  }
 }
 
 // ------------------------------------------------------------------------------------------
-// moduleparms - add parms from a module w'optional child module indices or module/parm names
+// moduleparms - return parm vector from module w'optional child indices or module/parm names
 // ------------------------------------------------------------------------------------------
 static TensorVector moduleparms(const Module& m,J n,J *j) {
  TensorVector v;
@@ -768,15 +786,31 @@ static TensorVector moduleparms(const Module& m,J n,S *s) {
  return v;
 }
 
-static TensorVector moduleparms(K x,const Module& m) {
- if(!x || xempty(x))
-  return m.parameters();
+static TensorVector moduleparms(const Module& a,K x) {
+ TensorVector v;
+ if(!x)
+  v=a.parameters();
  else if(x->t==KJ || x->t==-KJ)
-   return x->t==KJ ? moduleparms(m,x->n,kJ(x)) : moduleparms(m,1,&x->j);
+   v=x->t==KJ ? moduleparms(a,x->n,kJ(x)) : moduleparms(a,1,&x->j);
  else if(x->t==KS || x->t==-KS) 
-   return x->t==KS ? moduleparms(m,x->n,kS(x)) : moduleparms(m,1,&x->s);
+   v=x->t==KS ? moduleparms(a,x->n,kS(x)) : moduleparms(a,1,&x->s);
  else
-  AT_ERROR("opt: ",msym(m)," module supplied with unrecognized ",kname(x)," selector(s)");
+  AT_ERROR("opt: ",msym(a)," module supplied with unrecognized ",kname(x)," selector(s)");
+ return v;
+}
+
+static TensorVector moduleparms(Module& a,K x,Optimizer *o,Module& m) {
+ TensorVector v;
+ if(!x)
+  v=a.parameters();
+ else if(x->t==KJ || x->t==-KJ)
+   v=x->t==KJ ? moduleparms(a,x->n,kJ(x)) : moduleparms(a,1,&x->j);
+ else if(x->t==KS || x->t==-KS) 
+   v=x->t==KS ? moduleparms(a,x->n,kS(x)) : moduleparms(a,1,&x->s);
+ else
+  AT_ERROR("opt: ",msym(a)," module supplied with unrecognized ",kname(x)," selector(s)");
+ parmcheck(o,m,v); addmodule(a,m);
+ return v;
 }
  
 // -------------------------------------------------------------
@@ -797,51 +831,58 @@ static TensorVector dictparms(const TensorDict& d,J n,S *s) {
  return v;
 }
 
-KAPI mtest(K x,K y) {
- KTRY
-  Kmodule* k=xmodule(x);
-  if(!k) {
-   k=xmodule(x,0);
-   TORCH_CHECK(k,"1st arg of module required");
-   TORCH_CHECK(x->n==2,"module and indices or submodule/parameter names");
-  }
-  auto v=moduleparms(x->n==2 ? kK(x)[1] : nullptr, mref(k->m));
-  Kopt* o=xoptim(y);
-  duplicate(*o->o,mref(k->m),v);
-  return kvec(v);
- KCATCH("mtest");
+static TensorVector dictparms(const TensorDict& d,K x,Optimizer *o,Module& m) {
+ TensorVector v;
+ if(!x)
+  v=d.values();
+ else if(x->t==KS || x->t==-KS) 
+   v=x->t==KS ? dictparms(d,x->n,kS(x)) : dictparms(d,1,&x->s);
+ else
+  AT_ERROR("opt: tensor dictionary supplied with unrecognized ",kname(x)," selector(s)");
+ parmcheck(o,m,v);
+ if(!x)
+  adddict(d,m);
+ else if(x->t==KS)
+  adddict(d,x->n,kS(x),m);
+ else
+  adddict(d,1,&x->s,m);
+ return v;
+}
+ 
+// -------------------------------------------------------------
+// vectorparms - add parms from a vector w'optional indices
+// -------------------------------------------------------------
+static TensorVector vectorparms(const TensorVector& a,J n,J *j) {
+ TensorVector v;
+ for(J i=0;i<n;++i) {
+  J k=j[i];
+  TORCH_CHECK(k>=0, "opt: vector[",k,"] invalid");
+  TORCH_CHECK(k<a.size(), "opt: vector[",k,"] out of bounds, index must be less than ",a.size());
+  const auto& t=a[k];
+  TORCH_CHECK(!duplicate(v,t), "opt: duplicate parameter from vector[",k,"]");
+  v.push_back(t);
+ }
+ return v;
 }
 
+static TensorVector vectorparms(const TensorVector& a,K x,Optimizer *o,Module& m) {
+ TensorVector v;
+ if(!x)
+  v=a;
+ else if(x->t==KJ || x->t==-KJ) 
+   v=x->t==KJ ? vectorparms(a,x->n,kJ(x)) : vectorparms(a,1,&x->j);
+ else
+  AT_ERROR("opt: tensor vector supplied with unrecognized ",kname(x)," selector(s)");
+ parmcheck(o,m,v); addvector(v,m);
+ return v;
+}
+ 
 // ---------------------------------------------------------------------------------------
 // optparms - return vector of parameters from given tensor/sequential ptr
 // optinit - initialize one of the supported optimizers, return pointer to k
 // optstate - return optimizer name & options and optionally, internal buffer values
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
-static void optparms(K x,Module& m) {
- xempty(x);
- K y=nullptr; Ktag *k=xtag(x); 
- if(!k){
-  k=xtag(x,0);
-  TORCH_CHECK(k,"opt: expecting module, model or tensor(s) for optimizer, given ",kname(x));
-  TORCH_CHECK(x->n==2,"opt: expecting 2nd arg to describe parameters from ",mapclass(k->a)," but given ",x->n," args");
-  y=kK(x)[1];
- }
- switch(k->a) {
-  case Class::tensor:
-   AT_ERROR("nyi");
-  case Class::vector: AT_ERROR("nyi");
-  case Class::dict: AT_ERROR("nyi");
-  case Class::module:
-  case Class::model: {
-   auto& a=mref(k->a==Class::module ? ((Kmodule*)k)->m : ((Kmodel*)k)->m);
-   addmodule(a,m);
-   break;
-  }
-  default: AT_ERROR("opt: unable to derive parameters from ",mapclass(k->a));
- }
-}
-
 static TensorVector optparms(K x,J i) {
  if(auto *a=xmodule(x,i))
   return mref(a->m).parameters();
@@ -927,34 +968,20 @@ static void addparms(Optimizer *o,J i,const Module& m,const TensorVector& v) {
 }
 */
 
-static TensorVector addparms(K x,J g,J i) {
+static TensorVector addparms(K x,J i,Optimizer *o,Module& m) {
  K y=nullptr; Ktag *k; TensorVector v;
  if(!(k=xtag(x))) {
   k=xtag(x,0);
   TORCH_CHECK(k, "opt: expecting module, model or tensor(s) as ",(i==1 ? "2nd" : "3rd")," arg, given ",kname(x));
-  TORCH_CHECK(x->n==2,"opt: expecting 2 args to describe parameters from ",mapclass(k->a)," but given ",x->n);
-  K y=kK(x)[1];
+  TORCH_CHECK(x->n==2,"opt: expecting one arg to index parameters from ",mapclass(k->a)," but given ",x->n-1," args");
+  y=kK(x)[1];
  }
  switch(k->a) {
-  case Class::tensor:
-  case Class::vector:
-  case Class::dict:   AT_ERROR("nyi");
-  case Class::module:
-  case Class::model: {
-   auto& a=mref(k->a==Class::module ? ((Kmodule*)k)->m : ((Kmodel*)k)->m);
-   v=moduleparms(y,a);
-/*
-   if(o) {
-    p=o->param_groups();
-    if(g<p.size())
-    //if(g<o->
-    //o->param_groups[g].params().update...
-   // if(o) check on v
-   // add v to group
-   // check on v(needs o), then add to m
-*/
-   break;
-  }
+  case Class::tensor: AT_ERROR("nyi");
+  case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
+  case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
+  case Class::module: v=moduleparms(mref((Kmodule*)k), y,o,m); break;
+  case Class::model:  v=moduleparms(mref((Kmodel*)k), y,o,m); break;
   default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
  }
  return v;
@@ -973,13 +1000,12 @@ static void addoptions(Cast c,K x,ParamGroup& g) {
 }
 
 // ----------------------------------------------------------------------
-// optnew optadd optedit.. ?
 // optinit - create new optimizer given parameter and option arg(s)
 // optedit - edit existing optimizer group or add new group of parameters & options
 // ----------------------------------------------------------------------
 static K optinit(Cast c,K x,K y) {
- BaseModule b; auto& m=mref(b); Optptr o;
- ParamGroup g(moduleparms(x,m)); addoptions(c,y,g);
+ BaseModule b; Optptr o;
+ ParamGroup g(moduleparms(mref(b),x)); addoptions(c,y,g);
  switch(c) {
   case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
   case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
@@ -995,9 +1021,18 @@ static K optinit(Cast c,K x,K y) {
 static void optedit(K x,K y,J i,Cast c,Module& m,Optimizer* o) {
  auto& p=o->param_groups();
  if(i<p.size()) {
+  auto v=moduleparms(m,x);
+  // check parms ok..
+  addoptions(c,y,p.at(i));
+  p.at(i).params().insert(p.at(i).params().end(), v.begin(), v.end());
+  /*
   auto g=p[i];
+  addoptions(c,y,g);
+  p[i].params()=g.params();
+  p[i].set_options(g.options().clone());
+  */
  } else {
-  ParamGroup g(moduleparms(x,m)); addoptions(c,y,g);
+  ParamGroup g(moduleparms(m,x)); addoptions(c,y,g);
   o->add_param_group(g);
  }
 }
@@ -1010,10 +1045,16 @@ KAPI otest(K a,K x,K y) {
  KCATCH("otest");
 }
  
+void gtest1(Optimizer *o) {
+ std::cerr << (o ? "optimizer defined\n" : "NO optimizer defined\n");
+}
+
 KAPI gtest(K x) {
  KTRY
   J i=0;
+  Optptr op; gtest1(op.get());
   Adam a({torch::rand({1,2})});
+  gtest1(&a);
   ParamGroup g({torch::rand({1,3})});
   a.add_param_group(g);
   auto& p=a.param_groups();
@@ -1026,7 +1067,7 @@ KAPI gtest(K x) {
   ParamGroup h=p[1];
   h.params().emplace_back(torch::rand({1,4}));         //add parm(s)
   auto& o=getoptions<AdamOptions>(h); o.lr(1.234);     //modify option(s)
-  p[1].params()=h.params();                            //rewrite previus group with new one
+  p[1].params()=h.params();                            //rewrite previous group with new one
   p[1].set_options(h.options().clone());
 
   i=0; std::cerr <<"\n";
