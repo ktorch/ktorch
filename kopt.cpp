@@ -806,19 +806,6 @@ static TensorVector moduleparms(const Module& m,J n,S *s) {
  return v;
 }
 
-static TensorVector moduleparms(const Module& a,K x) {
- TensorVector v;
- if(!x)
-  v=duplicate(a.named_parameters());
- else if(x->t==KJ || x->t==-KJ)
-   v=x->t==KJ ? moduleparms(a,x->n,kJ(x)) : moduleparms(a,1,&x->j);
- else if(x->t==KS || x->t==-KS) 
-   v=x->t==KS ? moduleparms(a,x->n,kS(x)) : moduleparms(a,1,&x->s);
- else
-  AT_ERROR("opt: ",msym(a)," module supplied with unrecognized ",kname(x)," selector(s)");
- return v;
-}
-
 static TensorVector moduleparms(Module& a,K x,const Optimizer& o,Module& m) {
  TensorVector v;
  if(!x)
@@ -854,7 +841,7 @@ static TensorVector dictparms(const TensorDict& d,J n,S *s) {
 static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Module& m) {
  TensorVector v;
  if(!x)
-  v=duplicate(d.values());
+  v=duplicate(d);
  else if(x->t==KS || x->t==-KS) 
    v=x->t==KS ? dictparms(d,x->n,kS(x)) : dictparms(d,1,&x->s);
  else
@@ -972,12 +959,12 @@ KAPI optstate2(K x,K y) {
 //           and "base" module which stores requisite module(s) & parameters needed to
 //           recreate the optimizer group(s)
 // ---------------------------------------------------------------------------------------
-static TensorVector addparms(K x,J i,const Optimizer& o,Module& m) {
+static TensorVector addparms(K x,const Optimizer& o,Module& m) {
  K y=nullptr; Ktag *k; TensorVector v;
  if(!(k=xtag(x))) {
   k=xtag(x,0);
-  TORCH_CHECK(k, "opt: expecting module, model or tensor(s) as ",(i==1 ? "2nd" : "3rd")," arg, given ",kname(x));
-  TORCH_CHECK(x->n==2,"opt: expecting one arg to index parameters from ",mapclass(k->a)," but given ",x->n-1," args");
+  TORCH_CHECK(k, "opt: expecting module, model or tensors after optimizer & optional group number, given ",kname(x));
+  TORCH_CHECK(x->n==2,"opt: expecting one arg to select parameters from ",mapclass(k->a)," but given ",x->n-1," args");
   y=kK(x)[1];
  }
  switch(k->a) {
@@ -1007,8 +994,8 @@ static void addoptions(Cast c,K x,ParamGroup& g) {
 // optinit - create new optimizer given parameter and option arg(s)
 // optedit - edit existing optimizer group or add new group of parameters & options
 // ----------------------------------------------------------------------
-static K optinit(Cast c,J i,K x,K y) {
- BaseModule m; Optptr o; ParamGroup g({}); addoptions(c,y,g);
+static K optinit(Cast c,K x,K y) {
+ BaseModule m; Optptr o; ParamGroup g({}); if(y) addoptions(c,y,g);
  switch(c) {
   case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
   case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
@@ -1018,100 +1005,30 @@ static K optinit(Cast c,J i,K x,K y) {
   case Cast::sgd:     o=std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR}); break;
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
  }
- o->param_groups()[0].params()=addparms(x,i,*o,*m);
+ if(x) o->param_groups()[0].params()=addparms(x,*o,*m);
  return kopt(c,o,m);
 }
 
-static void optedit(K x,K y,J i,Cast c,Module& m,Optimizer* o) {
- auto& p=o->param_groups();
- if(i<p.size()) {
-  auto v=moduleparms(m,x);
-  // check parms ok..
-  addoptions(c,y,p.at(i));
-  p.at(i).params().insert(p.at(i).params().end(), v.begin(), v.end());
-  /*
-  auto g=p[i];
-  addoptions(c,y,g);
-  p[i].params()=g.params();
-  p[i].set_options(g.options().clone());
-  */
+static void optedit(K x,K y,J i,Cast c,Optimizer& o,Module& m) {
+ auto& p=o.param_groups();
+ TORCH_CHECK(i>=0, "opt: group ",i," invalid, cannot be negative");
+ TORCH_CHECK(i<=p.size(), "opt: group ",i," invalid, cannot be greater than number of groups(",p.size(),")");
+ if(i==p.size()) {                    // add new parameter group
+  ParamGroup g({});                   // initialize empty group
+  if(y) addoptions(c,y,g);            // define optimizer-specific options for the group
+  if(x) g.params()=addparms(x,o,m);   // get parameters for new group
+  o.add_param_group(g);               // add to optimizer
  } else {
-  ParamGroup g(moduleparms(m,x)); addoptions(c,y,g);
-  o->add_param_group(g);
+  auto g=p[i];                        // create a copy of i'th group
+  if(y) addoptions(c,y,g);            // [re]set optimizer-specific options for the group
+  if(x) {                             // add parameters to the end of the group's tensors
+   const auto& v=addparms(x,o,m);
+   g.params().insert(g.params().begin(),v.begin(),v.end());
+  }
+  p[i].params()=g.params();              // use parameters from edited group
+  p[i].set_options(g.options().clone()); // and updated otions
  }
 }
-
-KAPI otest(K a,K x,K y) {
- KTRY
-  TORCH_CHECK(a->t==-KS && x->t==0 && y->t==0, "bad args");
-  Cast c=omap(a->s);
-  return optinit(c,1,x,y);
- KCATCH("otest");
-}
- 
-void gtest1(Optimizer *o) {
- std::cerr << (o ? "optimizer defined\n" : "NO optimizer defined\n");
-}
-
-KAPI gtest(K x) {
- KTRY
-  J i=0;
-  Optptr op; gtest1(op.get());
-  Adam a({torch::rand({1,2})});
-  gtest1(&a);
-  ParamGroup g({torch::rand({1,3})});
-  a.add_param_group(g);
-  auto& p=a.param_groups();
-  for(const auto& g:p) {
-   std::cerr << "group: " << i << ", lr: " << static_cast<const AdamOptions&>(g.options()).lr() << "\n";
-   for(const auto& t:g.params())
-    std::cerr << "tensor: " << tensorlong(t,Attr::ptr) << ", " << t << "\n";
-   i++;
-  }
-  ParamGroup h=p[1];
-  h.params().emplace_back(torch::rand({1,4}));         //add parm(s)
-  auto& o=getoptions<AdamOptions>(h); o.lr(1.234);     //modify option(s)
-  p[1].params()=h.params();                            //rewrite previous group with new one
-  p[1].set_options(h.options().clone());
-
-  i=0; std::cerr <<"\n";
-  for(const auto& g:p) {
-   std::cerr << "group: " << i << ", lr: " << static_cast<const AdamOptions&>(g.options()).lr() << "\n";
-   for(const auto& t:g.params())
-    std::cerr << "tensor: " << tensorlong(t,Attr::ptr) << ", " << t << "\n";
-   i++;
-  }
-  return (K)0;
- KCATCH("otest");
-}
- 
-/*
-std::vector<ParamGroup> optgroups(Cast c,K x) {
- std::vector<ParamGroup> v;
- TORCH_CHECK(x && x->n, "no options..");
- for(J i=0; i<x->n; ++i) {
-  ParamGroup g({});
-  addoptions(c,kK(x)[i],g);
-  v.push_back(g);
- }
- return v;
-}
-
-optparms(Groups p,K x)
- TORCH_CHECK(x,"no parm table..");
- for(i..)
-  g=
-  TORCH_CHECK(-1<g && g<p.size(), "opt: parameter group [",g,"] is not defined");
-  s=
-  for(const auto &a:m.named_parameters())
-   if(!a.key().compare(s)) {
-    //check size..
-    p[g].params().push_back(a.value());
-   }
-  }
- }
-}
-*/
 
 // ---------------------------------------------------------------------------------------
 // opt - main optimizer interface function for q
@@ -1145,25 +1062,24 @@ KAPI opt(K x) {
 
 KAPI opt2(K x) {
  KTRY
-  J g=0; bool a=env().alloptions,b=xlong(x,1,g); S s; Kopt *k;
+  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *k;
   if(xsym(x,s) || xsym(x,0,s)) {
    TORCH_CHECK(x->n<4+b, "opt: ",s," optimizer definition expecting up to ",3+b,
                          " args(name;",(b? "group;" : ""),"parms;options) but ",x->n," given");
-   //Cast c=omap(s); K y=(x->n>=2+b) ? kK(x)[1+b] : nullptr, z=(x->n==3+b) ? kK(x)[2+b] : nullptr;
-   // c & z return an optimizer pointer
-   //return kopt(..)   optinit(c,g,y,z);
+   TORCH_CHECK(!i, "opt: cannot define group ",i," until optimizer is created with initial parameter group");
+   return optinit(omap(s), x->n>1+b ? kK(x)[1+b] : nullptr, x->n>2+b ? kK(x)[2+b] : nullptr);
   } else if(((k=xoptim(x))) || ((k=xoptim(x,0)))) {
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {
     return optstate(a,false,k->c,*k->o,*k->m);
    } else {
-    //Cast c=omap(s); K y=(x->n>=2+b) ? kK(x)[1+b] : nullptr, z=(x->n==3+b) ? kK(x)[2+b] : nullptr;
+    optedit(x->n>1+b ? kK(x)[1+b] : nullptr, x->n>2+b ? kK(x)[2+b] : nullptr,i,k->c,*k->o,*k->m);
     return (K)0;
    }
   } else if(xdict(x) || xdict(x,0)) {
    // initialize from dictonary and module(s)..?
    // count of groups: count of options list & highest group in k table
    // loop through options and create empty-vectored parameter group
-   // 
+   AT_ERROR("create from dictionary not implemented yet");
   } else {
    AT_ERROR("opt: unrecognized arg(s)");
   }
