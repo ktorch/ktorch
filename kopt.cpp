@@ -712,11 +712,33 @@ static void addmodule(Module& a,Module& m) {
 }
 
 // -------------------------------------------------------------------------------------------
-// duplicate - return true if vector already contains given tensor
+// duplicate - given vector or dictionary of tensors, check for duplicates, return vector
+//           - also, boolean form, return true if tensor is duplicate 
 // parmerror - signal specified parm already in optimizer group, attempt to get name, etc.
 // parmcheck - check if each tensor in vector already defined in optimizer parameter group(s) 
 // -------------------------------------------------------------------------------------------
-static bool duplicate(const TensorVector &v,const Tensor &p) {
+static TensorVector duplicate(const TensorVector& v) {
+ for(size_t i=0; i<v.size(); ++i) {
+  const auto& t=v[i];
+  for(size_t j=i+1; j<v.size(); ++j)
+   if(t.is_same(v[j]))
+    AT_ERROR("opt: parameter[",j,"] is duplicate of parameter[",i,"]");
+ }
+ return v;
+}
+
+static TensorVector duplicate(const TensorDict& d) {
+ const auto& k=d.keys();
+ for(size_t i=0; i<d.size(); ++i) {
+  const auto& t=d[k[i]];
+  for(size_t j=i+1; j<d.size(); ++j)
+   if(t.is_same(d[k[j]]))
+    AT_ERROR("opt: parameter[`",k[j],"] is duplicate of parameter[`",k[i],"]");
+ }
+ return d.values();
+}
+
+static bool duplicate(const TensorVector& v,const Tensor& p) {
  for(const auto& t:v)
   if(t.is_same(p)) return true;
  return false;
@@ -730,17 +752,15 @@ static void parmerror(const Module& m,const Tensor& p,size_t i,size_t g) {
   AT_ERROR("opt: parameter[",i,"] already in group ", g);
 }
 
-static void parmcheck(Optimizer *o,const Module& m,const TensorVector& v) {
+static void parmcheck(const Optimizer& o,const Module& m,const TensorVector& v) {
  size_t i=0;
  for(const auto& p:v) {
   TORCH_CHECK(p.is_leaf(), "opt: parameter[",i,"] is a not a leaf tensor");
-  if(o) {
-   J j=0;
-   for(const auto& g:o->param_groups()) {
-    if(duplicate(g.params(),p))
-     parmerror(m,p,i,j);
-    j++;
-   }
+  J j=0;
+  for(const auto& g:o.param_groups()) {
+   if(duplicate(g.params(),p))
+    parmerror(m,p,i,j);
+   j++;
   }
   i++;
  }
@@ -789,7 +809,7 @@ static TensorVector moduleparms(const Module& m,J n,S *s) {
 static TensorVector moduleparms(const Module& a,K x) {
  TensorVector v;
  if(!x)
-  v=a.parameters();
+  v=duplicate(a.named_parameters());
  else if(x->t==KJ || x->t==-KJ)
    v=x->t==KJ ? moduleparms(a,x->n,kJ(x)) : moduleparms(a,1,&x->j);
  else if(x->t==KS || x->t==-KS) 
@@ -799,7 +819,7 @@ static TensorVector moduleparms(const Module& a,K x) {
  return v;
 }
 
-static TensorVector moduleparms(Module& a,K x,Optimizer *o,Module& m) {
+static TensorVector moduleparms(Module& a,K x,const Optimizer& o,Module& m) {
  TensorVector v;
  if(!x)
   v=a.parameters();
@@ -831,10 +851,10 @@ static TensorVector dictparms(const TensorDict& d,J n,S *s) {
  return v;
 }
 
-static TensorVector dictparms(const TensorDict& d,K x,Optimizer *o,Module& m) {
+static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Module& m) {
  TensorVector v;
  if(!x)
-  v=d.values();
+  v=duplicate(d.values());
  else if(x->t==KS || x->t==-KS) 
    v=x->t==KS ? dictparms(d,x->n,kS(x)) : dictparms(d,1,&x->s);
  else
@@ -865,10 +885,10 @@ static TensorVector vectorparms(const TensorVector& a,J n,J *j) {
  return v;
 }
 
-static TensorVector vectorparms(const TensorVector& a,K x,Optimizer *o,Module& m) {
+static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Module& m) {
  TensorVector v;
  if(!x)
-  v=a;
+  v=duplicate(a);
  else if(x->t==KJ || x->t==-KJ) 
    v=x->t==KJ ? vectorparms(a,x->n,kJ(x)) : vectorparms(a,1,&x->j);
  else
@@ -952,23 +972,7 @@ KAPI optstate2(K x,K y) {
 //           and "base" module which stores requisite module(s) & parameters needed to
 //           recreate the optimizer group(s)
 // ---------------------------------------------------------------------------------------
-/*
-static void addparms(Optimizer *o,J i,const Module& m,const TensorVector& v) {
- if(o) {
-  duplicate(*o,m,v);
-  auto& p=o->param_groups();
-  if(i<p.size()) {
-   auto& g=p[i];
-   //V.insert(V.end(), v.begin(), v.end());
-   //return g ??
-  } else {
-   auto g=ParamGroup({v});
-   g.add
-  }
-}
-*/
-
-static TensorVector addparms(K x,J i,Optimizer *o,Module& m) {
+static TensorVector addparms(K x,J i,const Optimizer& o,Module& m) {
  K y=nullptr; Ktag *k; TensorVector v;
  if(!(k=xtag(x))) {
   k=xtag(x,0);
@@ -977,7 +981,7 @@ static TensorVector addparms(K x,J i,Optimizer *o,Module& m) {
   y=kK(x)[1];
  }
  switch(k->a) {
-  case Class::tensor: AT_ERROR("nyi");
+  case Class::tensor: v=vectorparms({((Kten*)k)->t}, y,o,m); break;
   case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
   case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
   case Class::module: v=moduleparms(mref((Kmodule*)k), y,o,m); break;
@@ -1003,9 +1007,8 @@ static void addoptions(Cast c,K x,ParamGroup& g) {
 // optinit - create new optimizer given parameter and option arg(s)
 // optedit - edit existing optimizer group or add new group of parameters & options
 // ----------------------------------------------------------------------
-static K optinit(Cast c,K x,K y) {
- BaseModule b; Optptr o;
- ParamGroup g(moduleparms(mref(b),x)); addoptions(c,y,g);
+static K optinit(Cast c,J i,K x,K y) {
+ BaseModule m; Optptr o; ParamGroup g({}); addoptions(c,y,g);
  switch(c) {
   case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
   case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
@@ -1015,7 +1018,8 @@ static K optinit(Cast c,K x,K y) {
   case Cast::sgd:     o=std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR}); break;
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
  }
- return kopt(c,o,b);
+ o->param_groups()[0].params()=addparms(x,i,*o,*m);
+ return kopt(c,o,m);
 }
 
 static void optedit(K x,K y,J i,Cast c,Module& m,Optimizer* o) {
@@ -1041,7 +1045,7 @@ KAPI otest(K a,K x,K y) {
  KTRY
   TORCH_CHECK(a->t==-KS && x->t==0 && y->t==0, "bad args");
   Cast c=omap(a->s);
-  return optinit(c,x,y);
+  return optinit(c,1,x,y);
  KCATCH("otest");
 }
  
