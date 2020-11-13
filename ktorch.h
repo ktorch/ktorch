@@ -149,12 +149,12 @@ enum class Class:int {
 
 enum class Cast:short {
  undefined=0, 
- tensor,  model,                                // basic structures
- modulelist, sequential, seqnest, seqjoin,      // container modules
+ tensor,  model,                                   // basic structures
+ base, modulelist, sequential, seqnest, seqjoin,   // container modules
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
- avgpool3d,      base,            batchnorm1d,     batchnorm2d,     batchnorm3d,
+ avgpool3d,      batchnorm1d,     batchnorm2d,     batchnorm3d,
  bilinear,       cat,             celu,            conv1d,          conv2d,
  conv3d,         convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d,
  decoder,        decoderlayer,    drop,            drop2d,          drop3d,
@@ -276,8 +276,8 @@ struct TORCH_API Kloss : public Ktag {
 };
 
 struct TORCH_API Kopt : public Ktag {
- Optptr o;
- BaseModule m;
+ Optptr o;       // shared ptr with optimizer
+ BaseModule m;   // basic container module to hold all modules/tensors managed by optimizer
  Kopt(Cast x,const Optptr& y,const BaseModule& m) : o(std::move(y)),m(std::move(m)) {a=Class::optimizer; c=x;}
  bool is_empty() const noexcept {return o == nullptr;}
  Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
@@ -591,6 +591,7 @@ void lossfn(K);
 
 // optimization functions:
 J buffersize(bool,Cast,const Optimizer&);
+const Module& basemodule(const Module&);
 K kopt(Cast,const Optptr&,const BaseModule&);
 K optstate(Ktag*,K);
 K optstate(bool,bool,Cast,const Optimizer&,const Module&);

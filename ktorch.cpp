@@ -1142,7 +1142,7 @@ static K objsize(Ktag *x) {
   case Class::dict:      return kj(((Kdict*)x)->d.size());
   case Class::module:    return kj(mref((Kmodule*)x).parameters().size());
   case Class::loss:      return kj(mref((Kloss*)x).parameters().size());
-  case Class::optimizer: return kj(((Kopt*)x)->o->state().size());
+  case Class::optimizer: return optattr(((Kopt*)x)->o, KJ, Attr::size);
   case Class::model:     return kj(mref((Kmodel*)x).parameters().size());
   default: return ktn(0,0);
  }

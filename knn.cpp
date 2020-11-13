@@ -3124,12 +3124,20 @@ K mget(bool a,bool b,const Module& m) {
  }
 }
 
+static K optmodule(Module& a) {
+ auto& m=basemodule(a); Cast c=mcast(m);
+ if(container(c))
+  return (K)0; //kmodule(c,makelayer(m));
+ else
+  return kmodule(c,AnyModule(makelayer(m)));
+}
+
 // ------------------------------------------------------------------------------------------
-//  main api function defined in k
+//  main module api function defined in k
 // ------------------------------------------------------------------------------------------
 KAPI module(K x) {
  KTRY
-  bool a=env().alloptions; J d,n; Kmodule *l,*g; Kmodel *m;
+  bool a=env().alloptions; J d,n; Kmodule *l,*g; Kmodel *m; Kopt* o;
   if((l=xmodule(x)) || (l=xmodule(x,0))) {       // allocated module ptr supplied
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {    // no other args or boolean flag
     return mget(a,false,mref(l->m));             // return module options
@@ -3154,6 +3162,8 @@ KAPI module(K x) {
    return mtable(x);
   } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return kmodule(m->mc,m->m);
+  } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
+   return kmodule(Cast::base,o->m);
   } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);
   } else {
