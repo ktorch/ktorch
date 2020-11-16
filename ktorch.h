@@ -101,6 +101,7 @@ using TensorDict=torch::OrderedDict<std::string, torch::Tensor>;
 
 // shorter names for commonly used container modules defined by pytorch & created in knn.h
 using Module=torch::nn::Module;
+using Moduleptr=std::shared_ptr<Module>;
 using ModuleDict=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
 using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;
@@ -134,7 +135,7 @@ typedef struct {
  };
 } Pairs;
 
-enum class Class:int {
+enum class Class:short {
  undefined=0,
  tensor,
  vector,
@@ -265,14 +266,20 @@ struct TORCH_API Kdict : public Ktag {
  Kdict(const TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
 };
 
-struct TORCH_API Kmodule : public Ktag {
+struct TORCH_API Klayer : public Ktag {
  Layer m;       // single module or container of many modules, e.g. Sequential
- Kmodule(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
+ Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
 };
 
 struct TORCH_API Kloss : public Ktag {
  Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
  AnyModule m;
+};
+
+struct TORCH_API Kmodule : public Ktag {
+ Kmodule(Class x,Cast y,Moduleptr& z) : m(std::move(z)) {a=x; c=y; l=true;}
+ bool l=false;
+ Moduleptr m;
 };
 
 struct TORCH_API Kopt : public Ktag {
@@ -291,7 +298,7 @@ struct TORCH_API Kmodel : public Ktag {
  AnyModule l;      // loss module
  Optptr o;         // shared ptr to optimizer
  BaseModule om;    // basic container module to hold all modules/tensors managed by optimizer
- Kmodel(Kmodule *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
+ Kmodel(Klayer *x,Kloss *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
   a=Class::model; c=Cast::model;
  }
 };
@@ -385,8 +392,8 @@ bool xtenarg(K,J,Tensor&,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
-Kmodule* xmodule(K);
-Kmodule* xmodule(K,J);
+Klayer* xmodule(K);
+Klayer* xmodule(K,J);
 Kloss* xloss(K);
 Kloss* xloss(K,J);
 Kopt* xoptim(K);
@@ -555,10 +562,10 @@ K  similar(bool,const torch::nn::CosineSimilarityOptions&);
 K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
 K kmodule(Cast,const Layer&);
-K to(Kmodule*,const TensorOptions&,bool);
+K to(Klayer*,const TensorOptions&,bool);
 Layer&  lref(Ktag*);
 Module& mref(const Layer&);
-Module& mref(Kmodule*);
+Module& mref(Klayer*);
 Module& mref(Kmodel*);
 Module& mref(Ktag*);
 Module& mref(Kloss*);
@@ -568,7 +575,7 @@ c10::optional<std::string>& mname_(const Module&);
 c10::optional<std::string>& mname_(Module&);
 S mname(const Module&);
 S mname(const Layer&);
-S mname(Kmodule*);
+S mname(Klayer*);
 std::string mlabel(const Module&);
 Cast mcast(const Module&);
 S msym(const Module&);
@@ -591,7 +598,8 @@ void lossfn(K);
 
 // optimization functions:
 J buffersize(bool,Cast,const Optimizer&);
-const Module& basemodule(const Module&);
+Module& optmodule(Module&);
+const Module& optmodule(const Module&);
 K kopt(Cast,const Optptr&,const BaseModule&);
 K optstate(Ktag*,K);
 K optstate(bool,bool,Cast,const Optimizer&,const Module&);

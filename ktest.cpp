@@ -1,6 +1,163 @@
 #include "ktorch.h"
 
+Tensor c1(Cast c,Moduleptr& m,const Tensor& t) {
+ switch(c) {
+  case Cast::adaptavg1d:      AT_ERROR("nyi");
+  case Cast::adaptavg2d:      AT_ERROR("nyi");
+  case Cast::adaptavg3d:      AT_ERROR("nyi");
+  case Cast::adaptmax1d:      AT_ERROR("nyi");
+  case Cast::adaptmax2d:      AT_ERROR("nyi");
+  case Cast::adaptmax3d:      AT_ERROR("nyi");
+  case Cast::adrop:           AT_ERROR("nyi");
+  case Cast::attention:       AT_ERROR("nyi");
+  case Cast::avgpool1d:       AT_ERROR("nyi");
+  case Cast::avgpool2d:       AT_ERROR("nyi");
+  case Cast::avgpool3d:       AT_ERROR("nyi");
+  case Cast::base:            AT_ERROR("nyi");
+  case Cast::batchnorm1d:     AT_ERROR("nyi");
+  case Cast::batchnorm2d:     AT_ERROR("nyi");
+  case Cast::batchnorm3d:     AT_ERROR("nyi");
+  case Cast::bilinear:        AT_ERROR("nyi");
+  case Cast::cat:             AT_ERROR("nyi");
+  case Cast::celu:            AT_ERROR("nyi");
+  case Cast::conv1d:          AT_ERROR("nyi");
+  case Cast::conv2d:          AT_ERROR("nyi");
+  case Cast::conv3d:          AT_ERROR("nyi");
+  case Cast::convtranspose1d: AT_ERROR("nyi");
+  case Cast::convtranspose2d: AT_ERROR("nyi");
+  case Cast::convtranspose3d: AT_ERROR("nyi");
+  case Cast::crossmap2d:      AT_ERROR("nyi");
+  case Cast::decoder:         AT_ERROR("nyi");
+  case Cast::decoderlayer:    AT_ERROR("nyi");
+  case Cast::drop:            AT_ERROR("nyi");
+  case Cast::drop2d:          AT_ERROR("nyi");
+  case Cast::drop3d:          AT_ERROR("nyi");
+  case Cast::elu:             AT_ERROR("nyi");
+  case Cast::embed:           AT_ERROR("nyi");
+  case Cast::embedbag:        AT_ERROR("nyi");
+  case Cast::encoder:         AT_ERROR("nyi");
+  case Cast::encoderlayer:    AT_ERROR("nyi");
+  case Cast::expand:          AT_ERROR("nyi");
+  case Cast::fadrop:          AT_ERROR("nyi");
+  case Cast::flatten:         AT_ERROR("nyi");
+  case Cast::fmaxpool2d:      AT_ERROR("nyi");
+  case Cast::fmaxpool3d:      AT_ERROR("nyi");
+  case Cast::fold:            AT_ERROR("nyi");
+  case Cast::gelu:            AT_ERROR("nyi");
+  case Cast::glu:             AT_ERROR("nyi");
+  case Cast::groupnorm:       AT_ERROR("nyi");
+  case Cast::gru:             AT_ERROR("nyi");
+  case Cast::hardshrink:      AT_ERROR("nyi");
+  case Cast::hardtanh:        AT_ERROR("nyi");
+  case Cast::identity:        AT_ERROR("nyi");
+  case Cast::instancenorm1d:  AT_ERROR("nyi");
+  case Cast::instancenorm2d:  AT_ERROR("nyi");
+  case Cast::instancenorm3d:  AT_ERROR("nyi");
+  case Cast::interpolate:     AT_ERROR("nyi");
+  case Cast::layernorm:       AT_ERROR("nyi");
+  case Cast::leakyrelu:       AT_ERROR("nyi");
+  case Cast::linear:          return std::dynamic_pointer_cast<torch::nn::LinearImpl>(m)->forward(t);
+  case Cast::localnorm:       AT_ERROR("nyi");
+  case Cast::logsigmoid:      AT_ERROR("nyi");
+  case Cast::logsoftmax:      AT_ERROR("nyi");
+  case Cast::lppool1d:        AT_ERROR("nyi");
+  case Cast::lppool2d:        AT_ERROR("nyi");
+  case Cast::lstm:            AT_ERROR("nyi");
+  case Cast::maxpool1d:       AT_ERROR("nyi");
+  case Cast::maxpool2d:       AT_ERROR("nyi");
+  case Cast::maxpool3d:       AT_ERROR("nyi");
+  case Cast::modulelist:      AT_ERROR("nyi");
+  case Cast::mul:             AT_ERROR("nyi");
+  case Cast::normalize:       AT_ERROR("nyi");
+  case Cast::pad:             AT_ERROR("nyi");
+  case Cast::pad1d:           AT_ERROR("nyi");
+  case Cast::pad2d:           AT_ERROR("nyi");
+  case Cast::pad3d:           AT_ERROR("nyi");
+  case Cast::pairwise:        AT_ERROR("nyi");
+  case Cast::prelu:           AT_ERROR("nyi");
+  case Cast::reflect1d:       AT_ERROR("nyi");
+  case Cast::reflect2d:       AT_ERROR("nyi");
+  case Cast::relu:            AT_ERROR("nyi");
+  case Cast::relu6:           AT_ERROR("nyi");
+  case Cast::replicate1d:     AT_ERROR("nyi");
+  case Cast::replicate2d:     AT_ERROR("nyi");
+  case Cast::replicate3d:     AT_ERROR("nyi");
+  case Cast::reshape:         AT_ERROR("nyi");
+  case Cast::rnn:             AT_ERROR("nyi");
+  case Cast::rrelu:           AT_ERROR("nyi");
+  case Cast::selu:            AT_ERROR("nyi");
+  case Cast::seqjoin:         AT_ERROR("nyi");
+  case Cast::seqnest:         AT_ERROR("nyi");
+  case Cast::sequential:      AT_ERROR("nyi");
+  case Cast::sigmoid:         AT_ERROR("nyi");
+  case Cast::similar:         AT_ERROR("nyi");
+  case Cast::softmax:         AT_ERROR("nyi");
+  case Cast::softmax2d:       AT_ERROR("nyi");
+  case Cast::softmin:         AT_ERROR("nyi");
+  case Cast::softplus:        AT_ERROR("nyi");
+  case Cast::softshrink:      AT_ERROR("nyi");
+  case Cast::softsign:        AT_ERROR("nyi");
+  case Cast::squeeze:         AT_ERROR("nyi");
+  case Cast::tanh:            AT_ERROR("nyi");
+  case Cast::tanhshrink:      AT_ERROR("nyi");
+  case Cast::threshold:       AT_ERROR("nyi");
+  case Cast::transformer:     AT_ERROR("nyi");
+  case Cast::unfold:          AT_ERROR("nyi");
+  case Cast::unsqueeze:       AT_ERROR("nyi");
+  case Cast::upsample:        AT_ERROR("nyi");
+  case Cast::zeropad2d:       AT_ERROR("nyi");
+  default: AT_ERROR("unrecognized module");
+ }
+}
+
+void f1() {
+ auto t=torch::randn({100,200});
+ torch::nn::Linear l(200,100);
+ for(size_t i=0; i<1000000; ++i)
+  auto r=l->forward(t);
+}
+
+void f2(Moduleptr m) {
+ auto t=torch::randn({100,200});
+ for(size_t i=0; i<1000000; ++i)
+  //auto r=std::dynamic_pointer_cast<torch::nn::LinearImpl>(m)->forward(t);
+  auto r=c1(Cast::linear, m, t);
+}
+
+void f3(AnyModule& a) {
+ auto t=torch::randn({100,200});
+ for(size_t i=0; i<1000000; ++i)
+  auto r=a.forward(t);
+}
+
+
+KAPI a(K x) {
+ KTRY
+  AnyModule a(torch::nn::Linear(200,100));
+  f3(a);
+  return (K)0;
+ KCATCH("timer");
+}
+
 KAPI f(K x) {
+ KTRY
+  //f1();
+  BaseModule m;
+  m->register_module("linear",torch::nn::Linear(200,100));
+  m->register_parameter("tensor",torch::randn(10));
+  f2(m->children()[0]);
+  return (K)0;
+ KCATCH("timer");
+}
+
+KAPI g(K x) {
+ KTRY
+  f1();
+  return (K)0;
+ KCATCH("timer");
+}
+
+KAPI f_old(K x) {
  KTRY
   BaseModule m;
   m->register_module("linear",torch::nn::Linear(1,2));
@@ -8,11 +165,26 @@ KAPI f(K x) {
   auto a=AnyModule(m);
   std::cerr << *m << "\n";
   //return kdict(m->named_parameters());
-  return mget(true,true,*m);
+  //return mget(true,true,*m);
+  //return mget(true,true,*m->children()[0]);
+  //return mget(true,true,*a.ptr());
+  // static cast won't compile
+  /* fatal error: cannot cast 'torch::nn::Module *' to
+      'typename _Sp::element_type *' (aka 'torch::nn::LinearImpl *') via virtual base 'torch::nn::Module'
+      'std::static_pointer_cast<torch::nn::LinearImpl, torch::nn::Module>'
+  */
+  //AnyModule l(std::dynamic_pointer_cast<torch::nn::LinearImpl>(m->children()[0]));
+  //auto p=std::dynamic_pointer_cast<torch::nn::SigmoidImpl>(m->children()[0]);
+  auto p=std::dynamic_pointer_cast<torch::nn::LinearImpl>(m->children()[0]);
+  if(p) {
+   return mget(true,true,*p);
+  } else {
+   return kb(false);
+  }
  KCATCH("xmodule")
 }
 
-KAPI g(K x) {
+KAPI g2(K x) {
  K r=ktn(KJ,6);
  torch::optim::Adagrad g(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[0]=g.param_groups().size();
  torch::optim::Adam    a(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[1]=a.param_groups().size();
@@ -127,7 +299,7 @@ S s=nullptr;
 KAPI optgroup(K x) {
  KTRY
   TORCH_CHECK(!x->t && x->n==2,"expecting 2-element general list");
-  Kmodule *q=xmodule(x,0);
+  Klayer *q=xmodule(x,0);
   Kopt *o=xoptim(x,1);
   TORCH_CHECK(q && o, "expecting module & optimizer");
   auto& m=mref(q);
@@ -185,7 +357,7 @@ J nest(K x) {
 KAPI xnest(K x) {return kj(nest(x)); }
 
 KAPI layerlist(K x) {
- Kmodule *q;
+ Klayer *q;
  if((q=xmodule(x))) {
   auto& m=mref(q->m);
   std::cerr << "named modules: \n";
@@ -456,6 +628,7 @@ KAPI ksizes(K x) {
  std::cerr << "Kvec:    " << sizeof(Kvec) << "\n";
  std::cerr << "Kloss:   " << sizeof(Kloss) << "\n";
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
+ std::cerr << "Klayer: " << sizeof(Klayer) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
  return (K)0;

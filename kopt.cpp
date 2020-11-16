@@ -608,7 +608,7 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 // --------------------------------------------------------------------------------------
 // parmkeys - return columns for table describing optimizer parameter groups & buffers
 // moduletype - given parameter, attempt to find parent module type
-// basemodule - return single module if container has only one child, no parms or buffers
+// optmodule - return single module if container has only one child, no parms or buffers
 // parmname - given parameter, search containing module(s), return name if found
 // parmsym - return string from parmname as symbol
 // --------------------------------------------------------------------------------------
@@ -630,15 +630,15 @@ static S moduletype(const Tensor& p,const Module& m) {
  return env().nullsym;
 }
 
-const Module& basemodule(const Module& m) {
- if(m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0) 
-  return *m.children()[0];  // container has only one child module, remove a layer
- else
-  return m;
+static bool onlychild(const Module& m) {
+ return m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
 }
 
+      Module& optmodule(      Module& m) {return onlychild(m) ? *m.children()[0] : m;}
+const Module& optmodule(const Module& m) {return onlychild(m) ? *m.children()[0] : m;}
+
 static std::string parmname(const Tensor& p,const Module& m) {
- for(const auto& a:basemodule(m).named_parameters())
+ for(auto& a:optmodule(m).named_parameters())
   if(a.value().is_same(p))
    return a.key();
  return {};
@@ -914,7 +914,7 @@ static K optinit(S s,K x,K y) {
  if(!(x->t==-KS || xdict(x) || xempty(x,1) || xptr(x,1)))
   AT_ERROR("optimizer ",s," expects args of form:\n",
            "name\n", "(name; parm(s); option(s)..)\n" "(saved state; parm(s))");
- auto w=optparms(x,1); Kmodule *k; Optptr o; BaseModule m;
+ auto w=optparms(x,1); Klayer *k; Optptr o; BaseModule m;
  switch(c) {
   case Cast::adagrad: {auto a=AdagradOptions();  adagrad(x,i,a); o=adagrad(w,a,y); break;}
   case Cast::adam:    {auto a=AdamOptions();     adam(x,i,a);    o=adam<Adam>(w,a,y);  break;}
@@ -948,7 +948,7 @@ K optstate(Ktag *g,K x) {
 
 KAPI optstate2(K x,K y) {
  KTRY
-  Kopt* o=xoptim(x); Kmodule *m=xmodule(y);
+  Kopt* o=xoptim(x); Klayer *m=xmodule(y);
   TORCH_CHECK(o && m, "need optimizer & module");
   return optstate(true,true,o->c,*o->o,mref(m->m));
  KCATCH("optstate");
@@ -984,7 +984,7 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
    case Class::tensor: v=vectorparms({((Kten*)k)->t}, y,o,m); break;
    case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
    case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
-   case Class::module: v=moduleparms(mref((Kmodule*)k), y,o,m); break;
+   case Class::module: v=moduleparms(mref((Klayer*)k), y,o,m); break;
    case Class::model:  v=moduleparms(mref((Kmodel*)k), y,o,m); break;
    default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
   }

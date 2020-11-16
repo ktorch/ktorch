@@ -12,6 +12,7 @@ namespace fnn=torch::nn::functional;
 // lmap - map to/from sym to loss function name, e.g. `mse <-> Cast::mse
 // lset - map to/from sym to loss setting enum, e.g. `reduce <-> Setting::reduce
 // ------------------------------------------------------------------------------------------------------
+K kloss(Cast c,Moduleptr &m) {return kptr(new Kmodule(Class::loss,c,m));}
 K kloss(Cast c,const AnyModule& m) {return kptr(new Kloss(Class::loss,c,m));}
 
 K to(Kloss* l,const TensorOptions& o,bool a) {
