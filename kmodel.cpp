@@ -6,12 +6,12 @@
 // modelstate - return a dictionary with state of module, loss fn & optimizer
 // model - create model from module, loss & optimizer or retrieve input options
 // -------------------------------------------------------------------------------------------
-static void modelpart(K x,J i,Klayer*& q,Kloss*& l,Kopt*& o) {
+static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
   switch(g ? g->a : Class::undefined) {
    case Class::module:    q=(Klayer*)g;  break;
-   case Class::loss:      l=(Kloss*)g; break;
+   case Class::loss:      l=(Kmodule*)g; break;
    case Class::optimizer: o=(Kopt*)g;  break;
    default: AT_ERROR("model arg[",i,"] unrecognized: ",
                     (g ? mapclass(g->a) : kname(x,i))); break;
@@ -29,7 +29,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, mget(a,b,mref(m->m)), lossdict(a,b,m->lc,m->l), optstate(a,b,m->oc,*m->o,*m->om)));
+ return xD(modelkeys(), knk(3, mget(a,b,mref(m->m)), lossdict(a,b,m->lc,*m->l), optstate(a,b,m->oc,*m->o,*m->om)));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -49,7 +49,7 @@ static void modelfree(K x,J i) {
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
-  Klayer *q=nullptr; Kloss *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
+  Klayer *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
   TORCH_CHECK(!x->t, "model not implemented for ",kname(x->t));
   if((m=xmodel(x)) || (x->n==2 && xbool(x,1,a) && (m=xmodel(x,0)))) {
    return modelstate(a,false,m);
@@ -82,7 +82,7 @@ Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
 K mbackward(K a) {
  Kmodel *m; Tensor *x,*y,r;
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
-  r=losswt(m->lc,m->l,mforward(m->m,*x),*y);
+  r=lossfwd(m->lc,*m->l,mforward(m->m,*x),*y);
  } else {
   AT_ERROR("backward expects (model; inputs; targets)");
  }
@@ -92,15 +92,15 @@ K mbackward(K a) {
 
 Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
  if(v.size()==2)
-  return losswt(m->lc,m->l,x,v[1]);
+  return lossfwd(m->lc,*m->l,x,v[1]);
  else if(v.size()==3)
-  return m->l.forward(x,v[1],v[2]);
+  return lossfwd(m->lc,*m->l,x,v[1],v[2]);
  else
   AT_ERROR("model: ", v.size()," inputs given, expecting 2-3");
 }
 
 Tensor mloss(Kmodel *m,const TensorVector &v) {return mloss(m,mforward(m,v),v);}
-Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {return losswt(m->lc,m->l,mforward(m,x),y);}
+Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {return lossfwd(m->lc,*m->l,mforward(m,x),y);}
 
 // -------------------------------------------------------------------------------------------
 // trainbatch - run model's forward calc, loss, backward calcs and optimizer step in batches

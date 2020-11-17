@@ -501,8 +501,8 @@ bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
 Klayer* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Klayer*)g : nullptr;}
 Klayer* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
 
-Kloss* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kloss*)g : nullptr;}
-Kloss* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
+Kmodule* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kmodule*)g : nullptr;}
+Kmodule* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
 
 Kopt* xoptim(K x) {auto* g=xtag(x); return (g && g->a==Class::optimizer) ? (Kopt*)g : nullptr;}
 Kopt* xoptim(K x,J i) {return xind(x,i) ? xoptim(kK(x)[i]) : nullptr;}
@@ -1073,7 +1073,7 @@ KAPI addref(K x) {
   switch(g->a) {
    case Class::tensor:    return kten(((Kten*)g)->t);
    case Class::module:    return kmodule(g->c,((Klayer*)g)->m);
-   case Class::loss:      return kloss(g->c, ((Kloss*)g)->m);
+   //PATCH case Class::loss:      return kloss(g->c, ((Kloss*)g)->m);
    case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o, ((Kopt*)g)->m);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
   }

@@ -639,22 +639,6 @@ KAPI randint_type(K x) {
  return (K)0;
 }
 
-KAPI cudaloss(K x) {
- auto* l=xloss(x);
- auto& m=l->m;
- auto p=m.ptr();
- std::cerr << *p << "\n";
- p->to(torch::kCUDA);
- std::cerr << *p << "\n";
- if(l->c == Cast::nll) {
-  auto g=m.get<torch::nn::NLLLoss>();
-  std::cerr << g->options.weight() << "\n";
-  std::cerr << g->weight << "\n";
-  std::cerr << g->weight.is_same(g->options.weight()) << "\n";
- }
- return(K)0;
-}
-
 KAPI wt(K x,K y,K w) {
  KTRY
   torch::nn::BCELoss m;
