@@ -22,7 +22,7 @@ Module& mref(const Layer& x) {return c10::visit(make_overload([](const auto& x)-
 Module& mref(Klayer* x) {return mref(x->m);}     // module reference from Layer variant
 Module& mref(Kmodel* x)  {return mref(x->m);}
 Module& mref(Ktag *g)    {return mref(lref(g));}
-Module& mref(Kloss* x)   {return *x->m.ptr();}    // module reference from AnyModule
+Module& mref(Kmodule* x) {return *x->m;}
 
 const
 c10::optional<std::string>& mname_(const Module& m) {return access_private::name_(m);}
@@ -63,6 +63,14 @@ K to(Klayer* x,const TensorOptions& o,bool a) {
  if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
  else if(o.has_device())             m.to(o.device(),a);
  else                                m.to(s,a);
+ return (K)0;
+}
+
+K to(Kmodule* x,const TensorOptions& o,bool a) {
+ auto s=torch::typeMetaToScalarType(o.dtype());
+ if(o.has_device() && o.has_dtype()) x->m->to(o.device(),s,a);
+ else if(o.has_device())             x->m->to(o.device(),a);
+ else                                x->m->to(s,a);
  return (K)0;
 }
 

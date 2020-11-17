@@ -1073,7 +1073,7 @@ KAPI addref(K x) {
   switch(g->a) {
    case Class::tensor:    return kten(((Kten*)g)->t);
    case Class::module:    return kmodule(g->c,((Klayer*)g)->m);
-   //PATCH case Class::loss:      return kloss(g->c, ((Kloss*)g)->m);
+   case Class::loss:      return kloss(g->c, ((Kmodule*)g)->m);
    case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o, ((Kopt*)g)->m);
    default: AT_ERROR("addref not implemented for ",mapclass(g->a));
   }
@@ -1128,7 +1128,7 @@ static S objdevice(Ktag *x) {
   case Class::vector:    return objdevice(((Kvec*)x)->v, s);
   case Class::dict:      return objdevice(((Kdict*)x)->d.values(), s);
   case Class::optimizer: return objdevice(*((Kopt*)x)->o, s);
-  case Class::loss:      return objdevice(((Kloss*)x)->m.ptr()->buffers(), s);
+  case Class::loss:      return objdevice(((Kmodule*)x)->m->buffers(), s);
   case Class::module:    return objdevice(mref((Klayer*)x).parameters(), s);
   case Class::model:     return objdevice(mref((Kmodel*)x).parameters(), s);
   default: return s;
@@ -1141,7 +1141,7 @@ static K objsize(Ktag *x) {
   case Class::vector:    return kj(((Kvec*)x)->v.size());
   case Class::dict:      return kj(((Kdict*)x)->d.size());
   case Class::module:    return kj(mref((Klayer*)x).parameters().size());
-  case Class::loss:      return kj(mref((Kloss*)x).parameters().size());
+  case Class::loss:      return kj(((Kmodule*)x)->m->parameters().size());
   case Class::optimizer: return optattr(((Kopt*)x)->o, KJ, Attr::size);
   case Class::model:     return kj(mref((Kmodel*)x).parameters().size());
   default: return ktn(0,0);
@@ -1165,7 +1165,7 @@ static J objnum(Ktag *x) {
   case Class::vector:    {auto& a=((Kvec*)x)->v; return objnum(a);}
   case Class::dict:      {auto& a=((Kdict*)x)->d; return objnum(a.values());}
   case Class::module:    return objnum(mref((Klayer*)x));
-  case Class::loss:      return objnum(*((Kloss*)x)->m.ptr());
+  case Class::loss:      return objnum(*((Kmodule*)x)->m);
   case Class::optimizer: return objnum((Kopt*)x);
   case Class::model:     return objnum((Kmodel*)x);
   default: return nj;
@@ -1190,7 +1190,7 @@ static J objbytes(Ktag *x) {
   case Class::vector: {auto& a=((Kvec*)x)->v; return objbytes(a);}
   case Class::dict:   {auto& a=((Kdict*)x)->d; return objbytes(a.values());}
   case Class::module:    return objbytes(mref((Klayer*)x));
-  case Class::loss:      return objbytes(*((Kloss*)x)->m.ptr());
+  case Class::loss:      return objbytes(*((Kmodule*)x)->m);
   case Class::optimizer: return objbytes((Kopt*)x);
   case Class::model:     return objbytes((Kmodel*)x);
   default: return nj;
@@ -1258,7 +1258,7 @@ KAPI To(K x) {
     case Class::tensor: return to((Kten*)g,o,a,b);
     case Class::vector: return to((Kvec*)g,o,a);
     case Class::module: return to((Klayer*)g,o,a);
-    case Class::loss:   return to((Kloss*)g,o,a);
+    case Class::loss:   return to((Kmodule*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
    }
   } else {
@@ -1554,7 +1554,7 @@ K attr(K x,Ktype k,Attr a) {
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
    case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
    case Class::module:    return mattr(((Klayer*)g)->m,k,a);
-   case Class::loss:      return lossattr(((Kloss*)g)->m,k,a);
+   case Class::loss:      return lossattr(((Kmodule*)g)->m,k,a);
    case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }

@@ -14,14 +14,6 @@ namespace fnn=torch::nn::functional;
 // ------------------------------------------------------------------------------------------------------
 K kloss(Cast c,Moduleptr m) {return kptr(new Kmodule(Class::loss,c,m));}
 
-K to(Kloss* l,const TensorOptions& o,bool a) {
- auto s=torch::typeMetaToScalarType(o.dtype()); auto m=l->m.ptr();
- if(o.has_device() && o.has_dtype()) m->to(o.device(),s,a);
- else if(o.has_device())             m->to(o.device(),a);
- else                                m->to(s,a);
- return (K)0;
-}
-
 static Cast lmap(S s) {
  for(auto&m:env().loss)
   if(std::get<0>(m)==s) return std::get<1>(m);
@@ -746,8 +738,7 @@ KAPI loss(K x) {
  KCATCH("loss module");
 }
 
-K lossattr(const AnyModule& m,Ktype k,Attr a) {
- const auto& p=m.ptr();
+K lossattr(const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
   case Attr::ref:     return kj(p.use_count()-1);
   case Attr::ptr:     return kj((intptr_t)p.get());

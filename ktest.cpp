@@ -626,7 +626,6 @@ KAPI ksizes(K x) {
  std::cerr << "Ktag:    " << sizeof(Ktag) << "\n";
  std::cerr << "Kten:    " << sizeof(Kten) << "\n";
  std::cerr << "Kvec:    " << sizeof(Kvec) << "\n";
- std::cerr << "Kloss:   " << sizeof(Kloss) << "\n";
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
  std::cerr << "Klayer: " << sizeof(Klayer) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";

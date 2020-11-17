@@ -271,11 +271,6 @@ struct TORCH_API Klayer : public Ktag {
  Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
 };
 
-struct TORCH_API Kloss : public Ktag {
- Kloss(Class x,Cast y,const AnyModule& z) : m(std::move(z)) {a=x; c=y;}
- AnyModule m;
-};
-
 struct TORCH_API Kmodule : public Ktag {
  Kmodule(Class x,Cast y,Moduleptr z) : m(std::move(z)) {a=x; c=y;}
  Moduleptr m;
@@ -562,12 +557,13 @@ K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
 K kmodule(Cast,const Layer&);
 K to(Klayer*,const TensorOptions&,bool);
+K to(Kmodule*,const TensorOptions&,bool);
 Layer&  lref(Ktag*);
 Module& mref(const Layer&);
 Module& mref(Klayer*);
 Module& mref(Kmodel*);
 Module& mref(Ktag*);
-Module& mref(Kloss*);
+Module& mref(Kmodule*);
 
 const
 c10::optional<std::string>& mname_(const Module&);
@@ -592,8 +588,7 @@ Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);
 K lossdict(Ktag*,K);
 K lossdict(bool,bool,Cast,const Module&);
-K to(Kloss*,const TensorOptions&,bool);
-K lossattr(const AnyModule&,Ktype,Attr);
+K lossattr(const Moduleptr&,Ktype,Attr);
 K losshelp(Cast);
 void lossfn(K);
 
