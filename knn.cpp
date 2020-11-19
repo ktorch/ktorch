@@ -2873,6 +2873,121 @@ static Moduleptr mcreate(K x,J i,Cast c) {
  }
 }
 
+// ----------------------------------------------------------------------------------------------
+// anymodule - given generic module ptr, recast to specific type and return type-erased AnyModule
+// ----------------------------------------------------------------------------------------------
+#define ANYMODULE(x,y) AnyModule(std::dynamic_pointer_cast<x>(y))
+#define ANY(x,y) ANYMODULE(x##Impl,y)
+
+static AnyModule anymodule(Cast c,Moduleptr& m) {
+ switch(c) {
+  case Cast::adaptavg1d:      return ANY(nn::AdaptiveAvgPool1d, m);
+  case Cast::adaptavg2d:      return ANY(nn::AdaptiveAvgPool2d, m);
+  case Cast::adaptavg3d:      return ANY(nn::AdaptiveAvgPool3d, m);
+  case Cast::adaptmax1d:      return ANY(nn::AdaptiveMaxPool1d, m);
+  case Cast::adaptmax2d:      return ANY(nn::AdaptiveMaxPool2d, m);
+  case Cast::adaptmax3d:      return ANY(nn::AdaptiveMaxPool3d, m);
+  case Cast::adrop:           return ANY(nn::AlphaDropout, m);
+  case Cast::attention:       return ANY(nn::MultiheadAttention, m);
+  case Cast::avgpool1d:       return ANY(nn::AvgPool1d, m);
+  case Cast::avgpool2d:       return ANY(nn::AvgPool2d, m);
+  case Cast::avgpool3d:       return ANY(nn::AvgPool3d, m);
+  case Cast::base:            return ANY(BaseModule, m);
+  case Cast::batchnorm1d:     return ANY(nn::BatchNorm1d, m);
+  case Cast::batchnorm2d:     return ANY(nn::BatchNorm2d, m);
+  case Cast::batchnorm3d:     return ANY(nn::BatchNorm3d, m);
+  case Cast::bilinear:        return ANY(nn::Bilinear, m);
+  case Cast::cat:             return ANY(Cat, m);
+  case Cast::celu:            return ANY(nn::CELU, m);
+  case Cast::conv1d:          return ANY(nn::Conv1d, m);
+  case Cast::conv2d:          return ANY(nn::Conv2d, m);
+  case Cast::conv3d:          return ANY(nn::Conv3d, m);
+  case Cast::convtranspose1d: return ANY(nn::ConvTranspose1d, m);
+  case Cast::convtranspose2d: return ANY(nn::ConvTranspose2d, m);
+  case Cast::convtranspose3d: return ANY(nn::ConvTranspose3d, m);
+  case Cast::crossmap2d:      return ANY(nn::CrossMapLRN2d, m);
+  case Cast::decoder:         return ANY(nn::TransformerDecoder, m);
+  case Cast::decoderlayer:    return ANY(nn::TransformerDecoderLayer, m);
+  case Cast::drop:            return ANY(nn::Dropout, m);
+  case Cast::drop2d:          return ANY(nn::Dropout2d, m);
+  case Cast::drop3d:          return ANY(nn::Dropout3d, m);
+  case Cast::elu:             return ANY(nn::ELU, m);
+  case Cast::embed:           return ANY(nn::Embedding, m);
+  case Cast::embedbag:        return ANY(nn::EmbeddingBag, m);
+  case Cast::encoder:         return ANY(nn::TransformerEncoder, m);
+  case Cast::encoderlayer:    return ANY(nn::TransformerEncoderLayer, m);
+  case Cast::expand:          return ANY(Expand, m);
+  case Cast::fadrop:          return ANY(nn::FeatureAlphaDropout, m);
+  case Cast::flatten:         return ANY(nn::Flatten, m);
+  case Cast::fmaxpool2d:      return ANY(nn::FractionalMaxPool2d, m);
+  case Cast::fmaxpool3d:      return ANY(nn::FractionalMaxPool3d, m);
+  case Cast::fold:            return ANY(nn::Fold, m);
+  case Cast::gelu:            return ANY(nn::GELU, m);
+  case Cast::glu:             return ANY(nn::GLU, m);
+  case Cast::groupnorm:       return ANY(nn::GroupNorm, m);
+  case Cast::gru:             return ANY(nn::GRU, m);
+  case Cast::hardshrink:      return ANY(nn::Hardshrink, m);
+  case Cast::hardtanh:        return ANY(nn::Hardtanh, m);
+  case Cast::identity:        return ANY(nn::Identity, m);
+  case Cast::instancenorm1d:  return ANY(nn::InstanceNorm1d, m);
+  case Cast::instancenorm2d:  return ANY(nn::InstanceNorm2d, m);
+  case Cast::instancenorm3d:  return ANY(nn::InstanceNorm3d, m);
+  case Cast::interpolate:     AT_ERROR("unable to create type-erased module for 'interpolate': no module defined");
+  case Cast::layernorm:       return ANY(nn::LayerNorm, m);
+  case Cast::leakyrelu:       return ANY(nn::LeakyReLU, m);
+  case Cast::linear:          return ANY(nn::Linear, m);
+  case Cast::localnorm:       return ANY(nn::LocalResponseNorm, m);
+  case Cast::logsigmoid:      return ANY(nn::LogSigmoid, m);
+  case Cast::logsoftmax:      return ANY(nn::LogSoftmax, m);
+  case Cast::lppool1d:        return ANY(nn::LPPool1d, m);
+  case Cast::lppool2d:        return ANY(nn::LPPool2d, m);
+  case Cast::lstm:            return ANY(nn::LSTM, m);
+  case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
+  case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
+  case Cast::maxpool3d:       return ANY(nn::MaxPool3d, m);
+  case Cast::modulelist:      AT_ERROR("unable to create type-erased module for 'modulelist': no forward method defined");
+  case Cast::mul:             return ANY(Mul, m);
+  case Cast::normalize:       AT_ERROR("unable to create type-erased module for 'normalize': no module defined");
+  case Cast::pad:             return ANY(Pad, m);
+  case Cast::pad1d:           return ANY(nn::ConstantPad1d, m);
+  case Cast::pad2d:           return ANY(nn::ConstantPad2d, m);
+  case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
+  case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
+  case Cast::prelu:           return ANY(nn::PReLU, m);
+  case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
+  case Cast::reflect2d:       return ANY(nn::ReflectionPad2d, m);
+  case Cast::relu:            return ANY(nn::ReLU, m);
+  case Cast::relu6:           return ANY(nn::ReLU6, m);
+  case Cast::replicate1d:     return ANY(nn::ReplicationPad1d, m);
+  case Cast::replicate2d:     return ANY(nn::ReplicationPad2d, m);
+  case Cast::replicate3d:     return ANY(nn::ReplicationPad3d, m);
+  case Cast::reshape:         return ANY(Reshape, m);
+  case Cast::rnn:             return ANY(nn::RNN, m);
+  case Cast::rrelu:           return ANY(nn::RReLU, m);
+  case Cast::selu:            return ANY(nn::SELU, m);
+  case Cast::seqjoin:         return ANY(SeqJoin, m);
+  case Cast::seqnest:         return ANY(SeqNest, m);
+  case Cast::sequential:      AT_ERROR("unable to create type-erased module for 'sequential': forward method uses template");
+  case Cast::sigmoid:         return ANY(nn::Sigmoid, m);
+  case Cast::similar:         return ANY(nn::CosineSimilarity, m);
+  case Cast::softmax:         return ANY(nn::Softmax, m);
+  case Cast::softmax2d:       return ANY(nn::Softmax2d, m);
+  case Cast::softmin:         return ANY(nn::Softmin, m);
+  case Cast::softplus:        return ANY(nn::Softplus, m);
+  case Cast::softshrink:      return ANY(nn::Softshrink, m);
+  case Cast::softsign:        return ANY(nn::Softsign, m);
+  case Cast::squeeze:         return ANY(Squeeze, m);
+  case Cast::tanh:            return ANY(nn::Tanh, m);
+  case Cast::tanhshrink:      return ANY(nn::Tanhshrink, m);
+  case Cast::threshold:       return ANY(nn::Threshold, m);
+  case Cast::transformer:     return ANY(nn::Transformer, m);
+  case Cast::unfold:          return ANY(nn::Unfold, m);
+  case Cast::unsqueeze:       return ANY(Unsqueeze, m);
+  case Cast::upsample:        return ANY(nn::Upsample, m);
+  case Cast::zeropad2d:       return ANY(nn::ZeroPad2d, m);
+  default: AT_ERROR("can't create type-erased module, unrecognized cast: ",(I)c);
+ }
+}
 // --------------------------------------------------------------------------------------------
 // mopt - given enumeration and generic module, return options as k dictionary
 // --------------------------------------------------------------------------------------------
