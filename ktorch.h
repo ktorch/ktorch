@@ -102,6 +102,7 @@ using TensorDict=torch::OrderedDict<std::string, torch::Tensor>;
 // shorter names for commonly used container modules defined by pytorch & created in knn.h
 using Module=torch::nn::Module;
 using Moduleptr=std::shared_ptr<Module>;
+using Modules=std::stack<Moduleptr>;
 using ModuleDict=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
 using AnyModule=torch::nn::AnyModule;
 using Sequential=torch::nn::Sequential;

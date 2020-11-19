@@ -44,11 +44,13 @@ std::string mlabel(const Module& x) {
 // OPTION - macro to append a module option to a k dictionary given dict,name & value
 // argstart - return offset in k list to begin processing module args
 // anymodule - forward declare function to create a module from k args, offset & cast
+// mcreate - forward declare function to create a module from k args, offset & cast
 // mopt - forward declare function to return module settings as k dictionary
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
 static AnyModule anymodule(K x,J i,Cast c);
+static Moduleptr mcreate(K x,J i,Cast c);
 static K mopt(bool,Cast,const Module&);
 
 // ----------------------------------------------------------------------------
@@ -56,6 +58,7 @@ static K mopt(bool,Cast,const Module&);
 // to - given layer & options, change device/data type
 // ----------------------------------------------------------------------------
 K kmodule(Cast c,const Layer& m) {return kptr(new Klayer(c,m));}
+//K kmodule(Cast c,Moduleptr m) {return kptr(new Kmodule(Class::module,c,m));}
 
 K to(Klayer* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
@@ -2738,6 +2741,138 @@ static AnyModule anymodule(K x,J i,Cast c) {
  }
 }
 
+// ----------------------------------------------------------------------------
+// mcreate - define module from supplied options, return as generic module ptr
+// ----------------------------------------------------------------------------
+static Moduleptr mcreate(K x,J i,Cast c) {
+ switch(c) {
+  case Cast::batchnorm1d:  return nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
+  case Cast::batchnorm2d:  return nn::BatchNorm2d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
+  case Cast::batchnorm3d:  return nn::BatchNorm3d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
+
+  case Cast::instancenorm1d:  return nn::InstanceNorm1d(batchnorm<nn::InstanceNormOptions>(x,i,c)).ptr();
+  case Cast::instancenorm2d:  return nn::InstanceNorm2d(batchnorm<nn::InstanceNormOptions>(x,i,c)).ptr();
+  case Cast::instancenorm3d:  return nn::InstanceNorm3d(batchnorm<nn::InstanceNormOptions>(x,i,c)).ptr();
+
+  case Cast::groupnorm:  return nn::GroupNorm(groupnorm(x,i,c)).ptr();
+  case Cast::layernorm:  return nn::LayerNorm(layernorm(x,i,c)).ptr();
+  case Cast::localnorm:  return nn::LocalResponseNorm(localnorm<nn::LocalResponseNormOptions>(x,i,c)).ptr();
+  case Cast::crossmap2d: return nn::CrossMapLRN2d(localnorm<nn::CrossMapLRN2dOptions>(x,i,c)).ptr();
+
+  case Cast::embed:        return embed(x,i,c).ptr();
+  case Cast::embedbag:     return embedbag(x,i,c).ptr();
+  case Cast::linear:       return nn::Linear(linear(x,i,c)).ptr();
+  case Cast::bilinear:     return nn::Bilinear(bilinear(x,i,c)).ptr();
+
+  case Cast::drop:         return nn::Dropout(drop(x,i,c)).ptr();
+  case Cast::drop2d:       return nn::Dropout2d(drop(x,i,c)).ptr();
+  case Cast::drop3d:       return nn::Dropout3d(drop(x,i,c)).ptr();
+  case Cast::adrop:        return nn::AlphaDropout(drop(x,i,c)).ptr();
+  case Cast::fadrop:       return nn::FeatureAlphaDropout(drop(x,i,c)).ptr();
+
+  case Cast::conv1d:       return nn::Conv1d(conv<1>(x,i,c)).ptr();
+  case Cast::conv2d:       return nn::Conv2d(conv<2>(x,i,c)).ptr();
+  case Cast::conv3d:       return nn::Conv3d(conv<3>(x,i,c)).ptr();
+
+  case Cast::convtranspose1d:  return nn::ConvTranspose1d(convtran<1>(x,i,c)).ptr();
+  case Cast::convtranspose2d:  return nn::ConvTranspose2d(convtran<2>(x,i,c)).ptr();
+  case Cast::convtranspose3d:  return nn::ConvTranspose3d(convtran<3>(x,i,c)).ptr();
+
+  case Cast::fold:         return nn::Fold(fold(x,i,c)).ptr();
+  case Cast::unfold:       return nn::Unfold(unfold(x,i,c)).ptr();
+  case Cast::upsample:     return nn::Upsample(upsample<nn::UpsampleOptions>(x,i,c)).ptr();
+
+  case Cast::maxpool1d:    return nn::MaxPool1d(maxpool<1>(x,i,c)).ptr();
+  case Cast::maxpool2d:    return nn::MaxPool2d(maxpool<2>(x,i,c)).ptr();
+  case Cast::maxpool3d:    return nn::MaxPool3d(maxpool<3>(x,i,c)).ptr();
+
+  case Cast::avgpool1d:    return nn::AvgPool1d(avgpool<1>(x,i,c)).ptr();
+  case Cast::avgpool2d:    return nn::AvgPool2d(avgpool<2>(x,i,c)).ptr();
+  case Cast::avgpool3d:    return nn::AvgPool3d(avgpool<3>(x,i,c)).ptr();
+
+  case Cast::adaptmax1d:   return nn::AdaptiveMaxPool1d(adapt<1,nn::AdaptiveMaxPool1dOptions>(x,i,c)).ptr();
+  case Cast::adaptmax2d:   return nn::AdaptiveMaxPool2d(adapt<2,nn::AdaptiveMaxPool2dOptions>(x,i,c)).ptr();
+  case Cast::adaptmax3d:   return nn::AdaptiveMaxPool3d(adapt<3,nn::AdaptiveMaxPool3dOptions>(x,i,c)).ptr();
+
+  case Cast::adaptavg1d:   return nn::AdaptiveAvgPool1d(adapt<1,nn::AdaptiveAvgPool1dOptions>(x,i,c)).ptr();
+  case Cast::adaptavg2d:   return nn::AdaptiveAvgPool2d(adapt<2,nn::AdaptiveAvgPool2dOptions>(x,i,c)).ptr();
+  case Cast::adaptavg3d:   return nn::AdaptiveAvgPool3d(adapt<3,nn::AdaptiveAvgPool3dOptions>(x,i,c)).ptr();
+
+  case Cast::fmaxpool2d:   return nn::FractionalMaxPool2d(fpool<2>(x,i,c)).ptr();
+  case Cast::fmaxpool3d:   return nn::FractionalMaxPool3d(fpool<3>(x,i,c)).ptr();
+
+  case Cast::lppool1d:     return nn::LPPool1d(lppool<1>(x,i,c)).ptr();
+  case Cast::lppool2d:     return nn::LPPool2d(lppool<2>(x,i,c)).ptr();
+
+  case Cast::pad:          return Pad(pad(x,i,c)).ptr();
+  case Cast::pad1d:        return nn::ConstantPad1d(cpad<1,nn::ConstantPad1dOptions>(x,i,c)).ptr();
+  case Cast::pad2d:        return nn::ConstantPad2d(cpad<2,nn::ConstantPad2dOptions>(x,i,c)).ptr();
+  case Cast::pad3d:        return nn::ConstantPad3d(cpad<3,nn::ConstantPad3dOptions>(x,i,c)).ptr();
+  case Cast::reflect1d:    return nn::ReflectionPad1d(npad<1,nn::ReflectionPad1dOptions>(x,i,c)).ptr();
+  case Cast::reflect2d:    return nn::ReflectionPad2d(npad<2,nn::ReflectionPad2dOptions>(x,i,c)).ptr();
+  case Cast::replicate1d:  return nn::ReplicationPad1d(npad<1,nn::ReplicationPad1dOptions>(x,i,c)).ptr();
+  case Cast::replicate2d:  return nn::ReplicationPad2d(npad<2,nn::ReplicationPad2dOptions>(x,i,c)).ptr();
+  case Cast::replicate3d:  return nn::ReplicationPad3d(npad<3,nn::ReplicationPad3dOptions>(x,i,c)).ptr();
+  case Cast::zeropad2d:    return nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)).ptr();
+
+  case Cast::attention:    return nn::MultiheadAttention(attention(x,i,c)).ptr();
+  case Cast::decoderlayer: return nn::TransformerDecoderLayer(codelayer<nn::TransformerDecoderLayerOptions>(x,i,c)).ptr();
+  case Cast::encoderlayer: return nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)).ptr();
+  case Cast::decoder:      return nn::TransformerDecoder(decoder(x,i,c)).ptr();
+  case Cast::encoder:      return nn::TransformerEncoder(encoder(x,i,c)).ptr();
+  case Cast::transformer:  return nn::Transformer(transformer(x,i,c)).ptr();
+
+  case Cast::rnn:          return nn::RNN(rnn(x,i,c)).ptr();
+  case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
+  case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
+
+  case Cast::identity:     noarg(c,x,i); return nn::Identity().ptr();
+  case Cast::logsigmoid:   noarg(c,x,i); return nn::LogSigmoid().ptr();
+  case Cast::sigmoid:      noarg(c,x,i); return nn::Sigmoid().ptr();
+  case Cast::softsign:     noarg(c,x,i); return nn::Softsign().ptr();
+  case Cast::softmax2d:    noarg(c,x,i); return nn::Softmax2d().ptr();
+  case Cast::tanh:         noarg(c,x,i); return nn::Tanh().ptr();
+  case Cast::tanhshrink:   noarg(c,x,i); return nn::Tanhshrink().ptr();
+  case Cast::gelu:         noarg(c,x,i); return nn::GELU().ptr();
+  case Cast::mul:          noarg(c,x,i); return Mul().ptr();
+
+  case Cast::relu:         return  nn::ReLU(inplace(x,i,c)).ptr();
+  case Cast::relu6:        return nn::ReLU6(inplace(x,i,c)).ptr();
+  case Cast::selu:         return  nn::SELU(inplace(x,i,c)).ptr();
+
+  case Cast::softmax:      return nn::Softmax(dim(x,i,c)).ptr();
+  case Cast::softmin:      return nn::Softmin(dim(x,i,c)).ptr();
+  case Cast::logsoftmax:   return nn::LogSoftmax(dim(x,i,c)).ptr();
+  case Cast::flatten:      return nn::Flatten(flatten(x,i,c)).ptr();
+
+  case Cast::squeeze:      return Squeeze(squeeze(x,i,c)).ptr();
+  case Cast::unsqueeze:    return Unsqueeze(squeeze(x,i,c)).ptr();
+  case Cast::expand:       return Expand(getsize(x,i,c)).ptr();
+  case Cast::reshape:      return Reshape(getsize(x,i,c)).ptr();
+  case Cast::cat:          return Cat(dim(x,i,c)).ptr();
+
+  case Cast::elu:          return nn::ELU (alpha<nn::ELUOptions> (x,i,c)).ptr();
+  case Cast::celu:         return nn::CELU(alpha<nn::CELUOptions>(x,i,c)).ptr();
+  case Cast::leakyrelu:    return nn::LeakyReLU(slope(x,i,c)).ptr();
+  case Cast::glu:          return nn::GLU(dim(x,i,c)).ptr();
+  case Cast::hardshrink:   return nn::Hardshrink(lambda(x,i,c)).ptr();
+  case Cast::softshrink:   return nn::Softshrink(lambda(x,i,c)).ptr();
+  case Cast::prelu:        return nn::PReLU(prelu(x,i,c)).ptr();
+  case Cast::rrelu:        return nn::RReLU(rrelu(x,i,c)).ptr();
+  case Cast::hardtanh:     return nn::Hardtanh(hardtanh(x,i,c)).ptr();
+  case Cast::softplus:     return nn::Softplus(softplus(x,i,c)).ptr();
+  case Cast::threshold:    return nn::Threshold(threshold(x,i,c)).ptr();
+  case Cast::pairwise:     return nn::PairwiseDistance(pairwise(x,i,c)).ptr();
+  case Cast::similar:      return nn::CosineSimilarity(similar(x,i,c)).ptr();
+
+  default:
+   if(container(c))
+    AT_ERROR("cannot create container module: ",msym(c));
+   else
+    AT_ERROR("unrecognized module: cannot create module from unrecognized enumeration ",(I)c);
+ }
+}
+
 // --------------------------------------------------------------------------------------------
 // mopt - given enumeration and generic module, return options as k dictionary
 // --------------------------------------------------------------------------------------------
@@ -2928,6 +3063,11 @@ static void addmodule(Layer& x,const Layer& y) {
    x,y);
 }
 
+static void addmodule(Moduleptr& x,const Moduleptr& y) {
+ const char* s=mname(*x);
+ //if(s) x->push_back(s,y); else x->push_back(y);
+}
+
 static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
  
 static void addparent(const Layer& a,Layers& q) {
@@ -2952,6 +3092,13 @@ static void addchild(const Layer& a,Layers& q) {
   q.push(a);
 }
 
+static void addchild(const Moduleptr& a,Modules& q) {
+ if(q.size())
+  addmodule(q.top(),a);
+ else
+  q.push(a);
+}
+
 static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
 static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
  auto a=anymodule(x,argstart(x,s),c); // create module from cast, options & offset
@@ -2959,6 +3106,16 @@ static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
  addname(m,s);                        // add name if supplied
  if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
  addchild(a,q);                       // add to immediate parent container on stack
+ return m.modules(false).size();      // return count of all sub-modules created
+}
+
+static auto addchild(Cast c,S s,Modules& q,K x,K y=nullptr,K z=nullptr);
+static auto addchild(Cast c,S s,Modules& q,K x,K y,K z) {
+ auto p=mcreate(x,argstart(x,s),c);   // create generic module ptr from cast, options & offset
+ auto& m=*p;                          // generic module reference
+ addname(m,s);                        // add name if supplied
+ if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
+ //PATCH addchild(a,q);                       // add to immediate parent container on stack
  return m.modules(false).size();      // return count of all sub-modules created
 }
 
