@@ -168,11 +168,11 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "SeqJoin";}
 
- void push_back(torch::nn::Sequential q) {
+ void push_back(const torch::nn::Sequential& q) {
   push_back(children().size()==0 ? "qx" : "qy", q);
  }
 
- void push_back(std::string s,torch::nn::Sequential q) {
+ void push_back(std::string s,const torch::nn::Sequential& q) {
   if(children().size()==0)
    qx=register_module(s,std::move(q));
   else if(children().size()==1)
@@ -181,11 +181,11 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
    AT_ERROR("seqjoin: both sequential layers already defined");
  }
 
- void push_back(torch::nn::AnyModule a) {
+ void push_back(const torch::nn::AnyModule& a) {
   push_back("join",a);
  }
 
- void push_back(std::string s,torch::nn::AnyModule a) {
+ void push_back(std::string s,const torch::nn::AnyModule& a) {
   TORCH_CHECK(children().size()==2, "seqjoin: both sequential layers must be defined first");
   TORCH_CHECK(join.is_empty(), "seqjoin: join layer already defined");
   join=std::move(a);

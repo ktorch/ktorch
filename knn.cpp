@@ -44,13 +44,13 @@ std::string mlabel(const Module& x) {
 // OPTION - macro to append a module option to a k dictionary given dict,name & value
 // argstart - return offset in k list to begin processing module args
 // anymodule - forward declare function to create a module from k args, offset & cast
-// mcreate - forward declare function to create a module from k args, offset & cast
 // mopt - forward declare function to return module settings as k dictionary
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
 static AnyModule anymodule(K x,J i,Cast c);
-static Moduleptr mcreate(K x,J i,Cast c);
+static AnyModule anymodule(K x,J i,S s);
+static AnyModule anymodule(Cast c,const Moduleptr& m);
 static K mopt(bool,Cast,const Module&);
 
 // ----------------------------------------------------------------------------
@@ -2511,7 +2511,8 @@ static AnyModule customcoder(K x,Setting t,std::vector<K>& v) {
   } else {
    y=x; msyms(y,s,nm); i=argstart(y,nm);
   }
-  a=anymodule(y,i,msym(s));
+  // OLD a=anymodule(y,i,msym(s));
+  a=anymodule(y,i,s);
  }
  return a;
 }
@@ -2545,7 +2546,8 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case Setting::decoder:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KS || p.t>=0, msym(c), ": unrecognized arg(s) for custom ",p.k);
-     auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s,v);
+     // OLD auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s,v);
+     auto a=p.t==-KS ? anymodule(nullptr,0,p.s) : customcoder(p.v,s,v);
      s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
     }
     break;
@@ -2875,11 +2877,12 @@ static Moduleptr mcreate(K x,J i,Cast c) {
 
 // ----------------------------------------------------------------------------------------------
 // anymodule - given generic module ptr, recast to specific type and return type-erased AnyModule
+//             2nd form, where function supplies k arg(s), offset, symbol and returns AnyModule
 // ----------------------------------------------------------------------------------------------
 #define ANYMODULE(x,y) AnyModule(std::dynamic_pointer_cast<x>(y))
 #define ANY(x,y) ANYMODULE(x##Impl,y)
 
-static AnyModule anymodule(Cast c,Moduleptr& m) {
+static AnyModule anymodule(Cast c,const Moduleptr& m) {
  switch(c) {
   case Cast::adaptavg1d:      return ANY(nn::AdaptiveAvgPool1d, m);
   case Cast::adaptavg2d:      return ANY(nn::AdaptiveAvgPool2d, m);
@@ -2988,6 +2991,12 @@ static AnyModule anymodule(Cast c,Moduleptr& m) {
   default: AT_ERROR("can't create type-erased module, unrecognized cast: ",(I)c);
  }
 }
+
+static AnyModule anymodule(K x,J i,S s) {
+ Cast c=msym(s);
+ return anymodule(c, mcreate(x,i,c));
+}
+
 // --------------------------------------------------------------------------------------------
 // mopt - given enumeration and generic module, return options as k dictionary
 // --------------------------------------------------------------------------------------------
@@ -3179,8 +3188,28 @@ static void addmodule(Layer& x,const Layer& y) {
 }
 
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
- const char* s=mname(*x);
- //if(s) x->push_back(s,y); else x->push_back(y);
+ const char* s=mname(*y);
+ if(auto *m=x->as<nn::Sequential>()) {
+  const auto& a=anymodule(mcast(*y),y);
+  if(s) m->push_back(s,a); else m->push_back(a);
+ } else if(auto *m=x->as<SeqNest>()) {
+  const auto& a=anymodule(mcast(*y),y);
+  if(s) m->push_back(s,a); else m->push_back(a);
+ } else if(auto *m=x->as<SeqJoin>()) {
+  if(y->as<nn::Sequential>()) {
+   const auto& q=nn::Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(y));
+   if(s) m->push_back(s,q); else m->push_back(q);
+  } else {
+   const auto& a=anymodule(mcast(*y),y);
+   if(s) m->push_back(s,a); else m->push_back(a);
+  } 
+ } else if(auto *m=x->as<BaseModule>()) {
+  m->register_module(s ? s : c10::to_string(m->children().size()), y);
+ } else if(auto *m=x->as<nn::ModuleList>()) {
+  m->push_back(y);
+ } else {
+  AT_ERROR("unable to add a ", mlabel(*y)," module as a child of a ",mlabel(*x), " module");
+ }
 }
 
 static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
@@ -3207,11 +3236,11 @@ static void addchild(const Layer& a,Layers& q) {
   q.push(a);
 }
 
-static void addchild(const Moduleptr& a,Modules& q) {
+static void addchild(const Moduleptr& m,Modules& q) {
  if(q.size())
-  addmodule(q.top(),a);
+  addmodule(q.top(),m);
  else
-  q.push(a);
+  q.push(m);
 }
 
 static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
@@ -3226,12 +3255,11 @@ static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
 
 static auto addchild(Cast c,S s,Modules& q,K x,K y=nullptr,K z=nullptr);
 static auto addchild(Cast c,S s,Modules& q,K x,K y,K z) {
- auto p=mcreate(x,argstart(x,s),c);   // create generic module ptr from cast, options & offset
- auto& m=*p;                          // generic module reference
- addname(m,s);                        // add name if supplied
- if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
- //PATCH addchild(a,q);                       // add to immediate parent container on stack
- return m.modules(false).size();      // return count of all sub-modules created
+ auto m=mcreate(x,argstart(x,s),c);   // create generic module ptr from cast, options & offset
+ addname(*m,s);                       // add name if supplied
+ if(y||z) mparms(c,*m,y,z);           // add any supplied parms or buffers
+ addchild(m,q);                       // add to immediate parent container on stack
+ return m->modules(false).size();     // return count of all sub-modules created
 }
 
 // -------------------------------------------------------------------------------

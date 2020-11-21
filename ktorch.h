@@ -583,7 +583,7 @@ K modulehelp(Cast);
 void nnfn(K);
 
 // loss functions:
-K kloss(Cast,Moduleptr);
+K kloss(Cast,const Moduleptr&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);
