@@ -894,7 +894,7 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
 static TensorVector optparms(K x,J i) {
- if(auto *a=xmodule(x,i))
+ if(auto *a=xlayer(x,i))
   return mref(a->m).parameters();
  else if(auto *a=xvec(x,i))
   return *a;
@@ -924,7 +924,7 @@ static K optinit(S s,K x,K y) {
   case Cast::sgd:     {auto a=SGDOptions(LR); sgd(x,i,a);     o=sgd(w,a,y);     break;}
   default: AT_ERROR("unrecognized optimizer: ",s); break;
  }
- if((k=xmodule(x,1)))
+ if((k=xlayer(x,1)))
   addmodule(mref(k),*m);
  return kopt(c,o,m);
 }
@@ -948,7 +948,7 @@ K optstate(Ktag *g,K x) {
 
 KAPI optstate2(K x,K y) {
  KTRY
-  Kopt* o=xoptim(x); Klayer *m=xmodule(y);
+  Kopt* o=xoptim(x); Klayer *m=xlayer(y);
   TORCH_CHECK(o && m, "need optimizer & module");
   return optstate(true,true,o->c,*o->o,mref(m->m));
  KCATCH("optstate");

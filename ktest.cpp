@@ -8,10 +8,6 @@ namespace nn=torch::nn;
   AnyModule(const ModuleHolder<ModuleType>& module_holder)
 */
  
-static void seqtest(const Moduleptr& x) {
- //auto q=nn::ModuleHolder<Sequential>(*x->as<nn::Sequential>());
-}
-
 static void checkhash(const Moduleptr& x) {
  Cast c=mcast(*x);
  std::cerr << "Cast: " << (I)c << ", " << msym(*x) << "\n";
@@ -234,7 +230,7 @@ KAPI f_old(K x) {
   } else {
    return kb(false);
   }
- KCATCH("xmodule")
+ KCATCH("test base module")
 }
 
 KAPI g2(K x) {
@@ -352,7 +348,7 @@ S s=nullptr;
 KAPI optgroup(K x) {
  KTRY
   TORCH_CHECK(!x->t && x->n==2,"expecting 2-element general list");
-  Klayer *q=xmodule(x,0);
+  Klayer *q=xlayer(x,0);
   Kopt *o=xoptim(x,1);
   TORCH_CHECK(q && o, "expecting module & optimizer");
   auto& m=mref(q);
@@ -411,7 +407,7 @@ KAPI xnest(K x) {return kj(nest(x)); }
 
 KAPI layerlist(K x) {
  Klayer *q;
- if((q=xmodule(x))) {
+ if((q=xlayer(x))) {
   auto& m=mref(q->m);
   std::cerr << "named modules: \n";
   for(auto& a:m.named_modules())

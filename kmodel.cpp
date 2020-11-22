@@ -261,7 +261,7 @@ static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
 KAPI evaluate(K x) {
  KTRY
   torch::NoGradGuard g;
-  Klayer *q=xmodule(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
+  Klayer *q=xlayer(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
   TORCH_CHECK(q || m, "evaluate: expects (model/module; vector/tensor(s)/array(s);optional args..)\n"
                       "          optional args: (batch size; tensor flag; metric(s))");
   J n=x->n; K s=nullptr;

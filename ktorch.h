@@ -387,8 +387,10 @@ bool xtenarg(K,J,Tensor&,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
-Klayer* xmodule(K);
-Klayer* xmodule(K,J);
+Klayer* xlayer(K);
+Klayer* xlayer(K,J);
+Kmodule* xmodule(K);
+Kmodule* xmodule(K,J);
 Kmodule* xloss(K);
 Kmodule* xloss(K,J);
 Kopt* xoptim(K);
@@ -557,6 +559,7 @@ K  similar(bool,const torch::nn::CosineSimilarityOptions&);
 K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
 K kmodule(Cast,const Layer&);
+K kmodule(Cast,const Moduleptr&);
 K to(Klayer*,const TensorOptions&,bool);
 K to(Kmodule*,const TensorOptions&,bool);
 Layer&  lref(Ktag*);

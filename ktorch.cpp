@@ -493,13 +493,17 @@ bool xtenarg(K x,Tensor& a,Tensor &b)           {return xtenarg(x,0,a,b);}
 bool xtenarg(K x,Tensor& a,Tensor &b,Tensor &c) {return xtenarg(x,0,a,b,c);}
  
 // ------------------------------------------------------------------------------------------------------
-// xmodule - check arg(s) for allocated layer pointer(layer variant storing module)
+// xlayer - check arg(s) for allocated layer pointer(layer variant storing module)
+// xmodule - check arg(s) for allocated module pointer
 // xloss - check arg(s) for allocated loss module
 // xoptim - check arg(s) for allocated optimizer pointer
 // xmodel - check arg(s) for allocated model pointer (module, loss & optimizer)
 // ------------------------------------------------------------------------------------------------------
-Klayer* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Klayer*)g : nullptr;}
-Klayer* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
+Klayer* xlayer(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Klayer*)g : nullptr;}
+Klayer* xlayer(K x,J i) {return xind(x,i) ? xlayer(kK(x)[i]) : nullptr;}
+
+Kmodule* xmodule(K x) {auto* g=xtag(x); return (g && g->a==Class::module) ? (Kmodule*)g : nullptr;}
+Kmodule* xmodule(K x,J i) {return xind(x,i) ? xmodule(kK(x)[i]) : nullptr;}
 
 Kmodule* xloss(K x) {auto* g=xtag(x); return (g && g->a==Class::loss) ? (Kmodule*)g : nullptr;}
 Kmodule* xloss(K x,J i) {return xind(x,i) ? xloss(kK(x)[i]) : nullptr;}
