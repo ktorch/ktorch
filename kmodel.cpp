@@ -6,11 +6,11 @@
 // modelstate - return a dictionary with state of module, loss fn & optimizer
 // model - create model from module, loss & optimizer or retrieve input options
 // -------------------------------------------------------------------------------------------
-static void modelpart(K x,J i,Klayer*& q,Kmodule*& l,Kopt*& o) {
+static void modelpart(K x,J i,Kmodule*& q,Kmodule*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
   switch(g ? g->a : Class::undefined) {
-   case Class::module:    q=(Klayer*)g;  break;
+   case Class::module:    q=(Kmodule*)g;  break;
    case Class::loss:      l=(Kmodule*)g; break;
    case Class::optimizer: o=(Kopt*)g;  break;
    default: AT_ERROR("model arg[",i,"] unrecognized: ",
@@ -29,7 +29,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, mget(a,b,mref(m->m)), lossdict(a,b,m->lc,*m->l), optstate(a,b,m->oc,*m->o,*m->om)));
+ return xD(modelkeys(), knk(3, mget(a,b,*m->m), lossdict(a,b,m->lc,*m->l), optstate(a,b,m->oc,*m->o,*m->om)));
 }
 
 // this version of modelstate called from generic state function in k-level api
@@ -49,14 +49,14 @@ static void modelfree(K x,J i) {
 KAPI model(K x) {
  KTRY
   bool a=env().alloptions;
-  Klayer *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
+  Kmodule *q=nullptr; Kmodule *l=nullptr; Kopt *o=nullptr; Kmodel *m=nullptr;
   TORCH_CHECK(!x->t, "model not implemented for ",kname(x->t));
   if((m=xmodel(x)) || (x->n==2 && xbool(x,1,a) && (m=xmodel(x,0)))) {
    return modelstate(a,false,m);
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->m=q->m;                         //assign new module layer
+    if(q) m->m=q->m;                         //assign new module 
     if(l) m->lc=l->c, m->l=l->m;             //new loss function
     if(o) m->oc=o->c, m->o=o->o, m->om=o->m; //new optimizer
     modelfree(x,1);
@@ -76,13 +76,13 @@ KAPI model(K x) {
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(module(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
-Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->m,x);}
-Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m,v[0]);}
+Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->mc,*m->m,x);}
+Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m->mc,*m->m,v[0]);}
 
 K mbackward(K a) {
  Kmodel *m; Tensor *x,*y,r;
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
-  r=lossfwd(m->lc,*m->l,mforward(m->m,*x),*y);
+  r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,*x),*y);
  } else {
   AT_ERROR("backward expects (model; inputs; targets)");
  }
@@ -178,7 +178,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=mforward(g->m,*z);
+  Tensor gx=mforward(g->mc,*g->m,*z);
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   optstep(d);
@@ -193,21 +193,20 @@ KAPI ganstep(K a) {
 // --------------------------------------------------------------------------------------------
 // evalfwd - forward calc on given module layer and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
-static Tensor evalfwd(Layer& q,Tensor& x,int64_t w) {
- auto m=mref(q);
+static Tensor evalfwd(Cast c,Module& m,Tensor& x,int64_t w) {
  bool b=m.is_training(); Tensor y;
- if(b) m.train(false);             // turn off training mode
- if(w) {                           // if batches of window size w
-  auto n=maxsize(x);               // get maxsize
+ if(b) m.train(false);               // turn off training mode
+ if(w) {                             // if batches of window size w
+  auto n=maxsize(x);                 // get maxsize
   TensorVector r;
-  for(int64_t i=0; i<n; i+=w) {    // batches of w
+  for(int64_t i=0; i<n; i+=w) {      // batches of w
    subset(x,0,i,w,n);
-   r.emplace_back(mforward(q,x));  // accumulate forward calcs
+   r.emplace_back(mforward(c,m,x));  // accumulate forward calcs
   }
-  subset(x,0,0,n,n);               // restore size of inputs
-  y=torch::cat(r);                 // and join batch results
+  subset(x,0,0,n,n);                 // restore size of inputs
+  y=torch::cat(r);                   // and join batch results
  } else {
-  y=mforward(q,x);                 // no batching, run forward on full inputs
+  y=mforward(c,m,x);                 // no batching, run forward on full inputs
  }
  if(b) m.train(true);
  return y;
@@ -237,8 +236,8 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
  }
 }
 
-static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
- Tensor y=evalfwd(q ? q->m : m->m, v[0], w);
+static K metrics(Kmodule *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
+ Tensor y=evalfwd(q ? q->c : m->mc,q ? *q->m : *m->m, v[0], w);
  if(s) {
   if(s->t == -KS) {
    return kresult(b, metric(metric(s->s),m,v,y));
@@ -261,7 +260,7 @@ static K metrics(Klayer *q,Kmodel *m,TensorVector& v,int64_t w,bool b,K s) {
 KAPI evaluate(K x) {
  KTRY
   torch::NoGradGuard g;
-  Klayer *q=xlayer(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
+  Kmodule *q=xmodule(x,0); Kmodel *m=xmodel(x,0); TensorVector *v; bool b=false; int64_t w=0;
   TORCH_CHECK(q || m, "evaluate: expects (model/module; vector/tensor(s)/array(s);optional args..)\n"
                       "          optional args: (batch size; tensor flag; metric(s))");
   J n=x->n; K s=nullptr;

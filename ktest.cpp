@@ -318,79 +318,6 @@ KAPI mrefs(K x) {
  return (K)0;
 }
 
-static bool parmname(const Tensor& t,const Module& m,S s) {
-  S nm=mname(m);
-  for(auto& p:m.named_parameters()) {
-   if(t.is_same(p.value())) {
-    std::cerr << "optimizer parameter: " << (nm ? nm : "") << "." << p.key() << "\n";
-    return true;
-   }
-  }
- return false;
-}
-
-
-static void optgroup1(const Optimizer& o,const Module &m) {
-S s=nullptr;
- J i=0;
- std::cerr << "state size: " << o.state().size() << "\n";
- std::cerr << "groups: " << o.param_groups().size() << "\n";
- for(auto& g:o.param_groups()) {
-  std::cerr << "group[" << i << "] count: " << g.params().size() << "\n";
-  std::cerr << "has options: " << g.has_options() << "\n";
-  for(auto& p:g.params()) {
-   if(!parmname(p,m,s))
-    std::cerr << "failed to find parameter\n";
-   }
-  }
-}
-
-KAPI optgroup(K x) {
- KTRY
-  TORCH_CHECK(!x->t && x->n==2,"expecting 2-element general list");
-  Klayer *q=xlayer(x,0);
-  Kopt *o=xoptim(x,1);
-  TORCH_CHECK(q && o, "expecting module & optimizer");
-  auto& m=mref(q);
-/*
-  const auto d=m.named_modules("root");
-  for(auto &i:d) {
-   std::cerr << i.key() << "\n";
-   std::cerr << *i.value() << "\n";
-   for(auto& j:i.value()->named_parameters()) {
-    std::cerr << j.key() << "\n";
-   }
-  }
-  std::cerr << " ---------- top-level only -------------- \n";
-*/
-  std::string s;
-  if(mname_(m).has_value()) s=mname(m);
- 
-  for(auto& p:m.named_parameters()) {
-   std::cerr << s << "." << p.key() << "\n";
-  }
-
-  optgroup1(*o->o,m);
-  
-  return (K)0;
- KCATCH("optgroup");
-}
-
-KAPI optcheck(K x) {
- auto o1=torch::optim::AdagradOptions();
- auto o2=torch::optim::AdamOptions();
- auto o3=torch::optim::AdamWOptions();
- auto o4=torch::optim::LBFGSOptions();
- auto o5=torch::optim::RMSpropOptions();
- auto o6=torch::optim::SGDOptions(.01);
- double f=4.3333333333;
- bool b=x->g;
- auto v=b ? static_cast<int>(f) : static_cast<float>(f);
- std::cerr << "v: " << v << "\n";
- return K(0);
-}
-
-
 KAPI Xnone(K x,K y) {
  return kb(xnone(x,y->j));
 }
@@ -404,26 +331,6 @@ J nest(K x) {
 }
 
 KAPI xnest(K x) {return kj(nest(x)); }
-
-KAPI layerlist(K x) {
- Klayer *q;
- if((q=xlayer(x))) {
-  auto& m=mref(q->m);
-  std::cerr << "named modules: \n";
-  for(auto& a:m.named_modules())
-   std::cerr << a.key() << "\n";
-  std::cerr << "\nmodules: \n";
-  for(auto& a:m.modules())
-   std::cerr << *a << "\n";
-  std::cerr << "\nparameters: \n";
-  for(auto& a:m.named_parameters())
-   std::cerr << a.key() << "\n";
-  std::cerr << "\nbuffers: \n";
-  for(auto& a:m.named_buffers())
-   std::cerr << a.key() << "\n";
- }
- return (K)0;
-}
 
 #define OPTION(x,k,v) dictadd(x, lset(Setting::k), v)
 
@@ -673,7 +580,6 @@ KAPI ksizes(K x) {
  std::cerr << "Kten:    " << sizeof(Kten) << "\n";
  std::cerr << "Kvec:    " << sizeof(Kvec) << "\n";
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
- std::cerr << "Klayer: " << sizeof(Klayer) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
  return (K)0;

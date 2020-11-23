@@ -984,7 +984,7 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
    case Class::tensor: v=vectorparms({((Kten*)k)->t}, y,o,m); break;
    case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
    case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
-   case Class::module: v=moduleparms(mref((Klayer*)k), y,o,m); break;
+   case Class::module: v=moduleparms(*((Kmodule*)k)->m, y,o,m); break;
    case Class::model:  v=moduleparms(mref((Kmodel*)k), y,o,m); break;
    default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
   }

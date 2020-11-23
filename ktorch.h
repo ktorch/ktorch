@@ -289,11 +289,11 @@ struct TORCH_API Kmodel : public Ktag {
  Cast mc;          // type of module, typically a container module, e.g. Sequential
  Cast lc;          // type of loss fn
  Cast oc;          // type of optimizer
- Layer m;          // layer, e.g. Sequential
+ Moduleptr m;      // generic pointer to top-level module, e.g. Sequential
  Moduleptr l;      // loss module
  Optptr o;         // shared ptr to optimizer
  BaseModule om;    // basic container module to hold all modules/tensors managed by optimizer
- Kmodel(Klayer *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
+ Kmodel(Kmodule *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
   a=Class::model; c=Cast::model;
  }
 };
@@ -580,7 +580,11 @@ Cast mcast(const Module&);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
 K mforward(Layer&,K);
+K mforward(Cast,Module&,K);
 Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
+Tensor mforward(Cast,Module&,const Tensor&);
+Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
+Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 K mattr(const Layer&,Ktype,Attr);
 K modulehelp(Cast);
 void nnfn(K);

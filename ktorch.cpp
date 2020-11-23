@@ -1261,7 +1261,12 @@ KAPI To(K x) {
    switch(g->a) {
     case Class::tensor: return to((Kten*)g,o,a,b);
     case Class::vector: return to((Kvec*)g,o,a);
-    case Class::module: return to((Klayer*)g,o,a);
+  //case Class::module: return to((Klayer*)g,o,a);
+    case Class::module:
+    if(auto *m=dynamic_cast<Klayer*>(g))         { return to(m,o,a);
+    } else if(auto *m=dynamic_cast<Kmodule*>(g)) { return to(m,o,a);
+    } else { AT_ERROR("unrecognized module");
+    }
     case Class::loss:   return to((Kmodule*)g,o,a);
     default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
    }
@@ -1311,8 +1316,16 @@ KAPI forward(K x) {
   Ktag *g;
   TORCH_CHECK((g=xtag(x,0)), "forward expects module or full model as first arg");
   switch(g->a) {
-   case Class::module: return mforward(((Klayer*)g)->m,x);
-   case Class::model:  return mforward(((Kmodel*)g)->m,x);
+// case Class::module: return mforward(((Klayer*)g)->m,x);
+   case Class::module: 
+    if(auto *m=dynamic_cast<Klayer*>(g))         { return mforward(m->m, x);
+    } else if(auto *m=dynamic_cast<Kmodule*>(g)) { return mforward(m->c, *m->m, x);
+    } else { AT_ERROR("unrecognized module");
+    }
+   case Class::model: {
+    auto *m=(Kmodel*)g;
+    return mforward(m->mc,*m->m,x);
+   }
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
   return (K)0;
