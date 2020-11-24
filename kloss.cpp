@@ -12,7 +12,7 @@ namespace fnn=torch::nn::functional;
 // lmap - map to/from sym to loss function name, e.g. `mse <-> Cast::mse
 // lset - map to/from sym to loss setting enum, e.g. `reduce <-> Setting::reduce
 // ------------------------------------------------------------------------------------------------------
-K kloss(Cast c,const Moduleptr& m) {return kptr(new Kmodule(Class::loss,c,m));}
+K kloss(Cast c,const Moduleptr& m) {return kmodule(c,m,Class::loss);}
 
 static Cast lmap(S s) {
  for(auto&m:env().loss)
@@ -647,15 +647,6 @@ K lossdict(bool a,bool b,Cast c,const Module &m) {
  kS(k)[0]=statekey(State::module);   kK(v)[0]=ks(lmap(c));
  kS(k)[1]=statekey(State::options);  kK(v)[1]=lossopt(a,c,m);
  return xD(k,v);
-}
-
-// this version of lossdict() called from generic state() function in k-level api
-K lossdict(Ktag *g,K x) {
- bool a=env().alloptions;
- if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return lossdict(a,true,g->c,*((Kmodule*)g)->m);
- else
-  AT_ERROR("loss state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
 }
 
 Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {

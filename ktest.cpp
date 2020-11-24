@@ -271,9 +271,8 @@ KAPI parms(K x) {
   auto *g=xtag(x);
   TORCH_CHECK(g, "not implemented for ",kname(x));
   switch(g->a) {
-   case Class::module: 
-   case Class::model:
-    return kdict(mref(g).named_parameters());
+   case Class::module: return kdict(((Kmodule*)g)->m->named_parameters());
+   case Class::model:  return kdict(((Kmodel*) g)->m->named_parameters());
    default:
      AT_ERROR("nyi");
   }
@@ -295,31 +294,6 @@ using AdagradOptions = torch::optim::AdagradOptions;
  std::cerr << "defaults match specified options: " << (d == o) << "\n";
  std::cerr << "defaults match default options: " << (d == AdagradOptions()) << "\n";
  return (K)0;
-}
-
-/*
-bool msimple(K x) {
- if(!x->t && x->n>1 && kK(x)[0]->t == -KS)
-  return container(msym(kK(x)[0]->s)) ? xnone(x,x->n-1) : true;
- else
-  return false;
-}
-*/
-KAPI mrefs(K x) {
- torch::nn::Tanh f;
- std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
- {
-  //torch::nn::AnyModule a(f);
-  //std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
-  torch::nn::Sequential q((AnyModule(f)));
-  std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
- }
- std::cerr << "f ref count: " << f.ptr().use_count() << "\n";
- return (K)0;
-}
-
-KAPI Xnone(K x,K y) {
- return kb(xnone(x,y->j));
 }
 
 J nest(K x) {

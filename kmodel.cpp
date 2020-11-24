@@ -32,15 +32,6 @@ K modelstate(bool a,bool b,Kmodel *m) {
  return xD(modelkeys(), knk(3, mget(a,b,*m->m), lossdict(a,b,m->lc,*m->l), optstate(a,b,m->oc,*m->o,*m->om)));
 }
 
-// this version of modelstate called from generic state function in k-level api
-K modelstate(Ktag *g,K x) {
- bool a=env().alloptions;
- if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return modelstate(a,true,(Kmodel*)g);
- else
-  AT_ERROR("model state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
-}
-
 static void modelfree(K x,J i) {
  for(;i<x->n;++i) 
   TORCH_CHECK(kfree(x,i), "model: unable to free arg[",i,"]");
@@ -285,9 +276,10 @@ KAPI training(K x) {
  KTRY
   bool b; Ktag *g;
   TORCH_CHECK((g=xtag(x)) || ((g=xtag(x,0)) && x->n==2 && xbool(x,1,b)),
-              "training: unrecognized arg(s), expects module or model and optional flag");
-  auto& m=mref(g);
-  return (x->n==2) ? m.train(b),(K)0 : kb(m.is_training());
+              "training: unrecognized arg(s), expects module/model and optional flag");
+  TORCH_CHECK(g->a==Class::module || g->a==Class::model, "training: not implemented for ",mapclass(g->a));
+  auto& m=g->a==Class::module ? ((Kmodule*)g)->m : ((Kmodel*)g)->m;
+  return (x->n==2) ? m->train(b),(K)0 : kb(m->is_training());
  KCATCH("training");
 }
 

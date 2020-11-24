@@ -3,34 +3,15 @@ namespace nn=torch::nn;
 namespace fnn=torch::nn::functional;
 
 // ---------------------------------------------------------------------------
-// lref - given k ptr to module/model, return layer reference
-// mref - given layer or k ptr, return reference to generic module
 // mname_ - given module reference, return access to private, optional name
 // mname  - given module reference return optional name
 //        - also, given layer variant/layer ptr, return name or null ptr
 // mlabel - demangle and simplify type name for use in error messages
 // ---------------------------------------------------------------------------
-static Layer makelayer(Module& m);
-Layer& lref(Ktag *g) {
- switch(g->a) {
-  //case Class::module: return makelayer(*((Kmodule*)g)->m);
-  //case Class::model:  return makelayer((*(Kmodel*)g)->m);
-  default: AT_ERROR("unable to retrieve module from ",mapclass(g->a));
- }
-}
-
-Module& mref(const Layer& x) {return c10::visit(make_overload([](const auto& x)->Module& {return *x.ptr();}), x);}
-Module& mref(Klayer* x) {return mref(x->m);}     // module reference from Layer variant
-Module& mref(Kmodel* x)  {return *x->m;}
-Module& mref(Ktag *g)    {return mref(lref(g));}
-Module& mref(Kmodule* x) {return *x->m;}
-
 const
 c10::optional<std::string>& mname_(const Module& m) {return access_private::name_(m);}
 c10::optional<std::string>& mname_(      Module& m) {return access_private::name_(m);}
 S mname(const Module& m) {auto& s=access_private::name_(m); return const_cast<char*>(s ? (*s).c_str() : nullptr);}
-S mname(const Layer& m) {return mname(mref(m));}
-S mname(Klayer* x) {return mname(x->m);}
 
 std::string mlabel(const Module& x) {
  auto s=c10::demangle(typeid(x).name());
@@ -49,26 +30,15 @@ std::string mlabel(const Module& x) {
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
-static AnyModule anymodule(K x,J i,Cast c);
 static AnyModule anymodule(K x,J i,S s);
 static AnyModule anymodule(Cast c,const Moduleptr& m);
 static K mopt(bool,Cast,const Module&);
 
-// ----------------------------------------------------------------------------
-// kmodule - allocate an object to store a pointer to a layer
+// ------------------------------------------------------------------------------
+// kmodule - allocate object to store a module pointer (class defaults to module) 
 // to - given layer & options, change device/data type
-// ----------------------------------------------------------------------------
-K kmodule(Cast c,const Layer& m) {return kptr(new Klayer(c,m));}
-K kmodule(Cast c,const Moduleptr& m) {return kptr(new Kmodule(Class::module,c,m));}
-
-K to(Klayer* x,const TensorOptions& o,bool a) {
- auto s=torch::typeMetaToScalarType(o.dtype());
- auto& m=mref(x->m);
- if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
- else if(o.has_device())             m.to(o.device(),a);
- else                                m.to(s,a);
- return (K)0;
-}
+// ------------------------------------------------------------------------------
+K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,m));}
 
 K to(Kmodule* x,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
@@ -223,20 +193,7 @@ static bool container(const Module& m) {
  else                        return false;
 }
 
-static bool container(const Layer& l) {return container(mref(l));}
-
-static Layer newcontainer(Cast c) {
- switch(c) {
-  case Cast::sequential:  return Sequential();
-  case Cast::seqnest:     return SeqNest();
-  case Cast::seqjoin:     return SeqJoin();
-  case Cast::modulelist:  return ModuleList();
-  case Cast::base:        return BaseModule();
-  default: AT_ERROR("unrecognized container: ", (I)c);
- }
-}
-
-static Moduleptr Newcontainer(Cast c) {
+static Moduleptr newcontainer(Cast c) {
  switch(c) {
   case Cast::sequential:  return Sequential().ptr();
   case Cast::seqnest:     return SeqNest().ptr();
@@ -248,38 +205,12 @@ static Moduleptr Newcontainer(Cast c) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// rootlayer - given stack, pop back to root module, return as in struct to k
 // mroot - given stack, pop back to root module, return as struct to k
-// makelayer - given generic module, convert back into Layer variant (for repopulating stack)
 // mstack - given root container, populate stack of all intermediate container modules
 // -------------------------------------------------------------------------------------------------
-static K rootlayer(Cast c,Layers& q) {
- while(q.size()>1) q.pop();
- return q.size() ? kmodule(c,q.top()) : (K)0;
-}
-
 static K mroot(Cast c,Modules& q) {
  while(q.size()>1) q.pop();
  return q.size() ? kmodule(c,q.top()) : (K)0;
-}
-
-static Layer makelayer(Module& m) {
- if     (m.as<Sequential>()) return Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(m.shared_from_this()));
- else if(m.as<SeqNest>())    return    SeqNest(std::dynamic_pointer_cast<SeqNestImpl>(m.shared_from_this()));
- else if(m.as<SeqJoin>())    return    SeqJoin(std::dynamic_pointer_cast<SeqJoinImpl>(m.shared_from_this()));
- else if(m.as<ModuleList>()) return ModuleList(std::dynamic_pointer_cast<nn::ModuleListImpl>(m.shared_from_this()));
- else if(m.as<BaseModule>()) return BaseModule(std::dynamic_pointer_cast<BaseModuleImpl>(m.shared_from_this()));
- else if(auto *a=m.as<AnyModule>()) return *a;
- else AT_ERROR("unable to create parent layer from ",m.name());
-}
-
-static void mstack(size_t d,Module& m,Layers& q) {
- while(q.size()>d) q.pop();
- if(container(m)) {
-  q.push(makelayer(m));
-  for(auto& i:m.children())
-   mstack(d+1,*i,q);
- }
 }
 
 static void mstack(size_t d,Moduleptr& m,Modules& q) {
@@ -291,41 +222,11 @@ static void mstack(size_t d,Moduleptr& m,Modules& q) {
  }
 }
 
-static void mstack(size_t d,Layer& l,Layers& q) {
- while(q.size()>d) q.pop();
- auto& m=mref(l);
- if(container(m)) {
-  q.push(l);
-  for(auto& i:m.children())
-   mstack(d+1,*i,q);
- }
-}
-
-static void mstack(Klayer *l,Layers& q) {mstack(0,l->m,q);} // initialize stack
 static void mstack(Kmodule *m,Modules& q) {mstack(0,m->m,q);} // initialize stack
 
 // ------------------------------------------------------------------------------------
 // mforward - given layer, run forward calc on tensor x and optional y,z tensors
 // ------------------------------------------------------------------------------------
-Tensor mforward(Layer& m,const Tensor& x,const Tensor& y,const Tensor& z) {
- return c10::visit(
-  make_overload(
-   [&x,&y,&z](AnyModule& m) {
-    return y.defined() ? (z.defined() ? m.forward(x,y,z) : m.forward(x,y)) : m.forward(x);
-   },
-   [&x,&y,&z](SeqJoin& m) {
-    TORCH_CHECK(x.defined() && y.defined(), "seqjoin: forward calculation expects two tensors, x & y");
-    TORCH_CHECK(!z.defined(), "seqjoin: unexpected 3rd tensor supplied to forward calculation");
-    return m->forward(x,y);
-   },
-   [](ModuleList& m) { AT_ERROR("No forward function for ModuleList"); return Tensor();},
-   [](BaseModule& m) { AT_ERROR("No forward function implemented yet for BaseModule"); return Tensor();},
-   [&x,&y,&z](auto& m) {
-    return y.defined() ? (z.defined() ? m->forward(x,y,z) : m->forward(x,y)) : m->forward(x);
-   }
-  ), m);
-}
-
 Tensor mforward(Cast c,Module& m,const Tensor& x) {
  switch(c) {
   case Cast::adaptavg1d:      return m.as<nn::AdaptiveAvgPool1d>()->forward(x);
@@ -458,32 +359,6 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
  }
 }
 
-K mforward(Layer& m,K a) {
- Tensor x,y,z; TensorVector *v;
- if((v=xvec(a,1))) {
-  TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
-  IntArrayRef i;
-  if(a->n==2) {
-   return kten(mforward(m, v->at(0)));
-  } else if(a->n==3 && xsize(a,2,i)) {
-   switch(i.size()) {
-    case 1: return kten(mforward(m, v->at(i[0])));
-    case 2: return kten(mforward(m, v->at(i[0]), v->at(i[1])));
-    case 3: return kten(mforward(m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
-    default: AT_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
-   }
-  } else {
-   AT_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
-  }
- } else {
-  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: module & model and up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
-  if(!xten(a,1,x))            x=kput(a,1);
-  if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
-  if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
-  return kten(mforward(m,x,y,z));
- }
-}
-
 K mforward(Cast c,Module& m,K a) {
  Tensor x,y,z; TensorVector *v;
  if((v=xvec(a,1))) {
@@ -513,10 +388,10 @@ K mforward(Cast c,Module& m,K a) {
 // ---------------------------------------------------------------------------------------
 // mattr - return requested attribute of given layer
 // ---------------------------------------------------------------------------------------
-K mattr(const Layer& l,Ktype k,Attr a) {
+K mattr(const Moduleptr& m,Ktype k,Attr a) {
  switch(a) {
-  case Attr::ptr: return kj((intptr_t)mref(l).shared_from_this().get());
-  case Attr::ref: return kj(mref(l).shared_from_this().use_count()-1);
+  case Attr::ptr: return kj((intptr_t)m.get());
+  case Attr::ref: return kj(m.use_count()-1);
   default: AT_ERROR(mapattr(a),": not implemented for module");
  }
 }
@@ -2576,11 +2451,10 @@ static J codeoff(K x,Cast c) {
 }
  
 template<typename L,typename O> static L codelayer(K x,Cast c,std::vector<K>& v) {
- Klayer *m=xlayer(x); bool e=c == Cast::encoder;
+ Kmodule *m=xmodule(x); bool e=c == Cast::encoder;
  if(m) {
-  auto *l=mref(m->m).as<L>();
-  TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding layer" : "decoding layer"),
-                         " given ",mlabel(mref(m->m))," module");
+  auto *l=m->m->as<L>();
+  TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding" : "decoding")," layer, given ",mlabel(*m->m)," module");
   v.push_back(x);
   return L(*l);
  } else {
@@ -2590,10 +2464,10 @@ template<typename L,typename O> static L codelayer(K x,Cast c,std::vector<K>& v)
 
 static nn::LayerNorm codenorm(K x,J n,Cast c,std::vector<K>& v) {
  if(x) {
-  auto *m=xlayer(x);
+  auto *m=xmodule(x);
   if(m) {
-   auto *l=mref(m->m).as<nn::LayerNorm>();
-   TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(mref(m->m))," module");
+   auto *l=m->m->as<nn::LayerNorm>();
+   TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(*m->m)," module");
    v.push_back(x);
    return nn::LayerNorm(*l);
   } else {
@@ -2685,10 +2559,9 @@ static K encoder(bool a,const nn::TransformerEncoderOptions& o) {
 // transformer - create transformer or retrieve options from existing transformer module
 // -------------------------------------------------------------------------------------
 static AnyModule customcoder(K x,Setting t,std::vector<K>& v) {
- K y; J i; S s,nm; AnyModule a; Klayer *m=xlayer(x);
+ K y; J i; S s,nm; AnyModule a; Kmodule *m=xmodule(x);
  if(m) {
-  TORCH_CHECK(c10::holds_alternative<AnyModule>(m->m), "unable to add ",mlabel(mref(m->m))," module as custom ",mset(t));
-  a=c10::get<AnyModule>(m->m).clone();
+  a=anymodule(m->c,m->m);
   v.push_back(x);
  } else {
   if(xdict(x)) {
@@ -2696,7 +2569,6 @@ static AnyModule customcoder(K x,Setting t,std::vector<K>& v) {
   } else {
    y=x; msyms(y,s,nm); i=argstart(y,nm);
   }
-  // OLD a=anymodule(y,i,msym(s));
   a=anymodule(y,i,s);
  }
  return a;
@@ -2731,7 +2603,6 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case Setting::decoder:
     if(!pempty(p)) {
      TORCH_CHECK(p.t==-KS || p.t>=0, msym(c), ": unrecognized arg(s) for custom ",p.k);
-     // OLD auto a=p.t==-KS ? anymodule(nullptr,0,msym(p.s)) : customcoder(p.v,s,v);
      auto a=p.t==-KS ? anymodule(nullptr,0,p.s) : customcoder(p.v,s,v);
      s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
     }
@@ -2794,138 +2665,6 @@ static K getsize(bool a,const SizeOptions& o) {
  K x=KDICT;
  OPTION(x, size, klist(o.size().size(),o.size().data()));
  return x;
-}
-
-// ----------------------------------------------------------------------------------------------------
-// anymodule - define module from supplied options, return as generic AnyModule 
-// ----------------------------------------------------------------------------------------------------
-static AnyModule anymodule(K x,J i,Cast c) {
- switch(c) {
-  case Cast::batchnorm1d:  return AnyModule(nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)));
-  case Cast::batchnorm2d:  return AnyModule(nn::BatchNorm2d(batchnorm<nn::BatchNormOptions>(x,i,c)));
-  case Cast::batchnorm3d:  return AnyModule(nn::BatchNorm3d(batchnorm<nn::BatchNormOptions>(x,i,c)));
-
-  case Cast::instancenorm1d:  return AnyModule(nn::InstanceNorm1d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
-  case Cast::instancenorm2d:  return AnyModule(nn::InstanceNorm2d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
-  case Cast::instancenorm3d:  return AnyModule(nn::InstanceNorm3d(batchnorm<nn::InstanceNormOptions>(x,i,c)));
-
-  case Cast::groupnorm:  return AnyModule(nn::GroupNorm(groupnorm(x,i,c)));
-  case Cast::layernorm:  return AnyModule(nn::LayerNorm(layernorm(x,i,c)));
-  case Cast::localnorm:  return AnyModule(nn::LocalResponseNorm(localnorm<nn::LocalResponseNormOptions>(x,i,c)));
-  case Cast::crossmap2d: return AnyModule(nn::CrossMapLRN2d(localnorm<nn::CrossMapLRN2dOptions>(x,i,c)));
-
-  case Cast::embed:        return AnyModule(embed(x,i,c));
-  case Cast::embedbag:     return AnyModule(embedbag(x,i,c));
-  case Cast::linear:       return AnyModule(nn::Linear(linear(x,i,c)));
-  case Cast::bilinear:     return AnyModule(nn::Bilinear(bilinear(x,i,c)));
-
-  case Cast::drop:         return AnyModule(nn::Dropout(drop(x,i,c)));
-  case Cast::drop2d:       return AnyModule(nn::Dropout2d(drop(x,i,c)));
-  case Cast::drop3d:       return AnyModule(nn::Dropout3d(drop(x,i,c)));
-  case Cast::adrop:        return AnyModule(nn::AlphaDropout(drop(x,i,c)));
-  case Cast::fadrop:       return AnyModule(nn::FeatureAlphaDropout(drop(x,i,c)));
-
-  case Cast::conv1d:       return AnyModule(nn::Conv1d(conv<1>(x,i,c)));
-  case Cast::conv2d:       return AnyModule(nn::Conv2d(conv<2>(x,i,c)));
-  case Cast::conv3d:       return AnyModule(nn::Conv3d(conv<3>(x,i,c)));
-
-  case Cast::convtranspose1d:  return AnyModule(nn::ConvTranspose1d(convtran<1>(x,i,c)));
-  case Cast::convtranspose2d:  return AnyModule(nn::ConvTranspose2d(convtran<2>(x,i,c)));
-  case Cast::convtranspose3d:  return AnyModule(nn::ConvTranspose3d(convtran<3>(x,i,c)));
-
-  case Cast::fold:         return AnyModule(nn::Fold(fold(x,i,c)));
-  case Cast::unfold:       return AnyModule(nn::Unfold(unfold(x,i,c)));
-  case Cast::upsample:     return AnyModule(nn::Upsample(upsample<nn::UpsampleOptions>(x,i,c)));
-
-  case Cast::maxpool1d:    return AnyModule(nn::MaxPool1d(maxpool<1>(x,i,c)));
-  case Cast::maxpool2d:    return AnyModule(nn::MaxPool2d(maxpool<2>(x,i,c)));
-  case Cast::maxpool3d:    return AnyModule(nn::MaxPool3d(maxpool<3>(x,i,c)));
-
-  case Cast::avgpool1d:    return AnyModule(nn::AvgPool1d(avgpool<1>(x,i,c)));
-  case Cast::avgpool2d:    return AnyModule(nn::AvgPool2d(avgpool<2>(x,i,c)));
-  case Cast::avgpool3d:    return AnyModule(nn::AvgPool3d(avgpool<3>(x,i,c)));
-
-  case Cast::adaptmax1d:   return AnyModule(nn::AdaptiveMaxPool1d(adapt<1,nn::AdaptiveMaxPool1dOptions>(x,i,c)));
-  case Cast::adaptmax2d:   return AnyModule(nn::AdaptiveMaxPool2d(adapt<2,nn::AdaptiveMaxPool2dOptions>(x,i,c)));
-  case Cast::adaptmax3d:   return AnyModule(nn::AdaptiveMaxPool3d(adapt<3,nn::AdaptiveMaxPool3dOptions>(x,i,c)));
-
-  case Cast::adaptavg1d:   return AnyModule(nn::AdaptiveAvgPool1d(adapt<1,nn::AdaptiveAvgPool1dOptions>(x,i,c)));
-  case Cast::adaptavg2d:   return AnyModule(nn::AdaptiveAvgPool2d(adapt<2,nn::AdaptiveAvgPool2dOptions>(x,i,c)));
-  case Cast::adaptavg3d:   return AnyModule(nn::AdaptiveAvgPool3d(adapt<3,nn::AdaptiveAvgPool3dOptions>(x,i,c)));
-
-  case Cast::fmaxpool2d:   return AnyModule(nn::FractionalMaxPool2d(fpool<2>(x,i,c)));
-  case Cast::fmaxpool3d:   return AnyModule(nn::FractionalMaxPool3d(fpool<3>(x,i,c)));
-
-  case Cast::lppool1d:     return AnyModule(nn::LPPool1d(lppool<1>(x,i,c)));
-  case Cast::lppool2d:     return AnyModule(nn::LPPool2d(lppool<2>(x,i,c)));
-
-  case Cast::pad:          return AnyModule(Pad(pad(x,i,c)));
-  case Cast::pad1d:        return AnyModule(nn::ConstantPad1d(cpad<1,nn::ConstantPad1dOptions>(x,i,c)));
-  case Cast::pad2d:        return AnyModule(nn::ConstantPad2d(cpad<2,nn::ConstantPad2dOptions>(x,i,c)));
-  case Cast::pad3d:        return AnyModule(nn::ConstantPad3d(cpad<3,nn::ConstantPad3dOptions>(x,i,c)));
-  case Cast::reflect1d:    return AnyModule(nn::ReflectionPad1d(npad<1,nn::ReflectionPad1dOptions>(x,i,c)));
-  case Cast::reflect2d:    return AnyModule(nn::ReflectionPad2d(npad<2,nn::ReflectionPad2dOptions>(x,i,c)));
-  case Cast::replicate1d:  return AnyModule(nn::ReplicationPad1d(npad<1,nn::ReplicationPad1dOptions>(x,i,c)));
-  case Cast::replicate2d:  return AnyModule(nn::ReplicationPad2d(npad<2,nn::ReplicationPad2dOptions>(x,i,c)));
-  case Cast::replicate3d:  return AnyModule(nn::ReplicationPad3d(npad<3,nn::ReplicationPad3dOptions>(x,i,c)));
-  case Cast::zeropad2d:    return AnyModule(nn::ZeroPad2d(npad<2,nn::ZeroPad2dOptions>(x,i,c)));
-
-  case Cast::attention:    return AnyModule(nn::MultiheadAttention(attention(x,i,c)));
-  case Cast::decoderlayer: return AnyModule(nn::TransformerDecoderLayer(codelayer<nn::TransformerDecoderLayerOptions>(x,i,c)));
-  case Cast::encoderlayer: return AnyModule(nn::TransformerEncoderLayer(codelayer<nn::TransformerEncoderLayerOptions>(x,i,c)));
-  case Cast::decoder:      return AnyModule(nn::TransformerDecoder(decoder(x,i,c)));
-  case Cast::encoder:      return AnyModule(nn::TransformerEncoder(encoder(x,i,c)));
-  case Cast::transformer:  return AnyModule(nn::Transformer(transformer(x,i,c)));
-
-  case Cast::rnn:          return AnyModule(nn::RNN(rnn(x,i,c)));
-  case Cast::gru:          return AnyModule(nn::GRU(rnn<nn::GRUOptions>(x,i,c)));
-  case Cast::lstm:         return AnyModule(nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)));
-
-  case Cast::identity:     noarg(c,x,i); return AnyModule(nn::Identity());
-  case Cast::logsigmoid:   noarg(c,x,i); return AnyModule(nn::LogSigmoid());
-  case Cast::sigmoid:      noarg(c,x,i); return AnyModule(nn::Sigmoid());
-  case Cast::softsign:     noarg(c,x,i); return AnyModule(nn::Softsign());
-  case Cast::softmax2d:    noarg(c,x,i); return AnyModule(nn::Softmax2d());
-  case Cast::tanh:         noarg(c,x,i); return AnyModule(nn::Tanh());
-  case Cast::tanhshrink:   noarg(c,x,i); return AnyModule(nn::Tanhshrink());
-  case Cast::gelu:         noarg(c,x,i); return AnyModule(nn::GELU());
-  case Cast::mul:          noarg(c,x,i); return AnyModule(Mul());
-
-  case Cast::relu:         return AnyModule( nn::ReLU(inplace(x,i,c)));
-  case Cast::relu6:        return AnyModule(nn::ReLU6(inplace(x,i,c)));
-  case Cast::selu:         return AnyModule( nn::SELU(inplace(x,i,c)));
-
-  case Cast::softmax:      return AnyModule(nn::Softmax(dim(x,i,c)));
-  case Cast::softmin:      return AnyModule(nn::Softmin(dim(x,i,c)));
-  case Cast::logsoftmax:   return AnyModule(nn::LogSoftmax(dim(x,i,c)));
-  case Cast::flatten:      return AnyModule(nn::Flatten(flatten(x,i,c)));
-
-  case Cast::squeeze:      return AnyModule(Squeeze(squeeze(x,i,c)));
-  case Cast::unsqueeze:    return AnyModule(Unsqueeze(squeeze(x,i,c)));
-  case Cast::expand:       return AnyModule(Expand(getsize(x,i,c)));
-  case Cast::reshape:      return AnyModule(Reshape(getsize(x,i,c)));
-  case Cast::cat:          return AnyModule(Cat(dim(x,i,c)));
-
-  case Cast::elu:          return AnyModule(nn::ELU (alpha<nn::ELUOptions> (x,i,c)));
-  case Cast::celu:         return AnyModule(nn::CELU(alpha<nn::CELUOptions>(x,i,c)));
-  case Cast::leakyrelu:    return AnyModule(nn::LeakyReLU(slope(x,i,c)));
-  case Cast::glu:          return AnyModule(nn::GLU(dim(x,i,c)));
-  case Cast::hardshrink:   return AnyModule(nn::Hardshrink(lambda(x,i,c)));
-  case Cast::softshrink:   return AnyModule(nn::Softshrink(lambda(x,i,c)));
-  case Cast::prelu:        return AnyModule(nn::PReLU(prelu(x,i,c)));
-  case Cast::rrelu:        return AnyModule(nn::RReLU(rrelu(x,i,c)));
-  case Cast::hardtanh:     return AnyModule(nn::Hardtanh(hardtanh(x,i,c)));
-  case Cast::softplus:     return AnyModule(nn::Softplus(softplus(x,i,c)));
-  case Cast::threshold:    return AnyModule(nn::Threshold(threshold(x,i,c)));
-  case Cast::pairwise:     return AnyModule(nn::PairwiseDistance(pairwise(x,i,c)));
-  case Cast::similar:      return AnyModule(nn::CosineSimilarity(similar(x,i,c)));
-
-  default:
-   if(container(c))
-    AT_ERROR("cannot create container module: ",msym(c));
-   else
-    AT_ERROR("unrecognized module: cannot create module from unrecognized enumeration ",(I)c);
- }
 }
 
 // ----------------------------------------------------------------------------
@@ -3353,25 +3092,6 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 // addparent - create container, add to any previous parent layer, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
-static void addmodule(Layer& x,const Layer& y) {
- const char* s=mname(y);
- c10::visit(
-  make_overload(
-   [&s](Sequential& x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](Sequential& x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const Sequential& y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqJoin&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqJoin&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const SeqNest&    y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   [&s](SeqNest&    x, const AnyModule&  y)  {if(s) x->push_back(s,y); else x->push_back(y);},
-   []  (ModuleList& x, const auto&       y)  {x->push_back(y.ptr());},
-   [&s](BaseModule& x, const auto&       y)  {x->register_module(s ? s : c10::to_string(x->children().size()),y.ptr());},
-   [](auto& x,const auto& y) {AT_ERROR("unable to add a ", mlabel(mref(y)),
-                                       " module as a child of a ", mlabel(mref(x)), " module");}),
-   x,y);
-}
-
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
  if(auto *m=x->as<nn::Sequential>()) {
@@ -3399,24 +3119,9 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
 
 static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
  
-static void addparent(const Layer& a,Layers& q) {
- if(q.size()) addmodule(q.top(),a);  // add to previous parent, if any
- q.push(a);                          // add new parent container to stack
-}
-
 static void addparent(const Moduleptr& a,Modules& q) {
  if(q.size()) addmodule(q.top(),a);  // add to previous parent, if any
  q.push(a);                          // add new parent container to stack
-}
-
-static void addparent(Cast c,S s,Layers& q,K x=nullptr,K y=nullptr,K z=nullptr);
-static void addparent(Cast c,S s,Layers& q,K x,K y,K z) {
- TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
- TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
- TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
- auto a=newcontainer(c);   // create new container module, e.g. sequential
- addname(mref(a),s);       // add name if supplied
- addparent(a,q);           // add to any previous parent, push on stack
 }
 
 static void addparent(Cast c,S s,Modules& q,K x=nullptr,K y=nullptr,K z=nullptr);
@@ -3424,16 +3129,9 @@ static void addparent(Cast c,S s,Modules& q,K x,K y,K z) {
  TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
  TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
  TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
- auto a=Newcontainer(c);   // create new container module, e.g. sequential
+ auto a=newcontainer(c);   // create new container module, e.g. sequential
  addname(*a,s);            // add name if supplied
  addparent(a,q);           // add to any previous parent, push on stack
-}
-
-static void addchild(const Layer& a,Layers& q) {
- if(q.size())
-  addmodule(q.top(),a);
- else
-  q.push(a);
 }
 
 static void addchild(const Moduleptr& m,Modules& q) {
@@ -3441,16 +3139,6 @@ static void addchild(const Moduleptr& m,Modules& q) {
   addmodule(q.top(),m);
  else
   q.push(m);
-}
-
-static auto addchild(Cast c,S s,Layers& q,K x,K y=nullptr,K z=nullptr);
-static auto addchild(Cast c,S s,Layers& q,K x,K y,K z) {
- auto a=anymodule(x,argstart(x,s),c); // create module from cast, options & offset
- auto& m=*a.ptr();                    // generic module reference
- addname(m,s);                        // add name if supplied
- if(y||z) mparms(c,m,y,z);            // add any supplied parms or buffers
- addchild(a,q);                       // add to immediate parent container on stack
- return m.modules(false).size();      // return count of all sub-modules created
 }
 
 static auto addchild(Cast c,S s,Modules& q,K x,K y=nullptr,K z=nullptr);
@@ -3480,25 +3168,6 @@ static bool mcompare(Cast c,const Module& m1,const Module& m2) {
  return b;
 }
 
-static void mfind(Cast c,J j,J d,S s,Layers& q,K x,K y,K z) {
- TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
- TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
- J i=0; auto& m=mref(q.top()); bool b=container(m); auto mc=m.named_children().back();
- std::string p; if(b) p=mc.key();
- for(auto& a:b ? mc.value()->named_modules(p,false) : m.named_modules(p,false)) {
-  if(i==j) {
-   TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
-   auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,container(c) ? mref(newcontainer(c)) : *anymodule(x,argstart(x,s),c).ptr()),
-               "child module ", a.key(), " mismatch with given options");
-   if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
-   return;
-  }
-  i++;
- }
- AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(b ? *mc.value() : m)," layer at depth ",d);
-}
-
 static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
  TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
  TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
@@ -3508,7 +3177,7 @@ static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
   if(i==j) {
    TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,*(container(c) ? Newcontainer(c) : mcreate(x,argstart(x,s),c))),
+   TORCH_CHECK(mcompare(c,m,*(container(c) ? newcontainer(c) : mcreate(x,argstart(x,s),c))),
                "child module ", a.key(), " mismatch with given options");
    if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
    return;
@@ -3522,31 +3191,10 @@ static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
 // mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
 // mpush - add new parent/child module to network stored in stack of layers
 // --------------------------------------------------------------------------------------------
-static void mdepth(Cast c,size_t d,Layers& q) {
- TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
- TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
- while(q.size()>d) q.pop();
-}
-
 static void mdepth(Cast c,size_t d,Modules& q) {
  TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
  TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
  while(q.size()>d) q.pop();
-}
-
-static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
-static std::tuple<Cast,J> mpush(Layers& q,J j,J d,S s,S nm,K x,K y,K z) {
- Cast c=msym(s); J n=q.size();
- if(d>n || (n && !container(q.top()))) {
-  mfind(c,j,d,nm,q,x,y,z); j++;  // previous module has self-contained child modules
- } else {
-  mdepth(c,d,q); j=0;
-  if(container(c))
-   addparent(c,nm,q,x,y,z);
-  else
-   addchild(c,nm,q,x,y,z);
- }
- return std::make_tuple(c,j);
 }
 
 static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
@@ -3564,12 +3212,6 @@ static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y,K z) {
  return std::make_tuple(c,j);
 }
 
-static Cast mpush(Layers& q,J d,K x) {
- J j; S s,nm; Cast c;
- msyms(x,s,nm);
- std::tie(c,j)=mpush(q,0,d,s,nm,x);
- return c;}
-
 static Cast mpush(Modules& q,J d,K x) {
  J j; S s,nm; Cast c;
  msyms(x,s,nm);
@@ -3582,15 +3224,6 @@ static Cast mpush(Modules& q,J d,K x) {
 // mtable - module(s) from table of options & depth, optional name,parms & buffers
 // mextend - add a created module to existing module(s) at optional depth
 // -------------------------------------------------------------------------------
-static Cast mtree(K x,size_t d,Layers& q) {
- K y=x->t || !x->n ? x : kK(x)[0];
- Cast c=mpush(q,d,y);    // get type of overall container module
- if(!x->t)               // process any child modules
-  for(J i=1;i<x->n;i++)
-   mtree(kK(x)[i],d+1,q);
- return c;
-}
-
 static Cast mtree(K x,size_t d,Modules& q) {
  K y=x->t || !x->n ? x : kK(x)[0];
  Cast c=mpush(q,d,y);    // get type of overall container module
@@ -3600,27 +3233,11 @@ static Cast mtree(K x,size_t d,Modules& q) {
  return c;
 }
 
-static K mtree1(K x,J d=0,Klayer *l=nullptr); // higher-level call, can add to existing module
-static K mtree1(K x,J d,Klayer *l) {
- Layers q; if(l) mstack(l,q);
- Cast c=mtree(x,d ? d : q.size(),q);
- return l ? (K)0 : rootlayer(c,q);
-}
-
 static K mtree(K x,J d=0,Kmodule *m=nullptr); // higher-level call, can add to existing module
 static K mtree(K x,J d,Kmodule *m) {
  Modules q; if(m) mstack(m,q);
  Cast c=mtree(x,d ? d : q.size(),q);
  return m ? (K)0 : mroot(c,q);
-}
-
-static Cast mdv(K x,J n,Layers& q) { // process n depth-value pairs, n=-1 if one, e.g. (1;(`linear;784;10))
- Cast c,p=Cast::undefined; J d,m=n<0 ? 0 : n; K v;
- for(J i=n<0 ? -1 : 0;i<m;++i) {
-  d=dvd(x,i); v=dvv(x,i); c=mpush(q,d,v);
-  if(p==Cast::undefined) p=c;
- }
- return p;  // return module type of overall parent container
 }
 
 static Cast mdv(K x,J n,Modules& q) { // process n depth-value pairs, n=-1 for single pair, e.g. (1;(`linear;784;10))
@@ -3632,28 +3249,11 @@ static Cast mdv(K x,J n,Modules& q) { // process n depth-value pairs, n=-1 for s
  return p;  // return module enumeration of overall parent container
 }
 
-static K mdv1(K x,J n,Klayer *l=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
-static K mdv1(K x,J n,Klayer *l,J d,K v) {
- Cast c; Layers q; if(l) mstack(l,q);
- c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
- return l ? (K)0 : rootlayer(c,q);
-}
-
 static K mdv(K x,J n,Kmodule *m=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
 static K mdv(K x,J n,Kmodule *m,J d,K v) {
  Cast c; Modules q; if(m) mstack(m,q);
  c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
  return m ? (K)0 : mroot(c,q);
-}
-
-static Cast mtable(K x,Layers &q) { // process table/dict w'depth,layer,options,parms,buffers
- Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
- for(J i=0;i<n;++i) {
-  std::tie(c,j)=mpush(q, j, statedepth(x,i),   statemodule(x,i), statename(x,i),
-                            stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
-  if(p==Cast::undefined) p=c;
- }
- return p;
 }
 
 static Cast mtable(K x,Modules &q) { // process table/dict w'depth,module,options,parms,buffers
@@ -3666,19 +3266,8 @@ static Cast mtable(K x,Modules &q) { // process table/dict w'depth,module,option
  return p;
 }
 
-static K mtable1(K x,Klayer *l=nullptr);  //higher-level call, can also add to existing module if supplied
-static K mtable1(K x,Klayer *l) {Layers q; if(l) mstack(l,q); Cast c=mtable(x,q); return l ? (K)0 : rootlayer(c,q);}
-
 static K mtable(K x,Kmodule *m=nullptr);  //higher-level call, can also add to existing module if supplied
 static K mtable(K x,Kmodule *m) {Modules q; if(m) mstack(m,q); Cast c=mtable(x,q); return m ? (K)0 : mroot(c,q);}
-
-static void mextend(Layer& a,Cast c,J d,Layers& q) {
- if(d) mdepth(c,d,q);
- if(container(c))
-  addparent(a,q);
- else
-  addchild(a,q);
-}
 
 static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
  if(d) mdepth(c,d,q);
@@ -3687,9 +3276,6 @@ static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
  else
   addchild(a,q);
 }
-
-static void mextend(Klayer *x,Klayer *y,J d=0);
-static void mextend(Klayer *x,Klayer *y,J d) {Layers q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
 
 static void mextend(Kmodule *x,Kmodule *y,J d=0);
 static void mextend(Kmodule *x,Kmodule *y,J d) {Modules q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
@@ -3740,48 +3326,6 @@ K mget(bool a,bool b,const Module& m) {
 // ------------------------------------------------------------------------------------------
 KAPI module(K x) {
  KTRY
-  bool a=env().alloptions; J d,n; Klayer *l,*g; Kmodel *m; Kopt* o;
-  if((l=xlayer(x)) || (l=xlayer(x,0))) {       // allocated module ptr supplied
-   if(x->n==1 || (x->n==2 && xbool(x,1,a))) {    // no other args or boolean flag
-    return mget(a,false,mref(l->m));             // return module options
-   } else if(x->n==2) {                          // else if allocated module & non-boolean arg
-    if((g=xlayer(x,1)))                         // if another allocated module
-     return mextend(l,g), kfree(x,1), (K)0;      // add to last container module in chain
-    else if((n=xdv(x,1)))                        // 2nd arg of depth,value pair(s)
-     return mdv1(kK(x)[1],n,l);                   // add module(s) specified in depth,value pair(s)
-    else if(xstate(x,1))                         // if state dictionary/table detected as 2nd arg
-     return mtable1(kK(x)[1],l);                  // add definition(s) to existing module(s)
-    else                                         // fallback: assume 2nd arg is nested tree spec
-     return mtree1(kK(x)[1],0,l);                 // add module(s) to last container in existing module
-   } else if(x->n==3 && xlong(x,1,d)) {          // else if allocated module & depth given w'3rd arg
-    if((g=xlayer(x,2)))                         // if another allocated module
-     return mextend(l,g,d), kfree(x,2), (K)0;    // add module at given depth in chain
-    else
-     return mdv1(nullptr,0,l,d,kK(x)[2]);         // add single module definition at indicated depth
-   } else {
-    AT_ERROR("module: ", mlabel(mref(l->m)), " given as 1st arg, but unable to parse remaining arg(s)");
-   }
-  } else if(xstate(x)) {                         // module table or dictionary supplied
-   return mtable1(x);
-  } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
-   return kmodule(m->mc,m->m);
-  } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
-   auto& om=optmodule(*o->m);
-   return kmodule(mcast(om),makelayer(om));
-  } else if((n=xdv(x))) {                        // depth-value pairs supplied
-   return mdv1(x,n);
-  } else {
-   return mtree1(x);                              // nested tree representation
-  }
- KCATCH("module");
-}
-
-// ------------------------------------------------------------------------------------------
-//  main module api function defined in k
-// p where not{any ``o`i`x`a`d`n in x} each p:`$''.Q.a,'1_.Q.a," "
-// ------------------------------------------------------------------------------------------
-KAPI module2(K x) {
- KTRY
   bool a=env().alloptions; J d,n; Kmodule *l,*g; Kmodel *m; Kopt* o;
   if((l=xmodule(x)) || (l=xmodule(x,0))) {       // allocated module ptr supplied
    std::cerr << "module arg, x->n is " << x->n << "\n";
@@ -3809,8 +3353,8 @@ KAPI module2(K x) {
   } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return kmodule(m->mc,m->m);
   } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
-   auto& om=optmodule(*o->m);
-   return kmodule(mcast(om),makelayer(om));
+   auto& m=optmodule(*o->m);
+   AT_ERROR("nyi"); //return kmodule(mcast(om),optmodule(*o->m));
   } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);
   } else {
@@ -3951,7 +3495,6 @@ K modulehelp(Cast c) {
 void nnfn(K x) {
  fn(x, "seq",         KFN(seq),          1);    // convenience fn for sequential layers
  fn(x, "module",      KFN(module),       1);    // api function for layer create/query
- fn(x, "module2",      KFN(module2),       1);    // api function for layer create/query
  fn(x, "adaptavg1d",  KFN(adaptavg1d),   1);    // functional form of modules/activations
  fn(x, "adaptavg2d",  KFN(adaptavg2d),   1);
  fn(x, "adaptavg3d",  KFN(adaptavg3d),   1);

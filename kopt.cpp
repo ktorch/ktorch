@@ -148,23 +148,8 @@ static void bset(size_t n,const char* s,const TensorVector& p,Tensor& t,const K 
 //         - if given options,buffers, allocate new optimizer and return ptr
 //         - if given previously allocated ptr, return dictionary of options & buffers
 // ----------------------------------------------------------------------------------------
-static void adagrad(K x,J i,AdagradOptions& o) {
- Pairs p; J n=xargc(x,i,p); double f;
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr_decay(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
- if(n) AT_ERROR("opt: unrecognized option(s) for Adagrad optimizer");
- while(xpair(p))
-  switch(oset(p.k)) {
-   case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
-   case Setting::lrdecay: f=pdouble(p); if(f==f) o.lr_decay(f); break;
-   case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for Adagrad optimization"); break;
-  }
-}
-
-static void adagrad(K x,ParamGroup& g) {
- auto& o=getoptions<AdagradOptions>(g); Pairs p; J i=0,n=xargc(x,0,p); double f;
+static void adagrad(K x,J i,ParamGroup& g) {
+ auto& o=getoptions<AdagradOptions>(g); Pairs p; J n=xargc(x,i,p); double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr_decay(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
@@ -212,29 +197,8 @@ static K adaget(const AdagradParamState& s) {
 // ----------------------------------------------------------------------------------------
 // adam - parse args (lr;beta1;beta2;eps;wtdecay;amsgrad) or (..;name-value pairs/dict)
 // ----------------------------------------------------------------------------------------
-template<typename A> static void adam(K x,J i,A& o) {
- Pairs p; J n=xargc(x,i,p); bool b; double f;
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f));}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
- if(n && xbool(x,i,b)){i++; n--; o.amsgrad(b);}
- if(n) AT_ERROR("opt: unrecognized option(s) for Adam optimizer");
- while(xpair(p))
-  switch(oset(p.k)) {
-   case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
-   case Setting::beta1:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas()))); break;
-   case Setting::beta2:   f=pdouble(p); if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f)); break;
-   case Setting::eps:     f=pdouble(p); if(f==f) o.eps(f); break;
-   case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
-   case Setting::amsgrad: o.amsgrad(pbool(p)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for Adam optimization"); break;
-  }
-}
-
-template<typename O> static void adam(K x,ParamGroup& g) {
- auto& o=getoptions<O>(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
+template<typename O> static void adam(K x,J i,ParamGroup& g) {
+ auto& o=getoptions<O>(g); Pairs p; J n=xargc(x,i,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(f,std::get<1>(o.betas())));}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.betas(std::make_tuple(std::get<0>(o.betas()),f));}
@@ -308,30 +272,8 @@ template<typename S> static K adamget(const S& s) { //template for adam/adamw
 // ---------------------------------------------------------------------------------------
 // lbfgs - (lr;max iter;max eval;tolerance grad;tolerance change;history size)
 // ---------------------------------------------------------------------------------------
-static void lbfgs(K x,J i,LBFGSOptions& o) {
- Pairs p; J j,n=xargc(x,i,p); double f;
- if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.lr(f);}
- if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_iter(j);}
- if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_eval(j);}
- if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_grad(f);}
- if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_change(f);}
- if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.history_size(j);}
- if(n) AT_ERROR("opt: unrecognized option(s) for LBFGS optimizer");
- while(xpair(p))
-  switch(oset(p.k)) {
-   case Setting::lr:        f=pdouble(p); if(f==f)  o.lr(f); break;
-   case Setting::iter:      j=plong(p);   if(j!=nj) o.max_iter(j); break;
-   case Setting::eval:      j=plong(p);   if(j!=nj) o.max_eval(j); break;
-   case Setting::gradtol:   f=pdouble(p); if(f==f)  o.tolerance_grad(f); break;
-   case Setting::changetol: f=pdouble(p); if(f==f)  o.tolerance_change(f); break;
-   case Setting::history:   j=plong(p);   if(j!=nj) o.history_size(j); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for LBFGS optimization"); break;
-  }
- if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
-}
-
-static void lbfgs(K x,ParamGroup& g) {
- auto& o=getoptions<LBFGSOptions>(g); Pairs p; J i=0,j,n=xargc(x,0,p); double f;
+static void lbfgs(K x,J i,ParamGroup& g) {
+ auto& o=getoptions<LBFGSOptions>(g); Pairs p; J j,n=xargc(x,i,p); double f;
  if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.lr(f);}
  if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_iter(j);}
  if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_eval(j);}
@@ -411,29 +353,8 @@ static K lbfgsget(const LBFGSParamState& s) {
 // ----------------------------------------------------------------------------------------
 // rmsprop - parse arg(s) (lr;alpha;eps;decay;momentum;centered) or (..;nm-val pairs/dict)
 // ----------------------------------------------------------------------------------------
-static void rmsprop(K x,J i,RMSpropOptions& o) {
- Pairs p; J n=xargc(x,i,p); bool b; double f;
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.alpha(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
- if(n && xbool(x,i,b)){i++; n--; o.centered(b);}
- if(n) AT_ERROR("opt: unrecognized option(s) for RMSprop optimizer");
- while(xpair(p))
-  switch(oset(p.k)) {
-   case Setting::lr:        f=pdouble(p); if(f==f) o.lr(f); break;
-   case Setting::alpha:     f=pdouble(p); if(f==f) o.alpha(f); break;
-   case Setting::eps:       f=pdouble(p); if(f==f) o.eps(f); break;
-   case Setting::decay:     f=pdouble(p); if(f==f) o.weight_decay(f); break;
-   case Setting::momentum:  f=pdouble(p); if(f==f) o.momentum(f); break;
-   case Setting::centered:  o.centered(pbool(p)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for RMSprop optimization"); break;
-  }
-}
-
-static void rmsprop(K x,ParamGroup& g) {
- auto& o=getoptions<RMSpropOptions>(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
+static void rmsprop(K x,J i,ParamGroup& g) {
+ auto& o=getoptions<RMSpropOptions>(g); Pairs p; J n=xargc(x,i,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.alpha(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
@@ -495,30 +416,8 @@ static K rmsget(const RMSpropParamState& s) {
 // ----------------------------------------------------------------------------------------
 // SGD parse args (lr;momentum;dampening;wtdecay;nesterov) or (..;name-value pairs/dict)
 // ----------------------------------------------------------------------------------------
-static void sgd(K x,J i,SGDOptions& o) {
- Pairs p; J n=xargc(x,i,p); bool b; double f;
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.dampening(f);}
- if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
- if(n && xbool(x,i,b)){i++; n--; o.nesterov(b);}
- if(n) AT_ERROR("opt: unrecognized option(s) for SGD optimizer");
- while(xpair(p))
-  switch(oset(p.k)) {
-   case Setting::lr:        f=pdouble(p); if(f==f) o.lr(f); break;
-   case Setting::momentum:  f=pdouble(p); if(f==f) o.momentum(f); break;
-   case Setting::dampening: f=pdouble(p); if(f==f) o.dampening(f); break;
-   case Setting::decay:     f=pdouble(p); if(f==f) o.weight_decay(f); break;
-   case Setting::nesterov:  o.nesterov(pbool(p)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for SGD optimization"); break;
-  }
-}
-
-static void sgd(K x,ParamGroup& g) {
- auto& o=getoptions(g); Pairs p; J i=0,n=xargc(x,0,p); bool b; double f;
- std::cerr << "sgd arg count: " << n << ", " << kstring(x) << "\n";
- std::cerr << "pairs: " << p.n << "\n";
- if(n && xnum(x,f))   {i++; n--; if(f==f) o.lr(f);}
+static void sgd(K x,J i,ParamGroup& g) {
+ auto& o=getoptions(g); Pairs p; J n=xargc(x,i,p); bool b; double f;
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.momentum(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.dampening(f);}
@@ -888,47 +787,9 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
 }
  
 // ---------------------------------------------------------------------------------------
-// optparms - return vector of parameters from given tensor/sequential ptr
-// optinit - initialize one of the supported optimizers, return pointer to k
 // optstate - return optimizer name & options and optionally, internal buffer values
 // opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
-static TensorVector optparms(K x,J i) {
- if(auto *a=xlayer(x,i))
-  return mref(a->m).parameters();
- else if(auto *a=xvec(x,i))
-  return *a;
- else if(auto *a=xten(x,i))
-  return {*a};
- else if(x->t==-KS || xempty(x,i) || xdict(x))
-  return {};
- else if(xptr(x,i))
-  AT_ERROR("unrecognized pointer, expecting tensor(s) or module(s)");
- else
-  AT_ERROR("unrecognized argument, ",kname(x->t ? x->t : kK(x)[i]->t),", expecting tensor(s) or module(s)");
-}
-
-static K optinit(S s,K x,K y=nullptr);  //s:optimizer name, x:options, y:buffers
-static K optinit(S s,K x,K y) {
- J i=xdict(x) ? -1 : 2; Cast c=omap(s);
- if(!(x->t==-KS || xdict(x) || xempty(x,1) || xptr(x,1)))
-  AT_ERROR("optimizer ",s," expects args of form:\n",
-           "name\n", "(name; parm(s); option(s)..)\n" "(saved state; parm(s))");
- auto w=optparms(x,1); Klayer *k; Optptr o; BaseModule m;
- switch(c) {
-  case Cast::adagrad: {auto a=AdagradOptions();  adagrad(x,i,a); o=adagrad(w,a,y); break;}
-  case Cast::adam:    {auto a=AdamOptions();     adam(x,i,a);    o=adam<Adam>(w,a,y);  break;}
-  case Cast::adamw:   {auto a=AdamWOptions();    adam(x,i,a);    o=adam<AdamW>(w,a,y); break;}
-  case Cast::lbfgs:   {auto a=LBFGSOptions();    lbfgs(x,i,a);   o=lbfgs(w,a,y);   break;}
-  case Cast::rmsprop: {auto a=RMSpropOptions();  rmsprop(x,i,a); o=rmsprop(w,a,y); break;}
-  case Cast::sgd:     {auto a=SGDOptions(LR); sgd(x,i,a);     o=sgd(w,a,y);     break;}
-  default: AT_ERROR("unrecognized optimizer: ",s); break;
- }
- if((k=xlayer(x,1)))
-  addmodule(mref(k),*m);
- return kopt(c,o,m);
-}
-
 K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
@@ -937,36 +798,19 @@ K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  return xD(k,v);
 }
 
-// this version of optstate called from generic state function in k-level api
-K optstate(Ktag *g,K x) {
- bool a=env().alloptions;
- if(x->n==1 || (x->n==2 && xbool(x,1,a)))
-  return optstate(a,true,g->c,*((Kopt*)g)->o,*((Kopt*)g)->m);
- else
-  AT_ERROR("optimizer state requires 1-2 args: previously allocated ptr or (ptr;options flag)");
-}
-
-KAPI optstate2(K x,K y) {
- KTRY
-  Kopt* o=xoptim(x); Klayer *m=xlayer(y);
-  TORCH_CHECK(o && m, "need optimizer & module");
-  return optstate(true,true,o->c,*o->o,mref(m->m));
- KCATCH("optstate");
-}
-
 // ---------------------------------------------------------------------------------------
 // addoptions - parse k args into optimizer-specific options stored in a parameter group
 // addparms - return vector of parameters, checking for duplicated against existing groups
 //            also updating module that tracks inputs to optimizer to recreate from state
 // ---------------------------------------------------------------------------------------
-static void addoptions(Cast c,K x,ParamGroup& g) {
+static void addoptions(Cast c,K x,J i,ParamGroup& g) { // c:type, x-arg(s), i-offset into args
  switch(c) {
-  case Cast::adagrad: adagrad(x,g); break;
-  case Cast::adam:    adam<AdamOptions>(x,g); break;
-  case Cast::adamw:   adam<AdamWOptions>(x,g); break;
-  case Cast::lbfgs:   lbfgs(x,g); break;
-  case Cast::rmsprop: rmsprop(x,g); break;
-  case Cast::sgd:     sgd(x,g); break;
+  case Cast::adagrad: adagrad(x,i,g); break;
+  case Cast::adam:    adam<AdamOptions>(x,i,g); break;
+  case Cast::adamw:   adam<AdamWOptions>(x,i,g); break;
+  case Cast::lbfgs:   lbfgs(x,i,g); break;
+  case Cast::rmsprop: rmsprop(x,i,g); break;
+  case Cast::sgd:     sgd(x,i,g); break;
   default: AT_ERROR("unrecognized optimizer enumeration: ",(I)c);
  }
 }
@@ -985,7 +829,7 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
    case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
    case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
    case Class::module: v=moduleparms(*((Kmodule*)k)->m, y,o,m); break;
-   case Class::model:  v=moduleparms(mref((Kmodel*)k), y,o,m); break;
+   case Class::model:  v=moduleparms(*((Kmodel*) k)->m, y,o,m); break;
    default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
   }
  }
@@ -996,8 +840,8 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
 // optinit - create new optimizer given parameter and option arg(s)
 // optedit - edit existing optimizer group or add new group of parameters & options
 // --------------------------------------------------------------------------------
-static K optinit(Cast c,K x,K y) {
- BaseModule m; Optptr o; ParamGroup g({}); if(y) addoptions(c,y,g);
+static K optinit(bool b,Cast c,K x,K y) { //b:true if group given, x:overall args, y:parms
+ BaseModule m; Optptr o; ParamGroup g({}); addoptions(c,x,2+b,g);
  switch(c) {
   case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
   case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
@@ -1007,23 +851,23 @@ static K optinit(Cast c,K x,K y) {
   case Cast::sgd:     o=std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR}); break;
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
  }
- if(x) o->param_groups()[0].params()=addparms(x,*o,*m);
+ if(y) o->param_groups()[0].params()=addparms(y,*o,*m);
  return kopt(c,o,m);
 }
 
-static void optedit(K x,K y,J i,Cast c,Optimizer& o,Module& m) {
+static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Module& m) {
  auto& p=o.param_groups();
  TORCH_CHECK(i>=0, "opt: group ",i," invalid, cannot be negative");
  TORCH_CHECK(i<=p.size(), "opt: group ",i," invalid, cannot be greater than number of groups(",p.size(),")");
  if(i==p.size()) {                    // add new parameter group
   ParamGroup g({});                   // initialize empty group
-  if(y) addoptions(c,y,g);            // define optimizer-specific options for the group
-  if(x) g.params()=addparms(x,o,m);   // get parameters for new group
+  addoptions(c,x,2+b,g);              // define optimizer-specific options for the group
+  if(y) g.params()=addparms(y,o,m);   // get parameters for new group
   o.add_param_group(g);               // add to optimizer
  } else {
   auto g=p[i];                        // create a copy of i'th group
-  if(y) addoptions(c,y,g);            // [re]set optimizer-specific options for the group
-  if(x) {                             // add parameters to the end of the group's tensors
+  addoptions(c,x,2+b,g);              // [re]set optimizer-specific options for the group
+  if(y) {                             // add parameters to the end of the group's tensors
    const auto& v=addparms(x,o,m);
    g.params().insert(g.params().end(),v.begin(),v.end());
   }
@@ -1040,42 +884,16 @@ static void optedit(K x,K y,J i,Cast c,Optimizer& o,Module& m) {
 // ---------------------------------------------------------------------------------------
 KAPI opt(K x) {
  KTRY
-  bool a=env().alloptions; S s; Kopt *o; Kmodel *m;
-  if(xsym(x,s) || (xsym(x,0,s) && (xptr(x,1) || xempty(x,1)))) {
-   return optinit(s,x);
-  } else if(xdict(x)) {
-   K y=stateoptlist(x);
-   TORCH_CHECK(y && y->n, "opt: no options found");
-   return optinit(statemodule(x), kK(y)[0]);
-  } else if(xdict(x,0) && x->n==2 && (xptr(x,1) || xempty(x,1))) {
-   K d=kK(x)[0];
-   return optinit(statemodule(d),stateoptions(d),statebuffers(d));
-  } else if((o=xoptim(x)) || (xbool(x,1,a) && (o=xoptim(x,0)) && x->n==2)) {
-   return optstate(a,false,o->c,*o->o,*o->m);
-  } else if((o=xoptim(x,0)) && xptr(x,1) && x->n==2) {
-   return o->get()->add_parameters(optparms(x,1)), (K)0;
-  } else if((m=xmodel(x))) {
-   return kopt(m->oc,m->o,m->om);
-  } else {
-   AT_ERROR("unrecognized optimizer arg(s)");
-  }
- KCATCH("optimizer error");
-}
-
-KAPI opt2(K x) {
- KTRY
   J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *k;
   if(xsym(x,s) || (xsym(x,0,s) && x->t==0)) {
    J n=x->t==-KS ? 1 : x->n;
-   TORCH_CHECK(n<4+b, "opt: ",s," optimizer definition expecting up to ",3+b,
-                      " args(name;",(b? "group;" : ""),"parms;options) but ",n," given");
    TORCH_CHECK(!i, "opt: cannot define group ",i," until optimizer is created with initial parameter group");
-   return optinit(omap(s), n>1+b ? kK(x)[1+b] : nullptr, n>2+b ? kK(x)[2+b] : nullptr);
+   return optinit(b, omap(s), x, n>1+b ? kK(x)[1+b] : nullptr);
   } else if(((k=xoptim(x))) || ((k=xoptim(x,0)))) {
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {
     return optstate(a,false,k->c,*k->o,*k->m);
    } else {
-    optedit(x->n>1+b ? kK(x)[1+b] : nullptr, x->n>2+b ? kK(x)[2+b] : nullptr,i,k->c,*k->o,*k->m);
+    optedit(b, k->c, x, x->n>1+b ? kK(x)[1+b] : nullptr, i, *k->o, *k->m);
     return (K)0;
    }
   } else if(xdict(x) || xdict(x,0)) {
@@ -1208,7 +1026,6 @@ K opthelp(Cast c) {
 // -------------------------------------------------------------------------------------------
 void optfn(K x) {
  fn(x, "opt",  KFN(opt),1);
- fn(x, "opt2",  KFN(opt2),1);
  fn(x, "step", KFN(kstep),1);
  fn(x, "lr",   KFN(lr),1);
 }

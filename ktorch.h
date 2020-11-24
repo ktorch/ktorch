@@ -111,14 +111,8 @@ using Moduleptr=std::shared_ptr<Module>;
 class SeqNest;
 class SeqJoin;
 
-// define a kind of union for modules: containers used to build sequences and type-erased anymodule
-using Layer=c10::variant<Sequential, SeqNest, SeqJoin, ModuleList, BaseModule, AnyModule>;
-using Layers=std::stack<Layer>;
-
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
-//using TorchObj=c10::variant<Tensor,Layer>;
-//using TorchDict=torch::OrderedDict<std::string, TorchObj>;
 
 typedef struct {
  Ktype a = 0;  // type: 1-dict, 2-list of pairs, 3-general list, 4-sym list
@@ -267,11 +261,6 @@ struct TORCH_API Kdict : public Ktag {
  Kdict(const TensorDict& x) : d(std::move(x)) {a=Class::dict; c=Cast::tensor;}
 };
 
-struct TORCH_API Klayer : public Ktag {
- Layer m;       // single module or container of many modules, e.g. Sequential
- Klayer(Cast x,const Layer& y) : m(std::move(y)) {a=Class::module; c=x;}
-};
-
 struct TORCH_API Kmodule : public Ktag {
  Kmodule(Class x,Cast y,Moduleptr z) : m(std::move(z)) {a=x; c=y;}
  Moduleptr m;
@@ -387,8 +376,6 @@ bool xtenarg(K,J,Tensor&,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&);
 bool xtenarg(K,Tensor&,Tensor&,Tensor&);
 
-Klayer* xlayer(K);
-Klayer* xlayer(K,J);
 Kmodule* xmodule(K);
 Kmodule* xmodule(K,J);
 Kmodule* xloss(K);
@@ -558,34 +545,22 @@ torch::nn::PairwiseDistanceOptions pairwise(K,J,Cast);
 K  similar(bool,const torch::nn::CosineSimilarityOptions&);
 K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
-K kmodule(Cast,const Layer&);
-K kmodule(Cast,const Moduleptr&);
-K to(Klayer*,const TensorOptions&,bool);
+K kmodule(Cast c,const Moduleptr& m,Class a=Class::module);
 K to(Kmodule*,const TensorOptions&,bool);
-Layer&  lref(Ktag*);
-Module& mref(const Layer&);
-Module& mref(Klayer*);
-Module& mref(Kmodel*);
-Module& mref(Ktag*);
-Module& mref(Kmodule*);
 
 const
 c10::optional<std::string>& mname_(const Module&);
 c10::optional<std::string>& mname_(Module&);
 S mname(const Module&);
-S mname(const Layer&);
-S mname(Klayer*);
 std::string mlabel(const Module&);
 Cast mcast(const Module&);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
-K mforward(Layer&,K);
 K mforward(Cast,Module&,K);
-Tensor mforward(Layer& q,const Tensor& x,const Tensor& y={},const Tensor& z={});
 Tensor mforward(Cast,Module&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
-K mattr(const Layer&,Ktype,Attr);
+K mattr(const Moduleptr&,Ktype,Attr);
 K modulehelp(Cast);
 void nnfn(K);
 
@@ -594,7 +569,6 @@ K kloss(Cast,const Moduleptr&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);
-K lossdict(Ktag*,K);
 K lossdict(bool,bool,Cast,const Module&);
 K lossattr(const Moduleptr&,Ktype,Attr);
 K losshelp(Cast);
@@ -615,7 +589,7 @@ void optstep(Kmodel*);
 void optfn(K);
 
 // model functions:
-K modelstate(Ktag*,K);
+K modelstate(bool,bool,Kmodel*);
 K mbackward(K);
 void modelfn(K);
 
