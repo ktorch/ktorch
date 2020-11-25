@@ -560,7 +560,6 @@ K mforward(Cast,Module&,K);
 Tensor mforward(Cast,Module&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
-K mattr(const Moduleptr&,Ktype,Attr);
 K modulehelp(Cast);
 void nnfn(K);
 
@@ -570,17 +569,16 @@ Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);
 K lossdict(bool,bool,Cast,const Module&);
-K lossattr(const Moduleptr&,Ktype,Attr);
 K losshelp(Cast);
 void lossfn(K);
 
 // optimization functions:
 J buffersize(bool,Cast,const Optimizer&);
-Module& optmodule(Module&);
-const Module& optmodule(const Module&);
+//Moduleptr optmodule(Moduleptr&);
+Moduleptr optmodule(Moduleptr);
 K kopt(Cast,const Optptr&,const BaseModule&);
-K optstate(Ktag*,K);
-K optstate(bool,bool,Cast,const Optimizer&,const Module&);
+K optstate(bool,bool,Kopt *);
+K optstate(bool,bool,Kmodel *);
 K optattr(const Optptr&,Ktype,Attr);
 K opthelp(Cast);
 void optstep(Cast,Optptr&);

@@ -1115,6 +1115,7 @@ KAPI Kfree(K x){
 // -----------------------------------------------------------------------------------------
 S objdevice(const Tensor& t) {return tensorsym(t,Attr::device);}
 S objdevice(const TensorVector& v,S s) {return v.size() ? objdevice(v[0]) : s;}
+S objdevice(const Module& m,S s) {return objdevice(m.parameters().size() ? m.parameters() : m.buffers(), s);}
 S objdevice(const Optimizer& o,S s) {
  for(const auto& g:o.param_groups())
   if(g.params().size()) return objdevice(g.params(),s);
@@ -1239,7 +1240,7 @@ KAPI kstate(K x) {
   switch(g->a) {
    case Class::module:    return mget(a,true,*((Kmodule*)g)->m);
    case Class::loss:      return lossdict(a,true,g->c,*((Kmodule*)g)->m);
-   case Class::optimizer: {const auto *o=(Kopt*)g; return optstate(a,true,o->c,*o->o,*o->m);}
+   case Class::optimizer: return optstate(a,true,(Kopt*)g);
    case Class::model:     return modelstate(a,true,(Kmodel*)g);
    default: AT_ERROR("state not defined for ",mapclass(g->a));
   }
@@ -1544,7 +1545,18 @@ KAPI kseed(K x) {
 
 // -----------------------------------------------------------------------------------------
 // query object attributes, e.g. tensor/vector and other object attributes
+// mattr - handle a limited set of module attributes
+// attr - attempt to get attribute of given object (more attributes implemented for tensors)
 // -----------------------------------------------------------------------------------------
+static K mattr(Class c,const Moduleptr& p,Ktype k,Attr a) {
+ switch(a) {
+  case Attr::ref:     return kj(p.use_count()-1);
+  case Attr::ptr:     return kj((intptr_t)p.get());
+  case Attr::device:  return ks(objdevice(*p, optsym(torch::Device(torch::kCPU))));
+  default: AT_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
+ }
+}
+
 K attr(K x,Ktype k,Attr a) {
  KTRY
   auto* g=xtag(x);
@@ -1553,8 +1565,8 @@ K attr(K x,Ktype k,Attr a) {
    case Class::tensor:    return tensorattr(((Kten*)g)->t,k,a);
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
    case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
-   case Class::module:    return mattr(((Kmodule*)g)->m,k,a);
-   case Class::loss:      return lossattr(((Kmodule*)g)->m,k,a);
+   case Class::module:
+   case Class::loss:      return mattr(g->a,((Kmodule*)g)->m,k,a);
    case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }

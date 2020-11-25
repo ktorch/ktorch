@@ -385,17 +385,6 @@ K mforward(Cast c,Module& m,K a) {
  }
 }
 
-// ---------------------------------------------------------------------------------------
-// mattr - return requested attribute of given layer
-// ---------------------------------------------------------------------------------------
-K mattr(const Moduleptr& m,Ktype k,Attr a) {
- switch(a) {
-  case Attr::ptr: return kj((intptr_t)m.get());
-  case Attr::ref: return kj(m.use_count()-1);
-  default: AT_ERROR(mapattr(a),": not implemented for module");
- }
-}
-
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
@@ -3328,7 +3317,6 @@ KAPI module(K x) {
  KTRY
   bool a=env().alloptions; J d,n; Kmodule *l,*g; Kmodel *m; Kopt* o;
   if((l=xmodule(x)) || (l=xmodule(x,0))) {       // allocated module ptr supplied
-   std::cerr << "module arg, x->n is " << x->n << "\n";
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {    // no other args or boolean flag
     return mget(a,false,*l->m);                  // return module options
    } else if(x->n==2) {                          // else if allocated module & non-boolean arg
@@ -3353,8 +3341,8 @@ KAPI module(K x) {
   } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return kmodule(m->mc,m->m);
   } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
-   auto& m=optmodule(*o->m);
-   AT_ERROR("nyi"); //return kmodule(mcast(om),optmodule(*o->m));
+   auto m=optmodule(o->m.ptr());                 // base module w'module(s) that this optimizer deals with
+   return kmodule(mcast(*m),m);                  // return new k-api handle to this module
   } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);
   } else {

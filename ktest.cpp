@@ -233,18 +233,6 @@ KAPI f_old(K x) {
  KCATCH("test base module")
 }
 
-KAPI g2(K x) {
- K r=ktn(KJ,6);
- torch::optim::Adagrad g(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[0]=g.param_groups().size();
- torch::optim::Adam    a(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[1]=a.param_groups().size();
- torch::optim::AdamW   w(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[2]=w.param_groups().size();
- torch::optim::LBFGS   l(std::vector<Tensor>{}); l.param_groups().clear();  kJ(r)[3]=l.param_groups().size();
- torch::optim::RMSprop m(std::vector<torch::optim::OptimizerParamGroup>{}); kJ(r)[4]=m.param_groups().size();
- torch::optim::SGD     s(std::vector<torch::optim::OptimizerParamGroup>{},torch::optim::SGDOptions(.01)); kJ(r)[5]=s.param_groups().size();
- //return r;
- return optstate(true,true,Cast::adam,a,*BaseModule());
-}
-
 /*
 KAPI cb(K x,K y) {
  KTRY

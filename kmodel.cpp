@@ -29,7 +29,7 @@ K modelkeys() {
 }
 
 K modelstate(bool a,bool b,Kmodel *m) {
- return xD(modelkeys(), knk(3, mget(a,b,*m->m), lossdict(a,b,m->lc,*m->l), optstate(a,b,m->oc,*m->o,*m->om)));
+ return xD(modelkeys(), knk(3, mget(a,b,*m->m), lossdict(a,b,m->lc,*m->l), optstate(a,b,m)));
 }
 
 static void modelfree(K x,J i) {

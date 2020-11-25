@@ -505,9 +505,18 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 }
 
 // --------------------------------------------------------------------------------------
+// onlychild - return true if moduleptr containes only one child, no parms or buffers
+// optmodule - return container or single child module (removes depth if not necessary)
+// --------------------------------------------------------------------------------------
+static bool onlychild(const Module& m) {
+ return m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
+}
+
+Moduleptr optmodule(Moduleptr m) {return onlychild(*m) ? m->children()[0] : m;}
+
+// --------------------------------------------------------------------------------------
 // parmkeys - return columns for table describing optimizer parameter groups & buffers
 // moduletype - given parameter, attempt to find parent module type
-// optmodule - return single module if container has only one child, no parms or buffers
 // parmname - given parameter, search containing module(s), return name if found
 // parmsym - return string from parmname as symbol
 // --------------------------------------------------------------------------------------
@@ -529,15 +538,8 @@ static S moduletype(const Tensor& p,const Module& m) {
  return env().nullsym;
 }
 
-static bool onlychild(const Module& m) {
- return m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
-}
-
-      Module& optmodule(      Module& m) {return onlychild(m) ? *m.children()[0] : m;}
-const Module& optmodule(const Module& m) {return onlychild(m) ? *m.children()[0] : m;}
-
 static std::string parmname(const Tensor& p,const Module& m) {
- for(auto& a:optmodule(m).named_parameters())
+ for(auto& a:m.named_parameters())
   if(a.value().is_same(p))
    return a.key();
  return {};
@@ -788,15 +790,17 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
  
 // ---------------------------------------------------------------------------------------
 // optstate - return optimizer name & options and optionally, internal buffer values
-// opt - main optimizer interface function for q
 // ---------------------------------------------------------------------------------------
-K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
+static K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
  kS(k)[1]=statekey(State::options); kK(v)[1]=optdict(a,c,o);
  kS(k)[2]=statekey(State::parms);   kK(v)[2]=getparms(b,c,o,m);
  return xD(k,v);
 }
+
+K optstate(bool a,bool b,Kopt*   o) {return optstate(a,b,o->c,*o->o,*optmodule(o->m.ptr()));}
+K optstate(bool a,bool b,Kmodel* m) {return optstate(a,b,m->oc,*m->o,*optmodule(m->m));}
 
 // ---------------------------------------------------------------------------------------
 // addoptions - parse k args into optimizer-specific options stored in a parameter group
@@ -891,7 +895,7 @@ KAPI opt(K x) {
    return optinit(b, omap(s), x, n>1+b ? kK(x)[1+b] : nullptr);
   } else if(((k=xoptim(x))) || ((k=xoptim(x,0)))) {
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {
-    return optstate(a,false,k->c,*k->o,*k->m);
+    return optstate(a,false,k);
    } else {
     optedit(b, k->c, x, x->n>1+b ? kK(x)[1+b] : nullptr, i, *k->o, *k->m);
     return (K)0;

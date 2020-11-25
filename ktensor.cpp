@@ -807,7 +807,7 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
 }
 
 // ----------------------------------------------------------------------------------------------
-// attr - handle vector/dictionary values or other iterable to extract attributes -> k list
+// vattr - handle vector/dictionary values or other iterable to extract attributes -> k list
 // vectorattr - handle tensor vector attribute queries according to k datatype returned
 // dictattr - handle tensor dictionary queries, return dictionary of attribute values
 // options - return dictionary/table of tensor/vector attributes
