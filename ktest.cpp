@@ -2,6 +2,24 @@
 
 namespace nn=torch::nn;
 
+static void dups() {
+ torch::nn::Linear m(1,1);
+ torch::optim::SGD o(m->parameters(),.1);
+ torch::optim::OptimizerParamGroup g(m->parameters());
+ o.add_param_group(g);
+ auto& p=o.param_groups();
+ if(p[0].params()[1].is_same(p[1].params()[1]))
+  std::cerr << "same parameter across different groups\n";
+}
+
+KAPI duptest(K x) {
+ KTRY
+ dups();
+ return (K)0;
+ KCATCH("dups");
+}
+ 
+ 
 /*
   AnyModule(std::shared_ptr<ModuleType> module)
   AnyModule(ModuleType&& module)

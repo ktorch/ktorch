@@ -273,6 +273,15 @@ static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/ta
  return v;
 }
 
+static K statetable(State e,K x) {
+ J i=statefind(e,x);
+ if(i<0) return nullptr;
+ TORCH_CHECK(x->t==99, "expecting dictionary containing ",statekey(e),", given ",kname(x->t));
+ K v=kK(x)[1]; TORCH_CHECK(!v->t, statekey(e),": expected general list, given ",kname(v));
+ v=kK(v)[i]; TORCH_CHECK(v->t==98, statekey(e),": expected table, given ",kname(v));
+ return v;
+}
+ 
 // --------------------------------------------
 // convenience functions to return state value
 // --------------------------------------------
@@ -283,6 +292,8 @@ K stateoptions(K x,J j) {return statedict(State::options,x,j);}
 K stateoptlist(K x,J j) {return statedict(State::optlist,x,j);}
 K stateparms(K x,J j)   {return statedict(State::parms,x,j);}
 K statebuffers(K x,J j) {return statedict(State::buffers,x,j);}
+J stategroup(K x,J j)   {return statelong(State::group,true,x,j);}
+K stategroups(K x)      {return statetable(State::parms,x);}
 
 // --------------------------------------------------------------------------------------
 // xnull  - true if null, i.e. (::)
@@ -338,7 +349,7 @@ bool xsyms(K x,S &s) {
  else return false;
 }
 
-bool xdev(K x,torch::Device &d) {
+bool xdev(K x,Device &d) {
  if(x->t==-KS) {
   for(auto &m:env().device)
    if(x->s==std::get<0>(m)) return d=std::get<1>(m),true;
@@ -346,7 +357,7 @@ bool xdev(K x,torch::Device &d) {
  return false;
 }
 
-bool xdev(K x,J i,torch::Device &d) {return xind(x,i) && xdev(kK(x)[i],d);}
+bool xdev(K x,J i,Device &d) {return xind(x,i) && xdev(kK(x)[i],d);}
 
 bool xint64(K x,int64_t &j) {return (x->t == -KJ) ? j=x->j,true : false;}  //J -> int64_t (linux differentiates)
 bool xint64(K x,J i,int64_t &j) {
@@ -1349,7 +1360,7 @@ KAPI cudadevices(K x) {
 KAPI cudadevice(K x) {
  KTRY
   TORCH_CHECK(env().cuda, "no CUDA device available");
-  torch::Device d(torch::kCUDA);
+  Device d(torch::kCUDA);
   auto *g = c10::impl::getDeviceGuardImpl(d.type());
   if(xempty(x)) {
    for(auto &m:env().device)
@@ -1364,7 +1375,7 @@ KAPI cudadevice(K x) {
 }
 
 static K defaultdevice() {
- auto d=torch::Device(env().cuda ? torch::DeviceType::CUDA : torch::DeviceType::CPU);
+ auto d=Device(env().cuda ? DeviceType::CUDA : DeviceType::CPU);
  for(auto& c:env().device)
   if(std::get<1>(c)==d) return ks(std::get<0>(c));
  return KERR("unable to get default device");
@@ -1376,7 +1387,7 @@ static K defaultdevice() {
 // optkey - symbol keys/cols for tensor option dictionary or table
 // optval - symbol vector/lists of option values
 // ---------------------------------------------------------------------------------------------
-S& optsym(const torch::Device& d) {
+S& optsym(const Device& d) {
  for(auto &m:env().device) if(d==std::get<1>(m)) return std::get<0>(m);
  AT_ERROR("unrecognized device: ",d);
 }
@@ -1504,7 +1515,7 @@ KAPI config(K x) {
 // seedmap - returns map of device sym -> seed
 // kseed - k interface to query/set device seed or query/reset seed for all devices
 // -----------------------------------------------------------------------------------
-J deviceseed(torch::Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
+J deviceseed(Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
  torch::DeviceGuard dg(d);
  auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
  if(b) {
@@ -1525,7 +1536,7 @@ static K seedmap() {
 
 KAPI kseed(K x) {
  KTRY
-  torch::Device d(torch::DeviceType::CPU); J s;
+  Device d(DeviceType::CPU); J s;
   if(xempty(x)) {                 // if empty, report on seed for all devices
    return seedmap();
   } else if(xlong(x,s)) {         // set single random seed across all devices
@@ -1552,7 +1563,7 @@ static K mattr(Class c,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
   case Attr::ref:     return kj(p.use_count()-1);
   case Attr::ptr:     return kj((intptr_t)p.get());
-  case Attr::device:  return ks(objdevice(*p, optsym(torch::Device(torch::kCPU))));
+  case Attr::device:  return ks(objdevice(*p, optsym(Device(torch::kCPU))));
   default: AT_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
  }
 }
@@ -1637,14 +1648,14 @@ static void kinit() __attribute__((constructor));
 
 static void kinit() {
  C c[16]; auto &e=env(); auto &d=e.device;
- e.frame = false;                                                     //no stack frame on error msg
- e.cuda = torch::cuda::device_count();                                //count of available CUDA devices
- d.emplace_back(cs("cpu"),torch::Device(torch::DeviceType::CPU));     //build map from sym->device
+ e.frame = false;                                       //no stack frame on error msg
+ e.cuda = torch::cuda::device_count();                  //count of available CUDA devices
+ d.emplace_back(cs("cpu"),Device(DeviceType::CPU));     //build map from sym->device
  if(e.cuda) {
-  d.emplace_back(cs("cuda"),torch::Device(torch::DeviceType::CUDA));  //current CUDA device, `cuda
+  d.emplace_back(cs("cuda"),Device(DeviceType::CUDA));  //current CUDA device, `cuda
   for(I i=0; i<e.cuda; ++i) {
-   sprintf(c,"cuda:%d",i);                                            //device 0-n, e.g. `cuda:0
-   d.emplace_back(ss(c),torch::Device(torch::DeviceType::CUDA,i));
+   sprintf(c,"cuda:%d",i);                              //device 0-n, e.g. `cuda:0
+   d.emplace_back(ss(c),Device(DeviceType::CUDA,i));
   }
  }
 }

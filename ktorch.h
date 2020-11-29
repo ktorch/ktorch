@@ -81,6 +81,8 @@ template <class... Fs> auto make_overload(Fs... fs) {
 #define cs(x) ss((S)x)
 
 using Ktype=signed char;
+using Device=torch::Device;
+using DeviceType=torch::DeviceType;
 using Storage=torch::Storage;
 using Tensor=torch::Tensor;
 using Scalar=torch::Scalar;
@@ -325,6 +327,8 @@ K stateoptions(K x,J j=-1);
 K stateoptlist(K x,J j=-1);
 K stateparms(K x,J j=-1);
 K statebuffers(K x,J j=-1);
+J stategroup(K x,J j=-1);
+K stategroups(K);
 void stateparms(S,Module&,K,bool);
 
 bool xnull(K);
@@ -337,8 +341,8 @@ bool xsym(K,J);
 bool xsym(K,S&);
 bool xsym(K,J,S&);
 bool xsyms(K,S&);
-bool xdev(K,torch::Device&);
-bool xdev(K,J,torch::Device&);
+bool xdev(K,Device&);
+bool xdev(K,J,Device&);
 
 bool xint64(K,int64_t&);
 bool xint64(K,J,int64_t&);
@@ -447,7 +451,7 @@ void psize(const Pairs&,J,double*);
 void pdoubles(const Pairs&,DoubleArrayRef&,J n=-1);
 void pten(const Pairs&,Tensor&);
 
-S& optsym(const torch::Device&);
+S& optsym(const Device&);
 S& optsym(const TypeMeta&);
 S& optsym(const torch::Layout&);
 S& optsym(const bool&);
@@ -598,7 +602,7 @@ typedef struct {
  bool frame=false;      // if true, error message returns stack frame
  bool alloptions=true;  // if true, return all option settings, else only non-defaults
 
- std::vector<std::tuple<S,torch::Device>> device;
+ std::vector<std::tuple<S,Device>> device;
 
  std::array<std::tuple<Ktype,TypeMeta>,8> ktype = {{           //k type -> torch type
   std::make_tuple(KE, at::scalarTypeToTypeMeta(at::kFloat)),
@@ -929,23 +933,24 @@ typedef struct {
   std::make_tuple(cs("sgd"),     Cast::sgd,     "torch.optim.SGD")
  }};
 
- std::array<std::tuple<S,Setting>,17> oset = {{         //optimizer setting: map symbol -> enum
-  std::make_tuple(cs("lr"),         Setting::lr),
-  std::make_tuple(cs("lrdecay"),    Setting::lrdecay),
-  std::make_tuple(cs("decay"),      Setting::decay),
+ std::array<std::tuple<S,Setting>,18> oset = {{         //optimizer setting: map symbol -> enum
+  std::make_tuple(cs("alpha"),      Setting::alpha),
+  std::make_tuple(cs("amsgrad"),    Setting::amsgrad),
   std::make_tuple(cs("beta1"),      Setting::beta1),
   std::make_tuple(cs("beta2"),      Setting::beta2),
+  std::make_tuple(cs("centered"),   Setting::centered),
+  std::make_tuple(cs("changetol"),  Setting::changetol),
+  std::make_tuple(cs("dampening"),  Setting::dampening),
+  std::make_tuple(cs("decay"),      Setting::decay),
   std::make_tuple(cs("eps"),        Setting::eps),
-  std::make_tuple(cs("amsgrad"),    Setting::amsgrad),
-  std::make_tuple(cs("iter"),       Setting::iter),
   std::make_tuple(cs("eval"),       Setting::eval),
   std::make_tuple(cs("gradtol"),    Setting::gradtol),
-  std::make_tuple(cs("changetol"),  Setting::changetol),
   std::make_tuple(cs("history"),    Setting::history),
-  std::make_tuple(cs("alpha"),      Setting::alpha),
+  std::make_tuple(cs("init"),       Setting::init),
+  std::make_tuple(cs("iter"),       Setting::iter),
+  std::make_tuple(cs("lrdecay"),    Setting::lrdecay),
+  std::make_tuple(cs("lr"),         Setting::lr),
   std::make_tuple(cs("momentum"),   Setting::momentum),
-  std::make_tuple(cs("centered"),   Setting::centered),
-  std::make_tuple(cs("dampening"),  Setting::dampening),
   std::make_tuple(cs("nesterov"),   Setting::nesterov)
  }};
 

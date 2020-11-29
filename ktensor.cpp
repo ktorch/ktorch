@@ -933,7 +933,7 @@ static Tensor perm(const Tensor& t,int64_t d) {
 }
 
 static void vcheck(const TensorVector& v,int64_t d) {
- int64_t i=0,n; torch::Device c=torch::kCPU;
+ int64_t i=0,n; Device c=torch::kCPU;
  for(auto& t:v) {
   if(!i)
    n=t.size(d),c=t.device();

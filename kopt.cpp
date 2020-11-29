@@ -80,69 +80,30 @@ template<typename O> static O& getoptions(ParamGroup& g) {
  return static_cast<O&>(g.options());
 }
 
-// --------------------------------------------------------------------------------------
-// bget - find buffer (vector of longs/tensors) from dictionary given name
-// bset - set optimization buffers from k dictionary
-//      - vector of longs (e.g. step_buffers, one per parameter)
-//      - vector of tensors
-//      - deque of tensors (LBFGS)
-//      - single tensor (LBFGS)
-// --------------------------------------------------------------------------------------
-/*
-static K bget(K x,const char* s) {
- auto i=xdict(x) ? kfind(kK(x)[0],s) : -1;
- return (i<0 || kK(x)[1]->t) ? nullptr : kK(kK(x)[1])[i];
+// ---------------------------------------------------------------------------------------
+// findbuffer - find buffer in parameter-level dictionary, w'required type for scalar
+// deque - read x dictionary into a deque of tensors (used with LBFGS optimizer)
+// ---------------------------------------------------------------------------------------
+static K findbuffer(K x,const std::string &s,short t=nh);
+static K findbuffer(K x,const std::string &s,short t) {
+ TORCH_CHECK(xdict(x), "dictionary expected, ",kname(x)," given, unable to find parameter ",s);
+ K k=kK(x)[0], v=kK(x)[1]; J i=kfind(k,s);
+ if(i<0)
+  return nullptr;
+ TORCH_CHECK(!v->t, "general list of values expected, ",kname(v)," given, unable to find parameter ",s);
+ K r=kK(v)[i];
+ TORCH_CHECK(t==nh || t==r->t, s,": ",kname(t)," expected, ",kname(r->t)," supplied");
+ return xnull(r) ? nullptr : r;
 }
 
-static void bset(size_t n,const char* s,const TensorVector& p,LongVector& v,const K x) {
- // restore vector of longs (parameter vector not referenced, included for uniform call)
- K y=bget(x,s);
- if(!y || !y->n) return;
- if(y->t != KJ) AT_ERROR("type error: ",s,", expecting long list, input is ",kname(y->t));
- if(n != (unsigned)y->n) AT_ERROR("length error: ",s,", expecting ",n," longs, input has ",y->n);
- v.resize(n);
- for(size_t i=0; i<n; ++i) v.emplace_back(kJ(y)[i]);
+static TensorDeque deque(K x,const std::string& s,Device& d) {
+ TORCH_CHECK(!x->t, "deque buffer: ",s,", expected list but given ",kname(x->t));
+ TensorDeque q; q.resize(x->n);
+ for(J i=0; i<x->n; ++i)
+  q[i]=kput(kK(x)[i]).to(d);
+ return q;
 }
-
-static void bset(size_t n,const char* s,const TensorVector& p,TensorVector& v,const K x) {
- K y=bget(x,s);
- if(!y || !y->n) return;
- if(y->t) AT_ERROR("type error: ",s,", expecting general list, input is ",kname(y->t));
- if(n != (unsigned)y->n) AT_ERROR("length error: ",s,", expecting ",n," arrays, input has ",y->n);
- v.resize(n);
- for(size_t i=0; i<n; ++i) {
-  auto a=kput(kK(y)[i]);
-  auto b=torch::zeros_like(p.at(i));
-  if(a.dtype() != b.dtype())
-   AT_ERROR("type mismatch: ",s,"[",i,"] is ",b.dtype(),", input is ",a.dtype());
-  if(!b.is_same_size(a))
-   AT_ERROR("size mismatch: ",s,"[",i,"] is ",b.sizes(),", input is ",a.sizes());
-  if(a.device() != b.device())
-   b.set_data(a);
-  else
-   b.set_(a);
-  v[i]=std::move(b);
- }
-}
-
-static void bset(size_t n,const char* s,const TensorVector& p,TensorDeque& v,const K x) {
- // used w'LBFGS, not sure if parameter count/type/device relevant
- K y=bget(x,s);
- if(!y || !y->n) return;
- if(y->t) AT_ERROR("type error: ",s,", expecting general list, input is ",kname(y->t));
- v.resize(n);
- for(size_t i=0; i<n; ++i)
-  v[i]=kput(kK(y)[i]);
-}
-
-static void bset(size_t n,const char* s,const TensorVector& p,Tensor& t,const K x) {
- // used w'LBFGS, not sure if parameter count/type/device relevant
- K y=bget(x,s);
- if(!y || !y->n) return;
- t=kput(y);
-}
-*/
-
+  
 // ----------------------------------------------------------------------------------------
 // adagrad - parse args (lr;lrdecay;wtdecay) or (..;name/val pairs/dict)
 //         - if given options,buffers, allocate new optimizer and return ptr
@@ -153,26 +114,24 @@ static void adagrad(K x,J i,ParamGroup& g) {
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.lr_decay(f);}
  if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.weight_decay(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.initial_accumulator_value(f);}
+ if(n && xnum(x,i,f)) {i++; n--; if(f==f) o.eps(f);}
  if(n) AT_ERROR("opt: unrecognized option(s) for Adagrad optimizer");
  while(xpair(p))
   switch(oset(p.k)) {
    case Setting::lr:      f=pdouble(p); if(f==f) o.lr(f); break;
    case Setting::lrdecay: f=pdouble(p); if(f==f) o.lr_decay(f); break;
    case Setting::decay:   f=pdouble(p); if(f==f) o.weight_decay(f); break;
+   case Setting::init:    f=pdouble(p); if(f==f) o.initial_accumulator_value(f); break;
+   case Setting::eps:     f=pdouble(p); if(f==f) o.eps(f); break;
    default: AT_ERROR("unrecognized option: ",p.k," for Adagrad optimization"); break;
   }
 }
 
-static Optptr adagrad(const TensorVector& w,const AdagradOptions& a,K y) {
- auto o=std::make_shared<Adagrad>(w,a);
- auto n=o->state().size();
- if(y && n) {
-/* PATCH
-  bset(n, "step_buffers", o->parameters(), o->step_buffers, y);
-  bset(n, "sum_buffers",  o->parameters(), o->sum_buffers,  y);
-*/
- }
- return o;
+static void adaput(K x,Device& d,torch::optim::AdagradParamState& s) {
+ K v;
+ if((v=findbuffer(x,"step",-KJ))) s.step(v->j);
+ if((v=findbuffer(x,"sum")))      s.sum(kput(v).to(d));
 }
 
 static K adagrad(bool a,const AdagradOptions& o) { //return all or non-default options as k dictionary
@@ -180,6 +139,9 @@ static K adagrad(bool a,const AdagradOptions& o) { //return all or non-default o
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
  if(a || d.lr_decay()     != o.lr_decay())     OPTSET(x, lrdecay, kf(o.lr_decay()));
  if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,   kf(o.weight_decay()));
+ if(a || d.initial_accumulator_value() !=
+         o.initial_accumulator_value())        OPTSET(x, init,    kf(o.initial_accumulator_value()));
+ if(a || d.eps()          != o.eps())          OPTSET(x, eps,     kf(o.eps()));
  return x;
 }
 
@@ -216,6 +178,14 @@ template<typename O> static void adam(K x,J i,ParamGroup& g) {
    case Setting::amsgrad: o.amsgrad(pbool(p)); break;
    default: AT_ERROR("unrecognized option: ",p.k," for Adam optimization"); break;
   }
+}
+
+template<typename S>static void adamput(K x,Device& d,S& s) {
+ K v;
+ if((v=findbuffer(x,"step",-KJ)))       s.step(v->j);
+ if((v=findbuffer(x,"exp_avg")))        s.exp_avg(kput(v).to(d));
+ if((v=findbuffer(x,"exp_avg_sq")))     s.exp_avg_sq(kput(v).to(d));
+ if((v=findbuffer(x,"max_exp_avg_sq"))) s.max_exp_avg_sq(kput(v).to(d));
 }
 
 template<typename O,typename A> static Optptr adam(const TensorVector& w,const A& a,K y) {
@@ -294,21 +264,21 @@ static void lbfgs(K x,J i,ParamGroup& g) {
  if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
 }
 
-static Optptr lbfgs(const TensorVector& w,const LBFGSOptions& a,K y) {
- auto o=std::make_shared<LBFGS>(w,a);
- //auto n=o->state().size();
- if(y) {
-/* PATCH
-  bset(n, "d",              o->parameters(), o->d, y);
-  bset(n, "t",              o->parameters(), o->t, y);
-  bset(n, "H_diag",         o->parameters(), o->H_diag, y);
-  bset(n, "prev_flat_grad", o->parameters(), o->prev_flat_grad, y);
-  bset(n, "prev_loss",      o->parameters(), o->prev_loss, y);
-  bset(n, "old_dirs",       o->parameters(), o->old_dirs, y);
-  bset(n, "old_stps",       o->parameters(), o->old_stps, y);
-*/
- }
- return o;
+static void lbput(K x,Device& d,torch::optim::LBFGSParamState& s) {
+ K v;
+ if((v=findbuffer(x,"func_evals",-KJ)))  s.func_evals(v->j);
+ if((v=findbuffer(x,"n_iter",-KJ)))      s.n_iter(v->j);
+ if((v=findbuffer(x,"t",-KF)))           s.t(v->f);
+ if((v=findbuffer(x,"prev_loss",-KF)))   s.prev_loss(v->f);
+ if((v=findbuffer(x,"d")))               s.d(kput(v).to(d));
+ if((v=findbuffer(x,"H_diag")))          s.H_diag(kput(v).to(d));
+ if((v=findbuffer(x,"prev_flat_grad")))  s.prev_flat_grad(kput(v).to(d));
+ if((v=findbuffer(x,"old_dirs")))        s.old_dirs(deque(v,"old_dirs",d));
+ if((v=findbuffer(x,"old_stps")))        s.old_stps(deque(v,"old_stps",d));
+ if((v=findbuffer(x,"ro")))              s.ro(deque(v,"ro",d));
+ /*
+  ARG_OPTIONAL(std::vector<Tensor>, al);
+ */
 }
 
 static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default options as k dictionary
@@ -374,17 +344,12 @@ static void rmsprop(K x,J i,ParamGroup& g) {
   }
 }
 
-static Optptr rmsprop(const TensorVector& w,const RMSpropOptions& a,K y) {
- auto o=std::make_shared<RMSprop>(w,a);
- auto n=o->state().size();
- if(y && n) {
-/* PATCH
-  bset(n, "square_average_buffers", o->parameters(), o->square_average_buffers, y);
-  bset(n, "momentum_buffers",       o->parameters(), o->momentum_buffers,       y);
-  bset(n, "grad_average_buffers",   o->parameters(), o->grad_average_buffers,   y);
-*/
- }
- return o;
+static void rmsput(K x,Device& d,torch::optim::RMSpropParamState& s) {
+ K v;
+ if((v=findbuffer(x,"step",-KJ)))        s.step(v->j);
+ if((v=findbuffer(x,"square_avg")))      s.square_avg(kput(v).to(d));
+ if((v=findbuffer(x,"momentum_buffer"))) s.momentum_buffer(kput(v).to(d));
+ if((v=findbuffer(x,"grad_avg")))        s.grad_avg(kput(v).to(d));
 }
 
 static K rmsprop(bool a,const RMSpropOptions& o) { //return all or non-default options as k dictionary
@@ -435,13 +400,12 @@ static void sgd(K x,J i,ParamGroup& g) {
   }
 }
 
-static Optptr sgd(const TensorVector& w,const SGDOptions& a,K y) {
- auto o=std::make_shared<SGD>(w,a);
- auto n=o->state().size();
- if(y && n) {
-  // PATCH: bset(n, "momentum_buffers", o->parameters(), o->momentum_buffers, y);
- }
- return o;
+static void sgdput(K x,Device& d,torch::optim::RMSpropParamState& s) {
+ K v;
+ if((v=findbuffer(x,"step",-KJ)))        s.step(v->j);
+ if((v=findbuffer(x,"square_avg")))      s.square_avg(kput(v).to(d));
+ if((v=findbuffer(x,"momentum_buffer"))) s.momentum_buffer(kput(v).to(d));
+ if((v=findbuffer(x,"grad_avg")))        s.grad_avg(kput(v).to(d));
 }
 
 static K sgd(bool a,const SGDOptions& o) { //return all or non-default options as k dictionary
@@ -804,8 +768,8 @@ K optstate(bool a,bool b,Kmodel* m) {return optstate(a,b,m->oc,*m->o,*optmodule(
 
 // ---------------------------------------------------------------------------------------
 // addoptions - parse k args into optimizer-specific options stored in a parameter group
-// addparms - return vector of parameters, checking for duplicated against existing groups
-//            also updating module that tracks inputs to optimizer to recreate from state
+// addparms - return vector of parameters, checking for duplicates in existing groups
+//            also updates module that tracks inputs to optimizer to recreate from state
 // ---------------------------------------------------------------------------------------
 static void addoptions(Cast c,K x,J i,ParamGroup& g) { // c:type, x-arg(s), i-offset into args
  switch(c) {
@@ -844,17 +808,21 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
 // optinit - create new optimizer given parameter and option arg(s)
 // optedit - edit existing optimizer group or add new group of parameters & options
 // --------------------------------------------------------------------------------
-static K optinit(bool b,Cast c,K x,K y) { //b:true if group given, x:overall args, y:parms
- BaseModule m; Optptr o; ParamGroup g({}); addoptions(c,x,2+b,g);
+static Optptr optinit(Cast c,ParamGroup& g) {
  switch(c) {
-  case Cast::adagrad: o=std::make_shared<Adagrad>(ParamGroups{g}); break;
-  case Cast::adam:    o=std::make_shared<Adam>   (ParamGroups{g}); break;
-  case Cast::adamw:   o=std::make_shared<AdamW>  (ParamGroups{g}); break;
-  case Cast::lbfgs:   o=std::make_shared<LBFGS>  (ParamGroups{g}); break;
-  case Cast::rmsprop: o=std::make_shared<RMSprop>(ParamGroups{g}); break;
-  case Cast::sgd:     o=std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR}); break;
+  case Cast::adagrad: return std::make_shared<Adagrad>(ParamGroups{g});
+  case Cast::adam:    return std::make_shared<Adam>   (ParamGroups{g});
+  case Cast::adamw:   return std::make_shared<AdamW>  (ParamGroups{g});
+  case Cast::lbfgs:   return std::make_shared<LBFGS>  (ParamGroups{g});
+  case Cast::rmsprop: return std::make_shared<RMSprop>(ParamGroups{g});
+  case Cast::sgd:     return std::make_shared<SGD>(ParamGroups{g},SGDOptions{LR});
   default: AT_ERROR("opt: unrecognized optimizer enumeration: ",(I)c);
  }
+}
+
+static K optinit(bool b,Cast c,K x,K y) { //b:true if group given, x:overall args, y:parms
+ BaseModule m; ParamGroup g({}); addoptions(c,x,2+b,g);
+ Optptr o=optinit(c,g);
  if(y) o->param_groups()[0].params()=addparms(y,*o,*m);
  return kopt(c,o,m);
 }
@@ -881,6 +849,43 @@ static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Module& m) {
 }
 
 // ---------------------------------------------------------------------------------------
+// optput -
+// ---------------------------------------------------------------------------------------
+static void optgroup(Cast c,J i,K x,ParamGroup& g,const Module& m) {
+ J n=xlen(x); const auto& p=m.named_parameters();
+ for(J j=0; j<n; ++j) {
+  if(i==stategroup(x,j)) {
+   std::cerr << j << ": group " << stategroup(x,j) << " module " << statemodule(x,j) << " name " << statename(x,j) << "\n";
+   S s=statename(x,j);
+   if(p.contains(s)) {
+    const auto& t=p[s];
+    const int64_t *sz=t.sizes().data();
+    //K statesize
+    g.params().push_back(t);
+   }
+  }
+ }
+}
+
+static K optput(S s,K x,K y,const Module& m) {
+ Cast c=omap(s); Optptr o; BaseModule bm;
+ TORCH_CHECK(!x->t && x->n>0, "opt: unrecognized options dictionary list for ",s," optimizer");
+ // list of dictionaries, could also allow long/double scalar/list?
+ //TORCH_CHECK(y->t==98, "opt: unrecognized table of parameters for ",s," optimizer");
+ for(J i=0; i<x->n; ++i) {
+  ParamGroup g({}); 
+  addoptions(c,kK(x)[i],0,g);
+  if(y) optgroup(c,i,y,g,m);
+  if(!i) {
+   o=optinit(c,g);
+  } else {
+   o->add_param_group(g);
+  }
+ }
+ return kopt(c,o,bm);
+}
+
+// ---------------------------------------------------------------------------------------
 // opt - main optimizer interface function for q
 // optstep - recast underlying OptimizerBase to Optimizer unless LBFGS, run step() method
 // kstep - given model or optimizer, perform an optimizer step unless closure required
@@ -888,7 +893,7 @@ static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Module& m) {
 // ---------------------------------------------------------------------------------------
 KAPI opt(K x) {
  KTRY
-  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *k;
+  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *k; Kmodule *m;
   if(xsym(x,s) || (xsym(x,0,s) && x->t==0)) {
    J n=x->t==-KS ? 1 : x->n;
    TORCH_CHECK(!i, "opt: cannot define group ",i," until optimizer is created with initial parameter group");
@@ -900,11 +905,8 @@ KAPI opt(K x) {
     optedit(b, k->c, x, x->n>1+b ? kK(x)[1+b] : nullptr, i, *k->o, *k->m);
     return (K)0;
    }
-  } else if(xdict(x) || xdict(x,0)) {
-   // initialize from dictonary and module(s)..?
-   // count of groups: count of options list & highest group in k table
-   // loop through options and create empty-vectored parameter group(s)
-   AT_ERROR("create from dictionary not implemented yet");
+  } else if(xdict(x,0) && (m=xmodule(x,1)) && x->n==2) {
+   return optput(statemodule(x), stateoptlist(x), stategroups(x), *m->m);
   } else {
    AT_ERROR("opt: unrecognized arg(s)");
   }
