@@ -281,19 +281,41 @@ static K statetable(State e,K x) {
  v=kK(v)[i]; TORCH_CHECK(v->t==98, statekey(e),": expected table, given ",kname(v));
  return v;
 }
+
+static K statecol(State e,K x,short t=nh);
+static K statecol(State e,K x,short t) {
+ TORCH_CHECK(x->t==98,"expecting table with ",statekey(e)," column, given ",kname(x->t));
+ J i=statefind(e,x);
+ if(i<0) return nullptr;
+ K v=kK(kK(x->k)[1])[i];
+ TORCH_CHECK(t==nh || v->t==t, statekey(e)," column expected as ",kname(t),", given as ",kname(v->t));
+ return v;
+}
  
 // --------------------------------------------
 // convenience functions to return state value
 // --------------------------------------------
 J statedepth(K x,J j)   {return statelong(State::depth,true,x,j);}
+J stategroup(K x,J j)   {return statelong(State::group,true,x,j);}
 S statemodule(K x,J j)  {return statesym(State::module,true,x,j);}
 S statename(K x,J j)    {return statesym(State::name,false,x,j);}
 K stateoptions(K x,J j) {return statedict(State::options,x,j);}
 K stateoptlist(K x,J j) {return statedict(State::optlist,x,j);}
 K stateparms(K x,J j)   {return statedict(State::parms,x,j);}
 K statebuffers(K x,J j) {return statedict(State::buffers,x,j);}
-J stategroup(K x,J j)   {return statelong(State::group,true,x,j);}
 K stategroups(K x)      {return statetable(State::parms,x);}
+/*
+K statenames(K x)       {return statecol(State::name,x,KS);}
+K statesizes(K x)       {return statecol(State::size,x,0);}
+K statebuffers(K x)
+*/
+
+// ------------------------------------------------------
+// nullsym - return null symbol or test for null symbol
+// ------------------------------------------------------
+S nullsym() {return env().nullsym;}
+bool nullsym(S s) {return s==env().nullsym;}
+bool nullsym(K x) {return x->t==-KS && nullsym(x->s);}
 
 // --------------------------------------------------------------------------------------
 // xnull  - true if null, i.e. (::)
@@ -1134,7 +1156,7 @@ S objdevice(const Optimizer& o,S s) {
 }
 
 static S objdevice(Ktag *x) {
- S s=env().nullsym;
+ S s=nullsym();
  switch(x->a) {
   case Class::tensor:    return objdevice(((Kten*)x)->t);
   case Class::vector:    return objdevice(((Kvec*)x)->v, s);
@@ -1225,7 +1247,7 @@ KAPI kobj(K x) {
    kK(kK(v)[0])[i] = knk(1,kj(j));
    kS(kK(v)[1])[i] = mapclass(g->a);
    kS(kK(v)[2])[i] = objdevice(g);
-   kS(kK(v)[3])[i] = g->a == Class::tensor ? tensorsym(((Kten*)g)->t, Attr::dtype)  : env().nullsym;
+   kS(kK(v)[3])[i] = g->a == Class::tensor ? tensorsym(((Kten*)g)->t, Attr::dtype) : nullsym();
    kK(kK(v)[4])[i] = objsize(g);
    kJ(kK(v)[5])[i] = objnum(g);
    kJ(kK(v)[6])[i] = objbytes(g);

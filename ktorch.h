@@ -331,6 +331,10 @@ J stategroup(K x,J j=-1);
 K stategroups(K);
 void stateparms(S,Module&,K,bool);
 
+S nullsym();
+bool nullsym(S);
+bool nullsym(K);
+
 bool xnull(K);
 bool xnull(K,J);
 bool xempty(K);

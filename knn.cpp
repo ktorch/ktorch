@@ -124,7 +124,7 @@ Cast mcast(const Module& m) {return mcast(typeid(m).hash_code());}
 static S msym(size_t h) {
  for(const auto& m:env().module)
   if(std::get<2>(m)==h) return std::get<0>(m);
- return env().nullsym;
+ return nullsym();
 }
 
 S msym(const Module& m) {return msym(typeid(m).hash_code());}
@@ -2554,7 +2554,7 @@ static AnyModule customcoder(K x,Setting t,std::vector<K>& v) {
   v.push_back(x);
  } else {
   if(xdict(x)) {
-   i=-1; s=statemodule(x,i); nm=statename(x,i), y=stateoptions(x,i);
+   i=-1; s=statemodule(x); nm=statename(x), y=stateoptions(x);
   } else {
    y=x; msyms(y,s,nm); i=argstart(y,nm);
   }
