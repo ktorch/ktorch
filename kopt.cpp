@@ -307,7 +307,7 @@ static J lbfgssize(bool b,const LBFGSParamState& s) {
       objbytes(s.al());                                                             // optional vector of tensors
 }
 
-static K lbfgsget(const LBFGSParamState& s) {
+static K lbget(const LBFGSParamState& s) {
  K x=xD(ktn(KS,0),ktn(0,0));
  dictadd(x, "func_evals",     kj(s.func_evals()));
  dictadd(x, "n_iter",         kj(s.n_iter()));
@@ -525,7 +525,7 @@ static K getparms(Cast c,const ParamState& p) {
   case Cast::adagrad: return   adaget(static_cast<const AdagradParamState&>(p));
   case Cast::adam:    return  adamget(static_cast<const AdamParamState&>(p));
   case Cast::adamw:   return  adamget(static_cast<const AdamWParamState&>(p));
-  case Cast::lbfgs:   return lbfgsget(static_cast<const LBFGSParamState&>(p));
+  case Cast::lbfgs:   return   lbget(static_cast<const LBFGSParamState&>(p));
   case Cast::rmsprop: return   rmsget(static_cast<const RMSpropParamState&>(p));
   case Cast::sgd:     return   sgdget(static_cast<const SGDParamState&>(p));
   default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
