@@ -36,17 +36,18 @@ static K mopt(bool,Cast,const Module&);
 
 // ------------------------------------------------------------------------------
 // kmodule - allocate object to store a module pointer (class defaults to module) 
-// to - given layer & options, change device/data type
+// to - given module & options, change device/data type
 // ------------------------------------------------------------------------------
 K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,m));}
 
-K to(Kmodule* x,const TensorOptions& o,bool a) {
+void to(Module& m,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
- if(o.has_device() && o.has_dtype()) x->m->to(o.device(),s,a);
- else if(o.has_device())             x->m->to(o.device(),a);
- else                                x->m->to(s,a);
- return (K)0;
+ if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
+ else if(o.has_device())             m.to(o.device(),a);
+ else                                m.to(s,a);
 }
+
+K to(Kmodule* m,const TensorOptions& o,bool a) {to(*m->m,o,a); return(K)0;}
 
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d

@@ -319,7 +319,7 @@ S mapattr(Attr);
 Enum emap(S);
 
 S statekey(State);
-J statefind(State,K);
+J statefind(State,K,bool r=false);
 J statedepth(K x,J j=-1);
 S statemodule(K x,J j=-1);
 S statename(K x,J j=-1);
@@ -328,7 +328,9 @@ K stateoptlist(K x,J j=-1);
 K stateparms(K x,J j=-1);
 K statebuffers(K x,J j=-1);
 J stategroup(K x,J j=-1);
+K statesize(K x,J j=-1);
 K stategroups(K);
+K statecol(State,K,short t=nh);
 void stateparms(S,Module&,K,bool);
 
 S nullsym();
@@ -513,11 +515,13 @@ K kget(const TensorDict& d,K x=nullptr);
 K kget(const TensorDeque&);
 Tensor kput(K);
 Tensor kput(K,J);
+TensorVector vec(K,bool b=false);
 K kten(const Tensor&);
 K kvec(const TensorVector&);
 K kdict(const TensorDict&);
 inline K kresult(bool p,const Tensor& t) {return p ? kten(t) : kget(t);}
 K to(Kten*,const TensorOptions&,bool,bool);
+void to(TensorVector&,const TensorOptions&,bool);
 K to(Kvec*,const TensorOptions&,bool);
 K ktenpair(bool,Tensor&,Tensor&);
 K kten3(bool,Tensor&,Tensor&,Tensor&);
@@ -554,6 +558,7 @@ K  similar(bool,const torch::nn::CosineSimilarityOptions&);
 K pairwise(bool,const torch::nn::PairwiseDistanceOptions&);
 
 K kmodule(Cast c,const Moduleptr& m,Class a=Class::module);
+void to(Module&,const TensorOptions&,bool);
 K to(Kmodule*,const TensorOptions&,bool);
 
 const

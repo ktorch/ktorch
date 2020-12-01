@@ -224,7 +224,6 @@ class ModuleDictImpl : public Cloneable<ModuleDictImpl> {
   using ConstIterator = torch::OrderedDict<std::string, std::shared_ptr<Module>>::ConstIterator;
 
   ModuleDictImpl() = default;
-
   explicit ModuleDictImpl(const std::vector<std::pair<std::string, std::shared_ptr<Module>>>& modules) {update(modules);}
   explicit ModuleDictImpl(const torch::OrderedDict<std::string, std::shared_ptr<Module>>& modules) {update(modules);}
 

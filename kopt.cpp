@@ -268,19 +268,17 @@ static void lbfgs(K x,J i,ParamGroup& g) {
 
 static void lbput(K x,const Device& d,const std::string& k,Optimizer& o) {
  K v; auto s=std::make_unique<LBFGSParamState>();
- if((v=findbuffer(x,"func_evals",-KJ)))  s->func_evals(v->j);
- if((v=findbuffer(x,"n_iter",-KJ)))      s->n_iter(v->j);
- if((v=findbuffer(x,"t",-KF)))           s->t(v->f);
- if((v=findbuffer(x,"prev_loss",-KF)))   s->prev_loss(v->f);
- if((v=findbuffer(x,"d")))               s->d(kput(v).to(d));
- if((v=findbuffer(x,"H_diag")))          s->H_diag(kput(v).to(d));
- if((v=findbuffer(x,"prev_flat_grad")))  s->prev_flat_grad(kput(v).to(d));
- if((v=findbuffer(x,"old_dirs")))        s->old_dirs(deque(v,"old_dirs",d));
- if((v=findbuffer(x,"old_stps")))        s->old_stps(deque(v,"old_stps",d));
- if((v=findbuffer(x,"ro")))              s->ro(deque(v,"ro",d));
- /*
-  ARG_OPTIONAL(std::vector<Tensor>, al);
- */
+ if((v=findbuffer(x,"func_evals",-KJ)))   s->func_evals(v->j);
+ if((v=findbuffer(x,"n_iter",-KJ)))       s->n_iter(v->j);
+ if((v=findbuffer(x,"t",-KF)))            s->t(v->f);
+ if((v=findbuffer(x,"prev_loss",-KF)))    s->prev_loss(v->f);
+ if((v=findbuffer(x,"d")))                s->d(kput(v).to(d));
+ if((v=findbuffer(x,"H_diag")))           s->H_diag(kput(v).to(d));
+ if((v=findbuffer(x,"prev_flat_grad")))   s->prev_flat_grad(kput(v).to(d));
+ if((v=findbuffer(x,"old_dirs")))         s->old_dirs(deque(v,"old_dirs",d));
+ if((v=findbuffer(x,"old_stps")))         s->old_stps(deque(v,"old_stps",d));
+ if((v=findbuffer(x,"ro")))               s->ro(deque(v,"ro",d));
+ if((v=findbuffer(x,"al")) && !xempty(v)) {auto w=vec(v); to(w,d,true); s->al(w);}
  o.state()[k]=std::move(s);
 }
 
@@ -309,17 +307,18 @@ static J lbfgssize(bool b,const LBFGSParamState& s) {
 
 static K lbget(const LBFGSParamState& s) {
  K x=xD(ktn(KS,0),ktn(0,0));
- dictadd(x, "func_evals",     kj(s.func_evals()));
- dictadd(x, "n_iter",         kj(s.n_iter()));
- dictadd(x, "t",              kf(s.t()));
- dictadd(x, "prev_loss",      kf(s.prev_loss()));
- dictadd(x, "d",              kget(s.d()));                              // tensor
- dictadd(x, "h_diag",         kget(s.H_diag()));                         // tensor
- dictadd(x, "prev_flag_grad", kget(s.prev_flat_grad()));                 // tensor
- dictadd(x, "old_dirs",       kget(s.old_dirs()));                       // deque
- dictadd(x, "old_stps",       kget(s.old_stps()));                       // deque
- dictadd(x, "ro",             kget(s.ro()));                             // deque
- dictadd(x, "al",             s.al() ? kget(s.al().value()) : ktn(0,0)); // optional vector of tensors
+ dictadd(x, "func_evals",     kj(s.func_evals()));       // scalar long
+ dictadd(x, "n_iter",         kj(s.n_iter()));           // scalar long
+ dictadd(x, "t",              kf(s.t()));                // scalar long
+ dictadd(x, "prev_loss",      kf(s.prev_loss()));        // scalar double
+ dictadd(x, "d",              kget(s.d()));              // tensor
+ dictadd(x, "h_diag",         kget(s.H_diag()));         // tensor
+ dictadd(x, "prev_flag_grad", kget(s.prev_flat_grad())); // tensor
+ dictadd(x, "old_dirs",       kget(s.old_dirs()));       // deque
+ dictadd(x, "old_stps",       kget(s.old_stps()));       // deque
+ dictadd(x, "ro",             kget(s.ro()));             // deque
+ if(s.al().has_value())                                  // optional vector of tensors
+  dictadd(x, "al", kget(s.al().value()));
  return x;
 }
 
@@ -882,12 +881,15 @@ static void putbuffers(Cast c,K x,const Device& d,const std::string& k,Optimizer
 static void putparms(Cast c,K x,Optimizer& o,const Module& m) {
  J n=xlen(x); const auto& p=m.named_parameters(); auto& g=o.param_groups(); auto& s=o.state();
  for(J i=0; i<n; ++i) {
-  S s1=statemodule(x,i),s2=statename(x,i); J j=stategroup(x,i); //,*sz=statesize(x,i);
-  TORCH_CHECK(-1<j && j<g.size(), "opt: group[",j,"] invalid, ",g.size()," group(s) defined");
-  TORCH_CHECK(p.contains(s2), "opt: unable to find ",(nullsym(s1) ? "tensor" : s1)," parameter `",s2);
+  S s1=statemodule(x,i),s2=statename(x,i); J j=stategroup(x,i); IntArrayRef sz;
+  std::string nm=nullsym(s1) ? "tensor" : s1; nm+=" parameter `"; nm+=s2;
+  TORCH_CHECK(-1<j && j<g.size(), "opt: group[",j,"] for ",nm, " is invalid, ",g.size()," group(s) defined");
+  TORCH_CHECK(p.contains(s2), "opt: unable to find ",nm);
   const auto& t=p[s2]; const auto& k=c10::guts::to_string(t.unsafeGetTensorImpl());
+  TORCH_CHECK(s.count(k)==0, "opt: ",nm," is repeated");
+  TORCH_CHECK(xsize(statesize(x,i),sz), "opt: unable to get size of ",nm);
+  TORCH_CHECK(t.sizes()==sz, "opt: size mismatch for ",nm,", expected ",sz,", given ",t.sizes());
   g[j].params().push_back(t);
-  TORCH_CHECK(s.count(k)==0, "opt: ",(nullsym(s1) ? "tensor" : s1)," parameter `",s2," is repeated");
   K b=statebuffers(x,i);
   if(b && xlen(b))
    putbuffers(c,b,t.device(),k,o);

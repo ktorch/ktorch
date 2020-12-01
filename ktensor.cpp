@@ -152,7 +152,7 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
 }
 
 // -------------------------------------------------------------------------------
-// to - change tensor/vector device/type, return new tensor if copy flag set
+// to - change tensor/vector device/type, create new tensor if copy flag set
 // ktenpair - given a pair of tensors return pair of pointers or array
 // kten3 - given a triplet of tensors return triplet of pointers or array
 // -------------------------------------------------------------------------------
@@ -165,13 +165,14 @@ K to(Kten* t,const TensorOptions& o,bool a,bool b) {
  return (K)0;
 }
 
-K to(Kvec* v,const TensorOptions& o,bool a) {
- for(auto& t:v->v) {
+void to(TensorVector& v,const TensorOptions& o,bool a) {
+ for(auto& t:v) {
   auto r=t.to(o,a);
   if(!t.is_same(r)) t=std::move(r);
  }
- return (K)0;
 }
+
+K to(Kvec* v,const TensorOptions& o,bool a) {to(v->v,o,a); return (K)0;}
 
 K ktenpair(bool p,Tensor& a,Tensor& b) {  // p:true if returning tensor pointers
  if(p) return knk(2,kten(a),kten(b));

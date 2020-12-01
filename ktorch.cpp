@@ -197,18 +197,18 @@ S statekey(State e) {
  AT_ERROR("unrecognized state attribute: ",(I)e);
 }
 
-J statefind(State e,K x) {
+J statefind(State e,K x,bool r) {
  if(!xstate(x))
   AT_ERROR("expected dictionary or table describing state, given ",kname(x));
  S s=statekey(e); K k=kK(x->t == 98 ? x->k : x)[0];
  for(J i=0;i<k->n;++i) if(kS(k)[i]==s) return i;
+ TORCH_CHECK(!r, "unable to find state attribute: ",statekey(e));
  return -1;
 }
 
 static J statelong(State e,bool r,K x,J j) { //e:enum, e.g. State::depth, r:required flag, x:dict/table, j:table row
- J i=statefind(e,x);
+ J i=statefind(e,x,r);
  if(i<0) {
-  TORCH_CHECK(!r,"unable to find ",statekey(e)," attribute");
   return nj;
  } else if(x->t==99) {
   K v=kK(x)[1];
@@ -231,9 +231,8 @@ static J statelong(State e,bool r,K x,J j) { //e:enum, e.g. State::depth, r:requ
 }
 
 static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:required, x:dict/table, j:table row
- J i=statefind(e,x);
+ J i=statefind(e,x,r);
  if(i<0) {
-  TORCH_CHECK(!r,"unable to find `",statekey(e)," attribute");
   return nullptr;
  } else if(x->t==99) {
   K v=kK(x)[1];
@@ -273,6 +272,17 @@ static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/ta
  return v;
 }
 
+static K statelist(State e,K x,J j) {  // e:enum, e.g. State::size, x:dict/table, j:row (if table)
+ J i=statefind(e,x);
+ if(i<0) return nullptr;
+ K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
+ if(x->t == 99) j=i;
+ TORCH_CHECK(!v->t, statekey(e),": expected general list, given ",kname(v));
+ TORCH_CHECK(-1<j && j<v->n, statekey(e),"[",j,"] index beyond ",v->n,"-row table");
+ v=kK(v)[j];
+ return v;
+}
+
 static K statetable(State e,K x) {
  J i=statefind(e,x);
  if(i<0) return nullptr;
@@ -282,8 +292,7 @@ static K statetable(State e,K x) {
  return v;
 }
 
-static K statecol(State e,K x,short t=nh);
-static K statecol(State e,K x,short t) {
+K statecol(State e,K x,short t) {
  TORCH_CHECK(x->t==98,"expecting table with ",statekey(e)," column, given ",kname(x->t));
  J i=statefind(e,x);
  if(i<0) return nullptr;
@@ -303,12 +312,8 @@ K stateoptions(K x,J j) {return statedict(State::options,x,j);}
 K stateoptlist(K x,J j) {return statedict(State::optlist,x,j);}
 K stateparms(K x,J j)   {return statedict(State::parms,x,j);}
 K statebuffers(K x,J j) {return statedict(State::buffers,x,j);}
+K statesize(K x,J j)    {return statelist(State::size,x,j);}
 K stategroups(K x)      {return statetable(State::parms,x);}
-/*
-K statenames(K x)       {return statecol(State::name,x,KS);}
-K statesizes(K x)       {return statecol(State::size,x,0);}
-K statebuffers(K x)
-*/
 
 // ------------------------------------------------------
 // nullsym - return null symbol or test for null symbol
