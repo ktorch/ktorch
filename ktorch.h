@@ -105,11 +105,9 @@ using TensorDict=torch::OrderedDict<std::string, torch::Tensor>;
 using Module=torch::nn::Module;
 using Moduleptr=std::shared_ptr<Module>;
 using Modules=std::stack<Moduleptr>;
-using ModuleDict=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
+using Modulemap=torch::OrderedDict<std::string, std::shared_ptr<Module>>;
+using Modulepairs=std::vector<std::pair<std::string, std::shared_ptr<Module>>>;
 using AnyModule=torch::nn::AnyModule;
-using Sequential=torch::nn::Sequential;
-using ModuleList=torch::nn::ModuleList;
-using Moduleptr=std::shared_ptr<Module>;
 class SeqNest;
 class SeqJoin;
 
@@ -147,8 +145,8 @@ enum class Class:short {
 
 enum class Cast:short {
  undefined=0, 
- tensor,  model,                                   // basic structures
- base, modulelist, sequential, seqnest, seqjoin,   // container modules
+ tensor,  model,                                               // basic structures
+ base, moduledict, modulelist, sequential, seqnest, seqjoin,   // container modules
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
@@ -695,7 +693,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,104> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,105> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -760,6 +758,7 @@ typedef struct {
   std::make_tuple(cs("maxpool1d"),        Cast::maxpool1d,       typeid(torch::nn::MaxPool1dImpl).hash_code(),           "torch.nn.MaxPool1d"),
   std::make_tuple(cs("maxpool2d"),        Cast::maxpool2d,       typeid(torch::nn::MaxPool2dImpl).hash_code(),           "torch.nn.MaxPool2d"),
   std::make_tuple(cs("maxpool3d"),        Cast::maxpool3d,       typeid(torch::nn::MaxPool3dImpl).hash_code(),           "torch.nn.MaxPool3d"),
+  std::make_tuple(cs("moduledict"),       Cast::moduledict,      typeid(torch::nn::ModuleDictImpl).hash_code(),          "torch.nn.ModuleDict"),
   std::make_tuple(cs("modulelist"),       Cast::modulelist,      typeid(torch::nn::ModuleListImpl).hash_code(),          "torch.nn.ModuleList"),
   std::make_tuple(cs("mul"),              Cast::mul,             typeid(MulImpl).hash_code(),                            "torch.mul"),
   std::make_tuple(cs("normalize"),        Cast::normalize,       typeid(torch::nn::functional::normalize).hash_code(),   "torch.nn.functional.normalize"),

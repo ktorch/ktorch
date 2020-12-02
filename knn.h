@@ -215,6 +215,9 @@ class TORCH_API BaseModuleImpl : public torch::nn::Cloneable<BaseModuleImpl> {
 };
 TORCH_MODULE(BaseModule);
 
+// ----------------------------------------------------------------------
+// ModuleDict - defined here in antcipation of release in 1.7.1 or 1.8
+// ----------------------------------------------------------------------
 namespace torch {
 namespace nn {
 
@@ -257,7 +260,7 @@ class ModuleDictImpl : public Cloneable<ModuleDictImpl> {
   T& at(const std::string& key) {
     static_assert(
         torch::detail::is_module<T>::value,
-        "Can only call ModuleList::at with an nn::Module type");
+        "Can only call ModuleDict::at with an nn::Module type");
     return *modules_[key]->as<T>();
   }
 
@@ -265,7 +268,7 @@ class ModuleDictImpl : public Cloneable<ModuleDictImpl> {
   const T& at(const std::string& key) const {
     static_assert(
         torch::detail::is_module<T>::value,
-        "Can only call ModuleList::at with an nn::Module type");
+        "Can only call ModuleDict::at with an nn::Module type");
     return *modules_[key]->as<T>();
   }
 

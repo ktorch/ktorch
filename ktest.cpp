@@ -19,6 +19,30 @@ KAPI duptest(K x) {
  KCATCH("dups");
 }
  
+void mdict2(const Moduleptr& m) {
+ std::cerr << "m->named_parameters(true)()\n";
+ for(const auto& a:m->named_parameters(true)) std::cerr << a.key() << "\n";
+}
+
+void mdict1() {
+ nn::Linear l(2,3);
+ nn::Sequential q(l);
+ nn::ModuleDict m; m->update({{"seq",q.ptr()}});
+ //nn::ModuleList m(q);
+ m->register_parameter("test",torch::randn(4));
+ std::cerr << m << "\n";
+ std::cerr << "m->named_parameters(true)()\n";
+ for(const auto& a:m->named_parameters(true)) std::cerr << a.key() << "\n";
+ std::cerr << "m->named_modules()\n";
+ for(const auto& a:m->named_modules())
+  std::cerr << a.key() << "\n";
+ //mdict2(m.ptr());
+}
+
+KAPI mdict(K x) {
+ mdict1();
+ return (K)0;
+}
  
 /*
   AnyModule(std::shared_ptr<ModuleType> module)
@@ -31,12 +55,12 @@ static void checkhash(const Moduleptr& x) {
  std::cerr << "Cast: " << (I)c << ", " << msym(*x) << "\n";
 }
 
-static void addmodule(Sequential& x,const Moduleptr& y) {
+static void addmodule(nn::Sequential& x,const Moduleptr& y) {
  x->push_back(*y->as<torch::nn::Linear>());
 }
 
 static void addmodule(const Moduleptr& x,const Moduleptr& y) {
- x->as<Sequential>()->push_back(*y->as<torch::nn::Linear>());
+ x->as<nn::Sequential>()->push_back(*y->as<torch::nn::Linear>());
 }
 
 static void checkptr(const Moduleptr& x,const Moduleptr& y) {
@@ -429,9 +453,9 @@ SeqResult f(J a,Tensor x) { if(a) return x; else return 2.5;}
 
 KAPI ftest2(K x) {
  KTRY
-  Sequential q; SeqJoin j; Tensor a,b;
-  j->push_back(Sequential());
-  j->push_back(Sequential());
+  nn::Sequential q; SeqJoin j; Tensor a,b;
+  j->push_back(nn::Sequential());
+  j->push_back(nn::Sequential());
   j->push_back(AnyModule(Cat(0)));
   q->push_back(j);
   q->push_back(Reshape(std::vector<int64_t>{1,1,-1}));
@@ -444,7 +468,7 @@ KAPI ftest2(K x) {
 
 KAPI ftest3(K x) {
  KTRY
-  Sequential q;
+  nn::Sequential q;
   q->push_back(Reshape(std::vector<int64_t>{1,1,-1}));
   return kget(q->forward(kput(x)));
  KCATCH("ftest2");
@@ -501,9 +525,9 @@ KAPI join1(K x) {
   SeqNest q;
   SeqJoin j;  // j=nullptr;
   q->push_back("xy", j);
-  Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
+  nn::Sequential q1=nn::Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
   j->push_back("zshape",q1);
-  j->push_back("empty",Sequential());
+  j->push_back("empty",nn::Sequential());
   j->push_back("cat",AnyModule(Cat(1)));
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
   q->push_back("sig",AnyModule(torch::nn::Sigmoid()));
@@ -517,9 +541,9 @@ KAPI join2(K x) {
   SeqNest q;
   SeqJoin j;  // j=nullptr;
   q->push_back("xy", j);
-  Sequential q1=Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
+  nn::Sequential q1=nn::Sequential(torch::nn::Embedding(10,50), torch::nn::Linear(50,784), Reshape(std::vector<int64_t>{-1,1,28,28}));
   j->push_back("zshape",q1);
-  Sequential q2=Sequential(torch::nn::Identity());
+  nn::Sequential q2=nn::Sequential(torch::nn::Identity());
   j->push_back("identity",q2);
   j->push_back("cat",AnyModule(Cat(1)));
   q->push_back("conv1",AnyModule(torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 4).stride(2).padding(1).bias(false))));
@@ -861,7 +885,7 @@ KAPI namecheck(K x) {
 
 KAPI dupname(K x) {
 KTRY
- Sequential q(
+ nn::Sequential q(
   {{"A", torch::nn::Linear(1,2)},
    {"B", torch::nn::Conv2d(3,4,5)}});
  return (K)0;

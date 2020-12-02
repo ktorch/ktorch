@@ -178,6 +178,7 @@ static bool container(Cast c) {
   case Cast::sequential:
   case Cast::seqnest:
   case Cast::seqjoin:
+  case Cast::moduledict:
   case Cast::modulelist:
   case Cast::base:
    return true;
@@ -186,20 +187,22 @@ static bool container(Cast c) {
 }
 
 static bool container(const Module& m) {
- if     (m.as<Sequential>()) return true;
- else if(m.as<SeqNest>())    return true;
- else if(m.as<SeqJoin>())    return true;
- else if(m.as<ModuleList>()) return true;
- else if(m.as<BaseModule>()) return true;
- else                        return false;
+ if     (m.as<nn::Sequential>()) return true;
+ else if(m.as<SeqNest>())        return true;
+ else if(m.as<SeqJoin>())        return true;
+ else if(m.as<nn::ModuleDict>()) return true;
+ else if(m.as<nn::ModuleList>()) return true;
+ else if(m.as<BaseModule>())     return true;
+ else                            return false;
 }
 
 static Moduleptr newcontainer(Cast c) {
  switch(c) {
-  case Cast::sequential:  return Sequential().ptr();
+  case Cast::sequential:  return nn::Sequential().ptr();
   case Cast::seqnest:     return SeqNest().ptr();
   case Cast::seqjoin:     return SeqJoin().ptr();
-  case Cast::modulelist:  return ModuleList().ptr();
+  case Cast::moduledict:  return nn::ModuleDict().ptr();
+  case Cast::modulelist:  return nn::ModuleList().ptr();
   case Cast::base:        return BaseModule().ptr();
   default: AT_ERROR("unable to create container module, unrecognized enumeration: ", (I)c);
  }
@@ -2919,6 +2922,7 @@ static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true,
   case Cast::sequential:      //container modules w'out options
   case Cast::seqnest:
   case Cast::seqjoin:
+  case Cast::moduledict:
   case Cast::modulelist:
   case Cast::base:
   case Cast::gelu:            //pointwise activation fns w'out options
@@ -3040,11 +3044,7 @@ static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true,
   case Cast::pairwise:         return pairwise(a,m.as<nn::PairwiseDistance>()->options);
   case Cast::similar:          return similar(a,m.as<nn::CosineSimilarity>()->options);
 
-  default:
-   if(m.as<nn::Module>()) 
-    AT_ERROR("generic module, unable to retrieve options");
-   else 
-    AT_ERROR("unrecognized module: ",m.name());
+  default: AT_ERROR("unrecognized module: ",m.name(),", unable to retrieve options");
  }
 }
 
@@ -3098,10 +3098,12 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
    const auto& a=anymodule(mcast(*y),y);
    if(s) m->push_back(s,a); else m->push_back(a);
   } 
- } else if(auto *m=x->as<BaseModule>()) {
-  m->register_module(s ? s : c10::to_string(m->children().size()), y);
+ } else if(auto *m=x->as<nn::ModuleDict>()) {
+  m->update({{s ? s : c10::to_string(m->children().size()), y}});
  } else if(auto *m=x->as<nn::ModuleList>()) {
   m->push_back(y);
+ } else if(auto *m=x->as<BaseModule>()) {
+  m->register_module(s ? s : c10::to_string(m->children().size()), y);
  } else {
   AT_ERROR("unable to add a ", mlabel(*y)," module as a child of a ",mlabel(*x), " module");
  }
@@ -3422,6 +3424,7 @@ K modulehelp(Cast c) {
   case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
   case Cast::maxpool3d:       return maxpool(true,nn::MaxPool3dOptions({3,2,2}));
+  case Cast::moduledict:      return KDICT;
   case Cast::modulelist:      return KDICT;
   case Cast::mul:             return KDICT;
   case Cast::normalize:       return normalize(true,fnn::NormalizeFuncOptions());
