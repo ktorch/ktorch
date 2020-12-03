@@ -20,14 +20,25 @@ KAPI duptest(K x) {
 }
  
 void mdict2(const Moduleptr& m) {
- std::cerr << "m->named_parameters(true)()\n";
- for(const auto& a:m->named_parameters(true)) std::cerr << a.key() << "\n";
+ if(m)
+  std::cerr << "ptr holds something: " << *m << "\n";
+ else
+  std::cerr << "ptr is empty..\n";
 }
 
 void mdict1() {
+ Moduleptr p;
+ mdict2(p);
+ nn::ParameterDict dict;
+ torch::Tensor ta = torch::randn({1, 2}, torch::requires_grad(true));
+ torch::Tensor tb = torch::randn({1, 2}, torch::requires_grad(false));
+ dict->insert("A", ta);
+ dict->insert("B", tb);
+ p=dict.ptr();
+ mdict2(p);
  nn::Linear l(2,3);
  nn::Sequential q(l);
- nn::ModuleDict m; m->update({{"seq",q.ptr()}});
+ nn::ModuleDict m; m->update({{"seq",q.ptr()}}); m->update({{"parms",dict.ptr()}});
  //nn::ModuleList m(q);
  m->register_parameter("test",torch::randn(4));
  std::cerr << m << "\n";

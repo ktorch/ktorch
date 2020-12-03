@@ -758,9 +758,9 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
 // ---------------------------------------------------------------------------------------
 static K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
- kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(omap(c));
- kS(k)[1]=statekey(State::options); kK(v)[1]=optdict(a,c,o);
- kS(k)[2]=statekey(State::parms);   kK(v)[2]=getparms(b,c,o,m);
+ kS(k)[0]=statekey(State::optimizer); kK(v)[0]=ks(omap(c));
+ kS(k)[1]=statekey(State::options);   kK(v)[1]=optdict(a,c,o);
+ kS(k)[2]=statekey(State::parms);     kK(v)[2]=getparms(b,c,o,m);
  return xD(k,v);
 }
 
@@ -923,7 +923,7 @@ KAPI opt(K x) {
     return (K)0;
    }
   } else if(xdict(x,0) && (m=xmodule(x,1)) && x->n==2) {
-   return optput(statemodule(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), *m->m);
+   return optput(stateoptimizer(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), *m->m);
   } else {
    AT_ERROR("opt: unrecognized arg(s)");
   }

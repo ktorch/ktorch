@@ -211,7 +211,7 @@ enum class Setting:char {
 };
 
 enum class State:char {
- buffers, depth, group, id, module, name, options, optlist, parms, size
+ buffers, depth, group, id, module, name, options, optlist, optimizer, parms, size
 };
 
 enum class Attr:char {
@@ -321,6 +321,7 @@ J statefind(State,K,bool r=false);
 J statedepth(K x,J j=-1);
 S statemodule(K x,J j=-1);
 S statename(K x,J j=-1);
+S stateoptimizer(K x,J j=-1);
 K stateoptions(K x,J j=-1);
 K stateoptlist(K x,J j=-1);
 K stateparms(K x,J j=-1);
@@ -652,13 +653,13 @@ typedef struct {
 */
 
  std::array<std::tuple<S,Class>,7> kclass = {{
-  std::make_tuple(cs("tensor"),  Class::tensor),          
-  std::make_tuple(cs("vector"),  Class::vector),
-  std::make_tuple(cs("dict"),    Class::dict),
-  std::make_tuple(cs("module"),  Class::module),
-  std::make_tuple(cs("loss"),    Class::loss),
-  std::make_tuple(cs("opt"),     Class::optimizer),
-  std::make_tuple(cs("model"),   Class::model)
+  std::make_tuple(cs("tensor"),    Class::tensor),          
+  std::make_tuple(cs("vector"),    Class::vector),
+  std::make_tuple(cs("dict"),      Class::dict),
+  std::make_tuple(cs("module"),    Class::module),
+  std::make_tuple(cs("loss"),      Class::loss),
+  std::make_tuple(cs("optimizer"), Class::optimizer),
+  std::make_tuple(cs("model"),     Class::model)
  }};
 
  std::array<std::tuple<S,Class>,3> model = {{
@@ -882,17 +883,18 @@ typedef struct {
   std::make_tuple(cs("weight"),       Setting::weight)
  }};
 
- std::array<std::tuple<S,State>,10> state = {{        //module state dictionary keys: map symbol -> enum
-  std::make_tuple(cs("buffers"), State::buffers),
-  std::make_tuple(cs("depth"),   State::depth),
-  std::make_tuple(cs("grp"),     State::group),
-  std::make_tuple(cs("id"),      State::id),
-  std::make_tuple(cs("module"),  State::module),
-  std::make_tuple(cs("name"),    State::name),
-  std::make_tuple(cs("options"), State::options),
-  std::make_tuple(cs("options"), State::optlist),
-  std::make_tuple(cs("parms"),   State::parms),
-  std::make_tuple(cs("size"),    State::size)
+ std::array<std::tuple<S,State>,11> state = {{        //module state dictionary keys: map symbol -> enum
+  std::make_tuple(cs("buffers"),   State::buffers),
+  std::make_tuple(cs("depth"),     State::depth),
+  std::make_tuple(cs("grp"),       State::group),
+  std::make_tuple(cs("id"),        State::id),
+  std::make_tuple(cs("module"),    State::module),
+  std::make_tuple(cs("name"),      State::name),
+  std::make_tuple(cs("options"),   State::options),
+  std::make_tuple(cs("options"),   State::optlist),
+  std::make_tuple(cs("optimizer"), State::optimizer),
+  std::make_tuple(cs("parms"),     State::parms),
+  std::make_tuple(cs("size"),      State::size)
  }};
 
  std::array<std::tuple<S,Cast,std::string>,20> loss = {{             // loss: map symbol -> enum

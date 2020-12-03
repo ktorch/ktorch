@@ -20,11 +20,10 @@ static void modelpart(K x,J i,Kmodule*& q,Kmodule*& l,Kopt*& o) {
 }
 
 K modelkeys() {
- K x=ktn(KS,env().model.size());
- for(auto &m:env().model)
-  if     (std::get<1>(m)==Class::module)    kS(x)[0]=std::get<0>(m);
-  else if(std::get<1>(m)==Class::loss)      kS(x)[1]=std::get<0>(m);
-  else if(std::get<1>(m)==Class::optimizer) kS(x)[2]=std::get<0>(m);
+ K x=ktn(KS,3);
+ kS(x)[0]=mapclass(Class::module);
+ kS(x)[1]=mapclass(Class::loss);
+ kS(x)[2]=mapclass(Class::optimizer);
  return x;
 }
 

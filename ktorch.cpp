@@ -304,16 +304,17 @@ K statecol(State e,K x,short t) {
 // --------------------------------------------
 // convenience functions to return state value
 // --------------------------------------------
-J statedepth(K x,J j)   {return statelong(State::depth,true,x,j);}
-J stategroup(K x,J j)   {return statelong(State::group,true,x,j);}
-S statemodule(K x,J j)  {return statesym(State::module,true,x,j);}
-S statename(K x,J j)    {return statesym(State::name,false,x,j);}
-K stateoptions(K x,J j) {return statedict(State::options,x,j);}
-K stateoptlist(K x,J j) {return statedict(State::optlist,x,j);}
-K stateparms(K x,J j)   {return statedict(State::parms,x,j);}
-K statebuffers(K x,J j) {return statedict(State::buffers,x,j);}
-K statesize(K x,J j)    {return statelist(State::size,x,j);}
-K stategroups(K x)      {return statetable(State::parms,x);}
+J statedepth(K x,J j)     {return statelong(State::depth,true,x,j);}
+J stategroup(K x,J j)     {return statelong(State::group,true,x,j);}
+S statemodule(K x,J j)    {return statesym(State::module,true,x,j);}
+S stateoptimizer(K x,J j) {return statesym(State::optimizer,true,x,j);}
+S statename(K x,J j)      {return statesym(State::name,false,x,j);}
+K stateoptions(K x,J j)   {return statedict(State::options,x,j);}
+K stateoptlist(K x,J j)   {return statedict(State::optlist,x,j);}
+K stateparms(K x,J j)     {return statedict(State::parms,x,j);}
+K statebuffers(K x,J j)   {return statedict(State::buffers,x,j);}
+K statesize(K x,J j)      {return statelist(State::size,x,j);}
+K stategroups(K x)        {return statetable(State::parms,x);}
 
 // ------------------------------------------------------
 // nullsym - return null symbol or test for null symbol
