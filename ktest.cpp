@@ -2,6 +2,15 @@
 
 namespace nn=torch::nn;
 
+KAPI parmdict(K x) {
+ KTRY
+  TensorDict *k=xtensordict(x);
+  TORCH_CHECK(k, "need tensor dictionary");
+  nn::ParameterDict d(*k);
+  return kmodule(Cast::parmdict,d.ptr());
+ KCATCH("parameter dict");
+}
+
 static void dups() {
  torch::nn::Linear m(1,1);
  torch::optim::SGD o(m->parameters(),.1);

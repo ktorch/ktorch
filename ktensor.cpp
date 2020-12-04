@@ -334,7 +334,12 @@ static void kput(TensorDict& d,K x,K y) {
  }
 }
 
-
+TensorDict kputdict(K x) {
+ TORCH_CHECK(xdict(x), "expecting k dictionary to convert to tensor dictionary, given ",kname(x));
+ TensorDict d; kput(d,kK(x)[0],kK(x)[1]);
+ return d;
+}
+ 
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given

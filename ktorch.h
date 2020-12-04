@@ -145,8 +145,9 @@ enum class Class:short {
 
 enum class Cast:short {
  undefined=0, 
- tensor,  model,                                               // basic structures
- base, moduledict, modulelist, sequential, seqnest, seqjoin,   // container modules
+ tensor,  model,                                // basic structures
+ base, moduledict, modulelist, parmdict,        // container modules
+ sequential, seqnest, seqjoin,
 
  adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
  adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
@@ -514,6 +515,7 @@ K kget(const TensorDict& d,K x=nullptr);
 K kget(const TensorDeque&);
 Tensor kput(K);
 Tensor kput(K,J);
+TensorDict kputdict(K);
 TensorVector vec(K,bool b=false);
 K kten(const Tensor&);
 K kvec(const TensorVector&);
@@ -694,7 +696,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,105> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,106> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -768,6 +770,7 @@ typedef struct {
   std::make_tuple(cs("pad2d"),            Cast::pad2d,           typeid(torch::nn::ConstantPad2dImpl).hash_code(),       "torch.nn.ConstantPad2d"),
   std::make_tuple(cs("pad3d"),            Cast::pad3d,           typeid(torch::nn::ConstantPad3dImpl).hash_code(),       "torch.nn.ConstantPad3d"),
   std::make_tuple(cs("pairwise"),         Cast::pairwise,        typeid(torch::nn::PairwiseDistanceImpl).hash_code(),    "torch.nn.PairwiseDistance"),
+  std::make_tuple(cs("parmdict"),         Cast::parmdict,        typeid(torch::nn::ParameterDictImpl).hash_code(),       "torch.nn.ParameterDict"),
   std::make_tuple(cs("prelu"),            Cast::prelu,           typeid(torch::nn::PReLUImpl).hash_code(),               "torch.nn.PReLU"),
   std::make_tuple(cs("reflect1d"),        Cast::reflect1d,       typeid(torch::nn::ReflectionPad1dImpl).hash_code(),     "torch.nn.ReflectionPad1d"),
   std::make_tuple(cs("reflect2d"),        Cast::reflect2d,       typeid(torch::nn::ReflectionPad2dImpl).hash_code(),     "torch.nn.ReflectionPad2d"),

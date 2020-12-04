@@ -180,6 +180,7 @@ static bool container(Cast c) {
   case Cast::seqjoin:
   case Cast::moduledict:
   case Cast::modulelist:
+  case Cast::parmdict:
   case Cast::base:
    return true;
   default: return false;
@@ -187,13 +188,14 @@ static bool container(Cast c) {
 }
 
 static bool container(const Module& m) {
- if     (m.as<nn::Sequential>()) return true;
- else if(m.as<SeqNest>())        return true;
- else if(m.as<SeqJoin>())        return true;
- else if(m.as<nn::ModuleDict>()) return true;
- else if(m.as<nn::ModuleList>()) return true;
- else if(m.as<BaseModule>())     return true;
- else                            return false;
+ if     (m.as<nn::Sequential>())    return true;
+ else if(m.as<SeqNest>())           return true;
+ else if(m.as<SeqJoin>())           return true;
+ else if(m.as<nn::ModuleDict>())    return true;
+ else if(m.as<nn::ModuleList>())    return true;
+ else if(m.as<nn::ParameterDict>()) return true;
+ else if(m.as<BaseModule>())        return true;
+ else                               return false;
 }
 
 static Moduleptr newcontainer(Cast c) {
@@ -203,6 +205,7 @@ static Moduleptr newcontainer(Cast c) {
   case Cast::seqjoin:     return SeqJoin().ptr();
   case Cast::moduledict:  return nn::ModuleDict().ptr();
   case Cast::modulelist:  return nn::ModuleList().ptr();
+  case Cast::parmdict:    return nn::ParameterDict().ptr();
   case Cast::base:        return BaseModule().ptr();
   default: AT_ERROR("unable to create container module, unrecognized enumeration: ", (I)c);
  }
@@ -2924,6 +2927,7 @@ static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true,
   case Cast::seqjoin:
   case Cast::moduledict:
   case Cast::modulelist:
+  case Cast::parmdict:
   case Cast::base:
   case Cast::gelu:            //pointwise activation fns w'out options
   case Cast::identity:
@@ -3050,23 +3054,30 @@ static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true,
 
 // ----------------------------------------------------------------------------------
 // mparms - set module parms/buffers from k values in dictionary with matching names
+//          handles ParameterDict as special case since no set names for parameters
 // ----------------------------------------------------------------------------------
 static void mparms(Cast c,S s,Module &m,K x,bool p) { // set named parms/buffers in module m from dict x, p true if parms
- K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
- for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
-  J i=kfind(k,a.key());
-  TORCH_CHECK(i>-1, msym(c), ": unable to find ",(p ? " parameter" : " buffer"),": ",a.key());
-  Tensor t=v->t ? V[i] : kput(kK(v)[i]);
-  if(a.value().defined()) {
-   torch::NoGradGuard g;
-   TORCH_CHECK(a.value().dtype() == t.dtype(), (s ? s : msym(c)), ": type mismatch, ", a.key(), " is ", a.value().dtype(), ", input is ", t.dtype());
-   TORCH_CHECK(a.value().is_same_size(t),      (s ? s : msym(c)), ": size mismatch, ", a.key(), " is ", a.value().sizes(), ", input is ", t.sizes());
-   if (a.value().device() != t.device())
-    a.value().set_data(t);
-   else
-    a.value().set_(t);
-  } else {
-   a.value()=std::move(t);
+ if(c==Cast::parmdict) {
+  auto *d=m.as<nn::ParameterDict>();
+  TORCH_CHECK(d, "unrecognized module, expecting parameter dictionary, given ",m.name(),", unable to restore parms");
+  for(const auto& a:kputdict(x)) d->insert(a.key(),a.value());
+ } else {
+  K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
+  for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
+   J i=kfind(k,a.key());
+   TORCH_CHECK(i>-1, msym(c), ": unable to find ",(p ? " parameter" : " buffer"),": ",a.key());
+   Tensor t=v->t ? V[i] : kput(kK(v)[i]);
+   if(a.value().defined()) {
+    torch::NoGradGuard g;
+    TORCH_CHECK(a.value().dtype() == t.dtype(), (s ? s : msym(c)), ": type mismatch, ", a.key(), " is ", a.value().dtype(), ", input is ", t.dtype());
+    TORCH_CHECK(a.value().is_same_size(t),      (s ? s : msym(c)), ": size mismatch, ", a.key(), " is ", a.value().sizes(), ", input is ", t.sizes());
+    if (a.value().device() != t.device())
+     a.value().set_data(t);
+    else
+     a.value().set_(t);
+   } else {
+    a.value()=std::move(t);
+   }
   }
  }
 }
@@ -3119,11 +3130,12 @@ static void addparent(const Moduleptr& a,Modules& q) {
 static void addparent(Cast c,S s,Modules& q,K x=nullptr,K y=nullptr,K z=nullptr);
 static void addparent(Cast c,S s,Modules& q,K x,K y,K z) {
  TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
- TORCH_CHECK(!(y && xlen(y)), msym(c), ": no parameters expected");
- TORCH_CHECK(!(z && xlen(z)), msym(c), ": no buffers expected");
- auto a=newcontainer(c);   // create new container module, e.g. sequential
- addname(*a,s);            // add name if supplied
- addparent(a,q);           // add to any previous parent, push on stack
+ TORCH_CHECK(!(c != Cast::parmdict && y && xlen(y)),    msym(c), ": no parameters expected");
+ TORCH_CHECK(!(z && xlen(z)),                           msym(c), ": no buffers expected");
+ auto a=newcontainer(c);     // create new container module, e.g. sequential
+ if(y||z) mparms(c,*a,y,z);  // add any supplied parms or buffers
+ addname(*a,s);              // add name if supplied
+ addparent(a,q);             // add to any previous parent, push on stack
 }
 
 static void addchild(const Moduleptr& m,Modules& q) {
@@ -3432,6 +3444,7 @@ K modulehelp(Cast c) {
   case Cast::pad1d:           return cpad(nn::ConstantPad1dOptions({1,2},0));
   case Cast::pad2d:           return cpad(nn::ConstantPad2dOptions({1,1,2,2},0));
   case Cast::pad3d:           return cpad(nn::ConstantPad3dOptions({3,3,6,6,0,1}, 3.5));
+  case Cast::parmdict:        return KDICT;
   case Cast::pairwise:        return pairwise(true,nn::PairwiseDistanceOptions());
   case Cast::prelu:           return prelu(true,nn::PReLUOptions());
   case Cast::reflect1d:       return npad(nn::ReflectionPad1dOptions({1,2}));
