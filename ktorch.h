@@ -269,8 +269,8 @@ struct TORCH_API Kmodule : public Ktag {
 
 struct TORCH_API Kopt : public Ktag {
  Optptr o;       // shared ptr with optimizer
- BaseModule m;   // basic container module to hold all modules/tensors managed by optimizer
- Kopt(Cast x,const Optptr& y,const BaseModule& m) : o(std::move(y)),m(std::move(m)) {a=Class::optimizer; c=x;}
+ Moduleptr m;    // single module or container holding all modules/tensors managed by optimizer
+ Kopt(Cast x,const Optptr& y,const Moduleptr& m) : o(std::move(y)),m(std::move(m)) {a=Class::optimizer; c=x;}
  bool is_empty() const noexcept {return o == nullptr;}
  Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
 };
@@ -282,7 +282,7 @@ struct TORCH_API Kmodel : public Ktag {
  Moduleptr m;      // generic pointer to top-level module, e.g. Sequential
  Moduleptr l;      // loss module
  Optptr o;         // shared ptr to optimizer
- BaseModule om;    // basic container module to hold all modules/tensors managed by optimizer
+ Moduleptr om;     // single module or container holding all modules/tensors managed by optimizer
  Kmodel(Kmodule *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
   a=Class::model; c=Cast::model;
  }
@@ -588,9 +588,7 @@ void lossfn(K);
 
 // optimization functions:
 J buffersize(bool,Cast,const Optimizer&);
-//Moduleptr optmodule(Moduleptr&);
-Moduleptr optmodule(Moduleptr);
-K kopt(Cast,const Optptr&,const BaseModule&);
+K kopt(Cast,const Optptr&,const Moduleptr&);
 K optstate(bool,bool,Kopt *);
 K optstate(bool,bool,Kmodel *);
 K optattr(const Optptr&,Ktype,Attr);

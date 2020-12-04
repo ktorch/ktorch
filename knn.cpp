@@ -3356,8 +3356,7 @@ KAPI module(K x) {
   } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return kmodule(m->mc,m->m);
   } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
-   auto m=optmodule(o->m.ptr());                 // base module w'module(s) that this optimizer deals with
-   return kmodule(mcast(*m),m);                  // return new k-api handle to this module
+   return kmodule(mcast(*o->m),o->m);            // return new k-api handle to this module
   } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);
   } else {

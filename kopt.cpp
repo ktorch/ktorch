@@ -1,4 +1,5 @@
 #include "ktorch.h"
+namespace nn=torch::nn;
 
 #define OPTBUFFER(x,o,k) dictadd(x, #k, kget(o->k))
 #define OPTSET(x,k,v) dictadd(x, oset(Setting::k), v)
@@ -36,7 +37,7 @@ using SGDParamState     = torch::optim::SGDParamState;
 // osize - optimizer size, i.e. number of parameters defined 
 //        (defined in pytorch, but marked with "obsolete" warning)
 // --------------------------------------------------------------------------------------
-K kopt(Cast x,const Optptr& y,const BaseModule& z) {return kptr(new Kopt(x,y,z));}
+K kopt(Cast x,const Optptr& y,const Moduleptr& z) {return kptr(new Kopt(x,y,z));}
 
 static Cast omap(S s) {
  for(auto& m:env().opt)
@@ -470,16 +471,6 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 }
 
 // --------------------------------------------------------------------------------------
-// onlychild - return true if moduleptr containes only one child, no parms or buffers
-// optmodule - return container or single child module (removes depth if not necessary)
-// --------------------------------------------------------------------------------------
-static bool onlychild(const Module& m) {
- return m.children().size()==1 && m.parameters(false).size()==0 && m.buffers(false).size()==0;
-}
-
-Moduleptr optmodule(Moduleptr m) {return onlychild(*m) ? m->children()[0] : m;}
-
-// --------------------------------------------------------------------------------------
 // parmkeys - return columns for table describing optimizer parameter groups & buffers
 // moduletype - given parameter, attempt to find parent module type
 // parmname - given parameter, search containing module(s), return name if found
@@ -575,9 +566,19 @@ static void adddict(const TensorDict& d,J n,S *s,Module& m) {
  for(J i=0; i<n; ++i) addtensor(d[s[i]],m,s[i]);
 }
 
-static void addmodule(Module& a,Module& m) {
- for(const auto& c:m.children()) if(c.get() == &a) return; //module already added
- S s=mname(a); m.register_module(s ? s : c10::to_string(m.children().size()),a.shared_from_this());
+static void addmodule(const Moduleptr& a,Moduleptr& m) {
+ if(m) {
+  for(const auto& c:m->modules()) if(c.get() == a.get()) return; //module already added
+  S s=mname(*a); 
+  if(auto* d=m->as<nn::ModuleDict>()) {
+   d->update({{s ? s : c10::to_string(d->children().size()), a}});
+  } else {
+   Modulemap p{{s ? s : (a->as<nn::ParameterDict>() ? "parms" : "0"), a}};
+   m=nn::ModuleDict(p).ptr();
+  }
+ } else {
+  m=std::move(a);
+ }
 }
 
 // -------------------------------------------------------------------------------------------
@@ -638,9 +639,9 @@ static void parmcheck(const Optimizer& o,const Module& m,const TensorVector& v) 
 // ------------------------------------------------------------------------------------------
 // moduleparms - return parm vector from module w'optional child indices or module/parm names
 // ------------------------------------------------------------------------------------------
-static TensorVector moduleparms(const Module& m,J n,J *j) {
+static TensorVector moduleparms(const Moduleptr& m,J n,J *j) {
  TensorVector v;
- const auto& a=m.modules(false);
+ const auto& a=m->modules(false);
  for(J i=0;i<n;++i) {
   J k=j[i];
   TORCH_CHECK(k>=0, "opt: module[",k,"] invalid");
@@ -653,10 +654,10 @@ static TensorVector moduleparms(const Module& m,J n,J *j) {
  return v;
 }
 
-static TensorVector moduleparms(const Module& m,J n,S *s) {
+static TensorVector moduleparms(const Moduleptr& m,J n,S *s) {
  TensorVector v;
- const auto& a=m.named_modules("",false);
- const auto& z=m.named_parameters(true);
+ const auto& a=m->named_modules("",false);
+ const auto& z=m->named_parameters(true);
  for(J i=0;i<n;++i) {
   S k=s[i];
   if(a.contains(k)) {
@@ -675,17 +676,17 @@ static TensorVector moduleparms(const Module& m,J n,S *s) {
  return v;
 }
 
-static TensorVector moduleparms(Module& a,K x,const Optimizer& o,Module& m) {
+static TensorVector moduleparms(const Moduleptr& a,K x,const Optimizer& o,Moduleptr& m) {
  TensorVector v;
  if(!x)
-  v=a.parameters();
+  v=a->parameters();
  else if(x->t==KJ || x->t==-KJ)
    v=x->t==KJ ? moduleparms(a,x->n,kJ(x)) : moduleparms(a,1,&x->j);
  else if(x->t==KS || x->t==-KS) 
    v=x->t==KS ? moduleparms(a,x->n,kS(x)) : moduleparms(a,1,&x->s);
  else
-  AT_ERROR("opt: ",msym(a)," module supplied with unrecognized ",kname(x)," selector(s)");
- parmcheck(o,m,v); addmodule(a,m);
+  AT_ERROR("opt: ",msym(*a)," module supplied with unrecognized ",kname(x)," selector(s)");
+ parmcheck(o,*m,v); addmodule(a,m);
  return v;
 }
  
@@ -707,7 +708,7 @@ static TensorVector dictparms(const TensorDict& d,J n,S *s) {
  return v;
 }
 
-static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Module& m) {
+static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Moduleptr& m) {
  TensorVector v;
  if(!x)
   v=duplicate(d);
@@ -715,13 +716,13 @@ static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Module&
    v=x->t==KS ? dictparms(d,x->n,kS(x)) : dictparms(d,1,&x->s);
  else
   AT_ERROR("opt: tensor dictionary supplied with unrecognized ",kname(x)," selector(s)");
- parmcheck(o,m,v);
+ parmcheck(o,*m,v);
  if(!x)
-  adddict(d,m);
+  adddict(d,*m);
  else if(x->t==KS)
-  adddict(d,x->n,kS(x),m);
+  adddict(d,x->n,kS(x),*m);
  else
-  adddict(d,1,&x->s,m);
+  adddict(d,1,&x->s,*m);
  return v;
 }
  
@@ -741,7 +742,7 @@ static TensorVector vectorparms(const TensorVector& a,J n,J *j) {
  return v;
 }
 
-static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Module& m) {
+static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Moduleptr& m) {
  TensorVector v;
  if(!x)
   v=duplicate(a);
@@ -749,7 +750,7 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
    v=x->t==KJ ? vectorparms(a,x->n,kJ(x)) : vectorparms(a,1,&x->j);
  else
   AT_ERROR("opt: tensor vector supplied with unrecognized ",kname(x)," selector(s)");
- parmcheck(o,m,v); addvector(v,m);
+ parmcheck(o,*m,v); addvector(v,*m);
  return v;
 }
  
@@ -764,8 +765,8 @@ static K optstate(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  return xD(k,v);
 }
 
-K optstate(bool a,bool b,Kopt*   o) {return optstate(a,b,o->c,*o->o,*optmodule(o->m.ptr()));}
-K optstate(bool a,bool b,Kmodel* m) {return optstate(a,b,m->oc,*m->o,*optmodule(m->m));}
+K optstate(bool a,bool b,Kopt*   o) {return optstate(a,b,o->c, *o->o,*o->m);}
+K optstate(bool a,bool b,Kmodel* m) {return optstate(a,b,m->oc,*m->o,*m->om);}
 
 // ---------------------------------------------------------------------------------------
 // addoptions - parse k args into optimizer-specific options stored in a parameter group
@@ -784,7 +785,7 @@ static void addoptions(Cast c,K x,J i,ParamGroup& g) { // c:type, x-arg(s), i-of
  }
 }
 
-static TensorVector addparms(K x,const Optimizer& o,Module& m) {
+static TensorVector addparms(K x,const Optimizer& o,Moduleptr& m) {
  K y=nullptr; Ktag *k; TensorVector v;
  if(!xempty(x)) {
   if(!(k=xtag(x))) {
@@ -797,8 +798,8 @@ static TensorVector addparms(K x,const Optimizer& o,Module& m) {
    case Class::tensor: v=vectorparms({((Kten*)k)->t}, y,o,m); break;
    case Class::vector: v=vectorparms(((Kvec*)k)->v, y,o,m); break;
    case Class::dict:   v=dictparms(((Kdict*)k)->d, y,o,m); break;
-   case Class::module: v=moduleparms(*((Kmodule*)k)->m, y,o,m); break;
-   case Class::model:  v=moduleparms(*((Kmodel*) k)->m, y,o,m); break;
+   case Class::module: v=moduleparms(((Kmodule*)k)->m, y,o,m); break;
+   case Class::model:  v=moduleparms(((Kmodel*) k)->m, y,o,m); break;
    default: AT_ERROR("opt: cannot derive parameters from ",mapclass(k->a));
   }
  }
@@ -822,13 +823,13 @@ static Optptr optinit(Cast c,ParamGroup& g) {
 }
 
 static K optinit(bool b,Cast c,K x,K y) { //b:true if group given, x:overall args, y:parms
- BaseModule m; ParamGroup g({}); addoptions(c,x,2+b,g);
+ Moduleptr m; ParamGroup g({}); addoptions(c,x,2+b,g);
  Optptr o=optinit(c,g);
- if(y) o->param_groups()[0].params()=addparms(y,*o,*m);
+ if(y) o->param_groups()[0].params()=addparms(y,*o,m);
  return kopt(c,o,m);
 }
 
-static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Module& m) {
+static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Moduleptr& m) {
  auto& p=o.param_groups();
  TORCH_CHECK(i>=0, "opt: group ",i," invalid, cannot be negative");
  TORCH_CHECK(i<=p.size(), "opt: group ",i," invalid, cannot be greater than number of groups(",p.size(),")");
@@ -896,10 +897,9 @@ static void putparms(Cast c,K x,Optimizer& o,const Module& m) {
  }
 }
 
-static K optput(S s,K x,K y,const Module& m) { //s:optimizer name, x:options, y:parm table
- Cast c=omap(s); Optptr o=putgroups(c,x); putparms(c,y,*o,m);
- BaseModule bm; //addmodule(m,*bm);
- return kopt(c,o,bm);
+static K optput(S s,K x,K y,const Moduleptr& m) { //s:optimizer name, x:options, y:parm table
+ Cast c=omap(s); Optptr o=putgroups(c,x); putparms(c,y,*o,*m);
+ return kopt(c,o,m);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -910,20 +910,20 @@ static K optput(S s,K x,K y,const Module& m) { //s:optimizer name, x:options, y:
 // ---------------------------------------------------------------------------------------
 KAPI opt(K x) {
  KTRY
-  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *k; Kmodule *m;
+  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *o; Kmodule *m;
   if(xsym(x,s) || (xsym(x,0,s) && x->t==0)) {
    J n=x->t==-KS ? 1 : x->n;
    TORCH_CHECK(!i, "opt: cannot define group ",i," until optimizer is created with initial parameter group");
    return optinit(b, omap(s), x, n>1+b ? kK(x)[1+b] : nullptr);
-  } else if(((k=xoptim(x))) || ((k=xoptim(x,0)))) {
+  } else if(((o=xoptim(x))) || ((o=xoptim(x,0)))) {
    if(x->n==1 || (x->n==2 && xbool(x,1,a))) {
-    return optstate(a,false,k);
+    return optstate(a,false,o);
    } else {
-    optedit(b, k->c, x, x->n>1+b ? kK(x)[1+b] : nullptr, i, *k->o, *k->m);
+    optedit(b, o->c, x, x->n>1+b ? kK(x)[1+b] : nullptr, i, *o->o, o->m);
     return (K)0;
    }
   } else if(xdict(x,0) && (m=xmodule(x,1)) && x->n==2) {
-   return optput(stateoptimizer(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), *m->m);
+   return optput(stateoptimizer(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), m->m);
   } else {
    AT_ERROR("opt: unrecognized arg(s)");
   }
