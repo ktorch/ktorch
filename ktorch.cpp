@@ -305,7 +305,7 @@ K statecol(State e,K x,short t) {
 // convenience functions to return state value
 // --------------------------------------------
 J statedepth(K x,J j)     {return statelong(State::depth,true,x,j);}
-J stategroup(K x,J j)     {return statelong(State::group,true,x,j);}
+J stategroup(K x,J j)     {return statelong(State::parmgroup,true,x,j);}
 S statemodule(K x,J j)    {return statesym(State::module,true,x,j);}
 S stateoptimizer(K x,J j) {return statesym(State::optimizer,true,x,j);}
 S statename(K x,J j)      {return statesym(State::name,false,x,j);}

@@ -212,7 +212,7 @@ enum class Setting:char {
 };
 
 enum class State:char {
- buffers, depth, group, id, module, name, options, optlist, optimizer, parms, size
+ buffers, depth, module, name, options, optlist, optimizer, parms, parmgroup, pointer, size
 };
 
 enum class Attr:char {
@@ -887,14 +887,14 @@ typedef struct {
  std::array<std::tuple<S,State>,11> state = {{        //module state dictionary keys: map symbol -> enum
   std::make_tuple(cs("buffers"),   State::buffers),
   std::make_tuple(cs("depth"),     State::depth),
-  std::make_tuple(cs("grp"),       State::group),
-  std::make_tuple(cs("id"),        State::id),
   std::make_tuple(cs("module"),    State::module),
   std::make_tuple(cs("name"),      State::name),
   std::make_tuple(cs("options"),   State::options),
   std::make_tuple(cs("options"),   State::optlist),
   std::make_tuple(cs("optimizer"), State::optimizer),
   std::make_tuple(cs("parms"),     State::parms),
+  std::make_tuple(cs("parmgroup"), State::parmgroup),
+  std::make_tuple(cs("pointer"),   State::pointer),
   std::make_tuple(cs("size"),      State::size)
  }};
 

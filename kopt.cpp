@@ -478,8 +478,8 @@ J buffersize(bool b,Cast c,const Optimizer& o) {
 // --------------------------------------------------------------------------------------
 static K parmkeys(bool b) {
  K x=ktn(KS, b ? 6 : 5);
- kS(x)[0]=statekey(State::id);
- kS(x)[1]=statekey(State::group);
+ kS(x)[0]=statekey(State::parmgroup);
+ kS(x)[1]=statekey(State::pointer);
  kS(x)[2]=statekey(State::module);
  kS(x)[3]=statekey(State::name);
  kS(x)[4]=statekey(State::size);
@@ -488,7 +488,7 @@ static K parmkeys(bool b) {
 }
 
 static S moduletype(const Tensor& p,const Module& m) {
- for(const auto& a:m.modules(false))
+ for(const auto& a:m.modules(true))
   for(const auto& t:a->parameters(false))
    if(t.is_same(p)) return msym(*a);
  return nullsym();
@@ -524,22 +524,25 @@ static K getparms(Cast c,const ParamState& p) {
 
 static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
  J g=0,i=0,n=osize(o);
- K id=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
+ K pt=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
  const auto& s=o.state();
  for(auto& pg:o.param_groups()) {
   for(auto& p:pg.params()) {
     auto *t=p.unsafeGetTensorImpl();
-    kJ(id)[i]=(intptr_t)t;
     kJ(gp)[i]=g;
+    kJ(pt)[i]=(intptr_t)t;
     kS(md)[i]=moduletype(p,m);
     kS(nm)[i]=parmsym(p,m);
     kK(sz)[i]=tensorsize(p,Attr::size);
-    if(b) kK(bf)[i]=s.size() ? getparms(c, *s.at(c10::guts::to_string(t))) : KDICT;
+    if(b) {
+     auto k=c10::guts::to_string(t);
+     kK(bf)[i]=s.count(k) ? getparms(c, *s.at(k)) : KDICT;
+    }
     i++;
   }
   g++;
  }
- return xT(xD(parmkeys(b),b ? knk(6,id,gp,md,nm,sz,bf) : knk(5,id,gp,md,nm,sz)));
+ return xT(xD(parmkeys(b),b ? knk(6,gp,pt,md,nm,sz,bf) : knk(5,gp,pt,md,nm,sz)));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -568,13 +571,13 @@ static void adddict(const TensorDict& d,J n,S *s,Module& m) {
 
 static void addmodule(const Moduleptr& a,Moduleptr& m) {
  if(m) {
-  for(const auto& c:m->modules()) if(c.get() == a.get()) return; //module already added
+  for(const auto& c:m->modules()) if(c.get() == a.get()) return;   // module already added
   S s=mname(*a); 
-  if(auto* d=m->as<nn::ModuleDict>()) {
-   d->update({{s ? s : c10::to_string(d->children().size()), a}});
-  } else {
-   Modulemap p{{s ? s : (a->as<nn::ParameterDict>() ? "parms" : "0"), a}};
-   m=nn::ModuleDict(p).ptr();
+  if(auto* d=m->as<nn::ModuleDict>()) {                            // if module is already a dictionary
+   d->update({{s ? s : c10::to_string(d->children().size()), a}}); //    update to include new module
+  } else {                                                         // else create dictionary
+   S r=mname(*m);                                                  //      add new + existing module
+   m=nn::ModuleDict(Modulemap{{r ? r : "0", m}, {s ? s : "1", a}}).ptr();
   }
  } else {
   m=std::move(a);
@@ -687,6 +690,7 @@ static TensorVector moduleparms(const Moduleptr& a,K x,const Optimizer& o,Module
  else
   AT_ERROR("opt: ",msym(*a)," module supplied with unrecognized ",kname(x)," selector(s)");
  parmcheck(o,*m,v); addmodule(a,m);
+ std::cerr << *m << "\n";
  return v;
 }
  

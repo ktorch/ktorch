@@ -2875,6 +2875,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::pad1d:           return ANY(nn::ConstantPad1d, m);
   case Cast::pad2d:           return ANY(nn::ConstantPad2d, m);
   case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
+  case Cast::parmdict:        AT_ERROR("unable to create type-erased module for 'parmdict': no forward method defined");
   case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
   case Cast::prelu:           return ANY(nn::PReLU, m);
   case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
