@@ -546,42 +546,91 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
 }
 
 // ---------------------------------------------------------------------------------------
-// addtensor - add tensor w'optional name if not already registered in target module
-// addvector - add vector of tensors if not already registered in target module
-// adddict - add named tensors if not already registered in target module
+// dupname - check for duplicate names in container module before adding
 // addmodule - add child module if not already registered in target module
+// dictfind - return parameter dictionary module if exists or is top-level child
 // ---------------------------------------------------------------------------------------
-static void addtensor(const Tensor& t,Module& m,std::string s={});
-static void addtensor(const Tensor& t,Module& m,std::string s) {
- for(const auto& p:m.parameters()) if(p.is_same(t)) return; //tensor already added
- m.register_parameter(s.size() ? s : c10::to_string(m.parameters().size()),t);
-}
-
-static void addvector(const TensorVector& v,Module& m) {
- for(const auto& t:v) addtensor(t,m);
-}
-
-static void adddict(const TensorDict& d,Module& m) {
- for(const auto& a:d) addtensor(a.value(),m,a.key());
-}
-
-static void adddict(const TensorDict& d,J n,S *s,Module& m) {
- for(J i=0; i<n; ++i) addtensor(d[s[i]],m,s[i]);
+static void dupname(S s,const Module& m) {
+ TORCH_CHECK(!m.named_children().contains(s),
+  "opt: a ",msym(*m.named_children()[s])," module named `",s," already registered with the optimizer");
 }
 
 static void addmodule(const Moduleptr& a,Moduleptr& m) {
  if(m) {
   for(const auto& c:m->modules()) if(c.get() == a.get()) return;   // module already added
   S s=mname(*a); 
-  if(auto* d=m->as<nn::ModuleDict>()) {                            // if module is already a dictionary
-   d->update({{s ? s : c10::to_string(d->children().size()), a}}); //    update to include new module
+  if(auto* d=m->as<nn::ModuleDict>()) {
+   if(s) dupname(s,*d);
+   d->update({{s ? s : c10::to_string(d->children().size()), a}}); // update to include new module
   } else {                                                         // else create dictionary
-   S r=mname(*m);                                                  //      add new + existing module
-   m=nn::ModuleDict(Modulemap{{r ? r : "0", m}, {s ? s : "1", a}}).ptr();
+   S r=mname(*m);                                                  // w'union of existing & new module
+   nn::ModuleDict u(Modulemap{{r ? r : "0", m}});                  // create dict with existing module
+   if(s && r) dupname(s,*u);                                       // check for name conflict
+   u->update(Modulemap{{s ? s : "1", a}});                         // add new module to dictionary container
+   m=std::move(u.ptr());
   }
  } else {
   m=std::move(a);
  }
+}
+
+static nn::ParameterDictImpl* dictfind(Moduleptr& m) {
+ nn::ParameterDictImpl *p=nullptr;
+ if((p=m->as<nn::ParameterDict>())) {           // module is a parameter dictionary
+ } else if(auto *d=m->as<nn::ModuleDict>()) {   // search module dictionary children
+   for(auto& c:d->children())
+    if((p=c->as<nn::ParameterDict>())) break;
+ }
+ return p;
+}
+ 
+// ---------------------------------------------------------------------------------------
+// addname - name module "parms", if already found, try "parms1", "parms2", ..
+// addtensor - add vector/dictionary of tensors to parameter dictionary in target module
+// addvector - add list of tensors to parameter dictionary in target module
+// adddict - add named tensors or subset of them to dictionary in target module
+// ---------------------------------------------------------------------------------------
+static void addname(Module& a,const Moduleptr& m) {
+ std::string s1("parms");
+ if(m) {
+  size_t n=1; std::string s2;
+  while(m->named_children().contains(s1+s2))
+   s2=c10::to_string(n++);
+  s1+=s2;
+ }
+ mname_(a)=s1;
+}
+
+static void addtensor(const TensorVector& v,nn::ParameterDictImpl *p) {
+ for(const auto&t:v) p->insert(c10::to_string(p->size()),t);
+}
+
+static void addtensor(const TensorDict& d,nn::ParameterDictImpl *p) {
+ for(const auto&a:d) p->insert(a.key(),a.value());
+}
+
+static void addvector(const TensorVector& v,Moduleptr& m) {
+ nn::ParameterDictImpl *p;
+ if(m && (p=dictfind(m))) {
+  addtensor(v,p);
+ } else {
+  nn::ParameterDict d; addname(*d,m); addtensor(v,d.get()); addmodule(d.ptr(),m);
+ }
+}
+
+static void adddict(const TensorDict& d,Moduleptr& m) {
+ nn::ParameterDictImpl *p;
+ if(m && (p=dictfind(m))) {
+  addtensor(d,p);
+ } else {
+  nn::ParameterDict a; addname(*a,m); addtensor(d,a.get()); addmodule(a.ptr(),m);
+ }
+}
+
+static void adddict(const TensorDict& d,J n,S *s,Moduleptr& m) {
+ TensorDict a;
+ for(J i=0; i<n; ++i) a.insert(s[i],d[s[i]]);
+ adddict(a,m);
 }
 
 // -------------------------------------------------------------------------------------------
@@ -690,7 +739,6 @@ static TensorVector moduleparms(const Moduleptr& a,K x,const Optimizer& o,Module
  else
   AT_ERROR("opt: ",msym(*a)," module supplied with unrecognized ",kname(x)," selector(s)");
  parmcheck(o,*m,v); addmodule(a,m);
- std::cerr << *m << "\n";
  return v;
 }
  
@@ -721,12 +769,9 @@ static TensorVector dictparms(const TensorDict& d,K x,const Optimizer& o,Modulep
  else
   AT_ERROR("opt: tensor dictionary supplied with unrecognized ",kname(x)," selector(s)");
  parmcheck(o,*m,v);
- if(!x)
-  adddict(d,*m);
- else if(x->t==KS)
-  adddict(d,x->n,kS(x),*m);
- else
-  adddict(d,1,&x->s,*m);
+ if(!x)            adddict(d,m);
+ else if(x->t==KS) adddict(d,x->n,kS(x),m);
+ else              adddict(d,1,&x->s,m);
  return v;
 }
  
@@ -754,7 +799,7 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
    v=x->t==KJ ? vectorparms(a,x->n,kJ(x)) : vectorparms(a,1,&x->j);
  else
   AT_ERROR("opt: tensor vector supplied with unrecognized ",kname(x)," selector(s)");
- parmcheck(o,*m,v); addvector(v,*m);
+ parmcheck(o,*m,v); addvector(v,m);
  return v;
 }
  
