@@ -29,10 +29,11 @@ std::string mlabel(const Module& x) {
 // mopt - forward declare function to return module settings as k dictionary
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
-static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
+//static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
+static J argstart(K x,S s) {return !x ? -1 : (xdict(x) ? 0 : (s ? 2 : 1));}
 static AnyModule anymodule(K x,J i,S s);
 static AnyModule anymodule(Cast c,const Moduleptr& m);
-static K mopt(bool,Cast,const Module&);
+static K mopt(bool,bool,Cast,const Module&);
 
 // ------------------------------------------------------------------------------
 // kmodule - allocate object to store a module pointer (class defaults to module) 
@@ -169,10 +170,11 @@ KAPI seq(K x) {
  KCATCH("seq");
 }
 
-// -----------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------
 // container - given module/module cast, return true if container module
-// newcontainer - create new container (no options, parameters or buffers required)
-// -----------------------------------------------------------------------------------
+// parmdict - parameter dictionary handles "options" of dictionary of tensors or k arrays
+// newcontainer - create new container (handle options/parms for parameter dict only)
+// --------------------------------------------------------------------------------------
 static bool container(Cast c) {
  switch(c) {
   case Cast::sequential:
@@ -198,14 +200,31 @@ static bool container(const Module& m) {
  else                               return false;
 }
 
-static Moduleptr newcontainer(Cast c) {
+static Moduleptr parmdict(K x,J i) {
+ std::cerr << "i: " << i << "\n";
+ std::cerr << kstring(x) << "\n";
+ if(!x || xnone(x,i))
+  return nn::ParameterDict().ptr();
+ else if(auto *d=xtensordict(x,i))
+  return nn::ParameterDict(*d).ptr();
+ else if(xdict(x) || xdict(x,i))
+  return nn::ParameterDict(kputdict(xdict(x) ? x : kK(x)[i])).ptr();
+ else
+  AT_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
+}
+
+static Moduleptr newcontainer(Cast c, S s=nullptr,K x=nullptr);
+static Moduleptr newcontainer(Cast c, S s,        K x) {
+ J i=argstart(x,s);
+ TORCH_CHECK(c==Cast::parmdict || !x || xnone(x,i), msym(c),
+             ": no options expected, given ", kstring(x));
  switch(c) {
   case Cast::sequential:  return nn::Sequential().ptr();
   case Cast::seqnest:     return SeqNest().ptr();
   case Cast::seqjoin:     return SeqJoin().ptr();
   case Cast::moduledict:  return nn::ModuleDict().ptr();
   case Cast::modulelist:  return nn::ModuleList().ptr();
-  case Cast::parmdict:    return nn::ParameterDict().ptr();
+  case Cast::parmdict:    return parmdict(x,i);
   case Cast::base:        return BaseModule().ptr();
   default: AT_ERROR("unable to create container module, unrecognized enumeration: ", (I)c);
  }
@@ -2614,7 +2633,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
 static K customcoder(bool a,const AnyModule& y) {
  K k=ktn(KS,2),v=ktn(0,2); const Module& m=*y.ptr(); Cast c=mcast(m);
  kS(k)[0]=statekey(State::module);  kK(v)[0]=ks(msym(c));
- kS(k)[1]=statekey(State::options); kK(v)[1]=mopt(a,c,m);
+ kS(k)[1]=statekey(State::options); kK(v)[1]=mopt(a,false,c,m);
  return xD(k,v);
 }
 
@@ -2921,14 +2940,13 @@ static AnyModule anymodule(K x,J i,S s) {
 // --------------------------------------------------------------------------------------------
 // mopt - given enumeration and generic module, return options as k dictionary
 // --------------------------------------------------------------------------------------------
-static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true, else only non-default
+static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned if true, else only non-default
  switch(c) {
   case Cast::sequential:      //container modules w'out options
   case Cast::seqnest:
   case Cast::seqjoin:
   case Cast::moduledict:
   case Cast::modulelist:
-  case Cast::parmdict:
   case Cast::base:
   case Cast::gelu:            //pointwise activation fns w'out options
   case Cast::identity:
@@ -2941,6 +2959,8 @@ static K mopt(bool a,Cast c,const Module& m) { //a:all options returned if true,
   case Cast::tanhshrink:
    return KDICT;
 
+  case Cast::parmdict: return b ? KDICT : kget(m.named_parameters());  // return parms as options if no state required
+  
   case Cast::batchnorm1d:      return batchnorm(a,m.as<nn::BatchNorm1d>()->options);
   case Cast::batchnorm2d:      return batchnorm(a,m.as<nn::BatchNorm2d>()->options);
   case Cast::batchnorm3d:      return batchnorm(a,m.as<nn::BatchNorm3d>()->options);
@@ -3130,10 +3150,9 @@ static void addparent(const Moduleptr& a,Modules& q) {
 
 static void addparent(Cast c,S s,Modules& q,K x=nullptr,K y=nullptr,K z=nullptr);
 static void addparent(Cast c,S s,Modules& q,K x,K y,K z) {
- TORCH_CHECK(!x || xnone(x,xdict(x) ? 0 : (s ? 2 : 1)), msym(c), ": no options expected, given ", kstring(x));
  TORCH_CHECK(!(c != Cast::parmdict && y && xlen(y)),    msym(c), ": no parameters expected");
  TORCH_CHECK(!(z && xlen(z)),                           msym(c), ": no buffers expected");
- auto a=newcontainer(c);     // create new container module, e.g. sequential
+ auto a=newcontainer(c,s,x); // create new container module, e.g. sequential
  if(y||z) mparms(c,*a,y,z);  // add any supplied parms or buffers
  addname(*a,s);              // add name if supplied
  addparent(a,q);             // add to any previous parent, push on stack
@@ -3166,8 +3185,9 @@ static bool msuffix(const std::string& x,const std::string& y) {
 }
 
 static bool mcompare(Cast c,const Module& m1,const Module& m2) {
- bool b=false; Cast v=mcast(m1),w=mcast(m2); K x=mopt(true,v,m1),y=mopt(true,w,m2),z;
+ bool b=false; Cast v=mcast(m1),w=mcast(m2);
  if(v==w) {
+  K x=mopt(true,false,v,m1),y=mopt(true,false,w,m2),z;
   z=k(0,(S)"~",x,y,0); b=z->g; r0(z);
  }
  return b;
@@ -3182,7 +3202,7 @@ static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
   if(i==j) {
    TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,*(container(c) ? newcontainer(c) : mcreate(x,argstart(x,s),c))),
+   TORCH_CHECK(mcompare(c,m,*(container(c) ? newcontainer(c,s,x) : mcreate(x,argstart(x,s),c))),
                "child module ", a.key(), " mismatch with given options");
    if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
    return;
@@ -3288,8 +3308,8 @@ static void mextend(Kmodule *x,Kmodule *y,J d) {Modules q; mstack(x,q); mextend(
 // --------------------------------------------------------------------------------------------
 // mget - extract module options and, optionally, parameters & buffers to k array
 // --------------------------------------------------------------------------------------------
-void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
- Cast c=mcast(m); K o=mopt(a,c,m),*k=kK(x);
+static void mget(bool a,bool b,int64_t d,const char* s,bool t,const Module& m,K x) {
+ Cast c=mcast(m); K o=mopt(a,b,c,m),*k=kK(x);
  if(!s) s="";
  if(t) {
   ja(&k[0], &d);
@@ -3300,7 +3320,7 @@ void mget(bool a,int64_t d,const char* s,bool t,const Module& m,K x) {
    jk(&k[4], kget(m.named_parameters(false))),
    jk(&k[5], kget(m.named_buffers(false)));
   for(auto& i:m.named_children())
-   mget(a,d+1,i.key().c_str(),t,*i.value(),x);
+   mget(a,b,d+1,i.key().c_str(),t,*i.value(),x);
  } else {
   TORCH_CHECK(!m.children().size(), msym(c), ": unexpected child module(s)");
   k[0]=kj(d);
@@ -3318,10 +3338,10 @@ K mget(bool a,bool b,const Module& m) {
  K k=mkeys(b),v=ktn( 0, b ? 6 : 4);  // key,val for depth,module,name,options w'parms & buffers if b
  if(container(m) || m.children().size()) {
   for(J i=0; i<v->n; ++i) kK(v)[i]=ktn(!i ? KJ : (i<3 ? KS : 0), 0);
-  mget(a,0,mname(m),true,m,v);
+  mget(a,b,0,mname(m),true,m,v);
   return xT(xD(k,v));
  } else {
-  mget(a,0,mname(m),false,m,v);
+  mget(a,b,0,mname(m),false,m,v);
   return xD(k,v);
  }
 }
@@ -3357,6 +3377,7 @@ KAPI module(K x) {
   } else if((m=xmodel(x))) {                     // model ptr supplied, extract module with added reference
    return kmodule(m->mc,m->m);
   } else if((o=xoptim(x))) {                     // optimizer ptr, extract module
+   TORCH_CHECK(o->m, "module: no module registered with given optimizer");
    return kmodule(mcast(*o->m),o->m);            // return new k-api handle to this module
   } else if((n=xdv(x))) {                        // depth-value pairs supplied
    return mdv(x,n);

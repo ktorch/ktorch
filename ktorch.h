@@ -465,6 +465,7 @@ K optkey();
 K optval(const TensorOptions &o,K x,J i=-1);
 K optmap(const TensorOptions&);
 std::string kstring(K);
+std::string kstring(K,J);
 K kout(K);
 K kcast(Ktype,K);
 K kbool(K);

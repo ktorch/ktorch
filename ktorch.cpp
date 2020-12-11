@@ -976,6 +976,8 @@ std::string kstring(K x) {
  return s;
 }
 
+std::string kstring(K x,J i) {return kstring(xind(x,i) ? kK(x)[i] : x);}
+
 K kout(K x) {return k(0,(S)"0N!",r1(x),0);}
 K kcast(Ktype t,K x) {return k(0,(S)"$",kh(t),r1(x),0);}
 K kbool(K x) {return kcast(1,x);}

@@ -538,8 +538,6 @@ template <class... Fs> auto make_overload(Fs... fs) {
 //template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
-std::tuple<Cast,K> mopt(bool,const Module&);
-
 KAPI join1(K x) {
  KTRY
   SeqNest q;
