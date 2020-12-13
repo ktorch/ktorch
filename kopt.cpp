@@ -959,7 +959,7 @@ static K optput(S s,K x,K y,const Moduleptr& m) { //s:optimizer name, x:options,
 // ---------------------------------------------------------------------------------------
 KAPI opt(K x) {
  KTRY
-  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *o; Kmodule *m;
+  J i=0; bool a=env().alloptions,b=xlong(x,1,i); S s; Kopt *o; Kmodule *m; Kmodel *l;
   if(xsym(x,s) || (xsym(x,0,s) && x->t==0)) {
    J n=x->t==-KS ? 1 : x->n;
    TORCH_CHECK(!i, "opt: cannot define group ",i," until optimizer is created with initial parameter group");
@@ -973,6 +973,8 @@ KAPI opt(K x) {
    }
   } else if(xdict(x,0) && (m=xmodule(x,1)) && x->n==2) {
    return optput(stateoptimizer(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), m->m);
+  } else if((l=xmodel(x))) {
+   return kopt(l->oc,l->o,l->m);
   } else {
    AT_ERROR("opt: unrecognized arg(s)");
   }

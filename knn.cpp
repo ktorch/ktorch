@@ -3579,38 +3579,6 @@ embeddingbag -- forward w'defaults should work with sequential
 1.7 adds SiLU, UnFlatten
 BaseModule - push_back ? / forward ?
 
-Encoder
-Tensor forward(const Tensor& src,const Tensor& src_mask = {},const Tensor& src_key_padding_mask = {});
-
-Decoder
- Tensor forward(Tensor tgt,
-                 const Tensor& memory,
-                 const Tensor& tgt_mask = {},
-                 const Tensor& memory_mask = {},
-                 const Tensor& tgt_key_padding_mask = {},
-                 const Tensor& memory_key_padding_mask = {});
-
-Transformer
- Tensor forward(
-      const Tensor& src,
-      const Tensor& tgt,
-      const Tensor& src_mask = {},
-      const Tensor& tgt_mask = {},
-      const Tensor& memory_mask = {},
-      const Tensor& src_key_padding_mask = {},
-      const Tensor& tgt_key_padding_mask = {},
-      const Tensor& memory_key_padding_mask = {});
-
-Attention
-std::tuple<Tensor, Tensor> forward(
- const Tensor& query,
- const Tensor& key,
- const Tensor& value,
- const Tensor& key_padding_mask = {},
- bool need_weights = true,
- const Tensor& attn_mask = {});
-
-
 GRU,RNN
  std::tuple<Tensor, Tensor> forward(const Tensor& input, Tensor hx = {});
 LSTM

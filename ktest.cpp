@@ -2,13 +2,65 @@
 
 namespace nn=torch::nn;
 
-KAPI parmdict(K x) {
+KAPI names1(K x) {
  KTRY
-  TensorDict *k=xtensordict(x);
-  TORCH_CHECK(k, "need tensor dictionary");
-  nn::ParameterDict d(*k);
-  return kmodule(Cast::parmdict,d.ptr());
- KCATCH("parameter dict");
+  Kmodule *k=xmodule(x);
+  TORCH_CHECK(k, "need module");
+  const auto& v=(*k->m).named_modules().keys();
+  J i=0; K s=ktn(KS,v.size());
+  for(const auto& a:v)
+   kS(s)[i++]=cs(a.c_str());
+  return s;
+ KCATCH("names");
+}
+
+KAPI parms(K x) {
+ KTRY
+  K y=nullptr; auto *g=xtag(x); Moduleptr m;
+  if(!g) {
+   g=xtag(x,0);
+   TORCH_CHECK(g, "parms: expecting module, model or optimizer, not implemented for ",kname(x));
+   TORCH_CHECK(!x->t && x->n==2, "parms: expecting up to two args, (object; index/name), given ",x->n," args");
+   y=kK(x)[1];
+   TORCH_CHECK(y->t==-KJ || y->t==-KS, "parms: expecting integer or symbol for 2nd arg, given ",kname(x,1));
+  }
+  switch(g->a) {
+   case Class::loss:
+   case Class::module:    m=((Kmodule*)g)->m; break;
+   case Class::model:     m=((Kmodel*) g)->m; break;
+   case Class::optimizer: m=((Kopt*)   g)->m; break;
+   default: AT_ERROR("parms: not implemented for ",mapclass(g->a));
+  }
+  S s=mname(*m);
+  if(y) {
+   if(y->t == -KJ) {
+    const auto& v=m->modules(false); J n=v.size();
+    TORCH_CHECK(y->j < n, "parms: invalid index[",y->j,"] for ",n," module",(n==1 ? "" : "s"));
+    if(-1<y->j) m=v.at(y->j);
+   } else {
+    m=m->named_modules(s ? s : "")[y->s];
+   }
+  }
+  return kdict(m->named_parameters());
+ KCATCH("parms/buffers");
+}
+
+KAPI names(K x) {
+ KTRY
+  auto *g=xtag(x); Moduleptr m;
+  switch(g->a) {
+   case Class::loss:
+   case Class::module:    m=((Kmodule*)g)->m; break;
+   case Class::model:     m=((Kmodel*) g)->m; break;
+   case Class::optimizer: m=((Kopt*)   g)->m; break;
+   default: AT_ERROR("parms: not implemented for ",mapclass(g->a));
+  }
+  S s=mname(*m);
+  const auto& k=m->named_modules(s ? s : "").keys();
+  J i=0; K z=ktn(KS,k.size());
+  for(const auto& a:k) kS(z)[i++]=cs(a.c_str());
+  return z;
+ KCATCH("names");
 }
 
 static void dups() {
@@ -315,19 +367,6 @@ KAPI fw(K x) {
  KCATCH("callback");
 }
 */
-
-KAPI parms(K x) {
- KTRY
-  auto *g=xtag(x);
-  TORCH_CHECK(g, "not implemented for ",kname(x));
-  switch(g->a) {
-   case Class::module: return kdict(((Kmodule*)g)->m->named_parameters());
-   case Class::model:  return kdict(((Kmodel*) g)->m->named_parameters());
-   default:
-     AT_ERROR("nyi");
-  }
- KCATCH("parms/buffers");
-}
 
 KAPI optdefaults(K x) {
 using Adagrad        = torch::optim::Adagrad;
