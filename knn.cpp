@@ -415,7 +415,7 @@ K mforward(Cast c,Module& m,K a) {
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
 // mbool - check positional args or name-value pairs for boolean, else error w'module & option name
-// mode  - check positional args of name-value pairs for symbol,  else error w'module & option name
+// code  - check positional args of name-value pairs for symbol,  else error w'module & option name
 // int64 - check positional args or name-value pairs for long int, else error w'module & option
 // int64n - int64 but returns optional, i.e. nullopt if k value is null
 // mdouble - check for double(or long) from positional or name-value pair arg

@@ -205,10 +205,10 @@ enum class Setting:char {
  lower,        lr,        lrdecay,    margin,    max,          maxnorm,
  min,          mode,      momentum,   nesterov,  norm,         out,    
  outpad,       outsize,   p,          pad,       padindex,     padmode,
- ratio,        reduce,    rescale,    rows,      scale,        shape,  
- size,         slope,     sparse,     start,     stride,       swap,   
- threshold,    track,     train,      transpose, type,         upper,  
- value,        vdim,      weight,     zeroinf
+ ratio,        reduce,    rescale,    rows,      scale,        search,
+ shape,        size,      slope,      sparse,    start,        stride,
+ swap,         threshold, track,      train,     transpose,    type,
+ upper,        value,     vdim,       weight,    zeroinf
 };
 
 enum class State:char {
@@ -271,8 +271,6 @@ struct TORCH_API Kopt : public Ktag {
  Optptr o;       // shared ptr with optimizer
  Moduleptr m;    // single module or container holding all modules/tensors managed by optimizer
  Kopt(Cast x,const Optptr& y,const Moduleptr& m) : o(std::move(y)),m(std::move(m)) {a=Class::optimizer; c=x;}
- bool is_empty() const noexcept {return o == nullptr;}
- Optimizer* get() {TORCH_CHECK(!is_empty(), "undefined optimizer"); return o.get();}
 };
 
 struct TORCH_API Kmodel : public Ktag {
@@ -945,7 +943,7 @@ typedef struct {
   std::make_tuple(cs("sgd"),     Cast::sgd,     "torch.optim.SGD")
  }};
 
- std::array<std::tuple<S,Setting>,18> oset = {{         //optimizer setting: map symbol -> enum
+ std::array<std::tuple<S,Setting>,19> oset = {{         //optimizer setting: map symbol -> enum
   std::make_tuple(cs("alpha"),      Setting::alpha),
   std::make_tuple(cs("amsgrad"),    Setting::amsgrad),
   std::make_tuple(cs("beta1"),      Setting::beta1),
@@ -963,7 +961,8 @@ typedef struct {
   std::make_tuple(cs("lrdecay"),    Setting::lrdecay),
   std::make_tuple(cs("lr"),         Setting::lr),
   std::make_tuple(cs("momentum"),   Setting::momentum),
-  std::make_tuple(cs("nesterov"),   Setting::nesterov)
+  std::make_tuple(cs("nesterov"),   Setting::nesterov),
+  std::make_tuple(cs("search"),     Setting::search)
  }};
 
  std::array<std::tuple<S,Attr>,22> attr = {{            //attributes: map symbol -> enum

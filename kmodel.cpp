@@ -99,10 +99,7 @@ Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {return lossfwd(m->lc,*m
 // -------------------------------------------------------------------------------------------
 Tensor trainbatch(Kmodel *m,TensorVector& v,int64_t w,int64_t n=0);
 Tensor trainbatch(Kmodel *m,TensorVector& v,int64_t w,int64_t n) {
- Optimizer *o=nullptr; // PATCH: LossClosureOptimizer *c=nullptr;
- // PATCH: if(m->oc == Cast::lbfgs) c=(LossClosureOptimizer*)m->o.get();
- // else                     o=(Optimizer*)m->o.get();
- o=(Optimizer*)m->o.get();
+ auto *o=m->o.get();
 
  if(!n) n=maxsize(v);
  if(w>n) w=n;                          // reduce batch size if exceeds total size
@@ -119,11 +116,10 @@ Tensor trainbatch(Kmodel *m,TensorVector& v,int64_t w,int64_t n) {
 
  for(int64_t i=0,j=0; i<n; i+=w,++j) {
   subset(v,0,i,w,n);                   // narrow tensors to current batch
-  if(o)
-   p[j]=loss().item<float>(), o->step(); // single loss evaluation
+  if(m->oc == Cast::lbfgs)
+   p[j]=o->step(loss).item<float>();     // pass closure, e.g. LBFGS
   else
-   TORCH_CHECK(false,"no closure");
-   // PATCH: p[j]=c->step(loss).item<float>();     // pass closure, e.g. LBFGS
+   p[j]=loss().item<float>(), o->step(); // single loss evaluation
  }
  subset(v,0,0,n,n);                    // reset tensors to full length
  return r;                             // return losses

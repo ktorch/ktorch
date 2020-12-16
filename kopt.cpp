@@ -69,6 +69,20 @@ static size_t osize(const Optimizer& o) {
 static size_t osize(const Optptr& o) {return osize(*o);}
 
 // --------------------------------------------------------------------------------------
+// code  - check args for symbol, else error w'optimizer & setting name
+// --------------------------------------------------------------------------------------
+static S code(K x,J i,Cast c,Setting s) {
+ S m;
+ TORCH_CHECK(xsym(x,i,m), omap(c)," ",oset(s),": expected symbol, given ",kname(x,i));
+ return m;
+}
+
+static S code(const Pairs& p,Cast c) {
+ TORCH_CHECK(p.t==-KS, omap(c)," ",p.k,": expected symbol, given ",kname(p.t));
+ return p.s;
+}
+
+// --------------------------------------------------------------------------------------
 // getoptions - set defaults if undefined, return reference to optimizer-specific options
 // --------------------------------------------------------------------------------------
 static SGDOptions& getoptions(ParamGroup& g) {
@@ -246,14 +260,15 @@ template<typename S> static K adamget(const S& s) { //template for adam/adamw
 // lbfgs - (lr;max iter;max eval;tolerance grad;tolerance change;history size)
 // ---------------------------------------------------------------------------------------
 static void lbfgs(K x,J i,ParamGroup& g) {
- auto& o=getoptions<LBFGSOptions>(g); Pairs p; J j,n=xargc(x,i,p); double f;
+ auto& o=getoptions<LBFGSOptions>(g); Pairs p; J j,n=xargc(x,i,p); double f; S s;
  if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.lr(f);}
  if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_iter(j);}
  if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.max_eval(j);}
  if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_grad(f);}
  if(n && xnum(x,i,f))  {i++; n--; if(f==f)  o.tolerance_change(f);}
  if(n && xlong(x,i,j)) {i++; n--; if(j!=nj) o.history_size(j);}
- if(n) AT_ERROR("opt: unrecognized option(s) for LBFGS optimizer");
+ if(n) {s=code(x,i,Cast::lbfgs,Setting::search); n--; i++; if(!nullsym(s)) o.line_search_fn(s);}
+ if(n) AT_ERROR("opt: up to 7 positional args(s) for LBFGS optimizer, ",7+n," supplied");
  while(xpair(p))
   switch(oset(p.k)) {
    case Setting::lr:        f=pdouble(p); if(f==f)  o.lr(f); break;
@@ -262,6 +277,7 @@ static void lbfgs(K x,J i,ParamGroup& g) {
    case Setting::gradtol:   f=pdouble(p); if(f==f)  o.tolerance_grad(f); break;
    case Setting::changetol: f=pdouble(p); if(f==f)  o.tolerance_change(f); break;
    case Setting::history:   j=plong(p);   if(j!=nj) o.history_size(j); break;
+   case Setting::search:    s=code(p,Cast::lbfgs); if(!nullsym(s)) o.line_search_fn(s); break;
    default: AT_ERROR("unrecognized option: ",p.k," for LBFGS optimization"); break;
   }
  if(!o.max_eval()) o.max_eval((o.max_iter()*5)/4);
@@ -291,6 +307,7 @@ static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default optio
  if(a || d.tolerance_grad()   != o.tolerance_grad())   OPTSET(x, gradtol,   kf(o.tolerance_grad()));
  if(a || d.tolerance_change() != o.tolerance_change()) OPTSET(x, changetol, kf(o.tolerance_change()));
  if(a || d.history_size()     != o.history_size())     OPTSET(x, history,   kj(o.history_size()));
+ if(o.line_search_fn().has_value())                    OPTSET(x, search,    ks(cs(o.line_search_fn().value().c_str())));
  return x;
 }
 
@@ -984,7 +1001,7 @@ KAPI opt(K x) {
 
 void optstep(Cast c,Optptr& o) {
  TORCH_CHECK(c != Cast::lbfgs, "LBFGS optimizer requires model, loss & inputs");
- ((Optimizer*)o.get())->step();
+ o->step();
 }
 
 void optstep(Kopt   *o) {optstep(o->c, o->o);}
@@ -1076,7 +1093,7 @@ K opthelp(Cast c) {
   case Cast::adagrad: return adagrad(true,AdagradOptions());
   case Cast::adam:    return adam(true,AdamOptions());
   case Cast::adamw:   return adam(true,AdamWOptions());
-  case Cast::lbfgs:   return lbfgs(true,LBFGSOptions());
+  case Cast::lbfgs:   return lbfgs(true,LBFGSOptions().line_search_fn("strong_wolf"));
   case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
   case Cast::sgd:     return sgd(true,SGDOptions(LR));
 
