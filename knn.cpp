@@ -171,10 +171,21 @@ KAPI seq(K x) {
 }
 
 // --------------------------------------------------------------------------------------
+// rnn - given module cast, return true if RNN/GRU/LSTM (forward calc returns tuple)
 // container - given module/module cast, return true if container module
 // parmdict - parameter dictionary handles "options" of dictionary of tensors or k arrays
 // newcontainer - create new container (handle options/parms for parameter dict only)
 // --------------------------------------------------------------------------------------
+static bool rnn(Cast c) {
+ switch(c) {
+  case Cast::rnn:
+  case Cast::gru:
+  case Cast::lstm:
+   return true;
+  default: return false;
+ }
+}
+
 static bool container(Cast c) {
  switch(c) {
   case Cast::sequential:
@@ -297,6 +308,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::glu:             return m.as<nn::GLU>()->forward(x);
   case Cast::groupnorm:       return m.as<nn::GroupNorm>()->forward(x);
 //case Cast::gru:             return m.as<nn::GRU>()->forward(x);
+//case Cast::gruout:
 // no viable conversion from returned value of type 'std::tuple<Tensor, Tensor>' to function return type 'Tensor'
   case Cast::hardshrink:      return m.as<nn::Hardshrink>()->forward(x);
   case Cast::hardtanh:        return m.as<nn::Hardtanh>()->forward(x);
@@ -314,6 +326,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::lppool1d:        return m.as<nn::LPPool1d>()->forward(x);
   case Cast::lppool2d:        return m.as<nn::LPPool2d>()->forward(x);
 //case Cast::lstm:            return m.as<nn::LSTM>()->forward(x);
+//case Cast::lstmout:
 // no viable conversion from returned value of type 'std::tuple<Tensor, Tensor>' to function return type 'Tensor'
   case Cast::maxpool1d:       return m.as<nn::MaxPool1d>()->forward(x);
   case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
@@ -385,6 +398,40 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
  }
 }
 
+// ----------------------------------------------------------------------------------------
+// tupvector - copy tuple(s) returned from recurrent modules to vector of tensors
+// rforward - forward calculation of recurrent module, return vector w'output, hidden state
+// ----------------------------------------------------------------------------------------
+static void tupvector(TensorVector& v,const std::tuple<Tensor,Tensor>& x) {
+ v.push_back(std::get<0>(x));
+ v.push_back(std::get<1>(x));
+}
+
+static void tupvector(TensorVector& v,const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
+ v.push_back(std::get<0>(x));
+ tupvector(v,std::get<1>(x));
+}
+
+TensorVector rforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+ TensorVector v;
+ if(z.defined()) {
+  TORCH_CHECK(c==Cast::lstm, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
+  TORCH_CHECK(y.defined(), "hidden state incomplete for recurrent ",msym(c)," module's forward calculation");
+ }
+ switch(c) {
+  case Cast::rnn:  tupvector(v,m.as<nn::RNN>()->forward(x,y)); break;
+  case Cast::gru:  tupvector(v,m.as<nn::GRU>()->forward(x,y)); break;
+  case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,std::make_tuple(y,z))
+                                            : m.as<nn::LSTM>()->forward(x));
+   break;
+  default: AT_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
+ }
+ return v;
+}
+
+// ----------------------------------------------------------------------------------------
+// mforward 
+// ----------------------------------------------------------------------------------------
 K mforward(Cast c,Module& m,K a) {
  Tensor x,y,z; TensorVector *v;
  if((v=xvec(a,1))) {
@@ -2310,6 +2357,33 @@ KAPI kflatten(K x) {
  KCATCH("flatten");
 }
 
+// ----------------------------------------------------------
+// select - process dim & index options for Select module
+// ----------------------------------------------------------
+static SelectOptions select(K x,J i,Cast c) {
+ SelectOptions o(0,0); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.dim(int64(x,i+j,c,Setting::dim));  break;
+    case 1: o.index(int64(x,i+j,c,Setting::index));  break;
+    default: AT_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
+   }
+  while(xpair(p))
+   switch(mset(p.k,c)) {
+    case Setting::dim:   o.dim(int64(p,c)); break;
+    case Setting::index: o.index(int64(p,c)); break;
+    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+   }
+  return o;
+}
+
+static K select(bool a,const SelectOptions& o) {
+ K x=KDICT;
+ OPTION(x, dim,   kj(o.dim()));
+ OPTION(x, index, kj(o.index()));
+ return x;
+}
+
 // ----------------------------------------------------------------------------------------------------
 // squeeze/unsqueeze - squeeze works with/without a dimension specified, unsqueeze requires it
 // ----------------------------------------------------------------------------------------------------
@@ -2767,6 +2841,10 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
   case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
 
+  case Cast::rnnout:       noarg(c,x,i); return RNNOutput().ptr();
+  case Cast::gruout:       noarg(c,x,i); return GRUOutput().ptr();
+  case Cast::lstmout:      noarg(c,x,i); return LSTMOutput().ptr();
+
   case Cast::identity:     noarg(c,x,i); return nn::Identity().ptr();
   case Cast::logsigmoid:   noarg(c,x,i); return nn::LogSigmoid().ptr();
   case Cast::sigmoid:      noarg(c,x,i); return nn::Sigmoid().ptr();
@@ -2786,6 +2864,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::logsoftmax:   return nn::LogSoftmax(dim(x,i,c)).ptr();
   case Cast::flatten:      return nn::Flatten(flatten(x,i,c)).ptr();
 
+  case Cast::select:       return Select(select(x,i,c)).ptr();
   case Cast::squeeze:      return Squeeze(squeeze(x,i,c)).ptr();
   case Cast::unsqueeze:    return Unsqueeze(squeeze(x,i,c)).ptr();
   case Cast::expand:       return Expand(getsize(x,i,c)).ptr();
@@ -2868,6 +2947,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::glu:             return ANY(nn::GLU, m);
   case Cast::groupnorm:       return ANY(nn::GroupNorm, m);
   case Cast::gru:             return ANY(nn::GRU, m);
+  case Cast::gruout:          return ANY(GRUOutput, m);
   case Cast::hardshrink:      return ANY(nn::Hardshrink, m);
   case Cast::hardtanh:        return ANY(nn::Hardtanh, m);
   case Cast::identity:        return ANY(nn::Identity, m);
@@ -2884,6 +2964,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::lppool1d:        return ANY(nn::LPPool1d, m);
   case Cast::lppool2d:        return ANY(nn::LPPool2d, m);
   case Cast::lstm:            return ANY(nn::LSTM, m);
+  case Cast::lstmout:         return ANY(LSTMOutput, m);
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
   case Cast::maxpool3d:       return ANY(nn::MaxPool3d, m);
@@ -2906,7 +2987,9 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::replicate3d:     return ANY(nn::ReplicationPad3d, m);
   case Cast::reshape:         return ANY(Reshape, m);
   case Cast::rnn:             return ANY(nn::RNN, m);
+  case Cast::rnnout:          return ANY(RNNOutput, m);
   case Cast::rrelu:           return ANY(nn::RReLU, m);
+  case Cast::select:          return ANY(Select, m);
   case Cast::selu:            return ANY(nn::SELU, m);
   case Cast::seqjoin:         return ANY(SeqJoin, m);
   case Cast::seqnest:         return ANY(SeqNest, m);
@@ -2948,6 +3031,9 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::moduledict:
   case Cast::modulelist:
   case Cast::base:
+  case Cast::gruout:          //take output tensor (from tuple of rnn output)
+  case Cast::lstmout:
+  case Cast::rnnout:
   case Cast::gelu:            //pointwise activation fns w'out options
   case Cast::identity:
   case Cast::logsigmoid:
@@ -3048,6 +3134,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::logsoftmax:       return dim(a,c,m.as<nn::LogSoftmax>()->options.dim());
   case Cast::flatten:          return flatten(a,m.as<nn::Flatten>()->options);
 
+  case Cast::select:           return select(a,m.as<Select>()->options);
   case Cast::squeeze:          return squeeze(a,m.as<Squeeze>()->options);
   case Cast::unsqueeze:        return squeeze(a,m.as<Unsqueeze>()->options);
   case Cast::expand:           return getsize(a,m.as<Expand>()->options);
@@ -3438,6 +3525,7 @@ K modulehelp(Cast c) {
   case Cast::glu:             return dim(true,c,nn::GLUOptions().dim());
   case Cast::groupnorm:       return groupnorm(true,nn::GroupNormOptions(3,6));
   case Cast::gru:             return rnn(true,nn::GRUOptions(10,20));
+  case Cast::gruout:          return KDICT;
   case Cast::hardshrink:      return lambda(true,c,torch::nn::HardshrinkOptions().lambda());
   case Cast::hardtanh:        return hardtanh(true,nn::HardtanhOptions());
   case Cast::identity:        return KDICT;
@@ -3454,6 +3542,7 @@ K modulehelp(Cast c) {
   case Cast::lppool1d:        return lppool(true,nn::LPPool1dOptions(2,3));
   case Cast::lppool2d:        return lppool(true,nn::LPPool2dOptions(1.2,{2,3}));
   case Cast::lstm:            return rnn(true,nn::LSTMOptions(10,20));
+  case Cast::lstmout:         return KDICT;
   case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
   case Cast::maxpool3d:       return maxpool(true,nn::MaxPool3dOptions({3,2,2}));
@@ -3477,7 +3566,9 @@ K modulehelp(Cast c) {
   case Cast::replicate3d:     return npad(nn::ReplicationPad3dOptions({3,3,6,6,1,1}));
   case Cast::reshape:         return getsize(true,SizeOptions({-1,1,28,28}));
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
+  case Cast::rnnout:          return KDICT;
   case Cast::rrelu:           return rrelu(true,nn::RReLUOptions());
+  case Cast::select:          return select(true,SelectOptions(1,-1));
   case Cast::selu:            return inplace(true,nn::SELUOptions().inplace());
   case Cast::seqjoin:
   case Cast::seqnest:
@@ -3582,6 +3673,10 @@ BaseModule - push_back ? / forward ?
 GRU,RNN
  std::tuple<Tensor, Tensor> forward(const Tensor& input, Tensor hx = {});
 LSTM
- std::tuple<Tensor, std::tuple<Tensor, Tensor>> forward(
-    const Tensor& input, torch::optional<std::tuple<Tensor, Tensor>> hx_opt = {});
+ std::tuple<Tensor, std::tuple<Tensor, Tensor>> forward(const Tensor& input, torch::optional<std::tuple<Tensor, Tensor>> hx_opt = {});
+
+RNNCell, GRUCell
+  Tensor forward(const Tensor& input, Tensor hx = {});
+LSTMCell
+  std::tuple<Tensor, Tensor> forward(const Tensor& input, torch::optional<std::tuple<Tensor, Tensor>> hx_opt = {});
 */

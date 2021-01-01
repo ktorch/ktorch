@@ -2,6 +2,27 @@
 
 namespace nn=torch::nn;
 
+KAPI trainx(K x) {
+ KTRY
+  TORCH_CHECK(!x->t, "train: not implemented for ",kname(x));
+  TORCH_CHECK(x->n>2, "train: at least 3 args expected, given ",x->n);
+  Kmodel *m=xmodel(x,0);
+  TORCH_CHECK(m, "train: 1st arg of model expected, given ",kname(x,0));
+  if(auto *v=xvec(x,1)) {
+   // (m;v;w)
+   // (m;v;ix;iy;w)
+  } else if(auto *d=xtensordict(x,1)) {
+   // (m;d;kx;ky;w)
+   // (m;d;w)
+  } else if(xten(x,1)) {
+   // (m;x;y;w)
+  } else {
+   AT_ERROR("train: unrecognized 2nd arg, expecting tensor, vector or dictionary of tensor, given ",kname(x,1));
+  }
+  return (K)0;
+ KCATCH("train");
+}
+
 KAPI names1(K x) {
  KTRY
   Kmodule *k=xmodule(x);

@@ -27,7 +27,7 @@ struct TORCH_API SqueezeOptions {
  TORCH_ARG(bool, inplace) = false;
 };
 
-class SqueezeImpl : public torch::nn::Cloneable<SqueezeImpl> {
+class TORCH_API SqueezeImpl : public torch::nn::Cloneable<SqueezeImpl> {
  public:
   SqueezeImpl(int64_t d,bool b=false) : SqueezeImpl(SqueezeOptions(d,b)) {}
   SqueezeImpl() : SqueezeImpl(SqueezeOptions()) {}
@@ -57,7 +57,7 @@ class SqueezeImpl : public torch::nn::Cloneable<SqueezeImpl> {
 };
 TORCH_MODULE(Squeeze);
 
-class UnsqueezeImpl : public torch::nn::Cloneable<UnsqueezeImpl> {
+class TORCH_API UnsqueezeImpl : public torch::nn::Cloneable<UnsqueezeImpl> {
  public:
   UnsqueezeImpl(int64_t d,bool b=false) : UnsqueezeImpl(SqueezeOptions(d,b)) {}
   explicit UnsqueezeImpl(const SqueezeOptions& o) : options(o) {reset();}
@@ -87,7 +87,7 @@ struct TORCH_API SizeOptions {
  TORCH_ARG(std::vector<int64_t>, size);
 };
 
-class ExpandImpl : public torch::nn::Cloneable<ExpandImpl> {
+class TORCH_API ExpandImpl : public torch::nn::Cloneable<ExpandImpl> {
  public:
  ExpandImpl(std::vector<int64_t> s) : ExpandImpl(SizeOptions(s)) {}
  explicit ExpandImpl(const SizeOptions& o) : options(o) {reset();}
@@ -98,7 +98,7 @@ class ExpandImpl : public torch::nn::Cloneable<ExpandImpl> {
 };
 TORCH_MODULE(Expand);
 
-class ReshapeImpl : public torch::nn::Cloneable<ReshapeImpl> {
+class TORCH_API ReshapeImpl : public torch::nn::Cloneable<ReshapeImpl> {
  public:
  ReshapeImpl(std::vector<int64_t> s) : ReshapeImpl(SizeOptions(s)) {}
  explicit ReshapeImpl(const SizeOptions& o) : options(o) {reset();}
@@ -117,7 +117,7 @@ struct TORCH_API CatOptions {
  TORCH_ARG(int64_t, dim);
 };
 
-class CatImpl : public torch::nn::Cloneable<CatImpl> {
+class TORCH_API CatImpl : public torch::nn::Cloneable<CatImpl> {
  public:
  CatImpl(const CatOptions& o) : options(o) {}
  void reset() override {}
@@ -130,9 +130,30 @@ class CatImpl : public torch::nn::Cloneable<CatImpl> {
 TORCH_MODULE(Cat);
 
 // ----------------------------------------------------------------------------------------------------
+// select - add convenience module for select(dim,index)
+// ----------------------------------------------------------------------------------------------------
+struct TORCH_API SelectOptions {
+ SelectOptions(int64_t d,int64_t i) : dim_(d),index_(i) {}
+ TORCH_ARG(int64_t, dim);
+ TORCH_ARG(int64_t, index);
+};
+
+class TORCH_API SelectImpl : public torch::nn::Cloneable<SelectImpl> {
+ public:
+ SelectImpl(const SelectOptions& o) : options(o) {}
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Select(dim=" << options.dim() << ",index=" << options.index() << ")";}
+ torch::Tensor forward(const torch::Tensor& x) {
+  return x.select(options.dim(),options.index());
+ }
+ SelectOptions options;
+};
+TORCH_MODULE(Select);
+
+// ----------------------------------------------------------------------------------------------------
 // mul - add convenience module for multiply
 // ----------------------------------------------------------------------------------------------------
-class MulImpl : public torch::nn::Cloneable<MulImpl> {
+class TORCH_API MulImpl : public torch::nn::Cloneable<MulImpl> {
  public:
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "Mul()";}
@@ -140,12 +161,57 @@ class MulImpl : public torch::nn::Cloneable<MulImpl> {
 };
 TORCH_MODULE(Mul);
 
+// --------------------------------------------------------------------------------------------
+// FirstTensor - convenience module to extract 1st tensor from tuples returned from rnn modules
+// --------------------------------------------------------------------------------------------
+class TORCH_API FirstTensorImpl : public torch::nn::Cloneable<FirstTensorImpl> {
+ using Tensor=torch::Tensor;
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "FirstTensor()";}
+ Tensor forward(const c10::variant<std::tuple<Tensor,Tensor>, std::tuple<Tensor,std::tuple<Tensor,Tensor>>>& x) {
+  if(auto *a=c10::get_if<std::tuple<Tensor,Tensor>>(&x)) {
+   return std::get<0>(*a);
+  } else if(auto *a=c10::get_if<std::tuple<Tensor,std::tuple<Tensor,Tensor>>>(&x)) {
+   return std::get<0>(*a);
+  } else {
+   AT_ERROR("unable to extract tensor from first value given");
+  }
+ }
+};
+TORCH_MODULE(FirstTensor);
+
+class TORCH_API GRUOutputImpl : public torch::nn::Cloneable<GRUOutputImpl> {
+ using Tensor=torch::Tensor;
+ public:
+ void reset() override {}
+ Tensor forward(const std::tuple<Tensor,Tensor>& x) {return std::get<0>(x);}
+};
+TORCH_MODULE(GRUOutput);
+
+class TORCH_API LSTMOutputImpl : public torch::nn::Cloneable<LSTMOutputImpl> {
+ using Tensor=torch::Tensor;
+ public:
+ void reset() override {}
+ Tensor forward(const std::tuple<Tensor,std::tuple<Tensor,Tensor>>& x) {return std::get<0>(x);}
+};
+TORCH_MODULE(LSTMOutput);
+
+class TORCH_API RNNOutputImpl : public torch::nn::Cloneable<RNNOutputImpl> {
+ using Tensor=torch::Tensor;
+ public:
+ void reset() override {}
+ Tensor forward(const std::tuple<Tensor,Tensor>& x) {return std::get<0>(x);}
+};
+TORCH_MODULE(RNNOutput);
+
 // ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 
 //         - no templatized forward result means can be stored as an AnyModule
 //         - forward method accepts up to three tensors x,y,z w'y & z optional
 // ---------------------------------------------------------------------------------
-struct TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
+class TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
+  public:
   using SequentialImpl::SequentialImpl;
 
   torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
@@ -221,7 +287,7 @@ TORCH_MODULE(BaseModule);
 namespace torch {
 namespace nn {
 
-class ModuleDictImpl : public Cloneable<ModuleDictImpl> {
+class TORCH_API ModuleDictImpl : public Cloneable<ModuleDictImpl> {
  public:
   using Iterator = torch::OrderedDict<std::string, std::shared_ptr<Module>>::Iterator;
   using ConstIterator = torch::OrderedDict<std::string, std::shared_ptr<Module>>::ConstIterator;

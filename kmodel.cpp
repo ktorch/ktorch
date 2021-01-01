@@ -295,6 +295,13 @@ void modelfn(K x) {
  forward
  backward/loss
 
+ train(m; v; ix; iy; window; epochs; shuffle)   / train(m; v; 0; 1; 30; 1; 1b)
+ train(m; d; kx; ky; window; epochs; shuffle)   / train(m; d;`x;`y; 30; 1; 1b)
+
+ train(m; d; (kx;ky);   train(m;d;(`x1`x2;`y);30)
+ train(m;(d;`x); (d;`y); 
+ train(m; (x1;x2); y; ..)
+
  forward(m; x)
  forward(m; z; y)
  forward(m; x; y; z)
@@ -305,5 +312,20 @@ void modelfn(K x) {
  forward(m; (v;0 1); t)
 
  backward(m; 
+
+-------------------------------------------------------------------
+
+ auto step=[&](Optimizer& o, Sequential m, Tensor x, Tensor y) {
+     auto f=[&]() {
+       o.zero_grad();
+       auto x=m->forward(x);
+       auto l=torch::binary_cross_entropy(x,y);
+       l.backward();
+       return l;
+     };
+     return o.step(f);
+   };
+ Tensor loss=step(o,m,x,y);
+
 */
 

@@ -157,15 +157,15 @@ enum class Cast:short {
  decoder,        decoderlayer,    drop,            drop2d,          drop3d,
  elu,            embed,           embedbag,        encoder,         encoderlayer,
  expand,         fadrop,          flatten,         fmaxpool2d,      fmaxpool3d,
- fold,           gelu,            glu,             groupnorm,       gru,
+ fold,           gelu,            glu,             groupnorm,       gru,  gruout,
  hardshrink,     hardtanh,        identity,        instancenorm1d,  instancenorm2d,
  instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
- lstm,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
+ lstm, lstmout,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
  normalize,      pad,             pad1d,           pad2d,           pad3d,
  prelu,          reflect1d,       reflect2d,       relu,            relu6,
- replicate1d,    replicate2d,     replicate3d,     reshape,         rnn,
- rrelu,          selu,            sigmoid,         softmax,         softmax2d,
+ replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout,
+ rrelu,          select,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
  tanh,           tanhshrink,      threshold,       transformer,     unfold,
  unsqueeze,      upsample,        zeropad2d,
@@ -192,23 +192,23 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- addbias,      addzero,   affine,     align,     alpha,        amsgrad,
- batchfirst,   beta,      beta1,      beta2,     bi,           bias,   
- blank,        ceiling,   centered,   changetol, channels,     cols,   
- countpad,     dampening, decay,      decoder,   decoderlayer, dilate, 
- dim,          divisor,   dlayers,    dropout,   elayers,      encoder,
- encoderlayer, end,       eps,        eval,      fn,           freeze, 
- full,         gradtol,   groups,     heads,     hidden,       history,
- ignore,       in,        in1,        in2,       indices,      init,   
- inplace,      iter,      k,          kdim,      keepdim,      kvbias, 
- kvzeros,      lambda,    lastoffset, layernorm, layers,       log,    
- lower,        lr,        lrdecay,    margin,    max,          maxnorm,
- min,          mode,      momentum,   nesterov,  norm,         out,    
- outpad,       outsize,   p,          pad,       padindex,     padmode,
- ratio,        reduce,    rescale,    rows,      scale,        search,
- shape,        size,      slope,      sparse,    start,        stride,
- swap,         threshold, track,      train,     transpose,    type,
- upper,        value,     vdim,       weight,    zeroinf
+ addbias,      addzero,   affine,     align,      alpha,        amsgrad,
+ batchfirst,   beta,      beta1,      beta2,      bi,           bias,   
+ blank,        ceiling,   centered,   changetol,  channels,     cols,   
+ countpad,     dampening, decay,      decoder,    decoderlayer, dilate, 
+ dim,          divisor,   dlayers,    dropout,    elayers,      encoder,
+ encoderlayer, end,       eps,        eval,       fn,           freeze, 
+ full,         gradtol,   groups,     heads,      hidden,       history,
+ ignore,       in,        in1,        in2,        index,        indices,
+ init,         inplace,   iter,       k,          kdim,         keepdim,
+ kvbias,       kvzeros,   lambda,     lastoffset, layernorm,    layers,
+ log,          lower,     lr,         lrdecay,    margin,       max,
+ maxnorm,      min,       mode,       momentum,   nesterov,     norm,
+ out,          outpad,    outsize,    p,          pad,          padindex,
+ padmode,      ratio,     reduce,     rescale,    rows,         scale,
+ search,       shape,     size,       slope,      sparse,       start,
+ stride,       swap,      threshold,  track,      train,        transpose,
+ type,         upper,     value,      vdim,       weight,       zeroinf
 };
 
 enum class State:char {
@@ -693,7 +693,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,106> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,110> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -739,6 +739,7 @@ typedef struct {
   std::make_tuple(cs("glu"),              Cast::glu,             typeid(torch::nn::GLUImpl).hash_code(),                 "torch.nn.functional.glu"),
   std::make_tuple(cs("groupnorm"),        Cast::groupnorm,       typeid(torch::nn::GroupNormImpl).hash_code(),           "torch.nn.GroupNorm"),
   std::make_tuple(cs("gru"),              Cast::gru,             typeid(torch::nn::GRUImpl).hash_code(),                 "torch.nn.GRU"),
+  std::make_tuple(cs("gruout"),           Cast::gruout,          typeid(GRUOutputImpl).hash_code(),                      "torch.nn.GRU"),
   std::make_tuple(cs("hardshrink"),       Cast::hardshrink,      typeid(torch::nn::HardshrinkImpl).hash_code(),          "torch.nn.Hardshrink"),
   std::make_tuple(cs("hardtanh"),         Cast::hardtanh,        typeid(torch::nn::HardtanhImpl).hash_code(),            "torch.nn.Hardtanh"),
   std::make_tuple(cs("identity"),         Cast::identity,        typeid(torch::nn::IdentityImpl).hash_code(),            "torch.nn.Identity"),
@@ -755,6 +756,7 @@ typedef struct {
   std::make_tuple(cs("lppool1d"),         Cast::lppool1d,        typeid(torch::nn::LPPool1dImpl).hash_code(),            "torch.nn.LPPool1d"),
   std::make_tuple(cs("lppool2d"),         Cast::lppool2d,        typeid(torch::nn::LPPool2dImpl).hash_code(),            "torch.nn.LPPool2d"),
   std::make_tuple(cs("lstm"),             Cast::lstm,            typeid(torch::nn::LSTMImpl).hash_code(),                "torch.nn.LSTM"),
+  std::make_tuple(cs("lstmout"),          Cast::lstmout,         typeid(LSTMOutputImpl).hash_code(),                     "torch.nn.LSTM"),
   std::make_tuple(cs("maxpool1d"),        Cast::maxpool1d,       typeid(torch::nn::MaxPool1dImpl).hash_code(),           "torch.nn.MaxPool1d"),
   std::make_tuple(cs("maxpool2d"),        Cast::maxpool2d,       typeid(torch::nn::MaxPool2dImpl).hash_code(),           "torch.nn.MaxPool2d"),
   std::make_tuple(cs("maxpool3d"),        Cast::maxpool3d,       typeid(torch::nn::MaxPool3dImpl).hash_code(),           "torch.nn.MaxPool3d"),
@@ -778,7 +780,9 @@ typedef struct {
   std::make_tuple(cs("replicate3d"),      Cast::replicate3d,     typeid(torch::nn::ReplicationPad3dImpl).hash_code(),    "torch.nn.ReplicationPad3d"),
   std::make_tuple(cs("reshape"),          Cast::reshape,         typeid(ReshapeImpl).hash_code(),                        "torch.reshape"),
   std::make_tuple(cs("rnn"),              Cast::rnn,             typeid(torch::nn::RNNImpl).hash_code(),                 "torch.nn.RNN"),
+  std::make_tuple(cs("rnnout"),           Cast::rnnout,          typeid(RNNOutputImpl).hash_code(),                      "torch.nn.RNN"),
   std::make_tuple(cs("rrelu"),            Cast::rrelu,           typeid(torch::nn::RReLUImpl).hash_code(),               "torch.nn.RReLU"),
+  std::make_tuple(cs("select"),           Cast::select,          typeid(SelectImpl).hash_code(),                         "torch.Tensor.select"),
   std::make_tuple(cs("selu"),             Cast::selu,            typeid(torch::nn::SELUImpl).hash_code(),                "torch.nn.SELU"),
   std::make_tuple(cs("seqjoin"),          Cast::seqjoin,         typeid(SeqJoinImpl).hash_code(),                        ""),
   std::make_tuple(cs("seqnest"),          Cast::seqnest,         typeid(SeqNestImpl).hash_code(),                        ""),
@@ -802,7 +806,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d")
  }};
 
- std::array<std::tuple<S,Setting>,78> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,79> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -836,6 +840,7 @@ typedef struct {
   std::make_tuple(cs("in"),           Setting::in),
   std::make_tuple(cs("in1"),          Setting::in1),
   std::make_tuple(cs("in2"),          Setting::in2),
+  std::make_tuple(cs("index"),        Setting::index),
   std::make_tuple(cs("indices"),      Setting::indices),
   std::make_tuple(cs("init"),         Setting::init),
   std::make_tuple(cs("inplace"),      Setting::inplace),
