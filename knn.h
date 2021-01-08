@@ -270,6 +270,32 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
 TORCH_MODULE(SeqJoin);
 
 // ----------------------------------------------------------------------
+// SeqRNN
+// ----------------------------------------------------------------------
+/*
+  if(LSTM) {
+   auto a=rnn->forward(x,h);
+   x=std::get<0>(a);
+   y=std::get<0>(std::get<1>(a));
+   z=std::get<1>(std::get<1>(a));
+  } else {
+   auto a=rnn->forward(x,h);
+   x=std::get<0>(a);
+   y=std::get<1>(a);
+  }
+  x=seq(x);
+  if(hidden) {
+   if(detach) {y.detach_(); if(z.defined()) z.detach_();}
+   v.push_back(x);
+   v.push_back(y);
+   v.push_back(z);
+   return v
+  } else {
+   return {x};
+  }
+*/
+
+// ----------------------------------------------------------------------
 // generic module to accept tensor parameters, buffers and child modules
 // ----------------------------------------------------------------------
 class TORCH_API BaseModuleImpl : public torch::nn::Cloneable<BaseModuleImpl> {

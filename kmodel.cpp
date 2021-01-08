@@ -46,7 +46,7 @@ KAPI model(K x) {
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->m=q->m;                         //assign new module 
+    if(q) m->mc=q->c, m->r=q->r, m->m=q->m;  //assign new module
     if(l) m->lc=l->c, m->l=l->m;             //new loss function
     if(o) m->oc=o->c, m->o=o->o, m->om=o->m; //new optimizer
     modelfree(x,1);

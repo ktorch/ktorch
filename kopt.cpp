@@ -1050,6 +1050,7 @@ static void lrset(std::vector<ParamGroup>& v,Cast c,J n,double *lr) {
   switch(c) {
    case Cast::adagrad: static_cast<AdagradOptions&>(g.options()).lr(r); break;
    case Cast::adam:    static_cast<   AdamOptions&>(g.options()).lr(r); break;
+   case Cast::adamw:   static_cast<  AdamWOptions&>(g.options()).lr(r); break;
    case Cast::lbfgs:   static_cast<  LBFGSOptions&>(g.options()).lr(r); break;
    case Cast::rmsprop: static_cast<RMSpropOptions&>(g.options()).lr(r); break;
    case Cast::sgd:     static_cast<    SGDOptions&>(g.options()).lr(r); break;

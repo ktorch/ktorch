@@ -1,5 +1,4 @@
 #include "ktorch.h"
-
 namespace nn=torch::nn;
 
 KAPI trainx(K x) {

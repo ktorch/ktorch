@@ -27,6 +27,7 @@ std::string mlabel(const Module& x) {
 // argstart - return offset in k list to begin processing module args
 // anymodule - forward declare function to create a module from k args, offset & cast
 // mopt - forward declare function to return module settings as k dictionary
+// restype - forward declare function deriving result type from cast/container module
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 //static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
@@ -34,12 +35,13 @@ static J argstart(K x,S s) {return !x ? -1 : (xdict(x) ? 0 : (s ? 2 : 1));}
 static AnyModule anymodule(K x,J i,S s);
 static AnyModule anymodule(Cast c,const Moduleptr& m);
 static K mopt(bool,bool,Cast,const Module&);
+static Result restype(Cast c,const Moduleptr& m);
 
 // ------------------------------------------------------------------------------
 // kmodule - allocate object to store a module pointer (class defaults to module) 
 // to - given module & options, change device/data type
 // ------------------------------------------------------------------------------
-K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,m));}
+K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,restype(c,m),m));}
 
 void to(Module& m,const TensorOptions& o,bool a) {
  auto s=torch::typeMetaToScalarType(o.dtype());
@@ -212,8 +214,6 @@ static bool container(const Module& m) {
 }
 
 static Moduleptr parmdict(K x,J i) {
- std::cerr << "i: " << i << "\n";
- std::cerr << kstring(x) << "\n";
  if(!x || xnone(x,i))
   return nn::ParameterDict().ptr();
  else if(auto *d=xtensordict(x,i))
@@ -242,8 +242,46 @@ static Moduleptr newcontainer(Cast c, S s,        K x) {
 }
 
 // -------------------------------------------------------------------------------------------------
+// restype
+// -------------------------------------------------------------------------------------------------
+static Result restype(Cast c) {
+ switch(c) {
+  case Cast::rnn:
+  case Cast::gru:  return Result::tuple;
+  case Cast::lstm: return Result::nested;
+  default:         return Result::tensor;
+ }
+}
+
+static Result restype(const Moduleptr& m) {                 //for container w'user-defined children
+ const auto& v=m->children();                        //check if any children defined
+ if(v.empty()) {
+  return Result::undefined;
+ } else {
+  const auto& a=v.back();                            //use last child
+  auto c=mcast(*a);                                  //find type
+  return container(c) ?  restype(c,a) : restype(c);  //get result type of container's final child
+ }
+}
+
+static Result restype(Cast c,const Moduleptr& m) {
+ if(container(c)) {
+  switch(c) {
+   case Cast::sequential:
+   case Cast::seqnest:
+   case Cast::seqjoin:
+    return restype(m);
+   default: return Result::undefined;
+  }
+ } else {
+  return restype(c);
+ }
+}
+
+// -------------------------------------------------------------------------------------------------
 // mroot - given stack, pop back to root module, return as struct to k
 // mstack - given root container, populate stack of all intermediate container modules
+// mresult - if existing module, update result type and retun null, else return new module structure
 // -------------------------------------------------------------------------------------------------
 static K mroot(Cast c,Modules& q) {
  while(q.size()>1) q.pop();
@@ -260,6 +298,15 @@ static void mstack(size_t d,Moduleptr& m,Modules& q) {
 }
 
 static void mstack(Kmodule *m,Modules& q) {mstack(0,m->m,q);} // initialize stack
+
+static K mresult(Kmodule *m,Cast c,Modules& q) {
+ if(m) {
+  m->r = restype(c,m->m);
+  return (K)0;
+ } else {
+  return mroot(c,q);
+ }
+}
 
 // ------------------------------------------------------------------------------------
 // mforward - given layer, run forward calc on tensor x and optional y,z tensors
@@ -381,6 +428,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
   case Cast::mul:             return m.as<Mul>()->forward(x,y);
   case Cast::pairwise:        return m.as<nn::PairwiseDistance>()->forward(x,y);
   case Cast::seqjoin:         return m.as<SeqJoin>()->forward(x,y);
+  case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y);
   case Cast::similar:         return m.as<nn::CosineSimilarity>()->forward(x,y);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y);
   default: AT_ERROR("forward calculation with two tensor arguments not implemented for module: ",m.name());
@@ -394,6 +442,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
   case Cast::encoder:         return m.as<nn::TransformerEncoder>()->forward(x,y,z);
   case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
+  case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
   default: AT_ERROR("forward calculation with three tensor arguments not implemented for module: ",m.name());
  }
 }
@@ -3197,8 +3246,8 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 }
 
 // -----------------------------------------------------------------------------------------
-// addmodule - given parent & layer variants, add allowable combinations, else error
-// addparent - create container, add to any previous parent layer, push on stack
+// addmodule - given parent & child module, add allowable combinations, else error
+// addparent - create container, add to any previous parent, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
@@ -3349,7 +3398,7 @@ static K mtree(K x,J d=0,Kmodule *m=nullptr); // higher-level call, can add to e
 static K mtree(K x,J d,Kmodule *m) {
  Modules q; if(m) mstack(m,q);
  Cast c=mtree(x,d ? d : q.size(),q);
- return m ? (K)0 : mroot(c,q);
+ return mresult(m,c,q);
 }
 
 static Cast mdv(K x,J n,Modules& q) { // process n depth-value pairs, n=-1 for single pair, e.g. (1;(`linear;784;10))
@@ -3365,7 +3414,7 @@ static K mdv(K x,J n,Kmodule *m=nullptr,J d=0,K v=nullptr); // higher-level call
 static K mdv(K x,J n,Kmodule *m,J d,K v) {
  Cast c; Modules q; if(m) mstack(m,q);
  c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
- return m ? (K)0 : mroot(c,q);
+ return mresult(m,c,q);
 }
 
 static Cast mtable(K x,Modules &q) { // process table/dict w'depth,module,options,parms,buffers
@@ -3379,7 +3428,7 @@ static Cast mtable(K x,Modules &q) { // process table/dict w'depth,module,option
 }
 
 static K mtable(K x,Kmodule *m=nullptr);  //higher-level call, can also add to existing module if supplied
-static K mtable(K x,Kmodule *m) {Modules q; if(m) mstack(m,q); Cast c=mtable(x,q); return m ? (K)0 : mroot(c,q);}
+static K mtable(K x,Kmodule *m) {Modules q; if(m) mstack(m,q); Cast c=mtable(x,q); return mresult(m,c,q);}
 
 static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
  if(d) mdepth(c,d,q);
@@ -3390,7 +3439,11 @@ static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
 }
 
 static void mextend(Kmodule *x,Kmodule *y,J d=0);
-static void mextend(Kmodule *x,Kmodule *y,J d) {Modules q; mstack(x,q); mextend(y->m,y->c,d ? d : q.size(),q);}
+static void mextend(Kmodule *x,Kmodule *y,J d) {
+ Modules q; mstack(x,q);                  //initialize stack of modules
+ mextend(y->m,y->c,d ? d : q.size(),q);   //add additional module(s)
+ x->r = restype(x->c,x->m);               //update result type
+}
 
 // --------------------------------------------------------------------------------------------
 // mget - extract module options and, optionally, parameters & buffers to k array
@@ -3679,4 +3732,13 @@ RNNCell, GRUCell
   Tensor forward(const Tensor& input, Tensor hx = {});
 LSTMCell
   std::tuple<Tensor, Tensor> forward(const Tensor& input, torch::optional<std::tuple<Tensor, Tensor>> hx_opt = {});
+*/
+
+/* adding a new module
+	- add to knn.h if not defined in pytorch
+	- add Cast enumeration and entry in Env.module
+	- fns to process options, e.g. options(K x,J i,Cast c) & options(bool b,const Options& o)
+	- mcreate & anymodule creation or special parent creation
+	- mopt to return dictionary of options
+	- modulehelp entry
 */

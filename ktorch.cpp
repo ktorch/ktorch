@@ -1586,14 +1586,23 @@ KAPI kseed(K x) {
 
 // -----------------------------------------------------------------------------------------
 // query object attributes, e.g. tensor/vector and other object attributes
+// mresult - return symbol indicating module result type, e.g. `tensor`tuple
 // mattr - handle a limited set of module attributes
 // attr - attempt to get attribute of given object (more attributes implemented for tensors)
 // -----------------------------------------------------------------------------------------
-static K mattr(Class c,const Moduleptr& p,Ktype k,Attr a) {
+static S mresult(Result r) {
+ for(const auto& a:env().result)
+  if(std::get<1>(a) == r) return std::get<0>(a);
+ TORCH_CHECK(r==Result::undefined, "module result type is unrecognized: ",(I)r);
+ return nullsym();
+}
+
+static K mattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
   case Attr::ref:     return kj(p.use_count()-1);
   case Attr::ptr:     return kj((intptr_t)p.get());
   case Attr::device:  return ks(objdevice(*p, optsym(Device(torch::kCPU))));
+  case Attr::result:  return ks(mresult(r));
   default: AT_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
  }
 }
@@ -1607,7 +1616,7 @@ K attr(K x,Ktype k,Attr a) {
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
    case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
    case Class::module:
-   case Class::loss:      return mattr(g->a,((Kmodule*)g)->m,k,a);
+   case Class::loss:      return mattr(g->a,g->r,((Kmodule*)g)->m,k,a);
    case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
    default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }
@@ -1627,6 +1636,7 @@ KAPI      dtype(K x) {return attr(x, -KS, Attr::dtype);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
 KAPI   gradient(K x) {return attr(x, -KS, Attr::gradient);}
 KAPI     gradfn(K x) {return attr(x, -KS, Attr::gradfn);}
+KAPI     result(K x) {return attr(x, -KS, Attr::result);}
 
 KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
@@ -1770,6 +1780,7 @@ KAPI fns(K x){
  fn(x, "offset",      KFN(offset),      1);
  fn(x, "ptr",         KFN(ptr),         1);
  fn(x, "ref",         KFN(ref),         1);
+ fn(x, "result",      KFN(result),      1);
  fn(x, "storage",     KFN(storage),     1);
  fn(x, "weakref",     KFN(weakref),     1);
  fn(x, "device",      KFN(device),      1);

@@ -218,7 +218,7 @@ enum class State:char {
 enum class Attr:char {
  undefined = 0,
  dim, itemsize, numel,  offset, ptr, ref, sparsedim, weakref, // long scalars
- device, dtype, gradfn, gradient, layout,                     // symbol
+ device, dtype, gradfn, gradient, layout, result,             // symbol
  coalesced, contiguous, gradflag, leaf, pinned,               // boolean
  size, stride,                                                // long list
  data, storage                                                // other: list,dict,..
@@ -226,6 +226,10 @@ enum class Attr:char {
  
 enum class Metric: char {
  loss, accuracy, max, out
+};
+
+enum class Result: short {
+ undefined=0, tensor, tuple, nested
 };
 
 enum class Enum {  // enums to match pytorch variants
@@ -240,10 +244,9 @@ enum class Enum {  // enums to match pytorch variants
 };
 
 struct TORCH_API Ktag {
- Class a = Class::undefined;
- Cast  c = Cast::undefined;
- bool b1 = false;
- bool b2 = false;
+ Class  a = Class::undefined;
+ Cast   c = Cast::undefined;
+ Result r = Result::undefined;
  virtual ~Ktag() = default;
 };
 
@@ -263,7 +266,7 @@ struct TORCH_API Kdict : public Ktag {
 };
 
 struct TORCH_API Kmodule : public Ktag {
- Kmodule(Class x,Cast y,Moduleptr z) : m(std::move(z)) {a=x; c=y;}
+ Kmodule(Class x,Cast y,Result z,Moduleptr p) : m(std::move(p)) {a=x; c=y; r=z;}
  Moduleptr m;
 };
 
@@ -282,7 +285,7 @@ struct TORCH_API Kmodel : public Ktag {
  Optptr o;         // shared ptr to optimizer
  Moduleptr om;     // single module or container holding all modules/tensors managed by optimizer
  Kmodel(Kmodule *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
-  a=Class::model; c=Cast::model;
+  a=Class::model; c=Cast::model; r=x->r;
  }
 };
 
@@ -651,7 +654,7 @@ typedef struct {
  }};
 */
 
- std::array<std::tuple<S,Class>,7> kclass = {{
+ std::array<std::tuple<S,Class>,7> kclass = {{         //higher level object names
   std::make_tuple(cs("tensor"),    Class::tensor),          
   std::make_tuple(cs("vector"),    Class::vector),
   std::make_tuple(cs("dict"),      Class::dict),
@@ -659,6 +662,12 @@ typedef struct {
   std::make_tuple(cs("loss"),      Class::loss),
   std::make_tuple(cs("optimizer"), Class::optimizer),
   std::make_tuple(cs("model"),     Class::model)
+ }};
+
+ std::array<std::tuple<S,Result>,3> result = {{       //result types of modules
+  std::make_tuple(cs("tensor"),  Result::tensor),
+  std::make_tuple(cs("tuple"),   Result::tuple),
+  std::make_tuple(cs("nested"),  Result::nested)
  }};
 
  std::array<std::tuple<S,Class>,3> model = {{
@@ -970,7 +979,7 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,22> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,23> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
   std::make_tuple(cs("data"),        Attr::data),
@@ -988,6 +997,7 @@ typedef struct {
   std::make_tuple(cs("pinned"),      Attr::pinned),
   std::make_tuple(cs("ptr"),         Attr::ptr),
   std::make_tuple(cs("ref"),         Attr::ref),
+  std::make_tuple(cs("result"),      Attr::result),
   std::make_tuple(cs("size"),        Attr::size),
   std::make_tuple(cs("sparsedim"),   Attr::sparsedim),
   std::make_tuple(cs("storage"),     Attr::storage),
