@@ -447,10 +447,11 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
  }
 }
 
-// ----------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 // tupvector - copy tuple(s) returned from recurrent modules to vector of tensors
-// rforward - forward calculation of recurrent module, return vector w'output, hidden state
-// ----------------------------------------------------------------------------------------
+// rseq - handle sequential modules with final recurrent module in their sequence
+// rforward - forward calculation of recurrent modules, return vector w'output, hidden state
+// -----------------------------------------------------------------------------------------
 static void tupvector(TensorVector& v,const std::tuple<Tensor,Tensor>& x) {
  v.push_back(std::get<0>(x));
  v.push_back(std::get<1>(x));
@@ -461,7 +462,17 @@ static void tupvector(TensorVector& v,const std::tuple<Tensor, std::tuple<Tensor
  tupvector(v,std::get<1>(x));
 }
 
-TensorVector rforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+template<typename S> static void rseq(Result r,Module& m,TensorVector& v,const Tensor& x,const Tensor& y,const Tensor& z) {
+ using Tuple=std::tuple<Tensor,Tensor>;
+ using Nested=std::tuple<Tensor,Tuple>;
+ if(r==Result::tuple)
+  tupvector(v,m.as<S>()->template forward<Tuple>(x,y));
+ else
+  tupvector(v, z.defined() ? m.as<S>()->template forward<Nested>(x,std::make_tuple(y,z))
+                           : m.as<S>()->template forward<Nested>(x));
+}
+
+TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
  TensorVector v;
  if(z.defined()) {
   TORCH_CHECK(c==Cast::lstm, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
@@ -472,7 +483,7 @@ TensorVector rforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Ten
   case Cast::gru:  tupvector(v,m.as<nn::GRU>()->forward(x,y)); break;
   case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,std::make_tuple(y,z))
                                             : m.as<nn::LSTM>()->forward(x));
-   break;
+  case Cast::sequential: rseq<nn::Sequential>(r,m,v,x,y,z); break;
   default: AT_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
  }
  return v;
@@ -481,18 +492,48 @@ TensorVector rforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Ten
 // ----------------------------------------------------------------------------------------
 // mforward 
 // ----------------------------------------------------------------------------------------
-K mforward(Cast c,Module& m,K a) {
+size_t tensorcount(const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(x.defined() && !y.defined() && !z.defined())
+  return 1;
+ else if(x.defined() && y.defined() && !z.defined())
+  return 2;
+ else if(x.defined() && y.defined() && z.defined())
+  return 3;
+ else if(!x.defined())
+  AT_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
+ else
+  AT_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
+}
+
+K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y={},const Tensor& z={});
+K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Tensor& z) {
+ switch(r) {
+  case Result::tensor:
+   switch(tensorcount(x,y,z)) {
+    case 1: return kten(mforward(c,m,x));
+    case 2: return kten(mforward(c,m,x,y));
+    case 3: return kten(mforward(c,m,x,y,z));
+    default: AT_ERROR("forward: unrecognized tensor arg(s)");
+   }
+  case Result::tuple:
+  case Result::nested:
+   return kvec(rforward(c,r,m,x,y,z));
+  default: AT_ERROR("forward: unrecognized result type, ", (I)r);
+ }
+}
+
+K mforward(Cast c,Result r,Module& m,K a) {
  Tensor x,y,z; TensorVector *v;
  if((v=xvec(a,1))) {
   TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
   IntArrayRef i;
   if(a->n==2) {
-   return kten(mforward(c, m, v->at(0)));
+   return mforward(c, r, m, v->at(0));
   } else if(a->n==3 && xsize(a,2,i)) {
    switch(i.size()) {
-    case 1: return kten(mforward(c, m, v->at(i[0])));
-    case 2: return kten(mforward(c, m, v->at(i[0]), v->at(i[1])));
-    case 3: return kten(mforward(c, m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
+    case 1: return mforward(c, r, m, v->at(i[0]));
+    case 2: return mforward(c, r, m, v->at(i[0]), v->at(i[1]));
+    case 3: return mforward(c, r, m, v->at(i[0]), v->at(i[1]), v->at(i[2]));
     default: AT_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
    }
   } else {
@@ -503,7 +544,7 @@ K mforward(Cast c,Module& m,K a) {
   if(!xten(a,1,x))            x=kput(a,1);
   if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
   if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
-  return kten(a->n==2 ? mforward(c,m,x) : (a->n==3 ? mforward(c,m,x,y) : mforward(c,m,x,y,z)));
+  return a->n==2 ? mforward(c,r,m,x) : (a->n==3 ? mforward(c,r,m,x,y) : mforward(c,r,m,x,y,z));
  }
 }
 

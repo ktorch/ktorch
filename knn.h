@@ -209,6 +209,7 @@ TORCH_MODULE(RNNOutput);
 // SeqNest - derived from Sequential to allow nested sequentials 
 //         - no templatized forward result means can be stored as an AnyModule
 //         - forward method accepts up to three tensors x,y,z w'y & z optional
+//           forward result is tensor only
 // ---------------------------------------------------------------------------------
 class TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
   public:

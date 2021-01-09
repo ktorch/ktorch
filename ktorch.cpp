@@ -1350,8 +1350,8 @@ KAPI forward(K x) {
   Ktag *g=xtag(x,0);
   TORCH_CHECK(g, "forward: expects module/model as first arg");
   switch(g->a) {
-   case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c,*m->m,x);}
-   case Class::model:  {auto *m=(Kmodel*)g; return mforward(m->mc,*m->m,x);}
+   case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
+   case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}
    default: AT_ERROR("forward not implemented for ",mapclass(g->a));
   }
  KCATCH("forward");

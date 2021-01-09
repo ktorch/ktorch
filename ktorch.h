@@ -572,7 +572,7 @@ std::string mlabel(const Module&);
 Cast mcast(const Module&);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
-K mforward(Cast,Module&,K);
+K mforward(Cast,Result,Module&,K);
 Tensor mforward(Cast,Module&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
