@@ -1318,7 +1318,7 @@ KAPI tensorcopy_(K x) {
 // ------------------------------------------------------------------------------------------
 // kgrad - return gradient data or empty, if ptr enlisted, return gradient ptr (must free)
 // tensorback - backprop given tensor, optional tensor & sym for retain/create gradient graph
-// detach - detach tensor, with optional flag to perform the detach in place
+// detach - detach tensor/vector/dictionary, with optional flag to perform detach in place
 // same - given two tensors, compares underlying ptr, returns true if same
 // ------------------------------------------------------------------------------------------
 KAPI kgrad(K x) {
@@ -1341,11 +1341,14 @@ KAPI gradflag(K x) {
   } else if(k && x->n==2 && xbool(x,1,b)) {
    switch(k->a) {
     case Class::tensor:
-     ((Kten*)k)->t.set_requires_grad(b); break;
+     ((Kten*)k)->t.set_requires_grad(b);
+     break;
     case Class::vector: 
-     for(auto& t:((Kvec*)k)->v) t.set_requires_grad(b); break;
+     for(auto& t:((Kvec*)k)->v) t.set_requires_grad(b);
+     break;
     case Class::dict:
-     for(auto& t:((Kdict*)k)->d.values()) t.set_requires_grad(b); break;
+     for(auto& t:((Kdict*)k)->d.values()) t.set_requires_grad(b);
+     break;
     default: AT_ERROR("gradflag: not implemented for ",mapclass(k->a));
    }
    return (K)0;
@@ -1375,22 +1378,85 @@ K tensorback(K x) {
  return (K)0;
 }
 
+// --------------------------------------------------------------------------------------
+// vecdetach - detach specified element(s) of vector of tensors
+// dictdetach - detach specified element(s) of dictionary of tensors
+// detach - k api fn to detach tensor/vector/dictonary  
+//          tensor has optional inplace flag, vec/dict allows additional indices/keys
+// --------------------------------------------------------------------------------------
+static void vecdetach(TensorVector& v,J n,J *j) {
+ J m=v.size();
+ for(J i=0;i<n;++i) {
+   J k=j[i];
+   TORCH_CHECK(k>=0, "detach: vector[",k,"] invalid");
+   TORCH_CHECK(k<m, "detach: vector[",k,"] out of bounds, index must be less than ",m);
+   v[k].detach_();
+ }
+}
+
+static void dictdetach(TensorDict& d,J n,S *s) {
+ for(J i=0;i<n;++i) {
+  S k=s[i];
+  TORCH_CHECK(d.contains(k),"detach: no dictionary parameter named `",k);
+  d[k].detach_();
+ }
+}
+
 KAPI detach(K x) {
  KTRY
-  bool b=false; Tensor *t;
-  TORCH_CHECK((t=xten(x)) || ((t=xten(x,0)) && xbool(x,1,b) && x->n==2),
-              "detach: unrecognized arg(s), expecting tensor or (tensor;inplace flag)");
-  return b ? t->detach_(),(K)0 : kten(t->detach());
+  Ktag *g=xtag(x); bool a=g,b=false;
+  TORCH_CHECK(g||(g=xtag(x,0)), "detach: expecting tensor, vector or dictionary");
+  switch(g->a) {
+   case Class::tensor: {
+    TORCH_CHECK(a || (x->n==2 && xbool(x,1,b)), "detach: expecting tensor or (tensor; inplace flag)");
+    auto &t=((Kten*)g)->t;
+    return b ? t.detach_(),(K)0 : kten(t.detach());
+   }
+   case Class::vector: {
+    auto &v=((Kvec*)g)->v;
+    if(a) {
+     for(auto &t:v) t.detach_();
+    } else {
+     TORCH_CHECK(x->n==2, "detach: vector supplied, but unexpected number of additional args(",x->n-1,")");
+     K y=kK(x)[1];
+     TORCH_CHECK(y->t==-KJ || y->t==KJ, "detach: vector supplied, expected 2nd arg of indices, given ",kname(y));
+     y->t==KJ ? vecdetach(v,y->n,kJ(y)) : vecdetach(v,1,&y->j);
+    }
+    return (K)0;
+   }
+   case Class::dict: {
+    auto &d=((Kdict*)g)->d;
+    if(a) {
+     for(auto &a:d) a.value().detach_();
+    } else {
+     TORCH_CHECK(x->n==2, "detach: dictionary supplied, but unexpected number of additional args(",x->n-1,")");
+     K y=kK(x)[1];
+     TORCH_CHECK(y->t==-KS || y->t==KS, "detach: dictionary supplied, expected 2nd arg of symbol key(s), given ",kname(y));
+     y->t==KS ? dictdetach(d,y->n,kS(y)) : dictdetach(d,1,&y->s);
+    }
+    return (K)0;
+   }
+   default: AT_ERROR("detach: not implemented for ",mapclass(g->a));
+  }
+  return (K)0;
  KCATCH("detach");
 }
 
-KAPI same(K x) {
+// -------------------------------------------------
+// ksame - check if same tensor/storage
+// same - check if underlying tensor pointers match
+// alias - check if same underlying storage
+// -------------------------------------------------
+static K ksame(K x,bool s) {
  KTRY
-  Tensor *a,*b;
-  TORCH_CHECK((a=xten(x,0)) && ((b=xten(x,1))), "same: expects two tensors");
-  return kb((*a).is_same(*b));
- KCATCH("same");
+  Tensor *a=xten(x,0),*b=xten(x,1);
+  TORCH_CHECK(a && b && x->n==2, (s ? "same" : "alias"), ": expects two tensors");
+  return kb(s ? a->is_same(*b) : a->is_alias_of(*b));
+ KCATCH("same/alias");
 }
+
+KAPI same(K x)  {return ksame(x,true);}
+KAPI alias(K x) {return ksame(x,false);}
 
 // ----------------------------------
 // tensor fns defined in k namespace
@@ -1407,6 +1473,7 @@ void tensorfn(K x) {
  fn(x, "gradflag",     KFN(gradflag),      1);
  fn(x, "detach",       KFN(detach),        1);
  fn(x, "same",         KFN(same),          1);
+ fn(x, "alias",        KFN(alias),         1);
  fn(x, "vector",       KFN(vector),        1);
  fn(x, "dict",         KFN(dict),          1);
  fn(x, "cat",          KFN(cat),           1);

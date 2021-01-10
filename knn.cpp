@@ -173,21 +173,10 @@ KAPI seq(K x) {
 }
 
 // --------------------------------------------------------------------------------------
-// rnn - given module cast, return true if RNN/GRU/LSTM (forward calc returns tuple)
 // container - given module/module cast, return true if container module
 // parmdict - parameter dictionary handles "options" of dictionary of tensors or k arrays
 // newcontainer - create new container (handle options/parms for parameter dict only)
 // --------------------------------------------------------------------------------------
-static bool rnn(Cast c) {
- switch(c) {
-  case Cast::rnn:
-  case Cast::gru:
-  case Cast::lstm:
-   return true;
-  default: return false;
- }
-}
-
 static bool container(Cast c) {
  switch(c) {
   case Cast::sequential:

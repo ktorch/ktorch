@@ -1,6 +1,7 @@
 #include "ktorch.h"
 namespace nn=torch::nn;
 
+/*
 KAPI trainx(K x) {
  KTRY
   TORCH_CHECK(!x->t, "train: not implemented for ",kname(x));
@@ -21,6 +22,7 @@ KAPI trainx(K x) {
   return (K)0;
  KCATCH("train");
 }
+*/
 
 KAPI names1(K x) {
  KTRY

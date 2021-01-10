@@ -541,7 +541,7 @@ static K getparms(Cast c,const ParamState& p) {
 
 static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
  J g=0,i=0,n=osize(o);
- K pt=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf; if(b) bf=ktn(0,n);
+ K pt=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf=nullptr; if(b) bf=ktn(0,n);
  const auto& s=o.state();
  for(auto& pg:o.param_groups()) {
   for(auto& p:pg.params()) {
@@ -714,7 +714,7 @@ static TensorVector moduleparms(const Moduleptr& m,J n,J *j) {
  for(J i=0;i<n;++i) {
   J k=j[i];
   TORCH_CHECK(k>=0, "opt: module[",k,"] invalid");
-  TORCH_CHECK(k<a.size(), "opt: module[",k,"] out of bounds, ",a.size()," submodule(s)");
+  TORCH_CHECK(k<(J)a.size(), "opt: module[",k,"] out of bounds, ",a.size()," submodule(s)");
   const auto& p=a.at(k)->parameters();
   for(const auto& t:p)
    TORCH_CHECK(!duplicate(v,t), "opt: duplicate parameter(s) with module[",k,"]");
@@ -800,7 +800,7 @@ static TensorVector vectorparms(const TensorVector& a,J n,J *j) {
  for(J i=0;i<n;++i) {
   J k=j[i];
   TORCH_CHECK(k>=0, "opt: vector[",k,"] invalid");
-  TORCH_CHECK(k<a.size(), "opt: vector[",k,"] out of bounds, index must be less than ",a.size());
+  TORCH_CHECK(k<(J)a.size(), "opt: vector[",k,"] out of bounds, index must be less than ",a.size());
   const auto& t=a[k];
   TORCH_CHECK(!duplicate(v,t), "opt: duplicate parameter from vector[",k,"]");
   v.push_back(t);
@@ -896,10 +896,10 @@ static K optinit(bool b,Cast c,K x,K y) { //b:true if group given, x:overall arg
 }
 
 static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Moduleptr& m) {
- auto& p=o.param_groups();
+ auto& p=o.param_groups(); J n=p.size();
  TORCH_CHECK(i>=0, "opt: group ",i," invalid, cannot be negative");
- TORCH_CHECK(i<=p.size(), "opt: group ",i," invalid, cannot be greater than number of groups(",p.size(),")");
- if(i==p.size()) {                    // add new parameter group
+ TORCH_CHECK(i<=n, "opt: group ",i," invalid, cannot be greater than number of groups(",n,")");
+ if(i==n) {                           // add new parameter group
   ParamGroup g({});                   // initialize empty group
   addoptions(c,x,2+b,g);              // define optimizer-specific options for the group
   if(y) g.params()=addparms(y,o,m);   // get parameters for new group
@@ -950,7 +950,7 @@ static void putparms(Cast c,K x,Optimizer& o,const Module& m) {
  for(J i=0; i<n; ++i) {
   S s1=statemodule(x,i),s2=statename(x,i); J j=stategroup(x,i); IntArrayRef sz;
   std::string nm=nullsym(s1) ? "tensor" : s1; nm+=" parameter `"; nm+=s2;
-  TORCH_CHECK(-1<j && j<g.size(), "opt: group[",j,"] for ",nm, " is invalid, ",g.size()," group(s) defined");
+  TORCH_CHECK(-1<j && j<(J)g.size(), "opt: group[",j,"] for ",nm, " is invalid, ",g.size()," group(s) defined");
   TORCH_CHECK(p.contains(s2), "opt: unable to find ",nm);
   const auto& t=p[s2]; const auto& k=c10::guts::to_string(t.unsafeGetTensorImpl());
   TORCH_CHECK(s.count(k)==0, "opt: ",nm," is repeated");
