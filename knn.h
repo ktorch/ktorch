@@ -129,6 +129,26 @@ class TORCH_API CatImpl : public torch::nn::Cloneable<CatImpl> {
 };
 TORCH_MODULE(Cat);
 
+// ----------------------------------------------------------------------------------
+// onehot - add convenience module for torch.nn.functional.one_hot(tensor,numclasses)
+// ----------------------------------------------------------------------------------
+struct TORCH_API OneHotOptions {
+ OneHotOptions(int64_t n=-1) : num_classes_(n) {}
+ TORCH_ARG(int64_t, num_classes);
+};
+
+class TORCH_API OneHotImpl : public torch::nn::Cloneable<OneHotImpl> {
+ public:
+ OneHotImpl(const OneHotOptions& o) : options(o) {}
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "OneHot(num_classes=" << options.num_classes() << ")";}
+ torch::Tensor forward(const torch::Tensor& x) {
+  return torch::one_hot(x,options.num_classes());
+ }
+ OneHotOptions options;
+};
+TORCH_MODULE(OneHot);
+
 // ----------------------------------------------------------------------------------------------------
 // select - add convenience module for select(dim,index)
 // ----------------------------------------------------------------------------------------------------
@@ -161,30 +181,14 @@ class TORCH_API MulImpl : public torch::nn::Cloneable<MulImpl> {
 };
 TORCH_MODULE(Mul);
 
-// --------------------------------------------------------------------------------------------
-// FirstTensor - convenience module to extract 1st tensor from tuples returned from rnn modules
-// --------------------------------------------------------------------------------------------
-class TORCH_API FirstTensorImpl : public torch::nn::Cloneable<FirstTensorImpl> {
- using Tensor=torch::Tensor;
- public:
- void reset() override {}
- void pretty_print(std::ostream& s) const override {s << "FirstTensor()";}
- Tensor forward(const c10::variant<std::tuple<Tensor,Tensor>, std::tuple<Tensor,std::tuple<Tensor,Tensor>>>& x) {
-  if(auto *a=c10::get_if<std::tuple<Tensor,Tensor>>(&x)) {
-   return std::get<0>(*a);
-  } else if(auto *a=c10::get_if<std::tuple<Tensor,std::tuple<Tensor,Tensor>>>(&x)) {
-   return std::get<0>(*a);
-  } else {
-   AT_ERROR("unable to extract tensor from first value given");
-  }
- }
-};
-TORCH_MODULE(FirstTensor);
-
+// ----------------------------------------------------------------------------------
+// RNNOutput,LSTMOutput - convenience modules to extract 1st tensor rnn result tuples
+// ----------------------------------------------------------------------------------
 class TORCH_API GRUOutputImpl : public torch::nn::Cloneable<GRUOutputImpl> {
  using Tensor=torch::Tensor;
  public:
  void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "GRUOutput()";}
  Tensor forward(const std::tuple<Tensor,Tensor>& x) {return std::get<0>(x);}
 };
 TORCH_MODULE(GRUOutput);
@@ -193,6 +197,7 @@ class TORCH_API LSTMOutputImpl : public torch::nn::Cloneable<LSTMOutputImpl> {
  using Tensor=torch::Tensor;
  public:
  void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "LSTMOutput()";}
  Tensor forward(const std::tuple<Tensor,std::tuple<Tensor,Tensor>>& x) {return std::get<0>(x);}
 };
 TORCH_MODULE(LSTMOutput);
@@ -201,9 +206,58 @@ class TORCH_API RNNOutputImpl : public torch::nn::Cloneable<RNNOutputImpl> {
  using Tensor=torch::Tensor;
  public:
  void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "RNNOutput()";}
  Tensor forward(const std::tuple<Tensor,Tensor>& x) {return std::get<0>(x);}
 };
 TORCH_MODULE(RNNOutput);
+
+// ----------------------------------------------------------------------------------
+// RNNSplit, LSTMSplit - split output & hidden state from rnn layer, apply sequential
+// ----------------------------------------------------------------------------------
+struct TORCH_API SplitOptions {
+ SplitOptions(bool d=true) : detach_(d) {}
+ TORCH_ARG(bool, detach);
+};
+
+using  RNNSplitOptions=SplitOptions;
+using LSTMSplitOptions=SplitOptions;
+
+class TORCH_API RNNSplitImpl : public torch::nn::Cloneable<RNNSplitImpl> {
+ using Tensor=torch::Tensor;
+ using Tuple=std::tuple<Tensor,Tensor>;
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "RNNSplit(detach=" << options.detach() << ")";}
+ Tuple forward(const Tuple& a) {
+  auto x=seq->forward(std::get<0>(a));
+  auto h=std::get<1>(a);
+  if(options.detach())
+   h.detach_();
+  return std::make_tuple(x,h);
+ }
+ torch::nn::Sequential seq;
+ RNNSplitOptions options;
+};
+TORCH_MODULE(RNNSplit);
+
+class TORCH_API LSTMSplitImpl : public torch::nn::Cloneable<LSTMSplitImpl> {
+ using Tensor=torch::Tensor;
+ using Tuple=std::tuple<Tensor,Tensor>;
+ using Nested=std::tuple<Tensor,Tuple>;
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "LSTMSplit(detach=" << options.detach() << ")";}
+ Nested forward(const Nested& a) {
+  auto x=seq->forward(std::get<0>(a));
+  auto h=std::get<1>(a);
+  if(options.detach())
+   std::get<0>(h).detach_(),std::get<1>(h).detach_();
+  return std::make_tuple(x,h);
+ }
+ torch::nn::Sequential seq;
+ LSTMSplitOptions options;
+};
+TORCH_MODULE(LSTMSplit);
 
 // ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 

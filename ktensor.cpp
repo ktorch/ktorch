@@ -682,22 +682,9 @@ KAPI cat(K x)   {return kcat(x, torch::cat,   torch::cat_out,   "cat");}
 KAPI stack(K x) {return kcat(x, torch::stack, torch::stack_out, "stack");}
 
 // ----------------------------------------------------------------------------------------------
-// onehot - given tensor/array and optional number of classes return one-hot as extra dim
 // expand - expand tensor or array given sizes or tensor w'size to copy
 // squeeze/unsqueeze - remove or add dimension to input array/tensor, boolean in-place option
 // ----------------------------------------------------------------------------------------------
-KAPI onehot(K x) {
- KTRY
-  int64_t n=-1; Tensor *t;
-  if((t=xten(x)) || ((t=xten(x,0)) && xint64(x,1,n)))
-   return kten(torch::one_hot(*t,n));
-  else if(xint64(x,1,n) && x->n==2)
-   return kget(torch::one_hot(kput(x,0),n));
-  else 
-   return kget(torch::one_hot(kput(x)));
- KCATCH("onehot");
-}
-
 KAPI expand(K x) {
  KTRY
   IntArrayRef n; Tensor *t=xten(x,0),*s=xten(x,1);
@@ -1478,7 +1465,6 @@ void tensorfn(K x) {
  fn(x, "dict",         KFN(dict),          1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "stack",        KFN(stack),         1);
- fn(x, "onehot",       KFN(onehot),        1);
  fn(x, "expand",       KFN(expand),        1);
  fn(x, "squeeze",      KFN(squeeze),       1);
  fn(x, "unsqueeze",    KFN(unsqueeze),     1);

@@ -162,7 +162,7 @@ enum class Cast:short {
  instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
  lstm, lstmout,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
- normalize,      pad,             pad1d,           pad2d,           pad3d,
+ normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
  prelu,          reflect1d,       reflect2d,       relu,            relu6,
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout,
  rrelu,          select,          selu,            sigmoid,         softmax,         softmax2d,
@@ -194,7 +194,7 @@ enum class Setting:char {
  undefined,
  addbias,      addzero,   affine,     align,      alpha,        amsgrad,
  batchfirst,   beta,      beta1,      beta2,      bi,           bias,   
- blank,        ceiling,   centered,   changetol,  channels,     cols,   
+ blank,        classes,   ceiling,    centered,   changetol,    channels,     cols,   
  countpad,     dampening, decay,      decoder,    decoderlayer, dilate, 
  dim,          divisor,   dlayers,    dropout,    elayers,      encoder,
  encoderlayer, end,       eps,        eval,       fn,           freeze, 
@@ -702,7 +702,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,110> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,111> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -773,6 +773,7 @@ typedef struct {
   std::make_tuple(cs("modulelist"),       Cast::modulelist,      typeid(torch::nn::ModuleListImpl).hash_code(),          "torch.nn.ModuleList"),
   std::make_tuple(cs("mul"),              Cast::mul,             typeid(MulImpl).hash_code(),                            "torch.mul"),
   std::make_tuple(cs("normalize"),        Cast::normalize,       typeid(torch::nn::functional::normalize).hash_code(),   "torch.nn.functional.normalize"),
+  std::make_tuple(cs("onehot"),           Cast::onehot,          typeid(OneHotImpl).hash_code(),                         "torch.nn.functional.one_hot"),
   std::make_tuple(cs("pad"),              Cast::pad,             typeid(PadImpl).hash_code(),                            "torch.nn.functional.pad"),
   std::make_tuple(cs("pad1d"),            Cast::pad1d,           typeid(torch::nn::ConstantPad1dImpl).hash_code(),       "torch.nn.ConstantPad1d"),
   std::make_tuple(cs("pad2d"),            Cast::pad2d,           typeid(torch::nn::ConstantPad2dImpl).hash_code(),       "torch.nn.ConstantPad2d"),
@@ -815,7 +816,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d")
  }};
 
- std::array<std::tuple<S,Setting>,79> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,80> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -827,6 +828,7 @@ typedef struct {
   std::make_tuple(cs("bias"),         Setting::bias),
   std::make_tuple(cs("ceiling"),      Setting::ceiling),
   std::make_tuple(cs("channels"),     Setting::channels),
+  std::make_tuple(cs("classes"),      Setting::classes),
   std::make_tuple(cs("cols"),         Setting::cols),
   std::make_tuple(cs("countpad"),     Setting::countpad),
   std::make_tuple(cs("decoder"),      Setting::decoder),

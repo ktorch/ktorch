@@ -368,6 +368,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
   case Cast::maxpool3d:       return m.as<nn::MaxPool3d>()->forward(x);
 //case Cast::normalize:       return m.as<nn::normalize>()->forward(x);
+  case Cast::onehot:          return m.as<OneHot>()->forward(x);
   case Cast::pad:             return m.as<Pad>()->forward(x);
   case Cast::pad1d:           return m.as<nn::ConstantPad1d>()->forward(x);
   case Cast::pad2d:           return m.as<nn::ConstantPad2d>()->forward(x);
@@ -2061,6 +2062,38 @@ static K dim(bool a,Cast c,int64_t d) {
  return x;}
 
 // ----------------------------------------------------------------------------------
+// onehot - handle option (number of classes) for module or functional implementation
+// ----------------------------------------------------------------------------------
+static OneHotOptions onehot(K x,J i,Cast c) {
+ OneHotOptions o; Pairs p; J n=xargc(x,i,p);
+ if(n==1) o.num_classes(int64(x,i,c,Setting::classes));
+ TORCH_CHECK(n<2, msym(c),": unrecognized positional option(s), expecting single arg of number of classes");
+ while(xpair(p)) {
+  TORCH_CHECK(mset(p.k,c)==Setting::classes,"unrecognized option: ",p.k); o.num_classes(int64(p,c));
+ }
+ TORCH_CHECK(o.num_classes()>-2, msym(c),": number of classes must be nonnegative  or set to -1 to derive from input");
+ return o;
+}
+
+static K onehot(bool a,const OneHotOptions& o) {
+ K x=KDICT;
+ OPTION(x,classes,kj(o.num_classes()));
+ return x;
+}
+
+KAPI Onehot(K x) {
+ KTRY
+  int64_t n=-1; Tensor *t;
+  if((t=xten(x)) || ((t=xten(x,0)) && xint64(x,1,n)))
+   return kten(torch::one_hot(*t,n));
+  else if(xint64(x,1,n) && x->n==2)
+   return kget(torch::one_hot(kput(x,0),n));
+  else
+   return kget(torch::one_hot(kput(x)));
+ KCATCH("onehot");
+}
+
+// ----------------------------------------------------------------------------------
 // softmax,softmin,logsoftmax: functional form requires dim & optional data type
 // softdim: get default dimension from input tensor dimensions (deprecated)
 // ----------------------------------------------------------------------------------
@@ -2949,6 +2982,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::expand:       return Expand(getsize(x,i,c)).ptr();
   case Cast::reshape:      return Reshape(getsize(x,i,c)).ptr();
   case Cast::cat:          return Cat(dim(x,i,c)).ptr();
+  case Cast::onehot:       return OneHot(onehot(x,i,c)).ptr();
 
   case Cast::elu:          return nn::ELU (alpha<nn::ELUOptions> (x,i,c)).ptr();
   case Cast::celu:         return nn::CELU(alpha<nn::CELUOptions>(x,i,c)).ptr();
@@ -3050,6 +3084,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::modulelist:      AT_ERROR("unable to create type-erased module for 'modulelist': no forward method defined");
   case Cast::mul:             return ANY(Mul, m);
   case Cast::normalize:       AT_ERROR("unable to create type-erased module for 'normalize': no module defined");
+  case Cast::onehot:          return ANY(OneHot, m);
   case Cast::pad:             return ANY(Pad, m);
   case Cast::pad1d:           return ANY(nn::ConstantPad1d, m);
   case Cast::pad2d:           return ANY(nn::ConstantPad2d, m);
@@ -3219,6 +3254,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::expand:           return getsize(a,m.as<Expand>()->options);
   case Cast::reshape:          return getsize(a,m.as<Reshape>()->options);
   case Cast::cat:              return dim(a,c,m.as<Cat>()->options.dim());
+  case Cast::onehot:           return onehot(a,m.as<OneHot>()->options);
 
   case Cast::elu:              return alpha(a,m.as<nn::ELU>()->options);
   case Cast::celu:             return alpha(a,m.as<nn::CELU>()->options);
@@ -3633,6 +3669,7 @@ K modulehelp(Cast c) {
   case Cast::modulelist:      return KDICT;
   case Cast::mul:             return KDICT;
   case Cast::normalize:       return normalize(true,fnn::NormalizeFuncOptions());
+  case Cast::onehot:          return onehot(true,OneHotOptions(10));
   case Cast::pad:             return pad(true,fnn::PadFuncOptions({1, 2, 2, 1, 1, 2}));
   case Cast::pad1d:           return cpad(nn::ConstantPad1dOptions({1,2},0));
   case Cast::pad2d:           return cpad(nn::ConstantPad2dOptions({1,1,2,2},0));
@@ -3726,6 +3763,7 @@ void nnfn(K x) {
  fn(x, "maxpool2d",   KFN(maxpool2d),    1);
  fn(x, "maxpool3d",   KFN(maxpool3d),    1);
  fn(x, "normalize",   KFN(Normalize),    1);
+ fn(x, "onehot",      KFN(Onehot),       1);
  fn(x, "prelu",       KFN(Prelu),        1);
  fn(x, "gelu",        KFN(gelu),         1);
  fn(x, "relu",        KFN(relu),         1);
@@ -3746,6 +3784,7 @@ void nnfn(K x) {
 }
 
 /*
+AdaptiveLogSoftmaxWithLoss - alternative to softmax when distribution is highly imbalanced, e.g. in language processing
 normalize, interpolate  -- functional form implemented, add module?
 pairwise distance & cosine similarity: in both module & functional form but forward method needs 2 input tensors
 fractional pool -- try with indices registered as buffer?
@@ -3767,6 +3806,9 @@ LSTMCell
 /* adding a new module
 	- add to knn.h if not defined in pytorch
 	- add Cast enumeration and entry in Env.module
+        - if container, need to amend container/newcontainer functions, may have to add to Setting
+        - if forward() result not a tensor, need to define result type and handle in forward calcs
+          define forward calc for requisite input arg (usually a single tensor)
 	- fns to process options, e.g. options(K x,J i,Cast c) & options(bool b,const Options& o)
 	- mcreate & anymodule creation or special parent creation
 	- mopt to return dictionary of options

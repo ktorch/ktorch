@@ -529,54 +529,6 @@ KAPI ftest1(K a) {
  }
 }
 
-using SeqResult=c10::variant<int,double,Tensor>;
-SeqResult f(J a,Tensor x) { if(a) return x; else return 2.5;}
-
-KAPI ftest2(K x) {
- KTRY
-  nn::Sequential q; SeqJoin j; Tensor a,b;
-  j->push_back(nn::Sequential());
-  j->push_back(nn::Sequential());
-  j->push_back(AnyModule(Cat(0)));
-  q->push_back(j);
-  q->push_back(Reshape(std::vector<int64_t>{1,1,-1}));
-  xtenpair(x,a,b);
-  std::cerr << a << "\n";
-  std::cerr << b << "\n";
-  return kget(q->forward(a,b));
- KCATCH("ftest2");
-}
-
-KAPI ftest3(K x) {
- KTRY
-  nn::Sequential q;
-  q->push_back(Reshape(std::vector<int64_t>{1,1,-1}));
-  return kget(q->forward(kput(x)));
- KCATCH("ftest2");
-}
-
-auto childcount(const Module& m) {return m.children().size();}
-auto childcount(Module* m) {std::cerr << "module ptr:\n"; return m->children().size();}
-KAPI testcontainer(K x) {
- torch::nn::Linear m(1,2);
- std::cerr << childcount(*m) << "\n";
- std::cerr << childcount(m.get()) << "\n";
- return (K)0;
-}
-
-void testprint(int64_t d,const std::string s,const Module& m) {
-  std::cerr << "  depth: " << d << ",";
-  std::cerr << "   name: " << (s.size() ? s :  m.name());
-  if(m.children().size()) {
-   std::cerr << " " << m.name() << " (\n";
-   for(auto& a:m.named_children())
-    testprint(d+1,a.key(),*a.value());
-   std::cerr << ")\n";
-  } else {
-  std::cerr << "\t" << m << "\n";
-  }
-}
-
 /*
 template <class... Fs> struct overload;
 
