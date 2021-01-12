@@ -1302,7 +1302,7 @@ KAPI To(K x) {
     case Class::vector: return to((Kvec*)g,o,a);
     case Class::module:
     case Class::loss:   return to((Kmodule*)g,o,a);
-    default: AT_ERROR("to() not implemented for: ",mapclass(g->a));
+    default: AT_ERROR("to: not implemented for ",mapclass(g->a));
    }
   } else {
    AT_ERROR("to: unrecognized arg(s)");

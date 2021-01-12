@@ -2078,6 +2078,7 @@ static OneHotOptions onehot(K x,J i,Cast c) {
 static K onehot(bool a,const OneHotOptions& o) {
  K x=KDICT;
  OPTION(x,classes,kj(o.num_classes()));
+ //if(a || o.dtype() != OneHotOptions().dtype()) OPTION(x,dtype,o.dtype());
  return x;
 }
 
@@ -2105,8 +2106,8 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) {
   AT_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
  while(xpair(p))
   switch(mset(p.k,c)) {
-   case Setting::dim:  d=plong(p); break;
-   case Setting::type: s=ptype(p); break;
+   case Setting::dim:   d=plong(p); break;
+   case Setting::dtype: s=ptype(p); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(null(d)) 

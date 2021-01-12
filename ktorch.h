@@ -192,23 +192,21 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- addbias,      addzero,   affine,     align,      alpha,        amsgrad,
- batchfirst,   beta,      beta1,      beta2,      bi,           bias,   
- blank,        classes,   ceiling,    centered,   changetol,    channels,     cols,   
- countpad,     dampening, decay,      decoder,    decoderlayer, dilate, 
- dim,          divisor,   dlayers,    dropout,    elayers,      encoder,
- encoderlayer, end,       eps,        eval,       fn,           freeze, 
- full,         gradtol,   groups,     heads,      hidden,       history,
- ignore,       in,        in1,        in2,        index,        indices,
- init,         inplace,   iter,       k,          kdim,         keepdim,
- kvbias,       kvzeros,   lambda,     lastoffset, layernorm,    layers,
- log,          lower,     lr,         lrdecay,    margin,       max,
- maxnorm,      min,       mode,       momentum,   nesterov,     norm,
- out,          outpad,    outsize,    p,          pad,          padindex,
- padmode,      ratio,     reduce,     rescale,    rows,         scale,
- search,       shape,     size,       slope,      sparse,       start,
- stride,       swap,      threshold,  track,      train,        transpose,
- type,         upper,     value,      vdim,       weight,       zeroinf
+ addbias,   addzero,   affine,       align,    alpha,      amsgrad,      batchfirst,
+ beta,      beta1,     beta2,        bi,       bias,       blank,        ceiling,
+ centered,  changetol, channels,     classes,  cols,       countpad,     dampening,
+ decay,     decoder,   decoderlayer, detach,   dilate,     dim,          divisor,
+ dlayers,   dropout,   dtype,        elayers,  encoder,    encoderlayer, end,
+ eps,       eval,      fn,           freeze,   full,       gradtol,      groups,
+ heads,     hidden,    history,      ignore,   in,         in1,          in2,
+ index,     indices,   init,         inplace,  iter,       k,            kdim,
+ keepdim,   kvbias,    kvzeros,      lambda,   lastoffset, layernorm,    layers,
+ log,       lower,     lr,           lrdecay,  margin,     max,          maxnorm,
+ min,       mode,      momentum,     nesterov, norm,       out,          outpad,
+ outsize,   p,         pad,          padindex, padmode,    ratio,        reduce,
+ rescale,   rows,      scale,        search,   shape,      size,         slope,
+ sparse,    start,     stride,       swap,     threshold,  track,        train,
+ transpose, upper,     value,        vdim,     weight,     zeroinf                  
 };
 
 enum class State:char {
@@ -816,7 +814,7 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d")
  }};
 
- std::array<std::tuple<S,Setting>,80> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,81> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -833,11 +831,13 @@ typedef struct {
   std::make_tuple(cs("countpad"),     Setting::countpad),
   std::make_tuple(cs("decoder"),      Setting::decoder),
   std::make_tuple(cs("decoderlayer"), Setting::decoderlayer),
+  std::make_tuple(cs("detach"),       Setting::detach),
   std::make_tuple(cs("dilate"),       Setting::dilate),
   std::make_tuple(cs("divisor"),      Setting::divisor),
   std::make_tuple(cs("dim"),          Setting::dim),
   std::make_tuple(cs("dlayers"),      Setting::dlayers),
   std::make_tuple(cs("dropout"),      Setting::dropout),
+  std::make_tuple(cs("dtype"),        Setting::dtype),
   std::make_tuple(cs("elayers"),      Setting::elayers),
   std::make_tuple(cs("encoder"),      Setting::encoder),
   std::make_tuple(cs("encoderlayer"), Setting::encoderlayer),
@@ -892,7 +892,6 @@ typedef struct {
   std::make_tuple(cs("track"),        Setting::track),
   std::make_tuple(cs("train"),        Setting::train),
   std::make_tuple(cs("transpose"),    Setting::transpose),
-  std::make_tuple(cs("type"),         Setting::type),
   std::make_tuple(cs("upper"),        Setting::upper),
   std::make_tuple(cs("value"),        Setting::value),
   std::make_tuple(cs("vdim"),         Setting::vdim),

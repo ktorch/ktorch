@@ -133,8 +133,9 @@ TORCH_MODULE(Cat);
 // onehot - add convenience module for torch.nn.functional.one_hot(tensor,numclasses)
 // ----------------------------------------------------------------------------------
 struct TORCH_API OneHotOptions {
- OneHotOptions(int64_t n=-1) : num_classes_(n) {}
+ OneHotOptions(int64_t n=-1,torch::Dtype=torch::kFloat) : num_classes_(n) {}
  TORCH_ARG(int64_t, num_classes);
+ TORCH_ARG(torch::Dtype, dtype);    //torch::nn datatype uses Dtype rather than TypeMeta(?)
 };
 
 class TORCH_API OneHotImpl : public torch::nn::Cloneable<OneHotImpl> {
@@ -143,7 +144,7 @@ class TORCH_API OneHotImpl : public torch::nn::Cloneable<OneHotImpl> {
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "OneHot(num_classes=" << options.num_classes() << ")";}
  torch::Tensor forward(const torch::Tensor& x) {
-  return torch::one_hot(x,options.num_classes());
+  return torch::one_hot(x,options.num_classes()).to(options.dtype());
  }
  OneHotOptions options;
 };
