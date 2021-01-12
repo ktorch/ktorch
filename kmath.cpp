@@ -202,7 +202,7 @@ KAPI Addcdiv(K x) {return addc(x, torch::addcdiv, torch::addcdiv_out, "addcdiv")
 // --------------------------------------------------------------------------------------------
 static K prodsum(K x,bool b,const char* e) { // b:true -> prod, false -> sum
  KTRY
-  bool p,k=false; IntArrayRef d; Tensor r,t; c10::optional<ScalarType> s=c10::nullopt;
+  bool p,k=false; IntArrayRef d; Tensor r,t; c10::optional<Dtype> s=c10::nullopt;
   J n=xten(x,x->n-1,r) ? x->n-1 : xlen(x); //optional output tensor at end, decrement arg count
   if(xten(x,t) || (r.defined() && n==1 && xten(x,0,t)) || !xmixed(x,4)) { // input as tensor or k array
    if(!(p=t.defined())) t=r.defined() ? kput(x,0) : kput(x);
@@ -243,7 +243,7 @@ KAPI Sum(K x)  {return prodsum(x,false,"sum");}
 
 static K cprodsum(K x,bool b,const char* e) { // b:true -> prod, false -> sum
  KTRY
-  bool p; Tensor r,t; c10::optional<ScalarType> s=c10::nullopt;
+  bool p; Tensor r,t; c10::optional<Dtype> s=c10::nullopt;
   J d,n=xten(x,x->n-1,r) ? x->n-1 : xlen(x); //optional output tensor at end, decrement arg count
   if(x->t==KJ && x->n==2) {
    t=kput(x)[0]; d=kJ(x)[1];
@@ -491,7 +491,7 @@ KAPI Var(K x) {return variance(x,true);}
 // ----------------------------------------------------------------------------------------------
 KAPI Mean(K x) {
  KTRY
-  bool p,k=false; IntArrayRef d; Tensor r,t; c10::optional<ScalarType> s=c10::nullopt;
+  bool p,k=false; IntArrayRef d; Tensor r,t; c10::optional<Dtype> s=c10::nullopt;
   J n=xten(x,x->n-1,r) ? x->n-1 : xlen(x); //optional output tensor at end, decrement arg count
   if(xten(x,t) || (r.defined() && n==1 && xten(x,0,t)) || !xmixed(x,4)) { // input as tensor or k array
    if(!(p=t.defined())) t=r.defined() ? kput(x,0) : kput(x);

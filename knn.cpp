@@ -2100,7 +2100,7 @@ KAPI Onehot(K x) {
 // ----------------------------------------------------------------------------------
 static J softdim(size_t d) {return !(d==0 || d==1 || d==3);}
 
-static void softargs(K x,J i,Cast c,J &d,c10::optional<ScalarType>& s) { 
+static void softargs(K x,J i,Cast c,J &d,c10::optional<Dtype>& s) { 
  s=c10::nullopt; Pairs p; J n=xargc(x,i,p);
  if(!((n==0 && p.n) || (xlong(x,i,d) && (n==1 || (n==2 && xtype(x,i+1,s))))))
   AT_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
@@ -2270,7 +2270,7 @@ static K act(K x,Cast c,const char* s) {
    case Cast::softmin:
    case Cast::softmax:
    case Cast::logsoftmax: {
-    auto d=softdim(t.dim()); c10::optional<ScalarType> s; if(a) softargs(x,1,c,d,s);
+    auto d=softdim(t.dim()); c10::optional<Dtype> s; if(a) softargs(x,1,c,d,s);
     switch(c) {
      case Cast::softmin:    r=fnn::detail::softmin(t,d,s); break;
      case Cast::softmax:    r=fnn::detail::softmax(t,d,s); break;

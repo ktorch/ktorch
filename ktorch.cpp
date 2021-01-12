@@ -629,7 +629,7 @@ bool xscalar(K x,J i,Scalar &s) {return xind(x,i) && xscalar(kK(x)[i],s);}
 // ------------------------------------------------------------------------------------------------------
 // xbool - if value is boolean, set value and return true, else false
 // mtype - match sym to/from TypeMeta(newer datatype from Caffe2)
-// stype = match sym to/from ScalarType(older ATen datatypes)
+// stype = match sym to/from TypeMeta to Dtype (torch::Dtype, aka at::ScalarType)
 // xtype - symbol to scalar type or type meta, return true if scalar type/type meta set, else false
 // xopt - sym(s) -> tensor options, return true if ok, false if not sym(s) or error if unknown sym
 // xto - device and datatype sym(s) -> tensor options, return true if ok, false if not sym(s)
@@ -649,16 +649,16 @@ S mtype(TypeMeta t) {
   AT_ERROR("unrecognized data type: ",t);
 }
 
-ScalarType stype(S s) {return torch::typeMetaToScalarType(mtype(s));}
-S stype(ScalarType t) {return mtype(torch::scalarTypeToTypeMeta(t));}
-S stype(c10::optional<ScalarType> t) {return mtype(torch::scalarTypeToTypeMeta(t ? *t : ScalarType::Undefined));}
+Dtype stype(S s) {return torch::typeMetaToScalarType(mtype(s));}
+S stype(Dtype t) {return mtype(torch::scalarTypeToTypeMeta(t));}
+S stype(c10::optional<Dtype> t) {return mtype(torch::scalarTypeToTypeMeta(t ? *t : Dtype::Undefined));}
 
-bool xtype(K x,ScalarType &s)                {if(x->t == -KS) return s=stype(x->s), true; return false;}
-bool xtype(K x,c10::optional<ScalarType> &s) {if(x->t == -KS) return s=stype(x->s), true; return false;}
+bool xtype(K x,Dtype &s)                {if(x->t == -KS) return s=stype(x->s), true; return false;}
+bool xtype(K x,c10::optional<Dtype> &s) {if(x->t == -KS) return s=stype(x->s), true; return false;}
 bool xtype(K x,TypeMeta   &t) {if(x->t == -KS) return t=mtype(x->s), true; return false;}
 
-bool xtype(K x,J i,ScalarType &s)                {return xind(x,i) && xtype(kK(x)[i],s);}
-bool xtype(K x,J i,c10::optional<ScalarType> &s) {return xind(x,i) && xtype(kK(x)[i],s);}
+bool xtype(K x,J i,Dtype &s)                {return xind(x,i) && xtype(kK(x)[i],s);}
+bool xtype(K x,J i,c10::optional<Dtype> &s) {return xind(x,i) && xtype(kK(x)[i],s);}
 bool xtype(K x,J i, TypeMeta &t) {return xind(x,i) && xtype(kK(x)[i],t);}
 
 bool xopt(S s,TensorOptions &o) {
@@ -881,7 +881,7 @@ static void plen(const Pairs& p,J n,J m) {
 }
 
 S psym(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return p.s;}
-ScalarType ptype(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return torch::typeMetaToScalarType(mtype(p.s));}
+Dtype ptype(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return torch::typeMetaToScalarType(mtype(p.s));}
 bool pempty(const Pairs& p) {return p.t>=0 && p.v && !xlen(p.v);}
 bool pbool(const Pairs& p) {if(p.t!=-KB) perr(p,"boolean"); return p.b;}
 J plong(const Pairs& p) {if(p.t!=-KJ) perr(p,"long integer"); return p.j;}
