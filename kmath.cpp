@@ -905,7 +905,6 @@ chain_matmul(*matrices)[SOURCE]
 
 // -------------------------------------------------------------------------------------
 // bincount - frequency of each value in an array of non-negative integers
-// flatten - flatten a contiguous range of dimensions in a tensor
 // flip - reverse the order of a tensor along given dim(s)
 // trace - return sum of elements of diagonal of 2-d matrix
 // -------------------------------------------------------------------------------------
@@ -927,18 +926,6 @@ KAPI Bincount(K x) {
   }
   return kresult(p, torch::bincount(t,w,m));
  KCATCH("bincount");
-}
-
-KAPI Flatten(K x) {
- KTRY
-  J i=0,j=-1; Tensor t;
-  if(xten(x,t) || (xten(x,0,t) && xlong(x,1,i) && (x->n==2 || (x->n==3 && xlong(x,2,j))))) {
-   return kten(torch::flatten(t,i,j));
-  } else {
-   t=(xlong(x,1,i) && (x->n==2 || (x->n==3 && xlong(x,2,j)))) ? kput(x,0) : kput(x);
-   return kget(torch::flatten(t,i,j));
-  }
- KCATCH("flatten");
 }
 
 KAPI Flip(K x) {
@@ -1739,7 +1726,6 @@ void mathfn(K x) {
  fn(x, "expm1",              KFN(Expm1),              1);
  fn(x, "exponential",        KFN(Exponential),        1);
  fn(x, "fft",                KFN(Fft),                1);
- fn(x, "flatten",            KFN(Flatten),            1);
  fn(x, "Flip",               KFN(Flip),               1);
  fn(x, "Floor",              KFN(Floor),              1);
  fn(x, "finite",             KFN(Finite),             1);

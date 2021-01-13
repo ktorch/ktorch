@@ -641,7 +641,7 @@ bool xbool(K x,J i,bool &b) {return xind(x,i) && xbool(kK(x)[i],b);}
 
 TypeMeta mtype(S s) {
   for(auto &m:env().dtype) if(s==std::get<0>(m)) return std::get<1>(m);
-  AT_ERROR("unrecognized data type: ",s);
+  AT_ERROR("unrecognized data type: ",(s==nullsym() ? "(null)" : s));
 }
 
 S mtype(TypeMeta t) {
@@ -653,13 +653,21 @@ Dtype stype(S s) {return torch::typeMetaToScalarType(mtype(s));}
 S stype(Dtype t) {return mtype(torch::scalarTypeToTypeMeta(t));}
 S stype(c10::optional<Dtype> t) {return mtype(torch::scalarTypeToTypeMeta(t ? *t : Dtype::Undefined));}
 
-bool xtype(K x,Dtype &s)                {if(x->t == -KS) return s=stype(x->s), true; return false;}
-bool xtype(K x,c10::optional<Dtype> &s) {if(x->t == -KS) return s=stype(x->s), true; return false;}
-bool xtype(K x,TypeMeta   &t) {if(x->t == -KS) return t=mtype(x->s), true; return false;}
+bool xtype(K x,TypeMeta &t) {if(x->t == -KS) return t=mtype(x->s), true; return false;}
+bool xtype(K x,Dtype &t)    {if(x->t == -KS) return t=stype(x->s), true; return false;}
+bool xtype(K x,c10::optional<Dtype> &t) {
+ if(x->t != -KS)
+  return false;
+ if(nullsym(x->s))
+   t=c10::nullopt;
+  else
+   t=stype(x->s);
+ return true; 
+}
 
-bool xtype(K x,J i,Dtype &s)                {return xind(x,i) && xtype(kK(x)[i],s);}
-bool xtype(K x,J i,c10::optional<Dtype> &s) {return xind(x,i) && xtype(kK(x)[i],s);}
-bool xtype(K x,J i, TypeMeta &t) {return xind(x,i) && xtype(kK(x)[i],t);}
+bool xtype(K x,J i,TypeMeta &t)             {return xind(x,i) && xtype(kK(x)[i],t);}
+bool xtype(K x,J i,Dtype &t)                {return xind(x,i) && xtype(kK(x)[i],t);}
+bool xtype(K x,J i,c10::optional<Dtype> &t) {return xind(x,i) && xtype(kK(x)[i],t);}
 
 bool xopt(S s,TensorOptions &o) {
  auto &e=env();
@@ -881,7 +889,7 @@ static void plen(const Pairs& p,J n,J m) {
 }
 
 S psym(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return p.s;}
-Dtype ptype(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return torch::typeMetaToScalarType(mtype(p.s));}
+Dtype ptype(const Pairs& p) {if(p.t!=-KS) perr(p,"symbol"); return stype(p.s);}
 bool pempty(const Pairs& p) {return p.t>=0 && p.v && !xlen(p.v);}
 bool pbool(const Pairs& p) {if(p.t!=-KB) perr(p,"boolean"); return p.b;}
 J plong(const Pairs& p) {if(p.t!=-KJ) perr(p,"long integer"); return p.j;}

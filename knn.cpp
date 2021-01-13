@@ -230,9 +230,9 @@ static Moduleptr newcontainer(Cast c, S s,        K x) {
  }
 }
 
-// -------------------------------------------------------------------------------------------------
-// restype
-// -------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------
+// restype - determine result type of module, set in module structure
+// -------------------------------------------------------------------
 static Result restype(Cast c) {
  switch(c) {
   case Cast::rnn:
@@ -541,9 +541,10 @@ K mforward(Cast c,Result r,Module& m,K a) {
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
-// mbool - check positional args or name-value pairs for boolean, else error w'module & option name
-// code  - check positional args of name-value pairs for symbol,  else error w'module & option name
-// int64 - check positional args or name-value pairs for long int, else error w'module & option
+// mbool - check args for boolean, else error w'module & option name
+// code  - check args for symbol,  else error w'module & option name
+// otype - check args for optional data type (null symbol -> nullopt)
+// int64 - check args for long int, else error w'module & option
 // int64n - int64 but returns optional, i.e. nullopt if k value is null
 // mdouble - check for double(or long) from positional or name-value pair arg
 // optdouble - call mdouble() but return null if k null supplied
@@ -569,6 +570,10 @@ static S code(const Pairs& p,Cast c) {
  TORCH_CHECK(p.t==-KS, msym(c)," ",p.k,": expected symbol, given ",kname(p.t));
  return p.s;
 }
+
+static c10::optional<Dtype> otype(S s) {if(nullsym(s)) return c10::nullopt; else return stype(s);}
+static c10::optional<Dtype> otype(K x,J i,Cast c,Setting s) {return otype(code(x,i,c,s));}
+static c10::optional<Dtype> otype(const Pairs& p,Cast c)    {return otype(code(p,c));}
 
 static int64_t int64(K x,J i,Cast c,Setting s) {
  int64_t n;
@@ -2064,33 +2069,46 @@ static K dim(bool a,Cast c,int64_t d) {
 // ----------------------------------------------------------------------------------
 // onehot - handle option (number of classes) for module or functional implementation
 // ----------------------------------------------------------------------------------
-static OneHotOptions onehot(K x,J i,Cast c) {
+static OneHotOptions onehot(K x,J i,Cast c) {  //process arg(s) for number of classes & datatype
  OneHotOptions o; Pairs p; J n=xargc(x,i,p);
- if(n==1) o.num_classes(int64(x,i,c,Setting::classes));
- TORCH_CHECK(n<2, msym(c),": unrecognized positional option(s), expecting single arg of number of classes");
- while(xpair(p)) {
-  TORCH_CHECK(mset(p.k,c)==Setting::classes,"unrecognized option: ",p.k); o.num_classes(int64(p,c));
- }
- TORCH_CHECK(o.num_classes()>-2, msym(c),": number of classes must be nonnegative  or set to -1 to derive from input");
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.num_classes(int64(x,i+j,c,Setting::classes)); break;
+   case 1: o.dtype(otype(x,i+j,c,Setting::dtype)); break;
+   default: AT_ERROR(msym(c),": up to 2 positional args(no. of classes; datatype) expected, ",n," supplied");
+  }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::classes: o.num_classes(int64(p,c)); break;
+   case Setting::dtype:   o.dtype(otype(p,c)); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ TORCH_CHECK(o.num_classes()>-2, msym(c),": number of classes must be nonnegative or set to -1 to derive from input");
  return o;
 }
 
-static K onehot(bool a,const OneHotOptions& o) {
+static K onehot(bool a,const OneHotOptions& o) {  //return dictionary for number of classes & optional type
  K x=KDICT;
  OPTION(x,classes,kj(o.num_classes()));
- //if(a || o.dtype() != OneHotOptions().dtype()) OPTION(x,dtype,o.dtype());
+ if(o.dtype()) OPTION(x,dtype,ks(stype(o.dtype().value())));
  return x;
 }
 
-KAPI Onehot(K x) {
+static Tensor onehot(const Tensor& t,const OneHotOptions& o) {
+ return torch::one_hot(t,o.num_classes()).to(o.dtype() ? o.dtype().value() : torch::kFloat);
+}
+
+KAPI Onehot(K x) {  // functional invocation w'additional args for no. of classes,optional datatype
  KTRY
-  int64_t n=-1; Tensor *t;
-  if((t=xten(x)) || ((t=xten(x,0)) && xint64(x,1,n)))
-   return kten(torch::one_hot(*t,n));
-  else if(xint64(x,1,n) && x->n==2)
-   return kget(torch::one_hot(kput(x,0),n));
+  OneHotOptions o; Tensor *t=xten(x);
+  if(t)
+   return kten(onehot(*t,o));
+  else if((t=xten(x,0)))
+   return kten(onehot(*t,onehot(x,1,Cast::onehot)));
+  else if(xmixed(x,2))
+   return kget(onehot(kput(x,0),onehot(x,1,Cast::onehot)));
   else
-   return kget(torch::one_hot(kput(x)));
+   return kget(onehot(kput(x),o));
  KCATCH("onehot");
 }
 
@@ -2106,8 +2124,8 @@ static void softargs(K x,J i,Cast c,J &d,c10::optional<Dtype>& s) {
   AT_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
  while(xpair(p))
   switch(mset(p.k,c)) {
-   case Setting::dim:   d=plong(p); break;
-   case Setting::dtype: s=ptype(p); break;
+   case Setting::dim:   d=int64(p,c); break;
+   case Setting::dtype: s=otype(p,c); break;
    default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(null(d)) 
@@ -2434,22 +2452,27 @@ KAPI pdist(K x) {
  KCATCH("pdist");
 }
 
-// ----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 // flatten - process arg(s) from k and return options
 //         - return options used given a flatten module used
 //         - call flatten as function given input/tensor and optional start & end dimensions
-// ----------------------------------------------------------------------------------------------------
-static nn::FlattenOptions flatten(K x,J i,Cast c) {
- nn::FlattenOptions o; int64_t s=o.start_dim(),e=o.end_dim(); Pairs p; J n=xargc(x,i,p);
- if(!(n==0 || (xint64(x,i,s) && (n==1 || (n==2 && xint64(x,i+1,e))))))
-  AT_ERROR("flatten: unrecognized arg(s)");
+// -----------------------------------------------------------------------------------------
+static nn::FlattenOptions flatten(K x,J i,Cast c,bool f=false);
+static nn::FlattenOptions flatten(K x,J i,Cast c,bool f) {
+ nn::FlattenOptions o; if(f) o.start_dim(0); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.start_dim(int64(x,i+j,c,Setting::start));  break;
+    case 1: o.end_dim(int64(x,i+j,c,Setting::end));  break;
+    default: AT_ERROR(msym(c),": up to 2 positional arguments(start dim;end dim) expected, ",n," given");
+   }
  while(xpair(p))
   switch(mset(p.k,c)) {
-   case Setting::start: s=plong(p); break;
-   case Setting::end:   e=plong(p); break;
+   case Setting::start: o.start_dim(int64(p,c)); break;
+   case Setting::end:   o.end_dim(int64(p,c)); break;
    default: AT_ERROR("flatten option: ",p.k," not recognized");
   }
- return o.start_dim(s).end_dim(e);
+ return o;
 }
 
 static K flatten(bool a,const nn::FlattenOptions& o) {
@@ -2459,14 +2482,17 @@ static K flatten(bool a,const nn::FlattenOptions& o) {
  return x;
 }
 
-KAPI kflatten(K x) {
+KAPI Flatten(K x) {  // functional invocation w'different defaults than module(start dim=0 not 1)
  KTRY
-  bool m=false; Tensor t;
-  auto o=flatten((xten(x,t) || xten(x,0,t) || (m=xmixed(x,3))) ? x : nullptr, 1, Cast::flatten);
-  if(t.defined())
-   return kten(torch::flatten(t, o.start_dim(), o.end_dim()));
-  else
-   return kget(torch::flatten(m ? kput(x,0) : kput(x), o.start_dim(), o.end_dim()));
+  Tensor *t=xten(x);
+  if(t) {
+   return kten(torch::flatten(*t));
+  } else if((t=xten(x,0)) || xmixed(x,2)) {
+   auto o=flatten(x,1,Cast::flatten,true);
+   return kresult(t, torch::flatten(t ? *t : kput(x,1), o.start_dim(), o.end_dim()));
+  } else {
+   return kget(torch::flatten(kput(x)));
+  }
  KCATCH("flatten");
 }
 
@@ -3747,7 +3773,7 @@ void nnfn(K x) {
  fn(x, "pad",         KFN(kpad),         1);
  fn(x, "celu",        KFN(celu),         1);
  fn(x, "elu",         KFN(elu),          1);
- fn(x, "flatten",     KFN(kflatten),     1);
+ fn(x, "flatten",     KFN(Flatten),      1);
  fn(x, "fold",        KFN(Fold),         1);
  fn(x, "glu",         KFN(glu),          1);
  fn(x, "hardshrink",  KFN(hardshrink),   1);

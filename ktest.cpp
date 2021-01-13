@@ -1,6 +1,14 @@
 #include "ktorch.h"
 namespace nn=torch::nn;
 
+KAPI dtest(K x) {
+ KTRY
+  Tensor t;
+  TORCH_CHECK(xten(x,t),"not a tensor");
+  return kget(torch::flatten(t));
+ KCATCH("dtest");
+}
+
 /*
 KAPI trainx(K x) {
  KTRY
