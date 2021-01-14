@@ -559,6 +559,15 @@ template <class... Fs> auto make_overload(Fs... fs) {
 //template <class... F> struct overload : F... {overload(F... f) : F(f)... {}};
 //template <class... F> auto make_overload(F... f) {return overload<F...>(f...);}
 
+/*
+void testover(auto& x,auto& y) {
+ auto f=make_overload(
+   [](J& x, J& y) {std::cerr << x+y <<"\n"},
+   [](auto& x, auto& y) {std::cerr << "auto\n"}),
+   x,y);
+}
+*/
+
 KAPI join1(K x) {
  KTRY
   SeqNest q;

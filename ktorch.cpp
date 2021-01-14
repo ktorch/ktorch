@@ -1356,7 +1356,7 @@ KAPI zerograd(K x) {
 KAPI forward(K x) {
  KTRY
   Ktag *g=xtag(x,0);
-  TORCH_CHECK(g, "forward: expects module/model as first arg");
+  TORCH_CHECK(g, "forward: expects module/model as first arg, with tensor(s)/vector/dictionary as additional args");
   switch(g->a) {
    case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
    case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}

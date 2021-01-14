@@ -161,10 +161,10 @@ enum class Cast:short {
  hardshrink,     hardtanh,        identity,        instancenorm1d,  instancenorm2d,
  instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
- lstm, lstmout,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
+ lstm, lstmout, lstmfork,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
  normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
  prelu,          reflect1d,       reflect2d,       relu,            relu6,
- replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout,
+ replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout, rnnfork,
  rrelu,          select,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
  tanh,           tanhshrink,      threshold,       transformer,     unfold,
@@ -700,7 +700,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,111> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,113> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -763,6 +763,7 @@ typedef struct {
   std::make_tuple(cs("lppool1d"),         Cast::lppool1d,        typeid(torch::nn::LPPool1dImpl).hash_code(),            "torch.nn.LPPool1d"),
   std::make_tuple(cs("lppool2d"),         Cast::lppool2d,        typeid(torch::nn::LPPool2dImpl).hash_code(),            "torch.nn.LPPool2d"),
   std::make_tuple(cs("lstm"),             Cast::lstm,            typeid(torch::nn::LSTMImpl).hash_code(),                "torch.nn.LSTM"),
+  std::make_tuple(cs("lstmfork"),         Cast::lstmfork,        typeid(LSTMForkImpl).hash_code(),                       ""),
   std::make_tuple(cs("lstmout"),          Cast::lstmout,         typeid(LSTMOutputImpl).hash_code(),                     "torch.nn.LSTM"),
   std::make_tuple(cs("maxpool1d"),        Cast::maxpool1d,       typeid(torch::nn::MaxPool1dImpl).hash_code(),           "torch.nn.MaxPool1d"),
   std::make_tuple(cs("maxpool2d"),        Cast::maxpool2d,       typeid(torch::nn::MaxPool2dImpl).hash_code(),           "torch.nn.MaxPool2d"),
@@ -788,6 +789,7 @@ typedef struct {
   std::make_tuple(cs("replicate3d"),      Cast::replicate3d,     typeid(torch::nn::ReplicationPad3dImpl).hash_code(),    "torch.nn.ReplicationPad3d"),
   std::make_tuple(cs("reshape"),          Cast::reshape,         typeid(ReshapeImpl).hash_code(),                        "torch.reshape"),
   std::make_tuple(cs("rnn"),              Cast::rnn,             typeid(torch::nn::RNNImpl).hash_code(),                 "torch.nn.RNN"),
+  std::make_tuple(cs("rnnfork"),          Cast::rnnfork,         typeid(RNNForkImpl).hash_code(),                        ""),
   std::make_tuple(cs("rnnout"),           Cast::rnnout,          typeid(RNNOutputImpl).hash_code(),                      "torch.nn.RNN"),
   std::make_tuple(cs("rrelu"),            Cast::rrelu,           typeid(torch::nn::RReLUImpl).hash_code(),               "torch.nn.RReLU"),
   std::make_tuple(cs("select"),           Cast::select,          typeid(SelectImpl).hash_code(),                         "torch.Tensor.select"),

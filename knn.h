@@ -213,23 +213,33 @@ class TORCH_API RNNOutputImpl : public torch::nn::Cloneable<RNNOutputImpl> {
 TORCH_MODULE(RNNOutput);
 
 // ----------------------------------------------------------------------------------
-// RNNSplit, LSTMSplit - split output & hidden state from rnn layer, apply sequential
+// RNNFork, LSTMFork - split output & hidden state from rnn layer, apply sequential
 // ----------------------------------------------------------------------------------
-struct TORCH_API SplitOptions {
- SplitOptions(bool d=true) : detach_(d) {}
+struct TORCH_API ForkOptions {
+ ForkOptions(bool d=true) : detach_(d) {}
  TORCH_ARG(bool, detach);
 };
 
-using  RNNSplitOptions=SplitOptions;
-using LSTMSplitOptions=SplitOptions;
+template<typename Derived>class TORCH_API ForkBase : public torch::nn::Cloneable<Derived> {
+ public:
+ explicit ForkBase(const ForkOptions& o) : options(o) {}
+ void reset() override {}
+ void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
+ void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
+ torch::nn::Sequential seq;
+ ForkOptions options;
+};
 
-class TORCH_API RNNSplitImpl : public torch::nn::Cloneable<RNNSplitImpl> {
+class TORCH_API RNNForkImpl : public torch::nn::Cloneable<RNNForkImpl> {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  public:
+ explicit RNNForkImpl(const ForkOptions& o) : options(o) {}
  void reset() override {}
- void pretty_print(std::ostream& s) const override {s << "RNNSplit(detach=" << options.detach() << ")";}
- Tuple forward(const Tuple& a) {
+ void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
+ void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
+ void pretty_print(std::ostream& s) const override {s << "RNNFork(detach=" << options.detach() << ")";}
+ Tuple forward(const Tuple& a) {  // recieves output & hidden tensor from RNN or GRU layer
   auto x=seq->forward(std::get<0>(a));
   auto h=std::get<1>(a);
   if(options.detach())
@@ -237,17 +247,20 @@ class TORCH_API RNNSplitImpl : public torch::nn::Cloneable<RNNSplitImpl> {
   return std::make_tuple(x,h);
  }
  torch::nn::Sequential seq;
- RNNSplitOptions options;
+ ForkOptions options;
 };
-TORCH_MODULE(RNNSplit);
+TORCH_MODULE(RNNFork);
 
-class TORCH_API LSTMSplitImpl : public torch::nn::Cloneable<LSTMSplitImpl> {
+class TORCH_API LSTMForkImpl : public torch::nn::Cloneable<LSTMForkImpl> {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  using Nested=std::tuple<Tensor,Tuple>;
  public:
+ explicit LSTMForkImpl(const ForkOptions& o) : options(o) {}
  void reset() override {}
- void pretty_print(std::ostream& s) const override {s << "LSTMSplit(detach=" << options.detach() << ")";}
+ void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
+ void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
+ void pretty_print(std::ostream& s) const override {s << "LSTMFork(detach=" << options.detach() << ")";}
  Nested forward(const Nested& a) {
   auto x=seq->forward(std::get<0>(a));
   auto h=std::get<1>(a);
@@ -256,9 +269,9 @@ class TORCH_API LSTMSplitImpl : public torch::nn::Cloneable<LSTMSplitImpl> {
   return std::make_tuple(x,h);
  }
  torch::nn::Sequential seq;
- LSTMSplitOptions options;
+ ForkOptions options;
 };
-TORCH_MODULE(LSTMSplit);
+TORCH_MODULE(LSTMFork);
 
 // ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 

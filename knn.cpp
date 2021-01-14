@@ -175,7 +175,6 @@ KAPI seq(K x) {
 // --------------------------------------------------------------------------------------
 // container - given module/module cast, return true if container module
 // parmdict - parameter dictionary handles "options" of dictionary of tensors or k arrays
-// newcontainer - create new container (handle options/parms for parameter dict only)
 // --------------------------------------------------------------------------------------
 static bool container(Cast c) {
  switch(c) {
@@ -186,6 +185,8 @@ static bool container(Cast c) {
   case Cast::modulelist:
   case Cast::parmdict:
   case Cast::base:
+  case Cast::rnnfork:
+  case Cast::lstmfork:
    return true;
   default: return false;
  }
@@ -199,6 +200,8 @@ static bool container(const Module& m) {
  else if(m.as<nn::ModuleList>())    return true;
  else if(m.as<nn::ParameterDict>()) return true;
  else if(m.as<BaseModule>())        return true;
+ else if(m.as<RNNFork>())           return true;
+ else if(m.as<LSTMFork>())          return true;
  else                               return false;
 }
 
@@ -213,32 +216,17 @@ static Moduleptr parmdict(K x,J i) {
   AT_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
 }
 
-static Moduleptr newcontainer(Cast c, S s=nullptr,K x=nullptr);
-static Moduleptr newcontainer(Cast c, S s,        K x) {
- J i=argstart(x,s);
- TORCH_CHECK(c==Cast::parmdict || !x || xnone(x,i), msym(c),
-             ": no options expected, given ", kstring(x));
- switch(c) {
-  case Cast::sequential:  return nn::Sequential().ptr();
-  case Cast::seqnest:     return SeqNest().ptr();
-  case Cast::seqjoin:     return SeqJoin().ptr();
-  case Cast::moduledict:  return nn::ModuleDict().ptr();
-  case Cast::modulelist:  return nn::ModuleList().ptr();
-  case Cast::parmdict:    return parmdict(x,i);
-  case Cast::base:        return BaseModule().ptr();
-  default: AT_ERROR("unable to create container module, unrecognized enumeration: ", (I)c);
- }
-}
-
 // -------------------------------------------------------------------
 // restype - determine result type of module, set in module structure
 // -------------------------------------------------------------------
 static Result restype(Cast c) {
  switch(c) {
   case Cast::rnn:
-  case Cast::gru:  return Result::tuple;
-  case Cast::lstm: return Result::nested;
-  default:         return Result::tensor;
+  case Cast::gru:
+  case Cast::rnnfork:  return Result::tuple;
+  case Cast::lstm:
+  case Cast::lstmfork: return Result::nested;
+  default:             return Result::tensor;
  }
 }
 
@@ -465,7 +453,7 @@ template<typename S> static void rseq(Result r,Module& m,TensorVector& v,const T
 TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
  TensorVector v;
  if(z.defined()) {
-  TORCH_CHECK(c==Cast::lstm, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
+  TORCH_CHECK(r==Result::nested, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
   TORCH_CHECK(y.defined(), "hidden state incomplete for recurrent ",msym(c)," module's forward calculation");
  }
  switch(c) {
@@ -1562,6 +1550,30 @@ template<typename O> static K rnn(bool a,const O& o) {
  if(a || (o.batch_first()   != d.batch_first()))  OPTION(x, batchfirst, kb(o.batch_first()));
  if(a || (o.dropout()       != d.dropout()))      OPTION(x, dropout,    kf(o.dropout()));
  if(a || (o.bidirectional() != d.bidirectional()))OPTION(x, bi,         kb(o.bidirectional()));
+ return x;
+}
+
+// --------------------------------------------------------------------------------------------
+// rnnfork - layer that applies sequential to output from RNN/GRU/LSTM, return w'hidden layer
+// --------------------------------------------------------------------------------------------
+static ForkOptions rnnfork(K x,J i,Cast c) {
+ ForkOptions o; Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.detach(mbool(x,i+j,c,Setting::detach)); break;
+   default: AT_ERROR(msym(c),": 1 positional arg(detach flag) expected, ",n," supplied");
+  }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::detach: o.detach(mbool(p,c)); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ return o;
+}
+
+static K rnnfork(bool a,const ForkOptions& o) {
+ K x=KDICT;
+ if(a || o.detach() != ForkOptions().detach()) OPTION(x, detach, kb(o.detach()));
  return x;
 }
 
@@ -2900,6 +2912,14 @@ static K getsize(bool a,const SizeOptions& o) {
 // ----------------------------------------------------------------------------
 static Moduleptr mcreate(K x,J i,Cast c) {
  switch(c) {
+  case Cast::sequential:  noarg(c,x,i); return nn::Sequential().ptr();  //containers
+  case Cast::seqnest:     noarg(c,x,i); return SeqNest().ptr();
+  case Cast::seqjoin:     noarg(c,x,i); return SeqJoin().ptr();
+  case Cast::moduledict:  noarg(c,x,i); return nn::ModuleDict().ptr();
+  case Cast::modulelist:  noarg(c,x,i); return nn::ModuleList().ptr();
+  case Cast::base:        noarg(c,x,i); return BaseModule().ptr();
+  case Cast::parmdict:    return parmdict(x,i); // dictionary can contain parms as options
+
   case Cast::batchnorm1d:  return nn::BatchNorm1d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
   case Cast::batchnorm2d:  return nn::BatchNorm2d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
   case Cast::batchnorm3d:  return nn::BatchNorm3d(batchnorm<nn::BatchNormOptions>(x,i,c)).ptr();
@@ -2979,6 +2999,9 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::rnn:          return nn::RNN(rnn(x,i,c)).ptr();
   case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
   case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
+
+  case Cast::rnnfork:      return RNNFork(rnnfork(x,i,c)).ptr();
+  case Cast::lstmfork:     return LSTMFork(rnnfork(x,i,c)).ptr();
 
   case Cast::rnnout:       noarg(c,x,i); return RNNOutput().ptr();
   case Cast::gruout:       noarg(c,x,i); return GRUOutput().ptr();
@@ -3104,6 +3127,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::lppool1d:        return ANY(nn::LPPool1d, m);
   case Cast::lppool2d:        return ANY(nn::LPPool2d, m);
   case Cast::lstm:            return ANY(nn::LSTM, m);
+  case Cast::lstmfork:        return ANY(LSTMFork, m);
   case Cast::lstmout:         return ANY(LSTMOutput, m);
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
@@ -3128,6 +3152,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::replicate3d:     return ANY(nn::ReplicationPad3d, m);
   case Cast::reshape:         return ANY(Reshape, m);
   case Cast::rnn:             return ANY(nn::RNN, m);
+  case Cast::rnnfork:         return ANY(RNNFork, m);
   case Cast::rnnout:          return ANY(RNNOutput, m);
   case Cast::rrelu:           return ANY(nn::RReLU, m);
   case Cast::select:          return ANY(Select, m);
@@ -3265,6 +3290,8 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::rnn:              return rnn(a,m.as<nn::RNN>()->options);
   case Cast::gru:              return rnn(a,m.as<nn::GRU>()->options);
   case Cast::lstm:             return rnn(a,m.as<nn::LSTM>()->options);
+  case Cast::rnnfork:          return rnnfork(a,m.as<RNNFork>()->options);
+  case Cast::lstmfork:         return rnnfork(a,m.as<LSTMFork>()->options);
 
   case Cast::relu:             return inplace(a,m.as<nn::ReLU>()->options.inplace());
   case Cast::selu:             return inplace(a,m.as<nn::SELU>()->options.inplace());
@@ -3343,6 +3370,20 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 // addparent - create container, add to any previous parent, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
+template<typename M> static void pushback(M *m,const Moduleptr& y) {
+ const char *s=mname(*y);
+ const auto& a=anymodule(mcast(*y),y);
+ if(s) m->push_back(s,a); else m->push_back(a);
+}
+
+/*
+if(auto *m=x->as<nn::Sequential>())  { pushback(m,y);
+} else if(auto *m=x->as<SeqNest>())  { pushback(m,y);
+} else if(auto *m=x->as<RNNFork>())  { pushback(m,y);
+} else if(auto *m=x->as<LSTMFork>()) { pushback(m,y);
+} else
+*/
+
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
  if(auto *m=x->as<nn::Sequential>()) {
@@ -3372,19 +3413,19 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
 
 static void addname(Module& a,S s) {if(s) mname_(a)=s; else mname_(a)=c10::nullopt;}
  
-static void addparent(const Moduleptr& a,Modules& q) {
- if(q.size()) addmodule(q.top(),a);  // add to previous parent, if any
- q.push(a);                          // add new parent container to stack
+static void addparent(const Moduleptr& m,Modules& q) {
+ if(q.size()) addmodule(q.top(),m);  // add to previous parent, if any
+ q.push(m);                          // add new parent container to stack
 }
 
 static void addparent(Cast c,S s,Modules& q,K x=nullptr,K y=nullptr,K z=nullptr);
 static void addparent(Cast c,S s,Modules& q,K x,K y,K z) {
  TORCH_CHECK(!(c != Cast::parmdict && y && xlen(y)),    msym(c), ": no parameters expected");
  TORCH_CHECK(!(z && xlen(z)),                           msym(c), ": no buffers expected");
- auto a=newcontainer(c,s,x); // create new container module, e.g. sequential
- if(y||z) mparms(c,*a,y,z);  // add any supplied parms or buffers
- addname(*a,s);              // add name if supplied
- addparent(a,q);             // add to any previous parent, push on stack
+ auto m=mcreate(x,argstart(x,s),c); // create generic module ptr from cast, options & offset
+ if(y||z) mparms(c,*m,y,z);         // add any supplied parms or buffers
+ addname(*m,s);                     // add name if supplied
+ addparent(m,q);                    // add to any previous parent, push on stack
 }
 
 static void addchild(const Moduleptr& m,Modules& q) {
@@ -3431,8 +3472,7 @@ static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
   if(i==j) {
    TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
-   TORCH_CHECK(mcompare(c,m,*(container(c) ? newcontainer(c,s,x) : mcreate(x,argstart(x,s),c))),
-               "child module ", a.key(), " mismatch with given options");
+   TORCH_CHECK(mcompare(c,m,*mcreate(x,argstart(x,s),c)),"child module ",a.key()," mismatch with given options");
    if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
    return;
   }
@@ -3688,6 +3728,7 @@ K modulehelp(Cast c) {
   case Cast::lppool1d:        return lppool(true,nn::LPPool1dOptions(2,3));
   case Cast::lppool2d:        return lppool(true,nn::LPPool2dOptions(1.2,{2,3}));
   case Cast::lstm:            return rnn(true,nn::LSTMOptions(10,20));
+  case Cast::lstmfork:        return rnnfork(true,ForkOptions());
   case Cast::lstmout:         return KDICT;
   case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
@@ -3713,6 +3754,7 @@ K modulehelp(Cast c) {
   case Cast::replicate3d:     return npad(nn::ReplicationPad3dOptions({3,3,6,6,1,1}));
   case Cast::reshape:         return getsize(true,SizeOptions({-1,1,28,28}));
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
+  case Cast::rnnfork:         return rnnfork(true,ForkOptions());
   case Cast::rnnout:          return KDICT;
   case Cast::rrelu:           return rrelu(true,nn::RReLUOptions());
   case Cast::select:          return select(true,SelectOptions(1,-1));
@@ -3749,7 +3791,7 @@ K modulehelp(Cast c) {
    }
    return xT(xD(k,knk(3,s,d,o)));
   }
-  default: AT_ERROR("no help implemented for module enumeration: ",(I)c);
+  default: AT_ERROR("no help implemented for module: ",msym(c));
  }
 }
 
@@ -3832,8 +3874,9 @@ LSTMCell
 
 /* adding a new module
 	- add to knn.h if not defined in pytorch
-	- add Cast enumeration and entry in Env.module
-        - if container, need to amend container/newcontainer functions, may have to add to Setting
+	- add Cast enumeration and entry in Env.module, man need to add to Setting's
+        - if container, need to amend container functions
+          also, need to modify addmodule to handle particular case..
         - if forward() result not a tensor, need to define result type and handle in forward calcs
           define forward calc for requisite input arg (usually a single tensor)
 	- fns to process options, e.g. options(K x,J i,Cast c) & options(bool b,const Options& o)
