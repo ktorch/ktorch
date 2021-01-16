@@ -222,7 +222,7 @@ struct TORCH_API ForkOptions {
 
 template<typename Derived>class TORCH_API ForkBase : public torch::nn::Cloneable<Derived> {
  public:
- explicit ForkBase(const ForkOptions& o) : options(o) {}
+ explicit ForkBase(const ForkOptions& o) : options(o) {register_module("seq",seq);}
  void reset() override {}
  void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
  void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
@@ -234,7 +234,7 @@ class TORCH_API RNNForkImpl : public torch::nn::Cloneable<RNNForkImpl> {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  public:
- explicit RNNForkImpl(const ForkOptions& o) : options(o) {}
+ explicit RNNForkImpl(const ForkOptions& o) : options(o) {register_module("seq",seq);}
  void reset() override {}
  void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
  void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
@@ -256,7 +256,7 @@ class TORCH_API LSTMForkImpl : public torch::nn::Cloneable<LSTMForkImpl> {
  using Tuple=std::tuple<Tensor,Tensor>;
  using Nested=std::tuple<Tensor,Tuple>;
  public:
- explicit LSTMForkImpl(const ForkOptions& o) : options(o) {}
+ explicit LSTMForkImpl(const ForkOptions& o) : options(o) {register_module("seq",seq);}
  void reset() override {}
  void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
  void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}

@@ -27,7 +27,6 @@ std::string mlabel(const Module& x) {
 // argstart - return offset in k list to begin processing module args
 // anymodule - forward declare function to create a module from k args, offset & cast
 // mopt - forward declare function to return module settings as k dictionary
-// restype - forward declare function deriving result type from cast/container module
 // ----------------------------------------------------------------------------------
 #define OPTION(x,k,v) dictadd(x, mset(Setting::k), v)
 //static J argstart(K x,S s) {return xdict(x) ? -1 : (s ? 2 : 1);}
@@ -35,22 +34,6 @@ static J argstart(K x,S s) {return !x ? -1 : (xdict(x) ? 0 : (s ? 2 : 1));}
 static AnyModule anymodule(K x,J i,S s);
 static AnyModule anymodule(Cast c,const Moduleptr& m);
 static K mopt(bool,bool,Cast,const Module&);
-static Result restype(Cast c,const Moduleptr& m);
-
-// ------------------------------------------------------------------------------
-// kmodule - allocate object to store a module pointer (class defaults to module) 
-// to - given module & options, change device/data type
-// ------------------------------------------------------------------------------
-K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,restype(c,m),m));}
-
-void to(Module& m,const TensorOptions& o,bool a) {
- auto s=torch::typeMetaToScalarType(o.dtype());
- if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
- else if(o.has_device())             m.to(o.device(),a);
- else                                m.to(s,a);
-}
-
-K to(Kmodule* m,const TensorOptions& o,bool a) {to(*m->m,o,a); return(K)0;}
 
 // -----------------------------------------------------------------------------------
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
@@ -69,6 +52,7 @@ static Cast msym(S s) {
 }
 
 static void msyms(K x,S& s,S& nm) {
+ std::cerr << kstring(x) << "\n";
  nm=nullptr;
  if(x->t == -KS) {
   s=x->s;
@@ -172,6 +156,53 @@ KAPI seq(K x) {
  KCATCH("seq");
 }
 
+// -------------------------------------------------------------------
+// rtype - determine result type of module's forward calculation
+// -------------------------------------------------------------------
+static Result rtype(Cast c) {
+ switch(c) {
+  case Cast::sequential: return Result::undefined;  // need to look at children for result type
+  case Cast::moduledict:
+  case Cast::modulelist:
+  case Cast::parmdict:   return Result::none;       // these modules have no forward method
+  case Cast::rnn:
+  case Cast::gru:
+  case Cast::rnnfork:    return Result::tuple;      // returns tuple<Tensor,Tensor>
+  case Cast::lstm:
+  case Cast::lstmfork:   return Result::nested;     // returns tuple<Tensor,tuple<Tensor,Tensor>>
+  default:               return Result::tensor;     // assume other modules forward methods return tensor
+ }
+}
+
+static Result rtype(Cast,const Moduleptr&);
+static Result rtype(const Moduleptr& m) {return rtype(mcast(*m),m);}
+
+static Result rtype(Cast c,const Moduleptr& m) {
+ std::cerr << msym(c) << "\n";
+ Result r=rtype(c);
+ if(r==Result::undefined) {     // if no explicit result type, e.g. Sequential
+  const auto& v=m->children();  // check last child result type
+  if(v.size())
+   r=rtype(v.back());
+ }
+ return r;
+}
+
+// ------------------------------------------------------------------------------
+// kmodule - allocate object to store a module pointer (class defaults to module) 
+// to - given module & options, change device/data type
+// ------------------------------------------------------------------------------
+K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,rtype(c,m),m));}
+
+void to(Module& m,const TensorOptions& o,bool a) {
+ auto s=torch::typeMetaToScalarType(o.dtype());
+ if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
+ else if(o.has_device())             m.to(o.device(),a);
+ else                                m.to(s,a);
+}
+
+K to(Kmodule* m,const TensorOptions& o,bool a) {to(*m->m,o,a); return(K)0;}
+
 // --------------------------------------------------------------------------------------
 // container - given module/module cast, return true if container module
 // parmdict - parameter dictionary handles "options" of dictionary of tensors or k arrays
@@ -216,55 +247,11 @@ static Moduleptr parmdict(K x,J i) {
   AT_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
 }
 
-// -------------------------------------------------------------------
-// restype - determine result type of module, set in module structure
-// -------------------------------------------------------------------
-static Result restype(Cast c) {
- switch(c) {
-  case Cast::rnn:
-  case Cast::gru:
-  case Cast::rnnfork:  return Result::tuple;
-  case Cast::lstm:
-  case Cast::lstmfork: return Result::nested;
-  default:             return Result::tensor;
- }
-}
-
-static Result restype(const Moduleptr& m) {                 //for container w'user-defined children
- const auto& v=m->children();                        //check if any children defined
- if(v.empty()) {
-  return Result::undefined;
- } else {
-  const auto& a=v.back();                            //use last child
-  auto c=mcast(*a);                                  //find type
-  return container(c) ?  restype(c,a) : restype(c);  //get result type of container's final child
- }
-}
-
-static Result restype(Cast c,const Moduleptr& m) {
- if(container(c)) {
-  switch(c) {
-   case Cast::sequential:
-   case Cast::seqnest:
-   case Cast::seqjoin:
-    return restype(m);
-   default: return Result::undefined;
-  }
- } else {
-  return restype(c);
- }
-}
-
 // -------------------------------------------------------------------------------------------------
-// mroot - given stack, pop back to root module, return as struct to k
-// mstack - given root container, populate stack of all intermediate container modules
-// mresult - if existing module, update result type and retun null, else return new module structure
+// mstack - adjust stack given depth,then populate a stack of all intermediate container modules
+// mfirst - return first module put on stack (pare down stack, signal error if given empty stack)
+// mresult - if existing module, update result type & return null, else return new module structure
 // -------------------------------------------------------------------------------------------------
-static K mroot(Cast c,Modules& q) {
- while(q.size()>1) q.pop();
- return q.size() ? kmodule(c,q.top()) : (K)0;
-}
-
 static void mstack(size_t d,Moduleptr& m,Modules& q) {
  while(q.size()>d) q.pop();
  if(container(*m)) {
@@ -276,13 +263,16 @@ static void mstack(size_t d,Moduleptr& m,Modules& q) {
 
 static void mstack(Kmodule *m,Modules& q) {mstack(0,m->m,q);} // initialize stack
 
+static Moduleptr mfirst(Modules& q) {
+ TORCH_CHECK(q.size(), "empty module stack -- cannot get originating module");
+ while(q.size()>1) q.pop();
+ return q.top();
+}
+
 static K mresult(Kmodule *m,Cast c,Modules& q) {
- if(m) {
-  m->r = restype(c,m->m);
-  return (K)0;
- } else {
-  return mroot(c,q);
- }
+ const auto& a=mfirst(q);
+ if(m) m->r = rtype(a);
+ return m ? (K)0 : kmodule(c,a);
 }
 
 // ------------------------------------------------------------------------------------
@@ -496,7 +486,10 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
   case Result::tuple:
   case Result::nested:
    return kvec(rforward(c,r,m,x,y,z));
-  default: AT_ERROR("forward: unrecognized result type, ", (I)r);
+  case Result::none:
+   AT_ERROR("forward: no forward calculation defined for ",msym(c)," module");
+  case Result::undefined:
+   AT_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
  }
 }
 
@@ -3117,7 +3110,6 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::instancenorm1d:  return ANY(nn::InstanceNorm1d, m);
   case Cast::instancenorm2d:  return ANY(nn::InstanceNorm2d, m);
   case Cast::instancenorm3d:  return ANY(nn::InstanceNorm3d, m);
-  case Cast::interpolate:     AT_ERROR("unable to create type-erased module for 'interpolate': no module defined");
   case Cast::layernorm:       return ANY(nn::LayerNorm, m);
   case Cast::leakyrelu:       return ANY(nn::LeakyReLU, m);
   case Cast::linear:          return ANY(nn::Linear, m);
@@ -3132,15 +3124,12 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
   case Cast::maxpool3d:       return ANY(nn::MaxPool3d, m);
-  case Cast::modulelist:      AT_ERROR("unable to create type-erased module for 'modulelist': no forward method defined");
   case Cast::mul:             return ANY(Mul, m);
-  case Cast::normalize:       AT_ERROR("unable to create type-erased module for 'normalize': no module defined");
   case Cast::onehot:          return ANY(OneHot, m);
   case Cast::pad:             return ANY(Pad, m);
   case Cast::pad1d:           return ANY(nn::ConstantPad1d, m);
   case Cast::pad2d:           return ANY(nn::ConstantPad2d, m);
   case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
-  case Cast::parmdict:        AT_ERROR("unable to create type-erased module for 'parmdict': no forward method defined");
   case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
   case Cast::prelu:           return ANY(nn::PReLU, m);
   case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
@@ -3159,7 +3148,6 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::selu:            return ANY(nn::SELU, m);
   case Cast::seqjoin:         return ANY(SeqJoin, m);
   case Cast::seqnest:         return ANY(SeqNest, m);
-  case Cast::sequential:      AT_ERROR("unable to create type-erased module for 'sequential': forward method uses template");
   case Cast::sigmoid:         return ANY(nn::Sigmoid, m);
   case Cast::similar:         return ANY(nn::CosineSimilarity, m);
   case Cast::softmax:         return ANY(nn::Softmax, m);
@@ -3177,6 +3165,13 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::unsqueeze:       return ANY(Unsqueeze, m);
   case Cast::upsample:        return ANY(nn::Upsample, m);
   case Cast::zeropad2d:       return ANY(nn::ZeroPad2d, m);
+
+  case Cast::interpolate:
+  case Cast::normalize:       AT_ERROR(msym(c),": unable to create type-erased module, only functional form implemented");
+  case Cast::modulelist:
+  case Cast::parmdict:        AT_ERROR(msym(c),": unable to create type-erased module, no forward method defined");
+  case Cast::sequential:      AT_ERROR(msym(c),": unable to create type-erased module, forward method uses template");
+
   default: AT_ERROR("can't create type-erased module, unrecognized cast: ",(I)c);
  }
 }
@@ -3366,6 +3361,7 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 }
 
 // -----------------------------------------------------------------------------------------
+// pushback - handle pushback methods for a set of container modules
 // addmodule - given parent & child module, add allowable combinations, else error
 // addparent - create container, add to any previous parent, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
@@ -3376,23 +3372,13 @@ template<typename M> static void pushback(M *m,const Moduleptr& y) {
  if(s) m->push_back(s,a); else m->push_back(a);
 }
 
-/*
-if(auto *m=x->as<nn::Sequential>())  { pushback(m,y);
-} else if(auto *m=x->as<SeqNest>())  { pushback(m,y);
-} else if(auto *m=x->as<RNNFork>())  { pushback(m,y);
-} else if(auto *m=x->as<LSTMFork>()) { pushback(m,y);
-} else
-*/
-
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
- if(auto *m=x->as<nn::Sequential>()) {
-  const auto& a=anymodule(mcast(*y),y);
-  if(s) m->push_back(s,a); else m->push_back(a);
- } else if(auto *m=x->as<SeqNest>()) {
-  const auto& a=anymodule(mcast(*y),y);
-  if(s) m->push_back(s,a); else m->push_back(a);
- } else if(auto *m=x->as<SeqJoin>()) {
+ if(auto *m=x->as<nn::Sequential>())  { pushback(m,y);
+ } else if(auto *m=x->as<SeqNest>())  { pushback(m,y);
+ } else if(auto *m=x->as<RNNFork>())  { pushback(m,y);
+ } else if(auto *m=x->as<LSTMFork>()) { pushback(m,y);
+ } else if(auto *m=x->as<SeqJoin>())  {
   if(y->as<nn::Sequential>()) {
    const auto& q=nn::Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(y));
    if(s) m->push_back(s,q); else m->push_back(q);
@@ -3575,7 +3561,7 @@ static void mextend(Kmodule *x,Kmodule *y,J d=0);
 static void mextend(Kmodule *x,Kmodule *y,J d) {
  Modules q; mstack(x,q);                  //initialize stack of modules
  mextend(y->m,y->c,d ? d : q.size(),q);   //add additional module(s)
- x->r = restype(x->c,x->m);               //update result type
+ x->r = rtype(mfirst(q));                 //update result type
 }
 
 // --------------------------------------------------------------------------------------------

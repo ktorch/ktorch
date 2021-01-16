@@ -227,7 +227,7 @@ enum class Metric: char {
 };
 
 enum class Result: short {
- undefined=0, tensor, tuple, nested
+ undefined=-1, none, tensor, tuple, nested
 };
 
 enum class Enum {  // enums to match pytorch variants
@@ -662,7 +662,8 @@ typedef struct {
   std::make_tuple(cs("model"),     Class::model)
  }};
 
- std::array<std::tuple<S,Result>,3> result = {{       //result types of modules
+ std::array<std::tuple<S,Result>,4> result = {{       //result types of modules
+  std::make_tuple(cs("none"),    Result::none),
   std::make_tuple(cs("tensor"),  Result::tensor),
   std::make_tuple(cs("tuple"),   Result::tuple),
   std::make_tuple(cs("nested"),  Result::nested)

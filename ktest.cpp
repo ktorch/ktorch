@@ -1,6 +1,27 @@
 #include "ktorch.h"
 namespace nn=torch::nn;
 
+KAPI mprint(K x) {
+ KTRY
+  Kmodule *m=xmodule(x);
+  TORCH_CHECK(m,"not a module");
+  std::cerr << *m->m << "\n";
+  auto c=mcast(*m->m);
+  bool b;
+  switch(c) {
+   case Cast::sequential: b=torch::detail::has_forward<nn::SequentialImpl>::value; break;
+   case Cast::parmdict:   b=torch::detail::has_forward<nn::ParameterDictImpl>::value; break;
+   case Cast::modulelist: b=torch::detail::has_forward<nn::ModuleListImpl>::value; break;
+   case Cast::linear:     b=torch::detail::has_forward<nn::LinearImpl>::value; break;
+   case Cast::lstm:       b=torch::detail::has_forward<nn::LSTMImpl>::value; break;
+   case Cast::rnnfork:    b=torch::detail::has_forward<RNNForkImpl>::value; break;
+   default: std::cerr << "not handled..\n"; b=false; break;
+  }
+  std::cerr << "has non-templatized forward: " << b << "\n";
+  return kb(b);
+ KCATCH("mprint");
+}
+
 KAPI dtest(K x) {
  KTRY
   Tensor t;
