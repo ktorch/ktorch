@@ -567,6 +567,8 @@ c10::optional<std::string>& mname_(const Module&);
 c10::optional<std::string>& mname_(Module&);
 S mname(const Module&);
 std::string mlabel(const Module&);
+std::string mlabel(const Moduleptr&);
+std::string mlabel(Kmodule*);
 Cast mcast(const Module&);
 S msym(const Module&);
 K mget(bool,bool,const Module&);

@@ -222,7 +222,7 @@ struct TORCH_API ForkOptions {
 
 template<typename Derived>class TORCH_API ForkBase : public torch::nn::Cloneable<Derived> {
  public:
- explicit ForkBase(const ForkOptions& o) : options(o) {register_module("seq",seq);}
+ explicit ForkBase(const ForkOptions& o) : options(o) {seq=this->register_module("seq",seq);}
  void reset() override {}
  void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
  void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
@@ -230,14 +230,11 @@ template<typename Derived>class TORCH_API ForkBase : public torch::nn::Cloneable
  ForkOptions options;
 };
 
-class TORCH_API RNNForkImpl : public torch::nn::Cloneable<RNNForkImpl> {
+class TORCH_API RNNForkImpl : public ForkBase<RNNForkImpl> {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  public:
- explicit RNNForkImpl(const ForkOptions& o) : options(o) {register_module("seq",seq);}
- void reset() override {}
- void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
- void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
+ explicit RNNForkImpl(const ForkOptions& o) : ForkBase<RNNForkImpl>(o) {}
  void pretty_print(std::ostream& s) const override {s << "RNNFork(detach=" << options.detach() << ")";}
  Tuple forward(const Tuple& a) {  // recieves output & hidden tensor from RNN or GRU layer
   auto x=seq->forward(std::get<0>(a));
@@ -246,20 +243,15 @@ class TORCH_API RNNForkImpl : public torch::nn::Cloneable<RNNForkImpl> {
    h.detach_();
   return std::make_tuple(x,h);
  }
- torch::nn::Sequential seq;
- ForkOptions options;
 };
 TORCH_MODULE(RNNFork);
 
-class TORCH_API LSTMForkImpl : public torch::nn::Cloneable<LSTMForkImpl> {
+class TORCH_API LSTMForkImpl : public ForkBase<LSTMForkImpl> {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  using Nested=std::tuple<Tensor,Tuple>;
  public:
- explicit LSTMForkImpl(const ForkOptions& o) : options(o) {register_module("seq",seq);}
- void reset() override {}
- void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
- void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
+ explicit LSTMForkImpl(const ForkOptions& o) : ForkBase<LSTMForkImpl>(o) {}
  void pretty_print(std::ostream& s) const override {s << "LSTMFork(detach=" << options.detach() << ")";}
  Nested forward(const Nested& a) {
   auto x=seq->forward(std::get<0>(a));
@@ -268,8 +260,6 @@ class TORCH_API LSTMForkImpl : public torch::nn::Cloneable<LSTMForkImpl> {
    std::get<0>(h).detach_(),std::get<1>(h).detach_();
   return std::make_tuple(x,h);
  }
- torch::nn::Sequential seq;
- ForkOptions options;
 };
 TORCH_MODULE(LSTMFork);
 

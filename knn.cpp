@@ -22,6 +22,9 @@ std::string mlabel(const Module& x) {
  return s;
 }
 
+std::string mlabel(const Moduleptr& x) {return mlabel(*x);}
+std::string mlabel(Kmodule* x) {return mlabel(x->m);}
+
 // ----------------------------------------------------------------------------------
 // OPTION - macro to append a module option to a k dictionary given dict,name & value
 // argstart - return offset in k list to begin processing module args
@@ -52,7 +55,6 @@ static Cast msym(S s) {
 }
 
 static void msyms(K x,S& s,S& nm) {
- std::cerr << kstring(x) << "\n";
  nm=nullptr;
  if(x->t == -KS) {
   s=x->s;
@@ -178,7 +180,6 @@ static Result rtype(Cast,const Moduleptr&);
 static Result rtype(const Moduleptr& m) {return rtype(mcast(*m),m);}
 
 static Result rtype(Cast c,const Moduleptr& m) {
- std::cerr << msym(c) << "\n";
  Result r=rtype(c);
  if(r==Result::undefined) {     // if no explicit result type, e.g. Sequential
   const auto& v=m->children();  // check last child result type
@@ -2687,7 +2688,7 @@ template<typename L,typename O> static L codelayer(K x,Cast c,std::vector<K>& v)
  Kmodule *m=xmodule(x); bool e=c == Cast::encoder;
  if(m) {
   auto *l=m->m->as<L>();
-  TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding" : "decoding")," layer, given ",mlabel(*m->m)," module");
+  TORCH_CHECK(l, msym(c),": expecting ",(e ? "encoding" : "decoding")," layer, given ",mlabel(m)," module");
   v.push_back(x);
   return L(*l);
  } else {
@@ -2700,7 +2701,7 @@ static nn::LayerNorm codenorm(K x,J n,Cast c,std::vector<K>& v) {
   auto *m=xmodule(x);
   if(m) {
    auto *l=m->m->as<nn::LayerNorm>();
-   TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(*m->m)," module");
+   TORCH_CHECK(l, msym(c),": expecting normalization layer, given ",mlabel(m)," module");
    v.push_back(x);
    return nn::LayerNorm(*l);
   } else {
@@ -3366,18 +3367,18 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 // addparent - create container, add to any previous parent, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
-template<typename M> static void pushback(M *m,const Moduleptr& y) {
- const char *s=mname(*y);
+template<typename M> static void pushback(M *m,const char *s,const Moduleptr& y) {
  const auto& a=anymodule(mcast(*y),y);
  if(s) m->push_back(s,a); else m->push_back(a);
 }
 
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
- if(auto *m=x->as<nn::Sequential>())  { pushback(m,y);
- } else if(auto *m=x->as<SeqNest>())  { pushback(m,y);
- } else if(auto *m=x->as<RNNFork>())  { pushback(m,y);
- } else if(auto *m=x->as<LSTMFork>()) { pushback(m,y);
+ if(auto *m=x->as<nn::Sequential>())        { pushback(m,s,y);
+ } else if(auto *m=x->as<SeqNest>())        { pushback(m,s,y);
+ } else if(auto *m=x->as<RNNFork>())        { pushback(m,s,y);
+ } else if(auto *m=x->as<LSTMFork>())       { pushback(m,s,y);
+ } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
  } else if(auto *m=x->as<SeqJoin>())  {
   if(y->as<nn::Sequential>()) {
    const auto& q=nn::Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(y));
@@ -3388,12 +3389,10 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
   } 
  } else if(auto *m=x->as<nn::ModuleDict>()) {
   m->update({{s ? s : c10::to_string(m->children().size()), y}});
- } else if(auto *m=x->as<nn::ModuleList>()) {
-  m->push_back(y);
  } else if(auto *m=x->as<BaseModule>()) {
   m->register_module(s ? s : c10::to_string(m->children().size()), y);
  } else {
-  AT_ERROR("unable to add a ", mlabel(*y)," module as a child of a ",mlabel(*x), " module");
+  AT_ERROR("unable to add a ", mlabel(y)," module as a child of a ",mlabel(x), " module");
  }
 }
 
@@ -3629,7 +3628,7 @@ KAPI module(K x) {
     else
      return mdv(nullptr,0,l,d,kK(x)[2]);         // add single module definition at indicated depth
    } else {
-    AT_ERROR("module: ", mlabel(*l->m), " given as 1st arg, but unable to parse remaining arg(s)");
+    AT_ERROR("module: ", mlabel(l), " given as 1st arg, but unable to parse remaining arg(s)");
    }
   } else if(xstate(x)) {                         // module table or dictionary supplied
    return mtable(x);
