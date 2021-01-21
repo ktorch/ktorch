@@ -119,10 +119,10 @@ typedef struct {
  Ktype t = 0;  // type of value in last pair processed
  H i = 0;  // next pair to process
  H n = 0;  // count of pairs
- S k = 0;  // name of an evaluated name,value pair
+ S k = 0;  // name of current name,value pair
  K x = 0;  // k value with dict/pairs/list
  union {
-  bool   b;  // boolean value from last evaluated pair
+  bool   b;  // boolean value from current pair
   J      j;  // long value
   double f;  // double value
   S      s;  // symbol value
@@ -515,7 +515,7 @@ K kget(const TensorDict& d,K x=nullptr);
 K kget(const TensorDeque&);
 Tensor kput(K);
 Tensor kput(K,J);
-TensorDict kputdict(K);
+TensorDict kputd(K);
 TensorVector vec(K,bool b=false);
 K kten(const Tensor&);
 K kvec(const TensorVector&);

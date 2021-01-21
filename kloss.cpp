@@ -180,7 +180,7 @@ KAPI softmargin(K x)  {return lossfunc(x, Cast::softmargin);}
 
 // ----------------------------------------------------------------------------
 // binary cross entropy: optional 3rd input of batch weights
-// bcearg - evaluate arg to see if weight input or reduction option
+// bcearg - check arg to see if weight input or reduction option
 // ----------------------------------------------------------------------------
 static bool bcearg(K x) {return x->t==-KS || x->t==KS || xempty(x) || xdict(x);}
 
@@ -724,9 +724,9 @@ KAPI loss(K x) {
   } else if((m=xmodel(x))) {
    return kloss(m->lc,m->l);
   } else {
-   AT_ERROR("unrecognized arg(s)");
+   AT_ERROR("loss: unrecognized arg(s)");
   }
- KCATCH("loss module");
+ KCATCH("loss");
 }
 
 K losshelp(Cast c) {

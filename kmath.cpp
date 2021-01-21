@@ -636,7 +636,7 @@ KAPI Nan(K x)    {return special(x, torch::isnan);}
 // minmax2 - given two input arrays/tensors, return/set an array or tensor w'pointwise min/max
 // minmaxdim - given single input array/tensor and dimension, return/set values/indices of min/max
 // minmaxout - given mode and arg(s), check for output tensor or pair, return remaining arg count
-// minmax - main function to evaluate argument pattern and call relevant min/max routine
+// minmax - main function to check argument pattern and call relevant min/max routine
 // ------------------------------------------------------------------------------------------------
 static void minmaxerr(I m,const char* e) {
  if(m==0 || m==1) {
@@ -1670,6 +1670,28 @@ KAPI Bernoulli(K x) {
  KCATCH("bernoulli");
 }
 
+// --------------------------------------------------------------------------------------
+// multinomial - given vector or matrix of non-negative probabilities, pick n
+//               args: (array/tensor; number of samples; replacement flag; output tensor)
+// --------------------------------------------------------------------------------------
+KAPI Multinomial(K x) {
+ KTRY
+  bool b=false; Tensor *t=xten(x),*r=xten(x,x->n-1); int64_t n; J j=r ? x->n-1 : xlen(x);
+  TORCH_CHECK(x->t>=0, "multinomial: not implemented for ",kname(x));
+  if(t || x->t>0) {                                                    // if single tensor/list
+   return kj(torch::multinomial(t ? *t : kput(x),1).item().toLong());  // return single index
+  } else if(xint64(x,1,n) && (j==2 || (j==3 && xbool(x,2,b)))) {       // else if n & optional flag
+   Tensor *t=xten(x,0);
+   if(r)                                                               // if output tensor
+    return torch::multinomial_out(*r, t ? *t : kput(x,0), n, b), (K)0; // null return
+   else
+    return kresult(t,torch::multinomial(t ? *t : kput(x,0), n, b));    // else return array/tensor
+  } else {
+   AT_ERROR("multimonial: unrecognized arg(s)");
+  }
+ KCATCH("multinomial");
+}
+
 // -------------------------------------------------------------------------------------
 // map api function to name in q session, upper case for 1st letter if reserved in k
 // -------------------------------------------------------------------------------------
@@ -1761,6 +1783,7 @@ void mathfn(K x) {
  fn(x, "lusolve",            KFN(Lu_solve),           1);
  fn(x, "luunpack",           KFN(Lu_unpack),          1);
  fn(x, "matmul",             KFN(Matmul),             1);
+ fn(x, "multinomial",        KFN(Multinomial),        1);
  fn(x, "power",              KFN(Matrix_power),       1);
  fn(x, "rank",               KFN(Matrix_rank),        1);
  fn(x, "Max",                KFN(Max),                1);

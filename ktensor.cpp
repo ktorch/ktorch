@@ -334,11 +334,15 @@ static void kput(TensorDict& d,K x,K y) {
  }
 }
 
-TensorDict kputdict(K x) {
- TORCH_CHECK(xdict(x), "expecting k dictionary to convert to tensor dictionary, given ",kname(x));
- TensorDict d; kput(d,kK(x)[0],kK(x)[1]);
+TensorDict kputd(K x) {
+ TensorDict d;
+ if(xdict(x) || (x->n==2 && (kK(x)[0]->t==KS || kK(x)[0]->t==-KS)))
+  kput(d,kK(x)[0],kK(x)[1]);
+ else if(!xempty(x))
+  AT_ERROR("dict: expecting k dictionary or (syms;vals), given ",kname(x));
  return d;
 }
+
  
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
@@ -612,29 +616,23 @@ KAPI vector(K x) {
 
 KAPI dict(K x) {
  KTRY
-  S s; J n=xlen(x); TensorDict d,*k=xtensordict(x); if(!k) k=xtensordict(x,0);
+  TensorDict *d=xtensordict(x); if(!d) d=xtensordict(x,0);
   TORCH_CHECK(x->t==0 || x->t==99, "dict: not implemented for ",kname(x));
-  if(xempty(x)) {                                       // ptr:dict()
-    return kdict(d);
-  } else if (xdict(x) || (n==2 && kK(x)[0]->t==KS)) {   // ptr:dict(kdict) or ptr:dict(syms;values)
-    return kput(d,kK(x)[0],kK(x)[1]), kdict(d);
-  } else if (n==2 && xsym(x,0,s)) {                     // ptr:dict(sym;value)
-    return kput(d,s,kK(x)[1]), kdict(d);
-  } else if (k) {
-   if(n==1) {                               // kdict:dict ptr
-    return kget(*k);                        // return dictionary of syms!values to k
-   } else if(n==2) {
+  if(d) {
+   if(x->n==1) {                            // dict ptr
+    return kget(*d);                        // return dictionary of syms!values to k
+   } else if(x->n==2) {
     if(xdict(x,1))                          // dict(ptr;kdict)
-     return kput(*k, kK(kK(x)[1])[0], kK(kK(x)[1])[1]), (K)0;
+     return kput(*d, kK(kK(x)[1])[0], kK(kK(x)[1])[1]), (K)0;
     else                                    // dict(ptr;sym(s))
-     return kget(*k, kK(x)[1]);
-   } else if(n==3) { 
-    return kput(*k,kK(x)[1],kK(x)[2]), (K)0;
+     return kget(*d, kK(x)[1]);
+   } else if(x->n==3) { 
+    return kput(*d,kK(x)[1],kK(x)[2]), (K)0;
    } else {
-    AT_ERROR("dict: given ptr, expecting 1-3 args, but ",x->n," args supplied");
+    AT_ERROR("dict: expecting 1-3 args, but ",x->n," args supplied, not one of ptr, (ptr;dict), (ptr;syms), (ptr;syms;vals)");
    }
   } else {
-   AT_ERROR("dict: unrecognized arg(s), expecting (sym(s);value(s)), ptr, (ptr;syms), (ptr;kdict) or (ptr;syms;values)");
+   return kdict(kputd(x));
   }
  KCATCH("dict");
 }
@@ -1268,20 +1266,9 @@ KAPI makegrid(K x,K y,K z) {
 }
 
 // ------------------------------------------------------------------------------------------
-// use - use k tag with a new tensor/array, freeing source tensor
 // tensorcopy - tgt <- src values, must have same type & device, tgt resized if src larger
 // tensorcopy_ - copy in place method
 // ------------------------------------------------------------------------------------------
-KAPI use(K x,K y) {
- KTRY
-  Ktag *g=xtag(x); Tensor *t=xten(y);
-  TORCH_CHECK(g && g->a==Class::tensor, "use: 1st arg must be a tensor");
-  ((Kten*)g)->t = t ? *t : kput(y);
-  if(t) TORCH_CHECK(kfree(y), "use: unable to free source tensor");
-  return (K)0;
- KCATCH("use");
-}
- 
 void tensorcopy(Tensor &t,const Tensor &s,bool a) {
  if(s.dtype() != t.dtype()) {
   AT_ERROR("unable to copy values from ",s.dtype()," tensor to ",t.dtype()," tensor");
@@ -1295,8 +1282,7 @@ void tensorcopy(Tensor &t,const Tensor &s,bool a) {
 KAPI tensorcopy_(K x) {
  KTRY
   bool a=false; Tensor *t=xten(x,0),*s=xten(x,1);
-  TORCH_CHECK(t, "copy expects 1st arg of tensor");
-  TORCH_CHECK(x->n==2 || (x->n==3 && xbool(x,2,a)), "copy expects (tensor;input;optional async flag)");
+  TORCH_CHECK(t && (x->n==2 || (x->n==3 && xbool(x,2,a))), "copy expects (tensor;input;optional async flag)");
   t->copy_(s ? *s : kput(x,1), a);
   return (K)0;
  KCATCH("copy");
@@ -1454,7 +1440,6 @@ void tensorfn(K x) {
  fn(x, "fill",         KFN(fill),          1);
  fn(x, "filldiagonal", KFN(filldiagonal),  1);
  fn(x, "makegrid",     KFN(makegrid),      1);
- fn(x, "use",          KFN(use),           2);
  fn(x, "copy",         KFN(tensorcopy_),   1);
  fn(x, "grad",         KFN(kgrad),         1);
  fn(x, "gradflag",     KFN(gradflag),      1);

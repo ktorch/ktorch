@@ -243,7 +243,7 @@ static Moduleptr parmdict(K x,J i) {
  else if(auto *d=xtensordict(x,i))
   return nn::ParameterDict(*d).ptr();
  else if(xdict(x) || xdict(x,i))
-  return nn::ParameterDict(kputdict(xdict(x) ? x : kK(x)[i])).ptr();
+  return nn::ParameterDict(kputd(xdict(x) ? x : kK(x)[i])).ptr();
  else
   AT_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
 }
@@ -3333,7 +3333,7 @@ static void mparms(Cast c,S s,Module &m,K x,bool p) { // set named parms/buffers
  if(c==Cast::parmdict) {
   auto *d=m.as<nn::ParameterDict>();
   TORCH_CHECK(d, "unrecognized module, expecting parameter dictionary, given ",m.name(),", unable to restore parms");
-  for(const auto& a:kputdict(x)) d->insert(a.key(),a.value());
+  for(const auto& a:kputd(x)) d->insert(a.key(),a.value());
  } else {
   K k=kK(x)[0],v=kK(x)[1]; Tensor V; if(v->t) V=kput(v);
   for(auto &a:p ? m.named_parameters(false) : m.named_buffers(false)) {
@@ -3384,8 +3384,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
    const auto& q=nn::Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(y));
    if(s) m->push_back(s,q); else m->push_back(q);
   } else {
-   const auto& a=anymodule(mcast(*y),y);
-   if(s) m->push_back(s,a); else m->push_back(a);
+   pushback(m,s,y);
   } 
  } else if(auto *m=x->as<nn::ModuleDict>()) {
   m->update({{s ? s : c10::to_string(m->children().size()), y}});
@@ -3778,6 +3777,20 @@ K modulehelp(Cast c) {
   }
   default: AT_ERROR("no help implemented for module: ",msym(c));
  }
+}
+
+// ----------------------------------------
+// contain: shallow copy a container module
+// ----------------------------------------
+KAPI contain(K x) {
+ KTRY
+  Kmodule *k=xmodule(x);
+  TORCH_CHECK(k, "contain: expects a module");
+  auto z=mcreate(nullptr,0,k->c);
+  for(const auto& c:k->m->children())
+   addmodule(z,c);
+  return kmodule(k->c,z,k->a);
+ KCATCH("contain");
 }
 
 // ----------------------------------

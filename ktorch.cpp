@@ -746,7 +746,7 @@ bool xbacksym(K x,J i,bool& a,bool& b) {return xind(x,i) && xbacksym(kK(x)[i],a,
 
 // ------------------------------------------------------------------------------------------
 // xpairs - initialize a set of name-value pairs given as an argument from k
-// xpair - evaluate the next name-value pair, set sym,numeric,list or general value
+// xpair - check the next name-value pair, set sym,numeric,list or general value
 // xargc - return count of args to process given arg(s), offset, pairs structure to initiate
 // xnone - return true if, given arg list and offset, no meaningful arg supplied
 // ------------------------------------------------------------------------------------------
@@ -1114,6 +1114,7 @@ KAPI tree(K x) {
 // addref - add a new kptr to a shared tensor/module/optimizer, incrementing reference count
 // kfree - free allocated object/vector of objects and remove from active pointer set
 // Kfree - k-api fn to free a previously allocated object or all allocated objects
+// use - reassign ptr to new tensor/vector/dictionary, free any source allocations
 // -----------------------------------------------------------------------------------------
 KAPI addref(K x) {
  KTRY
@@ -1153,6 +1154,21 @@ KAPI Kfree(K x){
   }
   return (K)0;
  KCATCH("free");
+}
+
+KAPI use(K x,K y) {
+ KTRY
+  bool b=false; Ktag *g=xtag(x);
+  TORCH_CHECK(g,"use: 1st arg must be tensor, vector, dictionary, module, optimizer or model");
+  switch(g->a) {
+   case Class::tensor: {auto *a=xten(y);         ((Kten*)g)->t=a ? *a : kput(y); b=a; break;}
+   case Class::vector: {auto *a=xvec(y);         ((Kvec*)g)->v=a ? *a : vec(y,true); b=a; break;}
+   case Class::dict:   {auto *a=xtensordict(y); ((Kdict*)g)->d=a ? *a : kputd(y); b=a; break;}
+   default: AT_ERROR("use: not implemented for ",mapclass(g->a));
+  }
+  TORCH_CHECK(!b || kfree(y), "use: unable to free source ",mapclass(g->a));
+  return (K)0;
+ KCATCH("use");
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1607,7 +1623,7 @@ static S mresult(Result r) {
 
 static K mattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
-  case Attr::ref:     return kj(p.use_count()-1);
+  case Attr::ref:     return kj(p.use_count());
   case Attr::ptr:     return kj((intptr_t)p.get());
   case Attr::device:  return ks(objdevice(*p, optsym(Device(torch::kCPU))));
   case Attr::result:  return ks(mresult(r));
@@ -1767,6 +1783,7 @@ KAPI fns(K x){
  fn(x, "tree",        KFN(tree),        1);
  fn(x, "addref",      KFN(addref),      1);
  fn(x, "free",        KFN(Kfree),       1);
+ fn(x, "use",         KFN(use),         2);
  fn(x, "obj",         KFN(kobj),        1);
  fn(x, "to",          KFN(To),          1);
  fn(x, "info",        KFN(info1),       1);
@@ -1782,7 +1799,6 @@ KAPI fns(K x){
  fn(x, "cudadevices", KFN(cudadevices), 1);
  fn(x, "seed",        KFN(kseed),       1);
  fn(x, "png",         KFN(png),         1);
-
  fn(x, "dim",         KFN(dim),         1);
  fn(x, "numel",       KFN(numel),       1);
  fn(x, "offset",      KFN(offset),      1);
@@ -1801,7 +1817,6 @@ KAPI fns(K x){
  fn(x, "pinned",      KFN(pinned),      1);
  fn(x, "size",        KFN(size),        1);
  fn(x, "stride",      KFN(stride),      1);
-
  fn(x, "help",        KFN(help),        1);
 
  tensorfn(x);
