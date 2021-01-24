@@ -282,9 +282,10 @@ KAPI training(K x) {
 // add model api functions to library dictionary
 // -------------------------------------------------------------------------------------------
 void modelfn(K x) {
- fn(x, "model",    KFN(model),    1);
- fn(x, "train",    KFN(ktrain),   1);
- fn(x, "evaluate", KFN(evaluate), 1);
+ fn(x, "model",      KFN(model),     1);
+ fn(x, "train",      KFN(ktrain),    1);
+ fn(x, "training",   KFN(training),  1);
+ fn(x, "evaluate",   KFN(evaluate),  1);
 }
 
 /*

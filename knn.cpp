@@ -434,14 +434,16 @@ static void tupvector(TensorVector& v,const std::tuple<Tensor, std::tuple<Tensor
 template<typename S> static void rseq(Result r,Module& m,TensorVector& v,const Tensor& x,const Tensor& y,const Tensor& z) {
  using Tuple=std::tuple<Tensor,Tensor>;
  using Nested=std::tuple<Tensor,Tuple>;
+ using OptTuple=c10::optional<Tuple>;
  if(r==Result::tuple)
   tupvector(v,m.as<S>()->template forward<Tuple>(x,y));
  else
-  tupvector(v, z.defined() ? m.as<S>()->template forward<Nested>(x,std::make_tuple(y,z))
+  tupvector(v, z.defined() ? m.as<S>()->template forward<Nested>(x,OptTuple(std::make_tuple(y,z)))
                            : m.as<S>()->template forward<Nested>(x));
 }
 
 TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+ using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
  TensorVector v;
  if(z.defined()) {
   TORCH_CHECK(r==Result::nested, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
@@ -450,8 +452,9 @@ TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
  switch(c) {
   case Cast::rnn:  tupvector(v,m.as<nn::RNN>()->forward(x,y)); break;
   case Cast::gru:  tupvector(v,m.as<nn::GRU>()->forward(x,y)); break;
-  case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,std::make_tuple(y,z))
+  case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
                                             : m.as<nn::LSTM>()->forward(x));
+                   break;
   case Cast::sequential: rseq<nn::Sequential>(r,m,v,x,y,z); break;
   default: AT_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
  }
@@ -3644,6 +3647,51 @@ KAPI module(K x) {
  KCATCH("module");
 }
 
+// ------------------------------------------------------------------------------------------
+// kclip - handle input ptr to allocated tensor/vector/dict/module/model and args
+//  clip - api function for clipping gradient norm
+// clipv - api function for clipping gradient value
+// ------------------------------------------------------------------------------------------
+static K kclip(bool b,F f,F p,TensorVector& v) {
+ if(b)
+  return kf(torch::nn::utils::clip_grad_norm_(v,f,p));
+ else
+  return torch::nn::utils::clip_grad_value_(v,f), (K)0;
+}
+
+static K kclip(bool b,F f,F p,Tensor &t)     {auto v=TensorVector{t}; return kclip(b,f,p,v);}
+static K kclip(bool b,F f,F p,TensorDict &d) {auto v=d.values();      return kclip(b,f,p,v);}
+static K kclip(bool b,F f,F p,Moduleptr &m)  {auto v=m->parameters(); return kclip(b,f,p,v);}
+
+static K kclip(K x, bool b,const char *c) {
+ KTRY
+  Ktag *g=xtag(x,0); F f,p=2.0;
+  TORCH_CHECK(g, c,": expects tensor(s), module or model as 1st of 2",(b ? "-3" : "")," args");
+  if(b) {
+   TORCH_CHECK(x->n==2 || x->n==3, c,": expects 2-3 args, (",mapclass(g->a),"; max norm; norm exponent)");
+  } else {
+   TORCH_CHECK(x->n==2, c,": expects 2 args, (",mapclass(g->a),"; value)");
+  }
+  TORCH_CHECK(xnum(x,1,f), c,": 2nd arg, ",(b ? "max norm" : "max value"),", is ",kname(x,1),", expecting long/double");
+  if(x->n==3)
+   TORCH_CHECK(xnum(x,2,p), c,": 3rd arg, norm exponent, is ",kname(x,2),", expecting long/double");
+  switch(g->a) {
+   case Class::tensor: return kclip(g,f,p,*xten(x,1));
+   case Class::vector: return kclip(b,f,p,*xvec(x,1));
+   case Class::dict:   return kclip(b,f,p,((Kdict*)g)->d);
+   case Class::module: return kclip(b,f,p,((Kmodule*)g)->m);
+   case Class::model:  return kclip(b,f,p,((Kmodel*)g)->m);
+   default: AT_ERROR(c,": not implemented for ",mapclass(g->a));
+  }
+ KCATCH(c);
+}
+
+KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
+KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
+
+// ------------------------------------------------------------------------------------------
+//  modulehelp - return a table, via q)module`help, or single dict of options, help`conv2d
+// ------------------------------------------------------------------------------------------
 K modulehelp(Cast c) {
  switch(c) {
   case Cast::adaptavg1d:      return adapt(nn::AdaptiveAvgPool1dOptions(3));
@@ -3799,6 +3847,9 @@ KAPI contain(K x) {
 void nnfn(K x) {
  fn(x, "seq",         KFN(seq),          1);    // convenience fn for sequential layers
  fn(x, "module",      KFN(module),       1);    // api function for layer create/query
+ fn(x, "clip",        KFN(clip),         1);    // api function for layer create/query
+ fn(x, "clipv",       KFN(clipv),        1);    // api function for layer create/query
+
  fn(x, "adaptavg1d",  KFN(adaptavg1d),   1);    // functional form of modules/activations
  fn(x, "adaptavg2d",  KFN(adaptavg2d),   1);
  fn(x, "adaptavg3d",  KFN(adaptavg3d),   1);
