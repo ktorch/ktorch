@@ -1289,6 +1289,23 @@ KAPI kobj(K x) {
  KCATCH("obj");
 }
 
+static K objcount(K x,Attr a) {
+ KTRY
+  auto *g=xtag(x);
+  TORCH_CHECK(g,mapattr(a),": not implemented for kname(x)");
+  switch(a) {
+   case Attr::bytes:    return kj(objbytes(g));
+   case Attr::elements: return kj(objnum(g));
+   case Attr::tcount:   return g->a==Class::tensor ? kj(1) : objsize(g);
+   default: AT_ERROR("object attribute: ",mapattr(a)," not implemented");
+  }
+ KCATCH("object counts");
+}
+
+KAPI    bytes(K x) {return objcount(x, Attr::bytes);}     // bytes allocated
+KAPI elements(K x) {return objcount(x, Attr::elements);}  // number of elements (bytes/element size)
+KAPI   tcount(K x) {return objcount(x, Attr::tcount);}    // number of tensors in object
+
 // -----------------------------------------------------------------------------------------
 // kstate - retrieve module/loss/optimizer state: options, internal buffers & parameters
 // to - convert tensor/module device and or data type, e.g. to[tensor;`cuda`float;0b]
@@ -1785,6 +1802,9 @@ KAPI fns(K x){
  fn(x, "free",        KFN(Kfree),       1);
  fn(x, "use",         KFN(use),         2);
  fn(x, "obj",         KFN(kobj),        1);
+ fn(x, "bytes",       KFN(bytes),       1);
+ fn(x, "elements",    KFN(elements),    1);
+ fn(x, "tcount",      KFN(tcount),      1);
  fn(x, "to",          KFN(To),          1);
  fn(x, "info",        KFN(info1),       1);
  fn(x, "detail",      KFN(info2),       1);

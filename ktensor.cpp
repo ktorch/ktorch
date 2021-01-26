@@ -1030,8 +1030,8 @@ KAPI batch(K x) {
 
 KAPI restore(K x) {
  KTRY
-  Tensor *t; TensorVector *v;
-  TORCH_CHECK((t=xten(x))||(v=xvec(x)), "restore expects tensor or vector");
+  Tensor *t=xten(x); TensorVector *v=xvec(x);
+  TORCH_CHECK(t||v, "restore expects tensor or vector");
   if(t) fullsize(*t,0); else fullsize(*v,0);
   return (K)0;
  KCATCH("restore")

@@ -1,5 +1,17 @@
 #include "ktorch.h"
+#include "torch/script.h"
 namespace nn=torch::nn;
+
+KAPI loadfile(K x) {
+ KTRY
+  TORCH_CHECK(x->t==-KS, "need symbol");
+  torch::jit::script::Module j = torch::jit::load(x->s);
+  TensorDict d;
+  for(const auto& a:j.named_parameters())
+   d.insert(a.name,a.value);
+  return kdict(d);
+ KCATCH("load file");
+}
 
 KAPI mprint(K x) {
  KTRY

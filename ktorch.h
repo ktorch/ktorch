@@ -215,7 +215,8 @@ enum class State:char {
 
 enum class Attr:char {
  undefined = 0,
- dim, itemsize, numel,  offset, ptr, ref, sparsedim, weakref, // long scalars
+ bytes, dim, elements, itemsize, numel,  offset,              // long scalars
+ ptr, ref, tcount, sparsedim, weakref,
  device, dtype, gradfn, gradient, layout, result,             // symbol
  coalesced, contiguous, gradflag, leaf, pinned,               // boolean
  size, stride,                                                // long list
@@ -985,13 +986,15 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,23> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,26> attr = {{            //attributes: map symbol -> enum
+  std::make_tuple(cs("bytes"),       Attr::bytes),
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
   std::make_tuple(cs("data"),        Attr::data),
   std::make_tuple(cs("device"),      Attr::device),
   std::make_tuple(cs("dim"),         Attr::dim),
   std::make_tuple(cs("dtype"),       Attr::dtype),
+  std::make_tuple(cs("elements"),    Attr::elements),
   std::make_tuple(cs("gradflag"),    Attr::gradflag),
   std::make_tuple(cs("gradfn"),      Attr::gradfn),
   std::make_tuple(cs("gradient"),    Attr::gradient),
@@ -1008,6 +1011,7 @@ typedef struct {
   std::make_tuple(cs("sparsedim"),   Attr::sparsedim),
   std::make_tuple(cs("storage"),     Attr::storage),
   std::make_tuple(cs("stride"),      Attr::stride),
+  std::make_tuple(cs("tcount"),      Attr::tcount),
   std::make_tuple(cs("weakref"),     Attr::weakref)
  }};
 
