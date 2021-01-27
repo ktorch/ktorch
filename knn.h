@@ -263,6 +263,78 @@ class TORCH_API LSTMForkImpl : public ForkBase<LSTMForkImpl> {
 };
 TORCH_MODULE(LSTMFork);
 
+// --------------------------------------------------------------------------------
+// Recur - receive input & hidden state for rnn layer
+//         sequential modules in/out apply transformations to input & rnn output
+// --------------------------------------------------------------------------------
+struct TORCH_API RecurOptions {
+ RecurOptions(bool d=true) : detach_(d) {}
+ TORCH_ARG(bool, detach);
+};
+
+class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
+ using Tensor=torch::Tensor;
+ using Tuple=std::tuple<Tensor,Tensor>;
+ using OptTuple=c10::optional<Tuple>;
+ using Nested=std::tuple<Tensor,Tuple>;
+ public:
+ explicit RecurImpl(const RecurOptions& o) : options(o) {}
+
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Recur";}
+
+ void push_back(std::string s,const torch::nn::AnyModule& a) {
+  if(lstm.is_empty() && gru.is_empty() && rnn.is_empty()) {
+   auto p=a.ptr();
+   if(p->as<torch::nn::LSTM>()) {
+    lstm=register_module("lstm",torch::nn::LSTM(std::dynamic_pointer_cast<torch::nn::LSTMImpl>(p)));
+   } else if(p->as<torch::nn::GRU>()) {
+    gru=register_module("gru",torch::nn::GRU(std::dynamic_pointer_cast<torch::nn::GRUImpl>(p)));
+   } else if(p->as<torch::nn::RNN>()) {
+    rnn=register_module("rnn",torch::nn::RNN(std::dynamic_pointer_cast<torch::nn::RNNImpl>(p)));
+   } else {
+    if(!in->size()) in=register_module("in", torch::nn::Sequential());
+    in->push_back(s.empty() ? c10::to_string(in->size()) : s, a);
+   }
+  } else {
+   if(!out->size()) out=register_module("out", torch::nn::Sequential());
+   out->push_back(s.empty() ? c10::to_string(out->size()) : s, a);
+  }
+ }
+
+ void push_back(const torch::nn::AnyModule& a) {push_back(std::string(),a);}
+
+ std::vector<Tensor> forward(const Tensor& x,const Tensor& y,const Tensor& z) {
+  std::vector<Tensor> v;
+  if(!lstm.is_empty()) {
+    Nested r=z.defined() ? lstm->forward(in->size() ? in->forward(x) : x, OptTuple(std::make_tuple(y,z)))
+                         : lstm->forward(in->size() ? in->forward(x) : x);
+    Tuple& h=std::get<1>(r);
+    if(options.detach()) std::get<0>(h).detach_(), std::get<1>(h).detach_();
+    v.push_back(out->size() ? out->forward(std::get<0>(r)) : std::get<0>(r));
+    v.push_back(std::get<0>(h));
+    v.push_back(std::get<1>(h));
+  } else if(!gru.is_empty() || !rnn.is_empty()) {
+    Tuple r=rnn.is_empty() ? gru->forward(in->size() ? in->forward(x) : x, y)
+                           : rnn->forward(in->size() ? in->forward(x) : x, y);
+    if(options.detach()) std::get<1>(r).detach_();
+    v.push_back(out->size() ? out->forward(std::get<0>(r)) : std::get<0>(r));
+    v.push_back(std::get<1>(r));
+  } else {
+   AT_ERROR("recur: no recurrent lstm, gru or rnn module defined");
+  }
+  return v;
+ }
+
+ RecurOptions options;
+ torch::nn::Sequential in;
+ torch::nn::LSTM lstm=nullptr;
+ torch::nn::GRU   gru=nullptr;
+ torch::nn::RNN   rnn=nullptr;
+ torch::nn::Sequential out;
+};
+TORCH_MODULE(Recur);
+
 // ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 
 //         - no templatized forward result means can be stored as an AnyModule

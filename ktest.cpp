@@ -2,6 +2,25 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI recur(K x) {
+ KTRY
+  auto r=Recur(RecurOptions());
+  r->push_back("onehot", nn::AnyModule(OneHot(67)));
+  r->push_back(nn::AnyModule(nn::LSTM(nn::LSTMOptions(67,512).num_layers(2).batch_first(true))));
+  r->push_back("fc", nn::AnyModule(nn::Linear(512,67)));
+  std::cerr << r << "\n";
+  auto g=Recur(RecurOptions());
+  g->push_back("onehot", nn::AnyModule(OneHot(67)));
+  g->push_back(nn::AnyModule(nn::GRU(nn::GRUOptions(67,512).num_layers(2).batch_first(true))));
+  std::cerr << g << "\n";
+  auto n=Recur(RecurOptions());
+  n->push_back(nn::AnyModule(nn::RNN(nn::RNNOptions(67,512).num_layers(2).batch_first(true))));
+  n->push_back("fc", nn::AnyModule(nn::Linear(512,67)));
+  std::cerr << n << "\n";
+  return (K)0;
+ KCATCH("recur");
+}
+
 KAPI loadfile(K x) {
  KTRY
   TORCH_CHECK(x->t==-KS, "need symbol");
