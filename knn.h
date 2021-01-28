@@ -1,5 +1,7 @@
 #pragma once
 
+std::string mlabel(const std::shared_ptr<torch::nn::Module>&);
+
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
 // --------------------------------------------------------------------------
@@ -283,6 +285,35 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "Recur";}
 
+ void push_back(const std::shared_ptr<Module>& m) {
+  bool e=lstm.is_empty() && gru.is_empty() && rnn.is_empty();
+  if(const auto& a=std::dynamic_pointer_cast<torch::nn::SequentialImpl>(m)) {
+    if(e) {
+     if(in.is_empty())
+      in=register_module("in", torch::nn::Sequential(a));
+     else
+      AT_ERROR("recur: cannot add a sequential module for output processing until a recurrent module(lstm,gru,rnn) defined");
+    } else {
+     if(out.is_empty())
+      out=register_module("out", torch::nn::Sequential(a));
+     else
+      AT_ERROR("recur: sequential module for output processing already added, cannot add another sequential module");
+    }
+  } else if(const auto& a=std::dynamic_pointer_cast<torch::nn::LSTMImpl>(m)) {
+   TORCH_CHECK(e, "recur: cannot add lstm module, ",(gru.is_empty() ? "rnn" : "gru")," module already defined");
+   lstm=register_module("lstm",torch::nn::LSTM(a));
+  } else if(const auto& a=std::dynamic_pointer_cast<torch::nn::GRUImpl>(m)) {
+   TORCH_CHECK(e, "recur: cannot add gru module, ",(rnn.is_empty() ? "lstm" : "rnn")," module already defined");
+   gru=register_module("gru",torch::nn::GRU(a));
+  } else if(const auto& a=std::dynamic_pointer_cast<torch::nn::RNNImpl>(m)) {
+   TORCH_CHECK(e, "recur: cannot add rnn module, ",(gru.is_empty() ? "lstm" : "gru")," module already defined");
+   rnn=register_module("rnn",torch::nn::RNN(a));
+  } else {
+   AT_ERROR("recur: unable to add ",mlabel(m),
+            ", expecting sequential modules for input/output processing or recurrent module(lstm,gru,rnn)");
+  }
+ }
+
  void push_back(std::string s,const torch::nn::AnyModule& a) {
   if(lstm.is_empty() && gru.is_empty() && rnn.is_empty()) {
    auto p=a.ptr();
@@ -307,18 +338,18 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
  std::vector<Tensor> forward(const Tensor& x,const Tensor& y,const Tensor& z) {
   std::vector<Tensor> v;
   if(!lstm.is_empty()) {
-    Nested r=z.defined() ? lstm->forward(in->size() ? in->forward(x) : x, OptTuple(std::make_tuple(y,z)))
-                         : lstm->forward(in->size() ? in->forward(x) : x);
+    Nested r=z.defined() ? lstm->forward(in->is_empty() ? x : in->forward(x), OptTuple(std::make_tuple(y,z)))
+                         : lstm->forward(in->is_empty() ? x : in->forward(x));
     Tuple& h=std::get<1>(r);
     if(options.detach()) std::get<0>(h).detach_(), std::get<1>(h).detach_();
-    v.push_back(out->size() ? out->forward(std::get<0>(r)) : std::get<0>(r));
+    v.push_back(out->is_empty() ? std::get<0>(r) : out->forward(std::get<0>(r)));
     v.push_back(std::get<0>(h));
     v.push_back(std::get<1>(h));
   } else if(!gru.is_empty() || !rnn.is_empty()) {
-    Tuple r=rnn.is_empty() ? gru->forward(in->size() ? in->forward(x) : x, y)
-                           : rnn->forward(in->size() ? in->forward(x) : x, y);
+    Tuple r=rnn.is_empty() ? gru->forward(in->is_empty() ? x : in->forward(x), y)
+                           : rnn->forward(in->is_empty() ? x : in->forward(x), y);
     if(options.detach()) std::get<1>(r).detach_();
-    v.push_back(out->size() ? out->forward(std::get<0>(r)) : std::get<0>(r));
+    v.push_back(out->is_empty() ? std::get<0>(r) : out->forward(std::get<0>(r)));
     v.push_back(std::get<1>(r));
   } else {
    AT_ERROR("recur: no recurrent lstm, gru or rnn module defined");
@@ -327,11 +358,11 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
  }
 
  RecurOptions options;
- torch::nn::Sequential in;
+ torch::nn::Sequential in=nullptr;
  torch::nn::LSTM lstm=nullptr;
  torch::nn::GRU   gru=nullptr;
  torch::nn::RNN   rnn=nullptr;
- torch::nn::Sequential out;
+ torch::nn::Sequential out=nullptr;
 };
 TORCH_MODULE(Recur);
 

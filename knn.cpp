@@ -6,7 +6,7 @@ namespace fnn=torch::nn::functional;
 // mname_ - given module reference, return access to private, optional name
 // mname  - given module reference return optional name
 //        - also, given layer variant/layer ptr, return name or null ptr
-// mlabel - demangle and simplify type name for use in error messages
+// mlabel - demangle and simplify module type for use in error messages
 // ---------------------------------------------------------------------------
 const
 c10::optional<std::string>& mname_(const Module& m) {return access_private::name_(m);}
@@ -449,7 +449,7 @@ TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
  using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
  TensorVector v;
  if(z.defined()) {
-  TORCH_CHECK(r==Result::nested, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
+//TORCH_CHECK(r==Result::nested, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
   TORCH_CHECK(y.defined(), "hidden state incomplete for recurrent ",msym(c)," module's forward calculation");
  }
  switch(c) {
@@ -458,6 +458,7 @@ TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
   case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
                                             : m.as<nn::LSTM>()->forward(x));
                    break;
+  case Cast::recur: return m.as<Recur>()->forward(x,y,z);
   case Cast::sequential: rseq<nn::Sequential>(r,m,v,x,y,z); break;
   default: AT_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
  }
@@ -490,7 +491,7 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
     case 3: return kten(mforward(c,m,x,y,z));
     default: AT_ERROR("forward: unrecognized tensor arg(s)");
    }
-  case Result::vector: AT_ERROR("nyi");
+  case Result::vector:
   case Result::tuple:
   case Result::nested:
    return kvec(rforward(c,r,m,x,y,z));
@@ -3410,9 +3411,9 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
  if(auto *m=x->as<nn::Sequential>())        { pushback(m,s,y);
  } else if(auto *m=x->as<SeqNest>())        { pushback(m,s,y);
- } else if(auto *m=x->as<Recur>())          { pushback(m,s,y);
  } else if(auto *m=x->as<RNNFork>())        { pushback(m,s,y);
  } else if(auto *m=x->as<LSTMFork>())       { pushback(m,s,y);
+ } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
  } else if(auto *m=x->as<SeqJoin>())  {
   if(y->as<nn::Sequential>()) {
@@ -3514,6 +3515,8 @@ static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=
 static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y,K z) {
  Cast c=msym(s); J n=q.size();
  if(d>n || (n && !container(*q.top()))) {
+  std::cerr << "in mpush, depth: " << d << ", stack size: " << n << "\n";;
+  if(n) std::cerr << ", top of stack: " << mlabel(q.top()) << "\n";
   mfind(c,j,d,nm,q,x,y,z); j++;  // previous module has self-contained child modules
  } else {
   mdepth(c,d,q); j=0;
@@ -3564,6 +3567,7 @@ static Cast mdv(K x,J n,Modules& q) { // process n depth-value pairs, n=-1 for s
 
 static K mdv(K x,J n,Kmodule *m=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
 static K mdv(K x,J n,Kmodule *m,J d,K v) {
+ std::cerr << "mdv with n: " << n << ", d: " << d << ", existing module: " << (v ? "yes\n" : "no\n");
  Cast c; Modules q; if(m) mstack(m,q);
  c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
  return mresult(m,c,q);
