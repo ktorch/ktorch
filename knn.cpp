@@ -172,6 +172,7 @@ static Result rtype(Cast c) {
   case Cast::rnnfork:    return Result::tuple;      // returns tuple<Tensor,Tensor>
   case Cast::lstm:
   case Cast::lstmfork:   return Result::nested;     // returns tuple<Tensor,tuple<Tensor,Tensor>>
+  case Cast::recur:      return Result::vector;     // rerurrent container, returns output,hidden..
   default:               return Result::tensor;     // assume other modules forward methods return tensor
  }
 }
@@ -217,6 +218,7 @@ static bool container(Cast c) {
   case Cast::modulelist:
   case Cast::parmdict:
   case Cast::base:
+  case Cast::recur:
   case Cast::rnnfork:
   case Cast::lstmfork:
    return true;
@@ -231,9 +233,10 @@ static bool container(const Module& m) {
  else if(m.as<nn::ModuleDict>())    return true;
  else if(m.as<nn::ModuleList>())    return true;
  else if(m.as<nn::ParameterDict>()) return true;
- else if(m.as<BaseModule>())        return true;
+ else if(m.as<Recur>())             return true;
  else if(m.as<RNNFork>())           return true;
  else if(m.as<LSTMFork>())          return true;
+ else if(m.as<BaseModule>())        return true;
  else                               return false;
 }
 
@@ -487,6 +490,7 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
     case 3: return kten(mforward(c,m,x,y,z));
     default: AT_ERROR("forward: unrecognized tensor arg(s)");
    }
+  case Result::vector: AT_ERROR("nyi");
   case Result::tuple:
   case Result::nested:
    return kvec(rforward(c,r,m,x,y,z));
@@ -1571,6 +1575,30 @@ static ForkOptions rnnfork(K x,J i,Cast c) {
 static K rnnfork(bool a,const ForkOptions& o) {
  K x=KDICT;
  if(a || o.detach() != ForkOptions().detach()) OPTION(x, detach, kb(o.detach()));
+ return x;
+}
+
+// -----------------------------------------------------------------------------------
+// recur - container layer that applies sequentials to input & output of RNN/GRU/LSTM
+// -----------------------------------------------------------------------------------
+static RecurOptions recur(K x,J i,Cast c) {
+ RecurOptions o; Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.detach(mbool(x,i+j,c,Setting::detach)); break;
+   default: AT_ERROR(msym(c),": 1 positional arg(detach flag) expected, ",n," supplied");
+  }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::detach: o.detach(mbool(p,c)); break;
+   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+  }
+ return o;
+}
+
+static K recur(bool a,const RecurOptions& o) {
+ K x=KDICT;
+ if(a || o.detach() != RecurOptions().detach()) OPTION(x, detach, kb(o.detach()));
  return x;
 }
 
@@ -2997,6 +3025,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
   case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
 
+  case Cast::recur:        return Recur(recur(x,i,c)).ptr();
   case Cast::rnnfork:      return RNNFork(rnnfork(x,i,c)).ptr();
   case Cast::lstmfork:     return LSTMFork(rnnfork(x,i,c)).ptr();
 
@@ -3136,6 +3165,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
   case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
   case Cast::prelu:           return ANY(nn::PReLU, m);
+  case Cast::recur:           return ANY(Recur, m);
   case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
   case Cast::reflect2d:       return ANY(nn::ReflectionPad2d, m);
   case Cast::relu:            return ANY(nn::ReLU, m);
@@ -3289,6 +3319,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::rnn:              return rnn(a,m.as<nn::RNN>()->options);
   case Cast::gru:              return rnn(a,m.as<nn::GRU>()->options);
   case Cast::lstm:             return rnn(a,m.as<nn::LSTM>()->options);
+  case Cast::recur:            return recur(a,m.as<Recur>()->options);
   case Cast::rnnfork:          return rnnfork(a,m.as<RNNFork>()->options);
   case Cast::lstmfork:         return rnnfork(a,m.as<LSTMFork>()->options);
 
@@ -3379,6 +3410,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
  if(auto *m=x->as<nn::Sequential>())        { pushback(m,s,y);
  } else if(auto *m=x->as<SeqNest>())        { pushback(m,s,y);
+ } else if(auto *m=x->as<Recur>())          { pushback(m,s,y);
  } else if(auto *m=x->as<RNNFork>())        { pushback(m,s,y);
  } else if(auto *m=x->as<LSTMFork>())       { pushback(m,s,y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
@@ -3777,6 +3809,7 @@ K modulehelp(Cast c) {
   case Cast::parmdict:        return KDICT;
   case Cast::pairwise:        return pairwise(true,nn::PairwiseDistanceOptions());
   case Cast::prelu:           return prelu(true,nn::PReLUOptions());
+  case Cast::recur:           return recur(true,RecurOptions());
   case Cast::reflect1d:       return npad(nn::ReflectionPad1dOptions({1,2}));
   case Cast::reflect2d:       return npad(nn::ReflectionPad2dOptions({1,1,2,0}));
   case Cast::relu:            return inplace(true,nn::ReLUOptions().inplace());

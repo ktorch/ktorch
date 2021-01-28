@@ -163,7 +163,7 @@ enum class Cast:short {
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
  lstm, lstmout, lstmfork,           maxpool1d,       maxpool2d,       maxpool3d,       mul,
  normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
- prelu,          reflect1d,       reflect2d,       relu,            relu6,
+ prelu,          recur,           reflect1d,       reflect2d,       relu,            relu6,
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout, rnnfork,
  rrelu,          select,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
@@ -228,7 +228,7 @@ enum class Metric: char {
 };
 
 enum class Result: short {
- undefined=-1, none, tensor, tuple, nested
+ undefined=-1, none, tensor, vector, tuple, nested
 };
 
 enum class Enum {  // enums to match pytorch variants
@@ -665,9 +665,10 @@ typedef struct {
   std::make_tuple(cs("model"),     Class::model)
  }};
 
- std::array<std::tuple<S,Result>,4> result = {{       //result types of modules
+ std::array<std::tuple<S,Result>,5> result = {{       //result types of modules
   std::make_tuple(cs("none"),    Result::none),
   std::make_tuple(cs("tensor"),  Result::tensor),
+  std::make_tuple(cs("vector"),  Result::vector),
   std::make_tuple(cs("tuple"),   Result::tuple),
   std::make_tuple(cs("nested"),  Result::nested)
  }};
@@ -704,7 +705,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,113> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,114> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -784,6 +785,7 @@ typedef struct {
   std::make_tuple(cs("pairwise"),         Cast::pairwise,        typeid(torch::nn::PairwiseDistanceImpl).hash_code(),    "torch.nn.PairwiseDistance"),
   std::make_tuple(cs("parmdict"),         Cast::parmdict,        typeid(torch::nn::ParameterDictImpl).hash_code(),       "torch.nn.ParameterDict"),
   std::make_tuple(cs("prelu"),            Cast::prelu,           typeid(torch::nn::PReLUImpl).hash_code(),               "torch.nn.PReLU"),
+  std::make_tuple(cs("recur"),            Cast::recur,           typeid(RecurImpl).hash_code(),                          ""),
   std::make_tuple(cs("reflect1d"),        Cast::reflect1d,       typeid(torch::nn::ReflectionPad1dImpl).hash_code(),     "torch.nn.ReflectionPad1d"),
   std::make_tuple(cs("reflect2d"),        Cast::reflect2d,       typeid(torch::nn::ReflectionPad2dImpl).hash_code(),     "torch.nn.ReflectionPad2d"),
   std::make_tuple(cs("relu"),             Cast::relu,            typeid(torch::nn::ReLUImpl).hash_code(),                "torch.nn.ReLU"),

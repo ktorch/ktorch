@@ -2,6 +2,14 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI emptytest(K x) {
+ nn::Sequential a;
+ nn::Sequential b=nullptr;
+ std::cerr << "a is empty: " << a.is_empty() << "\n";
+ std::cerr << "b is empty: " << b.is_empty() << "\n";
+ return (K)0;
+}
+
 KAPI recur(K x) {
  KTRY
   auto r=Recur(RecurOptions());
