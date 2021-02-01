@@ -2,23 +2,237 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-KAPI recur(K x) {
+
+Cast mcast2(const Moduleptr& m) {
+ if       (m->as<nn::AdaptiveAvgPool1d>()) {       return Cast::adaptavg1d;
+ } else if(m->as<nn::AdaptiveAvgPool2d>()) {       return Cast::adaptavg2d;
+ } else if(m->as<nn::AdaptiveAvgPool3d>()) {       return Cast::adaptavg3d;
+ } else if(m->as<nn::AdaptiveMaxPool1d>()) {       return Cast::adaptmax1d;
+ } else if(m->as<nn::AdaptiveMaxPool2d>()) {       return Cast::adaptmax2d;
+ } else if(m->as<nn::AdaptiveMaxPool3d>()) {       return Cast::adaptmax3d;
+ } else if(m->as<nn::AlphaDropout>()) {            return Cast::adrop;
+ } else if(m->as<nn::MultiheadAttention>()) {      return Cast::attention;
+ } else if(m->as<nn::AvgPool1d>()) {               return Cast::avgpool1d;
+ } else if(m->as<nn::AvgPool2d>()) {               return Cast::avgpool2d;
+ } else if(m->as<nn::AvgPool3d>()) {               return Cast::avgpool3d;
+ } else if(m->as<BaseModule>()) {                  return Cast::base;
+ } else if(m->as<nn::BatchNorm1d>()) {             return Cast::batchnorm1d;
+ } else if(m->as<nn::BatchNorm2d>()) {             return Cast::batchnorm2d;
+ } else if(m->as<nn::BatchNorm3d>()) {             return Cast::batchnorm3d;
+ } else if(m->as<nn::Bilinear>()) {                return Cast::bilinear;
+ } else if(m->as<Cat>()) {                         return Cast::cat;
+ } else if(m->as<nn::CELU>()) {                    return Cast::celu;
+ } else if(m->as<nn::Conv1d>()) {                  return Cast::conv1d;
+ } else if(m->as<nn::Conv2d>()) {                  return Cast::conv2d;
+ } else if(m->as<nn::Conv3d>()) {                  return Cast::conv3d;
+ } else if(m->as<nn::ConvTranspose1d>()) {         return Cast::convtranspose1d;
+ } else if(m->as<nn::ConvTranspose2d>()) {         return Cast::convtranspose2d;
+ } else if(m->as<nn::ConvTranspose3d>()) {         return Cast::convtranspose3d;
+ } else if(m->as<nn::CrossMapLRN2d>()) {           return Cast::crossmap2d;
+ } else if(m->as<nn::TransformerDecoder>()) {      return Cast::decoder;
+ } else if(m->as<nn::TransformerDecoderLayer>()) { return Cast::decoderlayer;
+ } else if(m->as<nn::Dropout>()) {                 return Cast::drop;
+ } else if(m->as<nn::Dropout2d>()) {               return Cast::drop2d;
+ } else if(m->as<nn::Dropout3d>()) {               return Cast::drop3d;
+ } else if(m->as<nn::ELU>()) {                     return Cast::elu;
+ } else if(m->as<nn::Embedding>()) {               return Cast::embed;
+ } else if(m->as<nn::EmbeddingBag>()) {            return Cast::embedbag;
+ } else if(m->as<nn::TransformerEncoder>()) {      return Cast::encoder;
+ } else if(m->as<nn::TransformerEncoderLayer>()) { return Cast::encoderlayer;
+ } else if(m->as<Expand>()) {                      return Cast::expand;
+ } else if(m->as<nn::FeatureAlphaDropout>()) {     return Cast::fadrop;
+ } else if(m->as<nn::Flatten>()) {                 return Cast::flatten;
+ } else if(m->as<nn::FractionalMaxPool2d>()) {     return Cast::fmaxpool2d;
+ } else if(m->as<nn::FractionalMaxPool3d>()) {     return Cast::fmaxpool3d;
+ } else if(m->as<nn::Fold>()) {                    return Cast::fold;
+ } else if(m->as<nn::GELU>()) {                    return Cast::gelu;
+ } else if(m->as<nn::GLU>()) {                     return Cast::glu;
+ } else if(m->as<nn::GroupNorm>()) {               return Cast::groupnorm;
+ } else if(m->as<nn::GRU>()) {                     return Cast::gru;
+ } else if(m->as<GRUOutput>()) {                   return Cast::gruout;
+ } else if(m->as<nn::Hardshrink>()) {              return Cast::hardshrink;
+ } else if(m->as<nn::Hardtanh>()) {                return Cast::hardtanh;
+ } else if(m->as<nn::Identity>()) {                return Cast::identity;
+ } else if(m->as<nn::InstanceNorm1d>()) {          return Cast::instancenorm1d;
+ } else if(m->as<nn::InstanceNorm2d>()) {          return Cast::instancenorm2d;
+ } else if(m->as<nn::InstanceNorm3d>()) {          return Cast::instancenorm3d;
+ } else if(m->as<nn::LayerNorm>()) {               return Cast::layernorm;
+ } else if(m->as<nn::LeakyReLU>()) {               return Cast::leakyrelu;
+ } else if(m->as<nn::Linear>()) {                  return Cast::linear;
+ } else if(m->as<nn::LocalResponseNorm>()) {       return Cast::localnorm;
+ } else if(m->as<nn::LogSigmoid>()) {              return Cast::logsigmoid;
+ } else if(m->as<nn::LogSoftmax>()) {              return Cast::logsoftmax;
+ } else if(m->as<nn::LPPool1d>()) {                return Cast::lppool1d;
+ } else if(m->as<nn::LPPool2d>()) {                return Cast::lppool2d;
+ } else if(m->as<nn::LSTM>()) {                    return Cast::lstm;
+ } else if(m->as<LSTMOutput>()) {                  return Cast::lstmout;
+ } else if(m->as<nn::MaxPool1d>()) {               return Cast::maxpool1d;
+ } else if(m->as<nn::MaxPool2d>()) {               return Cast::maxpool2d;
+ } else if(m->as<nn::MaxPool3d>()) {               return Cast::maxpool3d;
+ } else if(m->as<nn::ModuleDict>()) {              return Cast::moduledict;
+ } else if(m->as<nn::ModuleList>()) {              return Cast::modulelist;
+ } else if(m->as<Mul>()) {                         return Cast::mul;
+ } else if(m->as<OneHot>()) {                      return Cast::onehot;
+ } else if(m->as<Pad>()) {                         return Cast::pad;
+ } else if(m->as<nn::ConstantPad1d>()) {           return Cast::pad1d;
+ } else if(m->as<nn::ConstantPad2d>()) {           return Cast::pad2d;
+ } else if(m->as<nn::ConstantPad3d>()) {           return Cast::pad3d;
+ } else if(m->as<nn::PairwiseDistance>()) {        return Cast::pairwise;
+ } else if(m->as<nn::ParameterDict>()) {           return Cast::parmdict;
+ } else if(m->as<nn::PReLU>()) {                   return Cast::prelu;
+ } else if(m->as<Recur>()) {                       return Cast::recur;
+ } else if(m->as<nn::ReflectionPad1d>()) {         return Cast::reflect1d;
+ } else if(m->as<nn::ReflectionPad2d>()) {         return Cast::reflect2d;
+ } else if(m->as<nn::ReLU>()) {                    return Cast::relu;
+ } else if(m->as<nn::ReLU6>()) {                   return Cast::relu6;
+ } else if(m->as<nn::ReplicationPad1d>()) {        return Cast::replicate1d;
+ } else if(m->as<nn::ReplicationPad2d>()) {        return Cast::replicate2d;
+ } else if(m->as<nn::ReplicationPad3d>()) {        return Cast::replicate3d;
+ } else if(m->as<Reshape>()) {                     return Cast::reshape;
+ } else if(m->as<nn::RNN>()) {                     return Cast::rnn;
+ } else if(m->as<RNNOutput>()) {                   return Cast::rnnout;
+ } else if(m->as<nn::RReLU>()) {                   return Cast::rrelu;
+ } else if(m->as<Select>()) {                      return Cast::select;
+ } else if(m->as<nn::SELU>()) {                    return Cast::selu;
+ } else if(m->as<SeqJoin>()) {                     return Cast::seqjoin;
+ } else if(m->as<SeqNest>()) {                     return Cast::seqnest;
+ } else if(m->as<nn::Sequential>()) {              return Cast::sequential;
+ } else if(m->as<nn::Sigmoid>()) {                 return Cast::sigmoid;
+ } else if(m->as<nn::CosineSimilarity>()) {        return Cast::similar;
+ } else if(m->as<nn::Softmax>()) {                 return Cast::softmax;
+ } else if(m->as<nn::Softmax2d>()) {               return Cast::softmax2d;
+ } else if(m->as<nn::Softmin>()) {                 return Cast::softmin;
+ } else if(m->as<nn::Softplus>()) {                return Cast::softplus;
+ } else if(m->as<nn::Softshrink>()) {              return Cast::softshrink;
+ } else if(m->as<nn::Softsign>()) {                return Cast::softsign;
+ } else if(m->as<Squeeze>()) {                     return Cast::squeeze;
+ } else if(m->as<nn::Tanh>()) {                    return Cast::tanh;
+ } else if(m->as<nn::Tanhshrink>()) {              return Cast::tanhshrink;
+ } else if(m->as<nn::Threshold>()) {               return Cast::threshold;
+ } else if(m->as<nn::Transformer>()) {             return Cast::transformer;
+ } else if(m->as<nn::Unfold>()) {                  return Cast::unfold;
+ } else if(m->as<Unsqueeze>()) {                   return Cast::unsqueeze;
+ } else if(m->as<nn::Upsample>()) {                return Cast::upsample;
+ } else if(m->as<nn::ZeroPad2d>()) {               return Cast::zeropad2d;
+ } else {
+  AT_ERROR("unable to determine module enumeration");
+ }
+}
+
+static bool container(Cast c) {
+ switch(c) {
+  case Cast::sequential:
+  case Cast::seqnest:
+  case Cast::seqjoin:
+  case Cast::moduledict:
+  case Cast::modulelist:
+  case Cast::parmdict:
+  case Cast::base:
+  case Cast::recur:
+   return true;
+  default: return false;
+ }
+}
+
+static bool container(const Module& m) {
+ if     (m.as<nn::Sequential>())    return true;
+ else if(m.as<SeqNest>())           return true;
+ else if(m.as<SeqJoin>())           return true;
+ else if(m.as<nn::ModuleDict>())    return true;
+ else if(m.as<nn::ModuleList>())    return true;
+ else if(m.as<nn::ParameterDict>()) return true;
+ else if(m.as<Recur>())             return true;
+ else if(m.as<BaseModule>())        return true;
+ else                               return false;
+}
+
+static bool container2(const Moduleptr& m) {
+ return container(mcast2(m));
+}
+
+KAPI ctest(K x,K y,K z) {
  KTRY
-  auto r=Recur(RecurOptions());
-  r->push_back("onehot", nn::AnyModule(OneHot(67)));
-  r->push_back(nn::AnyModule(nn::LSTM(nn::LSTMOptions(67,512).num_layers(2).batch_first(true))));
-  r->push_back("fc", nn::AnyModule(nn::Linear(512,67)));
-  std::cerr << r << "\n";
-  auto g=Recur(RecurOptions());
-  g->push_back("onehot", nn::AnyModule(OneHot(67)));
-  g->push_back(nn::AnyModule(nn::GRU(nn::GRUOptions(67,512).num_layers(2).batch_first(true))));
-  std::cerr << g << "\n";
-  auto n=Recur(RecurOptions());
-  n->push_back(nn::AnyModule(nn::RNN(nn::RNNOptions(67,512).num_layers(2).batch_first(true))));
-  n->push_back("fc", nn::AnyModule(nn::Linear(512,67)));
-  std::cerr << n << "\n";
+  Kmodule *k=xmodule(z); const Module& m=*k->m;
+  TORCH_CHECK(k && x->t==-KJ && y->t==-KJ,"unrecognized arg(s)");
+  J n=x->j,b=y->j; bool c;
+  if(b) {
+   std::cerr << "using as() on " << mlabel(m) << "\n";
+   for(J i=0; i<n; ++i) {
+     c=container(m);
+     if(c) {
+      b++;
+     }
+  }
+  } else {
+   std::cerr << "using lookup on " << mlabel(m) << "\n";
+   for(J i=0; i<n; ++i) c=container2(k->m);
+  }
+  std::cerr << "container: " << c << " b: " << b <<  "\n";
+  return kb(c);
+ KCATCH("container test");
+}
+
+static void mstack(size_t d,Moduleptr& m,Modules& q) {
+ while(q.size()>d) q.pop();
+ if(container(*m)) {
+  q.push(m);
+  for(auto& i:m->children())
+   mstack(d+1,i,q);
+ }
+}
+
+static Modules mstack(Kmodule *m) {
+ Modules q;
+ if(m) {
+  if(container(*m->m))
+   mstack(0,m->m,q);
+  else
+   q.push(m->m);
+ }
+ return q;
+}
+
+static Moduleptr lastchild(const Moduleptr& m) { const auto& c=m->children(); return c.size() ? c.back() : m;}
+
+KAPI mtest(K x) {
+ KTRY
+  Kmodule *k=xmodule(x);
+  TORCH_CHECK(k,"supply a module");
+  const auto& m=*k->m;
+  std::cerr << "children: " << m.children().size() << "\n";
+  std::cerr << "   named: " << m.named_children().size() << "\n";
+  Modules q = mstack(k);
+  if(q.size()) {
+   const auto& c=container(*q.top()) ? lastchild(q.top()) : q.top();
+   if(c->children().size())
+    std::cerr << "look for sub-modules from here: " << mlabel(c);
+   else
+    std::cerr << "      no sub-modules here: " << mlabel(c);
+   std::cerr << ", stack size: " << q.size() << "\n";
+  }
+  while(q.size()) {
+   std::cerr << mlabel(q.top()) << "\n";
+   q.pop();
+  }
   return (K)0;
- KCATCH("recur");
+ KCATCH("mtest");
+}
+
+static void gradmode() {
+ if(torch::GradMode::is_enabled())  //torch::autograd::GradMode::is_enabled())
+  std::cerr << "Grad Mode Enabled\n";
+ else
+  std::cerr << "Grad Mode Disabled\n";
+}
+
+KAPI gmode(K x) {
+ gradmode();
+ if(true) {
+  torch::NoGradGuard g;
+  gradmode();
+ }
+ gradmode();
+ return (K)0;
 }
 
 KAPI loadfile(K x) {
@@ -45,7 +259,6 @@ KAPI mprint(K x) {
    case Cast::modulelist: b=torch::detail::has_forward<nn::ModuleListImpl>::value; break;
    case Cast::linear:     b=torch::detail::has_forward<nn::LinearImpl>::value; break;
    case Cast::lstm:       b=torch::detail::has_forward<nn::LSTMImpl>::value; break;
-   case Cast::rnnfork:    b=torch::detail::has_forward<RNNForkImpl>::value; break;
    default: std::cerr << "not handled..\n"; b=false; break;
   }
   std::cerr << "has non-templatized forward: " << b << "\n";

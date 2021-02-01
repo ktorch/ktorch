@@ -1678,8 +1678,8 @@ KAPI Multinomial(K x) {
  KTRY
   bool b=false; Tensor *t=xten(x),*r=xten(x,x->n-1); int64_t n; J j=r ? x->n-1 : xlen(x);
   TORCH_CHECK(x->t>=0, "multinomial: not implemented for ",kname(x));
-  if(t || x->t>0) {                                                    // if single tensor/list
-   return kj(torch::multinomial(t ? *t : kput(x),1).item().toLong());  // return single index
+  if(t || !xmixed(x,2)) {                                                // if single tensor/array
+   return kresult(t,torch::multinomial(t ? *t : kput(x), 1).squeeze());  // return w'out extra dim
   } else if(xint64(x,1,n) && (j==2 || (j==3 && xbool(x,2,b)))) {       // else if n & optional flag
    Tensor *t=xten(x,0);
    if(r)                                                               // if output tensor
@@ -1687,7 +1687,7 @@ KAPI Multinomial(K x) {
    else
     return kresult(t,torch::multinomial(t ? *t : kput(x,0), n, b));    // else return array/tensor
   } else {
-   AT_ERROR("multimonial: unrecognized arg(s)");
+   AT_ERROR("multimonial: unrecognized arg(s), expecting (input tensor/array; number of samples; replacement flag; output tensor)");
   }
  KCATCH("multinomial");
 }

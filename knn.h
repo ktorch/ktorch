@@ -214,57 +214,6 @@ class TORCH_API RNNOutputImpl : public torch::nn::Cloneable<RNNOutputImpl> {
 };
 TORCH_MODULE(RNNOutput);
 
-// ----------------------------------------------------------------------------------
-// RNNFork, LSTMFork - split output & hidden state from rnn layer, apply sequential
-// ----------------------------------------------------------------------------------
-struct TORCH_API ForkOptions {
- ForkOptions(bool d=true) : detach_(d) {}
- TORCH_ARG(bool, detach);
-};
-
-template<typename Derived>class TORCH_API ForkBase : public torch::nn::Cloneable<Derived> {
- public:
- explicit ForkBase(const ForkOptions& o) : options(o) {seq=this->register_module("seq",seq);}
- void reset() override {}
- void push_back(std::string s,const torch::nn::AnyModule& a) {seq->push_back(s,a);}
- void push_back(const torch::nn::AnyModule& a) {push_back(c10::to_string(seq->size()),a);}
- torch::nn::Sequential seq;
- ForkOptions options;
-};
-
-class TORCH_API RNNForkImpl : public ForkBase<RNNForkImpl> {
- using Tensor=torch::Tensor;
- using Tuple=std::tuple<Tensor,Tensor>;
- public:
- explicit RNNForkImpl(const ForkOptions& o) : ForkBase<RNNForkImpl>(o) {}
- void pretty_print(std::ostream& s) const override {s << "RNNFork(detach=" << options.detach() << ")";}
- Tuple forward(const Tuple& a) {  // recieves output & hidden tensor from RNN or GRU layer
-  auto x=seq->forward(std::get<0>(a));
-  auto h=std::get<1>(a);
-  if(options.detach())
-   h.detach_();
-  return std::make_tuple(x,h);
- }
-};
-TORCH_MODULE(RNNFork);
-
-class TORCH_API LSTMForkImpl : public ForkBase<LSTMForkImpl> {
- using Tensor=torch::Tensor;
- using Tuple=std::tuple<Tensor,Tensor>;
- using Nested=std::tuple<Tensor,Tuple>;
- public:
- explicit LSTMForkImpl(const ForkOptions& o) : ForkBase<LSTMForkImpl>(o) {}
- void pretty_print(std::ostream& s) const override {s << "LSTMFork(detach=" << options.detach() << ")";}
- Nested forward(const Nested& a) {
-  auto x=seq->forward(std::get<0>(a));
-  auto h=std::get<1>(a);
-  if(options.detach())
-   std::get<0>(h).detach_(),std::get<1>(h).detach_();
-  return std::make_tuple(x,h);
- }
-};
-TORCH_MODULE(LSTMFork);
-
 // --------------------------------------------------------------------------------
 // Recur - receive input & hidden state for rnn layer
 //         sequential modules in/out apply transformations to input & rnn output
@@ -313,27 +262,6 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
             ", expecting sequential modules for input/output processing or recurrent module(lstm,gru,rnn)");
   }
  }
-
- void push_back(std::string s,const torch::nn::AnyModule& a) {
-  if(lstm.is_empty() && gru.is_empty() && rnn.is_empty()) {
-   auto p=a.ptr();
-   if(p->as<torch::nn::LSTM>()) {
-    lstm=register_module("lstm",torch::nn::LSTM(std::dynamic_pointer_cast<torch::nn::LSTMImpl>(p)));
-   } else if(p->as<torch::nn::GRU>()) {
-    gru=register_module("gru",torch::nn::GRU(std::dynamic_pointer_cast<torch::nn::GRUImpl>(p)));
-   } else if(p->as<torch::nn::RNN>()) {
-    rnn=register_module("rnn",torch::nn::RNN(std::dynamic_pointer_cast<torch::nn::RNNImpl>(p)));
-   } else {
-    if(!in->size()) in=register_module("in", torch::nn::Sequential());
-    in->push_back(s.empty() ? c10::to_string(in->size()) : s, a);
-   }
-  } else {
-   if(!out->size()) out=register_module("out", torch::nn::Sequential());
-   out->push_back(s.empty() ? c10::to_string(out->size()) : s, a);
-  }
- }
-
- void push_back(const torch::nn::AnyModule& a) {push_back(std::string(),a);}
 
  std::vector<Tensor> forward(const Tensor& x,const Tensor& y,const Tensor& z) {
   std::vector<Tensor> v;

@@ -169,9 +169,7 @@ static Result rtype(Cast c) {
   case Cast::parmdict:   return Result::none;       // these modules have no forward method
   case Cast::rnn:
   case Cast::gru:
-  case Cast::rnnfork:    return Result::tuple;      // returns tuple<Tensor,Tensor>
   case Cast::lstm:
-  case Cast::lstmfork:   return Result::nested;     // returns tuple<Tensor,tuple<Tensor,Tensor>>
   case Cast::recur:      return Result::vector;     // rerurrent container, returns output,hidden..
   default:               return Result::tensor;     // assume other modules forward methods return tensor
  }
@@ -219,8 +217,6 @@ static bool container(Cast c) {
   case Cast::parmdict:
   case Cast::base:
   case Cast::recur:
-  case Cast::rnnfork:
-  case Cast::lstmfork:
    return true;
   default: return false;
  }
@@ -234,11 +230,11 @@ static bool container(const Module& m) {
  else if(m.as<nn::ModuleList>())    return true;
  else if(m.as<nn::ParameterDict>()) return true;
  else if(m.as<Recur>())             return true;
- else if(m.as<RNNFork>())           return true;
- else if(m.as<LSTMFork>())          return true;
  else if(m.as<BaseModule>())        return true;
  else                               return false;
 }
+
+static bool container(const Moduleptr& p) {return p ? container(*p) : false;}
 
 static Moduleptr parmdict(K x,J i) {
  if(!x || xnone(x,i))
@@ -258,14 +254,23 @@ static Moduleptr parmdict(K x,J i) {
 // -------------------------------------------------------------------------------------------------
 static void mstack(size_t d,Moduleptr& m,Modules& q) {
  while(q.size()>d) q.pop();
- if(container(*m)) {
+ if(container(m)) {
   q.push(m);
   for(auto& i:m->children())
    mstack(d+1,i,q);
  }
 }
 
-static void mstack(Kmodule *m,Modules& q) {mstack(0,m->m,q);} // initialize stack
+static Modules mstack(Kmodule *m) {
+ Modules q;
+ if(m) {
+  if(container(m->m))
+   mstack(0,m->m,q);
+  else
+   q.push(m->m);
+ }
+ return q;
+}
 
 static Moduleptr mfirst(Modules& q) {
  TORCH_CHECK(q.size(), "empty module stack -- cannot get originating module");
@@ -1555,32 +1560,9 @@ template<typename O> static K rnn(bool a,const O& o) {
  return x;
 }
 
-// --------------------------------------------------------------------------------------------
-// rnnfork - layer that applies sequential to output from RNN/GRU/LSTM, return w'hidden layer
-// --------------------------------------------------------------------------------------------
-static ForkOptions rnnfork(K x,J i,Cast c) {
- ForkOptions o; Pairs p; J n=xargc(x,i,p);
- for(J j=0;j<n;++j)
-  switch(j) {
-   case 0: o.detach(mbool(x,i+j,c,Setting::detach)); break;
-   default: AT_ERROR(msym(c),": 1 positional arg(detach flag) expected, ",n," supplied");
-  }
- while(xpair(p))
-  switch(mset(p.k,c)) {
-   case Setting::detach: o.detach(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
-  }
- return o;
-}
-
-static K rnnfork(bool a,const ForkOptions& o) {
- K x=KDICT;
- if(a || o.detach() != ForkOptions().detach()) OPTION(x, detach, kb(o.detach()));
- return x;
-}
-
 // -----------------------------------------------------------------------------------
 // recur - container layer that applies sequentials to input & output of RNN/GRU/LSTM
+//       - functions to parse options (currently only true/false flag for detach)
 // -----------------------------------------------------------------------------------
 static RecurOptions recur(K x,J i,Cast c) {
  RecurOptions o; Pairs p; J n=xargc(x,i,p);
@@ -3025,10 +3007,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::rnn:          return nn::RNN(rnn(x,i,c)).ptr();
   case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
   case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
-
   case Cast::recur:        return Recur(recur(x,i,c)).ptr();
-  case Cast::rnnfork:      return RNNFork(rnnfork(x,i,c)).ptr();
-  case Cast::lstmfork:     return LSTMFork(rnnfork(x,i,c)).ptr();
 
   case Cast::rnnout:       noarg(c,x,i); return RNNOutput().ptr();
   case Cast::gruout:       noarg(c,x,i); return GRUOutput().ptr();
@@ -3153,7 +3132,6 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::lppool1d:        return ANY(nn::LPPool1d, m);
   case Cast::lppool2d:        return ANY(nn::LPPool2d, m);
   case Cast::lstm:            return ANY(nn::LSTM, m);
-  case Cast::lstmfork:        return ANY(LSTMFork, m);
   case Cast::lstmout:         return ANY(LSTMOutput, m);
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
@@ -3176,7 +3154,6 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::replicate3d:     return ANY(nn::ReplicationPad3d, m);
   case Cast::reshape:         return ANY(Reshape, m);
   case Cast::rnn:             return ANY(nn::RNN, m);
-  case Cast::rnnfork:         return ANY(RNNFork, m);
   case Cast::rnnout:          return ANY(RNNOutput, m);
   case Cast::rrelu:           return ANY(nn::RReLU, m);
   case Cast::select:          return ANY(Select, m);
@@ -3321,8 +3298,6 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::gru:              return rnn(a,m.as<nn::GRU>()->options);
   case Cast::lstm:             return rnn(a,m.as<nn::LSTM>()->options);
   case Cast::recur:            return recur(a,m.as<Recur>()->options);
-  case Cast::rnnfork:          return rnnfork(a,m.as<RNNFork>()->options);
-  case Cast::lstmfork:         return rnnfork(a,m.as<LSTMFork>()->options);
 
   case Cast::relu:             return inplace(a,m.as<nn::ReLU>()->options.inplace());
   case Cast::selu:             return inplace(a,m.as<nn::SELU>()->options.inplace());
@@ -3411,8 +3386,6 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
  if(auto *m=x->as<nn::Sequential>())        { pushback(m,s,y);
  } else if(auto *m=x->as<SeqNest>())        { pushback(m,s,y);
- } else if(auto *m=x->as<RNNFork>())        { pushback(m,s,y);
- } else if(auto *m=x->as<LSTMFork>())       { pushback(m,s,y);
  } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
  } else if(auto *m=x->as<SeqJoin>())  {
@@ -3483,56 +3456,73 @@ static bool mcompare(Cast c,const Module& m1,const Module& m2) {
  return b;
 }
 
-static void mfind(Cast c,J j,J d,S s,Modules& q,K x,K y,K z) {
- TORCH_CHECK(s, "attempting to find ",msym(c)," layer, but no name given");
- TORCH_CHECK(q.size(), "attempting to find ",msym(c)," layer at depth ",d," but no previous layer found");
- J i=0; auto& m=*q.top(); bool b=container(m); auto mc=m.named_children().back();
- std::string p; if(b) p=mc.key();
- for(auto& a:b ? mc.value()->named_modules(p,false) : m.named_modules(p,false)) {
+static void mfind(Cast c,J j,S s,Moduleptr& p,K x,K y,K z) {
+ TORCH_CHECK(s, "attempting to find ",msym(c)," layer in ",mlabel(p),", but no name given");
+ J i=0; bool b=false; 
+ for(auto& a:p->named_modules(std::string(),false)) {
   if(i==j) {
    TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
    TORCH_CHECK(mcompare(c,m,*mcreate(x,argstart(x,s),c)),"child module ",a.key()," mismatch with given options");
    if(y||z) mparms(c,m,y,z,(S)a.key().c_str());   // reset any supplied parms or buffers
+   b=true;
    return;
   }
   i++;
  }
- AT_ERROR("unable to find ",msym(c)," layer named ",s," in parent ",mlabel(b ? *mc.value() : m)," layer at depth ",d);
+ TORCH_CHECK(b, "unable to find ",msym(c),"(",s,") in parent ",mlabel(p));
 }
 
 // --------------------------------------------------------------------------------------------
 // mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
+// mparent - check stack for "parent" - a module with child module(s) that are not user-defined
 // mpush - add new parent/child module to network stored in stack of layers
 // --------------------------------------------------------------------------------------------
-static void mdepth(Cast c,size_t d,Modules& q) {
- TORCH_CHECK(d >=(q.size() ? 1 : 0), msym(c), ": depth ",d," below min depth of ",q.size() ? 1 : 0);
- TORCH_CHECK(d <= q.size(),          msym(c), ": depth ",d," above max depth of ",q.size());
+static void mdepth(Cast c,J d,Modules& q) {
+ J n=q.size(); // convert to signed to be able to compare with depth d
+ TORCH_CHECK(d >=(n ? 1 : 0), msym(c), ": depth ",d," below min depth of ",n ? 1 : 0);
+ TORCH_CHECK(d <= n,          msym(c), ": depth ",d," above max depth of ",n);
  while(q.size()>d) q.pop();
 }
 
-static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
-static std::tuple<Cast,J> mpush(Modules& q,J j,J d,S s,S nm,K x,K y,K z) {
- Cast c=msym(s); J n=q.size();
- if(d>n || (n && !container(*q.top()))) {
-  std::cerr << "in mpush, depth: " << d << ", stack size: " << n << "\n";;
-  if(n) std::cerr << ", top of stack: " << mlabel(q.top()) << "\n";
-  mfind(c,j,d,nm,q,x,y,z); j++;  // previous module has self-contained child modules
+static Moduleptr mparent(const Modules& q) {
+ Moduleptr m;
+ if(q.size()) {
+  const auto& p=q.top();          // if module stack has a container at the top
+  if(container(p)) {              // check if latest added submodule is a parent
+   const auto& c=p->children();   // e.g. decoder, attention, etc.
+   return (c.size() && c.back()->children().size()) ? c.back() : nullptr;
+  } else {                        // stack of only one non-container, check if parent
+   return p->children().size() ? p : nullptr;
+  }
  } else {
-  mdepth(c,d,q); j=0;
-  if(container(c))
-   addparent(c,nm,q,x,y,z);
-  else
-   addchild(c,nm,q,x,y,z);
+  return nullptr;
  }
- return std::make_tuple(c,j);
+}
+   
+static Cast mpush(Modules& q,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
+static Cast mpush(Modules& q,J d,S s,S nm,K x,K y,K z) {
+ Cast c=msym(s); mdepth(c,d,q);
+ if(container(c))
+  addparent(c,nm,q,x,y,z);
+ else
+  addchild(c,nm,q,x,y,z);
+ return c;
 }
 
-static Cast mpush(Modules& q,J d,K x) {
- J j; S s,nm; Cast c;
- msyms(x,s,nm);
- std::tie(c,j)=mpush(q,0,d,s,nm,x);
- return c;}
+static std::tuple<Cast,J> mpushtable(Modules& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
+static std::tuple<Cast,J> mpushtable(Modules& q,J j,J d,S s,S nm,K x,K y,K z) {
+ // p defined if module w'children is only member of stack or last module of most recent container
+ Moduleptr p=mparent(q); J n=container(p) ? q.size() : 0;
+ if(p && d>n) {
+  auto c=msym(s); mfind(c,j,nm,p,x,y,z);
+  return std::make_tuple(c, ++j);
+ } else {
+  return std::make_tuple(mpush(q,d,s,nm,x,y,z), 0);
+ }
+}
+
+static Cast mpush(Modules& q,J d,K x) {S s,nm; msyms(x,s,nm); return mpush(q,d,s,nm,x);}
 
 // -------------------------------------------------------------------------------
 // mtree - parse nested tree of layers -- type,name,options -- to build modules
@@ -3551,7 +3541,7 @@ static Cast mtree(K x,size_t d,Modules& q) {
 
 static K mtree(K x,J d=0,Kmodule *m=nullptr); // higher-level call, can add to existing module
 static K mtree(K x,J d,Kmodule *m) {
- Modules q; if(m) mstack(m,q);
+ Modules q=mstack(m);
  Cast c=mtree(x,d ? d : q.size(),q);
  return mresult(m,c,q);
 }
@@ -3567,8 +3557,7 @@ static Cast mdv(K x,J n,Modules& q) { // process n depth-value pairs, n=-1 for s
 
 static K mdv(K x,J n,Kmodule *m=nullptr,J d=0,K v=nullptr); // higher-level call, can add to existing module
 static K mdv(K x,J n,Kmodule *m,J d,K v) {
- std::cerr << "mdv with n: " << n << ", d: " << d << ", existing module: " << (v ? "yes\n" : "no\n");
- Cast c; Modules q; if(m) mstack(m,q);
+ Cast c; Modules q=mstack(m);
  c=v ? mpush(q,d ? d : q.size(),v) : mdv(x,n,q);
  return mresult(m,c,q);
 }
@@ -3576,15 +3565,15 @@ static K mdv(K x,J n,Kmodule *m,J d,K v) {
 static Cast mtable(K x,Modules &q) { // process table/dict w'depth,module,options,parms,buffers
  Cast c,p=Cast::undefined; J j=0,n=x->t==99 ? 1 : xlen(x);
  for(J i=0;i<n;++i) {
-  std::tie(c,j)=mpush(q, j, statedepth(x,i),   statemodule(x,i), statename(x,i),
-                            stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
+  std::tie(c,j)=mpushtable(q, j, statedepth(x,i),   statemodule(x,i), statename(x,i),
+                                 stateoptions(x,i), stateparms(x,i),  statebuffers(x,i));
   if(p==Cast::undefined) p=c;
  }
  return p;
 }
 
 static K mtable(K x,Kmodule *m=nullptr);  //higher-level call, can also add to existing module if supplied
-static K mtable(K x,Kmodule *m) {Modules q; if(m) mstack(m,q); Cast c=mtable(x,q); return mresult(m,c,q);}
+static K mtable(K x,Kmodule *m) {Modules q=mstack(m); Cast c=mtable(x,q); return mresult(m,c,q);}
 
 static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
  if(d) mdepth(c,d,q);
@@ -3596,7 +3585,7 @@ static void mextend(Moduleptr& a,Cast c,J d,Modules& q) {
 
 static void mextend(Kmodule *x,Kmodule *y,J d=0);
 static void mextend(Kmodule *x,Kmodule *y,J d) {
- Modules q; mstack(x,q);                  //initialize stack of modules
+ Modules q=mstack(x);                     //initialize stack of modules
  mextend(y->m,y->c,d ? d : q.size(),q);   //add additional module(s)
  x->r = rtype(mfirst(q));                 //update result type
 }
@@ -3796,7 +3785,6 @@ K modulehelp(Cast c) {
   case Cast::lppool1d:        return lppool(true,nn::LPPool1dOptions(2,3));
   case Cast::lppool2d:        return lppool(true,nn::LPPool2dOptions(1.2,{2,3}));
   case Cast::lstm:            return rnn(true,nn::LSTMOptions(10,20));
-  case Cast::lstmfork:        return rnnfork(true,ForkOptions());
   case Cast::lstmout:         return KDICT;
   case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
@@ -3823,7 +3811,6 @@ K modulehelp(Cast c) {
   case Cast::replicate3d:     return npad(nn::ReplicationPad3dOptions({3,3,6,6,1,1}));
   case Cast::reshape:         return getsize(true,SizeOptions({-1,1,28,28}));
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
-  case Cast::rnnfork:         return rnnfork(true,ForkOptions());
   case Cast::rnnout:          return KDICT;
   case Cast::rrelu:           return rrelu(true,nn::RReLUOptions());
   case Cast::select:          return select(true,SelectOptions(1,-1));
