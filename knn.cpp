@@ -3477,6 +3477,7 @@ static void mfind(Cast c,J j,S s,Moduleptr& p,K x,K y,K z) {
 // mdepth - check given depth, must be non-zero if stack populated, no greater than stack size
 // mparent - check stack for "parent" - a module with child module(s) that are not user-defined
 // mpush - add new parent/child module to network stored in stack of layers
+// mpushtable - used when full table format is used to define modules (w'extra submodule rows)
 // --------------------------------------------------------------------------------------------
 static void mdepth(Cast c,J d,Modules& q) {
  J n=q.size(); // convert to signed to be able to compare with depth d
@@ -3513,8 +3514,8 @@ static Cast mpush(Modules& q,J d,S s,S nm,K x,K y,K z) {
 static std::tuple<Cast,J> mpushtable(Modules& q,J j,J d,S s,S nm,K x,K y=nullptr,K z=nullptr);
 static std::tuple<Cast,J> mpushtable(Modules& q,J j,J d,S s,S nm,K x,K y,K z) {
  // p defined if module w'children is only member of stack or last module of most recent container
- Moduleptr p=mparent(q); J n=container(p) ? q.size() : 0;
- if(p && d>n) {
+ Moduleptr p=mparent(q);
+ if(p && d>(J)(container(q.top()) ? q.size() : 0)) {
   auto c=msym(s); mfind(c,j,nm,p,x,y,z);
   return std::make_tuple(c, ++j);
  } else {
