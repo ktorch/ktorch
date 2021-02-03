@@ -295,6 +295,31 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
 TORCH_MODULE(Recur);
 
 // ----------------------------------------------------------------------------------
+//  Eval - define AnyModule/Sequential for additional evaluation calcs on output
+// ----------------------------------------------------------------------------------
+class TORCH_API EvalImpl : public torch::nn::Cloneable<EvalImpl> {
+ public:
+ //explicit EvalImpl(const EvalOptions& o) : options(o) {}
+
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Eval";}
+
+ torch::Tensor forward(const torch::Tensor& x) {
+  if(is_training() || (any.is_empty() && seq.is_empty()))
+   return x;
+  else if(!any.is_empty())
+   return any.forward(x);
+  else
+   return seq->forward(x);
+ }
+
+ torch::nn::AnyModule  any;
+ torch::nn::Sequential seq=nullptr;
+};
+TORCH_MODULE(Eval);
+
+
+// ----------------------------------------------------------------------------------
 // SeqNest - derived from Sequential to allow nested sequentials 
 //         - no templatized forward result means can be stored as an AnyModule
 //         - forward method accepts up to three tensors x,y,z w'y & z optional

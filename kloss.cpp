@@ -701,7 +701,7 @@ static K lossfwd(Cast c,Module& m,K a) {
   Tensor nx,ny; p=xtenarg(a,1,x,y); xtenarg(a,3,nx,ny);
   r=lossfwd(c,m,x,y,nx,ny);
  } else {
-  AT_ERROR("unrecognized arg(s) for ",mname(m)," forward call");
+  AT_ERROR("unrecognized arg(s) for ",mlabel(m)," forward call");
  }
  return kresult(p,r);
 }

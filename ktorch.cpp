@@ -1268,7 +1268,7 @@ KAPI kobj(K x) {
   TORCH_CHECK(xempty(x), "obj: empty arg expected");
   K k=ktn(KS,7),v=ktn(0,7); auto n=pointer().size(); size_t i=0;
   kS(k)[0]=cs("ptr");      kK(v)[0]=ktn(0,n);
-  kS(k)[1]=cs("obj");      kK(v)[1]=ktn(KS,n);
+  kS(k)[1]=cs("class");    kK(v)[1]=ktn(KS,n);
   kS(k)[2]=cs("device");   kK(v)[2]=ktn(KS,n);
   kS(k)[3]=cs("dtype");    kK(v)[3]=ktn(KS,n);
   kS(k)[4]=cs("size");     kK(v)[4]=ktn(0,n);
@@ -1672,6 +1672,14 @@ KAPI    weakref(K x) {return attr(x, -KJ, Attr::weakref);}
 KAPI        ptr(K x) {return attr(x, -KJ, Attr::ptr);}
 KAPI    storage(K x) {return attr(x, -KJ, Attr::storage);}
 
+KAPI kclass(K x) {
+ KTRY
+  Ktag *g=xtag(x);
+  TORCH_CHECK(g, "class: need allocated torch object, e.g. tensor, module, given ",kname(x));
+  return ks(mapclass(g->a));
+ KCATCH("class");
+}
+
 KAPI     device(K x) {return xempty(x) ? defaultdevice() : attr(x, -KS, Attr::device);}
 KAPI      dtype(K x) {return attr(x, -KS, Attr::dtype);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
@@ -1827,6 +1835,7 @@ KAPI fns(K x){
  fn(x, "result",      KFN(result),      1);
  fn(x, "storage",     KFN(storage),     1);
  fn(x, "weakref",     KFN(weakref),     1);
+ fn(x, "class",       KFN(kclass),      1);
  fn(x, "device",      KFN(device),      1);
  fn(x, "dtype",       KFN(dtype),       1);
  fn(x, "gradfn",      KFN(gradfn),      1);

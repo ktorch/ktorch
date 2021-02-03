@@ -2,6 +2,19 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+void atest1(const Moduleptr& m) {
+ std::cerr << *m << "\n";
+ // fails: AnyModule a(m);
+}
+
+KAPI atest(K x) {
+ KTRY
+  nn::Linear l(1,2);
+  AnyModule a(l);
+  atest1(a.ptr());
+  return (K)0;
+ KCATCH("atest");
+}
 
 Cast mcast2(const Moduleptr& m) {
  if       (m->as<nn::AdaptiveAvgPool1d>()) {       return Cast::adaptavg1d;
@@ -170,52 +183,6 @@ KAPI ctest(K x,K y,K z) {
   std::cerr << "container: " << c << " b: " << b <<  "\n";
   return kb(c);
  KCATCH("container test");
-}
-
-static void mstack(size_t d,Moduleptr& m,Modules& q) {
- while(q.size()>d) q.pop();
- if(container(*m)) {
-  q.push(m);
-  for(auto& i:m->children())
-   mstack(d+1,i,q);
- }
-}
-
-static Modules mstack(Kmodule *m) {
- Modules q;
- if(m) {
-  if(container(*m->m))
-   mstack(0,m->m,q);
-  else
-   q.push(m->m);
- }
- return q;
-}
-
-static Moduleptr lastchild(const Moduleptr& m) { const auto& c=m->children(); return c.size() ? c.back() : m;}
-
-KAPI mtest(K x) {
- KTRY
-  Kmodule *k=xmodule(x);
-  TORCH_CHECK(k,"supply a module");
-  const auto& m=*k->m;
-  std::cerr << "children: " << m.children().size() << "\n";
-  std::cerr << "   named: " << m.named_children().size() << "\n";
-  Modules q = mstack(k);
-  if(q.size()) {
-   const auto& c=container(*q.top()) ? lastchild(q.top()) : q.top();
-   if(c->children().size())
-    std::cerr << "look for sub-modules from here: " << mlabel(c);
-   else
-    std::cerr << "      no sub-modules here: " << mlabel(c);
-   std::cerr << ", stack size: " << q.size() << "\n";
-  }
-  while(q.size()) {
-   std::cerr << mlabel(q.top()) << "\n";
-   q.pop();
-  }
-  return (K)0;
- KCATCH("mtest");
 }
 
 static void gradmode() {

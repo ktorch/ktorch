@@ -3372,29 +3372,32 @@ static void mparms(Cast c,Module &m,K p,K f,S s) {
 }
 
 // -----------------------------------------------------------------------------------------
-// pushback - handle pushback methods for a set of container modules
+// addany - convert child module to type-erased AnyModule, then add to container
+// addseq - check if generic ptr to a Sequential, if so, add, else add as AnyModule
 // addmodule - given parent & child module, add allowable combinations, else error
 // addparent - create container, add to any previous parent, push on stack
 // addchild - add a child layer to existing parent or push single layer to stack
 // -----------------------------------------------------------------------------------------
-template<typename M> static void pushback(M *m,const char *s,const Moduleptr& y) {
+template<typename M> static void addany(M *m,const char *s,const Moduleptr& y) {
  const auto& a=anymodule(mcast(*y),y);
  if(s) m->push_back(s,a); else m->push_back(a);
 }
 
+template<typename M> static void addseq(M *m,const char *s,const Moduleptr& y) {
+ if(const auto& q=std::dynamic_pointer_cast<torch::nn::SequentialImpl>(y)) {
+  if(s) m->push_back(s,nn::Sequential(q)); else m->push_back(nn::Sequential(q));
+ } else {
+  addany(m,s,y);
+ }
+}
+
 static void addmodule(Moduleptr& x,const Moduleptr& y) {
  const char* s=mname(*y);
- if(auto *m=x->as<nn::Sequential>())        { pushback(m,s,y);
- } else if(auto *m=x->as<SeqNest>())        { pushback(m,s,y);
+ if(auto *m=x->as<nn::Sequential>())        { addany(m,s,y);
+ } else if(auto *m=x->as<SeqNest>())        { addany(m,s,y);
+ } else if(auto *m=x->as<SeqJoin>())        { addseq(m,s,y);
  } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
- } else if(auto *m=x->as<SeqJoin>())  {
-  if(y->as<nn::Sequential>()) {
-   const auto& q=nn::Sequential(std::dynamic_pointer_cast<nn::SequentialImpl>(y));
-   if(s) m->push_back(s,q); else m->push_back(q);
-  } else {
-   pushback(m,s,y);
-  } 
  } else if(auto *m=x->as<nn::ModuleDict>()) {
   m->update({{s ? s : c10::to_string(m->children().size()), y}});
  } else if(auto *m=x->as<BaseModule>()) {
