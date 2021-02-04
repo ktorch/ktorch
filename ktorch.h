@@ -50,6 +50,11 @@ template <class... Fs> auto make_overload(Fs... fs) {
 # pragma GCC diagnostic pop
 #endif
 
+#define TORCH_ERROR(...)                                                      \
+  do {                                                                        \
+    C10_EXPAND_MSVC_WORKAROUND(TORCH_CHECK(false, ::c10::str(__VA_ARGS__)));  \
+  } while (false)
+
 #define KFN(f) reinterpret_cast<void *>(f)
 #define KERR(e) krr((S)e)
 #define KDICT xD(ktn(KS,0),ktn(0,0))

@@ -46,12 +46,12 @@ static K mopt(bool,bool,Cast,const Module&);
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized module: cannot translate enumeration ",(I)c," to symbol");
+ TORCH_ERROR("unrecognized module: cannot translate enumeration ",(I)c," to symbol");
 }
 
 static Cast msym(S s) {
  for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("unrecognized module: ",s);
+ TORCH_ERROR("unrecognized module: ",s);
 }
 
 static void msyms(K x,S& s,S& nm) {
@@ -68,22 +68,22 @@ static void msyms(K x,S& s,S& nm) {
   s=kK(x)[0]->s;
   if(x->n>1 && kK(x)[1]->t==-KS) nm=kK(x)[1]->s;
  } else {
-  AT_ERROR("module: unrecognized arg(s), ", kstring(x));
+  TORCH_ERROR("module: unrecognized arg(s), ", kstring(x));
  }
 }
 
 static S mset(Setting x) {
  for(auto& m:env().mset) if(x == std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized module option: ",(I)x);
+ TORCH_ERROR("unrecognized module option: ",(I)x);
 }
 
 static Setting mset(S x,Cast c=Cast::undefined);
 static Setting mset(S x,Cast c) {
  for(auto& m:env().mset) if(x == std::get<0>(m)) return std::get<1>(m);
  if(c == Cast::undefined)
-  AT_ERROR("unrecognized option: `",x);
+  TORCH_ERROR("unrecognized option: `",x);
  else
-  AT_ERROR(msym(c),": unrecognized option `",x);
+  TORCH_ERROR(msym(c),": unrecognized option `",x);
 }
 
 static K mkeys(bool b) {
@@ -244,7 +244,7 @@ static Moduleptr parmdict(K x,J i) {
  else if(xdict(x) || xdict(x,i))
   return nn::ParameterDict(kputd(xdict(x) ? x : kK(x)[i])).ptr();
  else
-  AT_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
+  TORCH_ERROR("module: parameter dictionary expects a k dictionary or an allocated dictionary of tensors, given ",kname(x,i));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -390,7 +390,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::unsqueeze:       return m.as<Unsqueeze>()->forward(x);
   case Cast::upsample:        return m.as<nn::Upsample>()->forward(x);
   case Cast::zeropad2d:       return m.as<nn::ZeroPad2d>()->forward(x);
-  default: AT_ERROR("forward calculation with single tensor argument not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with single tensor argument not implemented for module: ",m.name());
  }
 }
 
@@ -408,7 +408,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y);
   case Cast::similar:         return m.as<nn::CosineSimilarity>()->forward(x,y);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y);
-  default: AT_ERROR("forward calculation with two tensor arguments not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with two tensor arguments not implemented for module: ",m.name());
  }
 }
 
@@ -420,7 +420,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
   case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
-  default: AT_ERROR("forward calculation with three tensor arguments not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with three tensor arguments not implemented for module: ",m.name());
  }
 }
 
@@ -465,7 +465,7 @@ TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
                    break;
   case Cast::recur: return m.as<Recur>()->forward(x,y,z);
   case Cast::sequential: rseq<nn::Sequential>(r,m,v,x,y,z); break;
-  default: AT_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
+  default: TORCH_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
  }
  return v;
 }
@@ -481,9 +481,9 @@ size_t tensorcount(const Tensor& x,const Tensor& y,const Tensor& z) {
  else if(x.defined() && y.defined() && z.defined())
   return 3;
  else if(!x.defined())
-  AT_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
+  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
  else
-  AT_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
+  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
 }
 
 K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y={},const Tensor& z={});
@@ -494,16 +494,16 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
     case 1: return kten(mforward(c,m,x));
     case 2: return kten(mforward(c,m,x,y));
     case 3: return kten(mforward(c,m,x,y,z));
-    default: AT_ERROR("forward: unrecognized tensor arg(s)");
+    default: TORCH_ERROR("forward: unrecognized tensor arg(s)");
    }
   case Result::vector:
   case Result::tuple:
   case Result::nested:
    return kvec(rforward(c,r,m,x,y,z));
   case Result::none:
-   AT_ERROR("forward: no forward calculation defined for ",msym(c)," module");
+   TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
   case Result::undefined:
-   AT_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
+   TORCH_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
  }
 }
 
@@ -519,10 +519,10 @@ K mforward(Cast c,Result r,Module& m,K a) {
     case 1: return mforward(c, r, m, v->at(i[0]));
     case 2: return mforward(c, r, m, v->at(i[0]), v->at(i[1]));
     case 3: return mforward(c, r, m, v->at(i[0]), v->at(i[1]), v->at(i[2]));
-    default: AT_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
+    default: TORCH_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
    }
   } else {
-   AT_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
+   TORCH_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
   }
  } else {
   TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: module/model and up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
@@ -622,7 +622,7 @@ static DoubleVector mdoubles(K x,J i,Cast c,Setting s) {
  } else if(xdouble(x,i,n,f)) {
   v=DoubleArrayRef(f,n).vec();
  } else {
-  AT_ERROR(msym(c)," ",mset(s),": expected double(s), given ",kname(x,i));
+  TORCH_ERROR(msym(c)," ",mset(s),": expected double(s), given ",kname(x,i));
  }
  return v;
 }
@@ -635,7 +635,7 @@ static DoubleVector mdoubles(const Pairs& p,Cast c) {
  } else if(p.t==-KF || p.t==KF) {
   DoubleArrayRef a; pdoubles(p,a); v=a.vec();
  } else {
-  AT_ERROR(msym(c)," ",p.k,": expected double(s), given ",kname(p.t));
+  TORCH_ERROR(msym(c)," ",p.k,": expected double(s), given ",kname(p.t));
  }
  return v;
 }
@@ -724,7 +724,7 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
     case 2: o.momentum(mdouble(x,i+j,c,Setting::momentum)); break;
     case 3: o.affine(mbool(x,i+j,c,Setting::affine)); break;
     case 4: o.track_running_stats(mbool(x,i+j,c,Setting::affine)); break;
-    default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -733,7 +733,7 @@ template<typename O> static O batchnorm(K x,J i,Cast c) {
    case Setting::momentum: o.momentum(mdouble(p,c)); break;
    case Setting::affine:   o.affine(mbool(p,c)); break;
    case Setting::track:    o.track_running_stats(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(in,msym(c),": number of input features not defined");
  return o;
@@ -761,7 +761,7 @@ template<typename O> static O localnorm(K x,J i,Cast c) {
     case 1: o.alpha(mdouble(x,i+j,c,Setting::alpha)); break;
     case 2: o.beta(mdouble(x,i+j,c,Setting::beta)); break;
     case 3: b ? o.k(mdouble(x,i+j,c,Setting::k)) : o.k(int64(x,i+j,c,Setting::k)); break;
-    default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -769,7 +769,7 @@ template<typename O> static O localnorm(K x,J i,Cast c) {
    case Setting::alpha: o.alpha(mdouble(p,c)); break;
    case Setting::beta:  o.beta(mdouble(p,c)); break;
    case Setting::k:     b ? o.k(mdouble(p,c)) : o.k(int64(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": specify no. of neighboring channels to use for normalization");
  return o;
@@ -796,7 +796,7 @@ static nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
     case 1: o.num_channels(int64(x,i+j,c,Setting::channels)); h=true; break;
     case 2: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
     case 3: o.affine(mbool(x,i+j,c,Setting::affine)); break;
-    default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -804,7 +804,7 @@ static nn::GroupNormOptions groupnorm(K x,J i,Cast c) {
    case Setting::channels: o.num_channels(int64(p,c)); h=true; break;
    case Setting::eps:      o.eps(mdouble(p,c)); break;
    case Setting::affine:   o.affine(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(g, msym(c),": specify no. of groups to separate the channels into");
  TORCH_CHECK(h, msym(c),": specify no. of channels expected in input");
@@ -830,14 +830,14 @@ static nn::LayerNormOptions layernorm(K x,J i,Cast c) {
     case 0: o.normalized_shape(mlongs(x,i+j,c,Setting::shape)); break;
     case 1: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
     case 2: o.elementwise_affine(mbool(x,i+j,c,Setting::affine)); break;
-    default: AT_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::shape:  o.normalized_shape(mlongs(p,c)); break;
    case Setting::eps:    o.eps(mdouble(p,c)); break;
    case Setting::affine: o.elementwise_affine(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.normalized_shape().size(), msym(c),": no normalized shape given");
  return o;
@@ -862,7 +862,7 @@ static fnn::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
    case 0: o.p(mdouble(x,i+j,c,Setting::p)); break;
    case 1: o.dim(int64(x,i+j,c,Setting::dim)); break;
    case 2: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
-   default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 4 args(p,dim,eps,output tensor) expected, ",n," supplied");
+   default: TORCH_ERROR(msym(c),": unrecognized positional arg(s), up to 4 args(p,dim,eps,output tensor) expected, ",n," supplied");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -870,7 +870,7 @@ static fnn::NormalizeFuncOptions normalize(K x,J i,Cast c,Tensor& r) {
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    case Setting::out: if(!pempty(p)) pten(p,r);
-   default: AT_ERROR("unrecognized option: ",p.k," for normalize");
+   default: TORCH_ERROR("unrecognized option: ",p.k," for normalize");
   }
  if(r.defined()) 
   o.out(r);
@@ -911,7 +911,7 @@ static nn::detail::conv_padding_mode_t convpad(S s) {
   case Enum::reflect:   return torch::kReflect;
   case Enum::replicate: return torch::kReplicate;
   case Enum::circular:  return torch::kCircular;
-  default: AT_ERROR("unrecognized padding mode: ",s); break;
+  default: TORCH_ERROR("unrecognized padding mode: ",s); break;
  }
 }
 
@@ -929,7 +929,7 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
     case 6: o.groups      (int64(x,i+j,c,Setting::groups));        break;
     case 7: o.bias        (mbool    (x,i+j,c,Setting::bias));      break;
     case 8: o.padding_mode(convpad(code(x,i+j,c,Setting::padmode))); break;
-    default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -942,7 +942,7 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
    case Setting::groups:    o.groups      (int64(p,c));     break;
    case Setting::bias:      o.bias        (mbool(p,c));     break;
    case Setting::padmode:   o.padding_mode(convpad(code(p,c)));   break;
-   default: AT_ERROR("unrecognized convolution option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c),": number of input channels not defined");
  TORCH_CHECK(out, msym(c),": number of output channels not defined");
@@ -965,7 +965,7 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
     case 7: o.bias          (mbool(x,i+j,c,Setting::bias));        break;
     case 8: o.dilation      (exarray<D>(x,i+j,c,Setting::dilate)); break;
     case 9: o.padding_mode  (convpad(code(x,i+j,c,Setting::padmode))); break;
-    default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -979,7 +979,7 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
    case Setting::bias:      o.bias          (mbool(p,c));      break;
    case Setting::dilate:    o.dilation      (exarray<D>(p,c)); break;
    case Setting::padmode:   o.padding_mode(convpad(code(p,c)));break;
-   default: AT_ERROR("unrecognized convolution option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized convolution option: ",p.k); break;
   }
  TORCH_CHECK(in,  msym(c), ": number of input channels not defined");
  TORCH_CHECK(out, msym(c), ": number of output channels not defined");
@@ -1022,7 +1022,7 @@ static nn::FoldOptions fold(K x,J i,Cast c) {
     case 2: o.dilation   (exarray<2>(x,i+j,c,Setting::dilate)); break;
     case 3: o.padding    (exarray<2>(x,i+j,c,Setting::pad));    break;
     case 4: o.stride     (exarray<2>(x,i+j,c,Setting::stride)); break;
-    default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -1031,7 +1031,7 @@ static nn::FoldOptions fold(K x,J i,Cast c) {
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
    case Setting::pad:       o.padding    (exarray<2>(p,c)); break;
    case Setting::stride:    o.stride     (exarray<2>(p,c)); break;
-   default: AT_ERROR("unrecognized fold option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized fold option: ",p.k); break;
   }
  TORCH_CHECK(out, msym(c),": no output size given");
  TORCH_CHECK(sz,  msym(c),": no kernel size given");
@@ -1057,7 +1057,7 @@ static nn::UnfoldOptions unfold(K x,J i,Cast c) {
     case 1: o.dilation   (exarray<2>(x,i+j,c,Setting::dilate)); break;
     case 2: o.padding    (exarray<2>(x,i+j,c,Setting::pad));    break;
     case 3: o.stride     (exarray<2>(x,i+j,c,Setting::stride)); break;
-    default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -1065,7 +1065,7 @@ static nn::UnfoldOptions unfold(K x,J i,Cast c) {
    case Setting::dilate:    o.dilation   (exarray<2>(p,c)); break;
    case Setting::pad:       o.padding    (exarray<2>(p,c)); break;
    case Setting::stride:    o.stride     (exarray<2>(p,c)); break;
-   default: AT_ERROR("unrecognized unfold option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized unfold option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  return o;
@@ -1104,7 +1104,7 @@ static void upmode(nn::UpsampleOptions& o,S s) {
   case Enum::bilinear:  o.mode(torch::kBilinear); break;
   case Enum::bicubic:   o.mode(torch::kBicubic); break;
   case Enum::trilinear: o.mode(torch::kTrilinear); break;
-  default: AT_ERROR("unrecognized upsample mode: ",s); break;
+  default: TORCH_ERROR("unrecognized upsample mode: ",s); break;
  }
 }
 
@@ -1116,19 +1116,19 @@ static void upmode(fnn::InterpolateFuncOptions& o,S s) {
   case Enum::bicubic:   o.mode(torch::kBicubic); break;
   case Enum::trilinear: o.mode(torch::kTrilinear); break;
   case Enum::area:      o.mode(torch::kArea); break;
-  default: AT_ERROR("unrecognized interpolate mode: ",s); break;
+  default: TORCH_ERROR("unrecognized interpolate mode: ",s); break;
  }
 }
 
 // recompute_scale_factor only part of interpolate options, separate fns to handle setting
 static void rescale(K x,J i,Cast c,Setting s,nn::UpsampleOptions& o) {
- AT_ERROR(msym(c),": up to 4 positional arguments expected, 5th argument unrecognized");
+ TORCH_ERROR(msym(c),": up to 4 positional arguments expected, 5th argument unrecognized");
 }
 static void rescale(K x,J i,Cast c,Setting s,fnn::InterpolateFuncOptions& o) {
  if(xempty(x,i)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(x,i,c,s));
 }
 static void rescale(Pairs& p,Cast c,nn::UpsampleOptions& o) {
- AT_ERROR(msym(c),": rescale is not a recognized option");
+ TORCH_ERROR(msym(c),": rescale is not a recognized option");
 }
 static void rescale(Pairs& p,Cast c,fnn::InterpolateFuncOptions& o) {
  if(pempty(p)) o.recompute_scale_factor({}); else o.recompute_scale_factor(mbool(p,c));
@@ -1143,7 +1143,7 @@ template<typename O>static O upsample(K x,J i,Cast c) {
    case 2: upmode(o,code(x,i+j,c,Setting::mode)); break;
    case 3: if(xempty(x,i+j)) o.align_corners({}); else o.align_corners(mbool(x,i+j,c,Setting::align)); break;
    case 4: rescale(x,i+j,c,Setting::rescale,o); break;
-   default: AT_ERROR(msym(c),": up to ",(c==Cast::upsample ? 4 : 5)," positional arguments expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to ",(c==Cast::upsample ? 4 : 5)," positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1153,7 +1153,7 @@ template<typename O>static O upsample(K x,J i,Cast c) {
    case Setting::mode:    upmode(o,code(p,c)); break;
    case Setting::align:   if(pempty(p)) o.align_corners({}); else o.align_corners(mbool(p,c)); break;
    case Setting::rescale: rescale(p,c,o); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(o.size()         && !(*o.size()).size())         o.size({});
  if(o.scale_factor() && !(*o.scale_factor()).size()) o.scale_factor({});
@@ -1203,13 +1203,13 @@ static nn::DropoutOptions drop(K x,J i,Cast c) {
    switch(j) {
     case 0: o.p(mdouble(x,i+j,c,Setting::p)); break;
     case 1: o.inplace(mbool(x,i+j,c,Setting::inplace)); break;
-    default: AT_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized dropout option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized dropout option: ",p.k); break;
   }
  return o;
 }
@@ -1234,19 +1234,19 @@ static nn::EmbeddingBagMode embedmode(S s) {
   case Enum::sum:  return torch::kSum;
   case Enum::mean: return torch::kMean;
   case Enum::max:  return torch::kMax;
-  default: AT_ERROR("unrecognized mode for embedding bag: ",s);
+  default: TORCH_ERROR("unrecognized mode for embedding bag: ",s);
  }
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
  if(s == Setting::padindex) o.padding_idx(int64n(p,c));
- else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
+ else TORCH_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
  if     (s == Setting::mode)       o.mode(embedmode(code(p,c)));
  else if(s == Setting::lastoffset) o.include_last_offset(mbool(p,c));
- else AT_ERROR("unrecognized option for ",msym(c),": ",mset(s));
+ else TORCH_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
 template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &z) {
@@ -1263,7 +1263,7 @@ template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &
    case Setting::freeze:     z=mbool(p,c); break;
    case Setting::mode:       embedset(c,Setting::mode,p,o); break;
    case Setting::lastoffset: embedset(c,Setting::lastoffset,p,o); break;
-   default: AT_ERROR("embedding option: ",p.k," unrecognized");
+   default: TORCH_ERROR("embedding option: ",p.k," unrecognized");
   }
 }
 
@@ -1295,7 +1295,7 @@ static nn::Embedding embed(K x,J i,Cast c) {
      switch(kK(x)[i+j]->t) {
       case 0:   if(!xten(x,i+j,w)) w=kput(x,i+j); break;
       case -KJ: o.num_embeddings(int64(x,i+j,c,Setting::rows)); break;
-      default:  AT_ERROR("embed: 1st arg is number of rows or weight matrix");
+      default:  TORCH_ERROR("embed: 1st arg is number of rows or weight matrix");
      }
      break;
     case 1: 
@@ -1307,7 +1307,7 @@ static nn::Embedding embed(K x,J i,Cast c) {
     case 4: o.norm_type(mdouble(x,i+j,c,Setting::p)); break;
     case 5: o.scale_grad_by_freq(mbool(x,i+j,c,Setting::scale)); break;
     case 6: o.sparse(mbool(x,i+j,c,Setting::sparse)); break;
-    default: AT_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
   }
  }
  embedpair(c,p,o,w,z);
@@ -1326,7 +1326,7 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
      switch(kK(x)[i+j]->t) {
       case 0:   if(!xten(x,i+j,w)) w=kput(x,i+j); break;
       case -KJ: o.num_embeddings(int64(x,i+j,c,Setting::rows)); break;
-      default:  AT_ERROR("embed: 1st arg is number of rows or weight matrix");
+      default:  TORCH_ERROR("embed: 1st arg is number of rows or weight matrix");
      }
      break;
     case 1: 
@@ -1338,7 +1338,7 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
     case 4: o.scale_grad_by_freq(mbool(x,i+j,c,Setting::scale)); break;
     case 5: o.mode(embedmode(code(x,i+j,c,Setting::mode))); break;
     case 6: o.sparse(mbool(x,i+j,c,Setting::sparse)); break;
-    default: AT_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
   }
  }
  embedpair(c,p,o,w,z);
@@ -1391,7 +1391,7 @@ static nn::LinearOptions linear(K x,J i,Cast c) {
     case 0:  in=int64(x,i+j,c,Setting::in);   break;
     case 1: out=int64(x,i+j,c,Setting::out);  break;
     case 2:   b=mbool(x,i+j,c,Setting::bias); break;
-    default: AT_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1399,7 +1399,7 @@ static nn::LinearOptions linear(K x,J i,Cast c) {
    case Setting::in:   in=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
    case Setting::bias: b=mbool(p,c); break;
-   default: AT_ERROR("unrecognized linear option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized linear option: ",p.k); break;
   }
  TORCH_CHECK(in>0,  msym(c), ": positive input size required");
  TORCH_CHECK(out>0, msym(c), ": positive output size required");
@@ -1438,7 +1438,7 @@ static nn::BilinearOptions bilinear(K x,J i,Cast c) {
     case 1: in2=int64(x,i+j,c,Setting::in2);   break;
     case 2: out=int64(x,i+j,c,Setting::out);  break;
     case 3:   b=mbool(x,i+j,c,Setting::bias); break;
-    default: AT_ERROR(msym(c),": up to 4 positional arguments(in1,in2,out,biasflag) expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 4 positional arguments(in1,in2,out,biasflag) expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1447,7 +1447,7 @@ static nn::BilinearOptions bilinear(K x,J i,Cast c) {
    case Setting::in2:  in2=int64(p,c); break;
    case Setting::out:  out=int64(p,c); break;
    case Setting::bias: b=mbool(p,c); break;
-   default: AT_ERROR("unrecognized bilinear option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized bilinear option: ",p.k); break;
   }
  TORCH_CHECK(in1>0 && in2>0, msym(c), ": positive input sizes required");
  TORCH_CHECK(out>0,          msym(c), ": positive output size required");
@@ -1482,14 +1482,14 @@ KAPI Bilinear(K x) {
 //       gru & lstm don't have that option, so templates/overloading used for fn setting
 // --------------------------------------------------------------------------------------
 template<typename O> static void rnnfn(O& o,Cast c,S s) {
- AT_ERROR(msym(c),": no non-linear function required (RNN only)");
+ TORCH_ERROR(msym(c),": no non-linear function required (RNN only)");
 }
 
 static void rnnfn(nn::RNNOptions& o,Cast c,S s) {
  switch(emap(s)) {
   case Enum::tanh:   o.nonlinearity(torch::kTanh); break;
   case Enum::relu:   o.nonlinearity(torch::kReLU); break;
-  default: AT_ERROR("unrecognized RNN fn: ",s); break;
+  default: TORCH_ERROR("unrecognized RNN fn: ",s); break;
  }
 }
 
@@ -1504,7 +1504,7 @@ template<typename O> static void rnnpair(Cast c,Pairs& p,O& o) {
    case Setting::batchfirst:  o.batch_first(mbool(p,c)); break;
    case Setting::dropout:     o.dropout(mdouble(p,c)); break;
    case Setting::bi:          o.bidirectional(mbool(p,c)); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," unrecognized");
+   default: TORCH_ERROR(msym(c)," option: ",p.k," unrecognized");
   }
  TORCH_CHECK(o.hidden_size()>0, msym(c), ": hidden size should be greater than zero");
 }
@@ -1521,7 +1521,7 @@ static nn::RNNOptions rnn(K x,J i,Cast c) {
    case 5: o.batch_first(mbool(x,i+j,c,Setting::batchfirst)); break;
    case 6: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
    case 7: o.bidirectional(mbool(x,i+j,c,Setting::bi)); break;
-   default: AT_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
   }
  rnnpair(c,p,o);
  return o;
@@ -1538,7 +1538,7 @@ template<typename O> static O rnn(K x,J i,Cast c) {
    case 4: o.batch_first(mbool(x,i+j,c,Setting::batchfirst)); break;
    case 5: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
    case 6: o.bidirectional(mbool(x,i+j,c,Setting::bi)); break;
-   default: AT_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 7 positional arguments expected, ",n," given");
   }
  rnnpair(c,p,o);
  return o;
@@ -1569,12 +1569,12 @@ static RecurOptions recur(K x,J i,Cast c) {
  for(J j=0;j<n;++j)
   switch(j) {
    case 0: o.detach(mbool(x,i+j,c,Setting::detach)); break;
-   default: AT_ERROR(msym(c),": 1 positional arg(detach flag) expected, ",n," supplied");
+   default: TORCH_ERROR(msym(c),": 1 positional arg(detach flag) expected, ",n," supplied");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::detach: o.detach(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  return o;
 }
@@ -1598,7 +1598,7 @@ template<size_t D> static nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
     case 2: o.padding    (exarray<D>(x,i+j,c,Setting::pad));     break;
     case 3: o.dilation   (exarray<D>(x,i+j,c,Setting::dilate));  break;
     case 4: o.ceil_mode  (mbool     (x,i+j,c,Setting::ceiling)); break;
-    default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1608,7 +1608,7 @@ template<size_t D> static nn::MaxPoolOptions<D> maxpool(K x,J i,Cast c) {
    case Setting::pad:     o.padding    (exarray<D>(p,c)); break;
    case Setting::dilate:  o.dilation   (exarray<D>(p,c)); break;
    case Setting::ceiling: o.ceil_mode  (mbool(p,c)); break;
-   default: AT_ERROR("unrecognized max pooling option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized max pooling option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  if(!st) o.stride(o.kernel_size());
@@ -1639,7 +1639,7 @@ template<size_t D> static nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
     case 3: o.ceil_mode        (mbool     (x,i+j,c,Setting::ceiling));  break;
     case 4: o.count_include_pad(mbool     (x,i+j,c,Setting::countpad)); break;
     case 5: o.divisor_override (int64n    (x,i+j,c,Setting::divisor));  break;
-    default: AT_ERROR(msym(c),": up to 6 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 6 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1650,7 +1650,7 @@ template<size_t D> static nn::AvgPoolOptions<D> avgpool(K x,J i,Cast c) {
    case Setting::ceiling: o.ceil_mode        (mbool(p,c)); break;
    case Setting::countpad:o.count_include_pad(mbool(p,c)); break;
    case Setting::divisor: o.divisor_override(int64n(p,c)); break;
-   default: AT_ERROR("unrecognized avg pooling option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized avg pooling option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no kernel size given");
  if(!st) o.stride(o.kernel_size());
@@ -1685,13 +1685,13 @@ template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  for(J j=0;j<n;++j) {
    switch(j) {
     case 0: adapt<D>(o.output_size(),x,i+j,c); sz=true; break;
-    default: AT_ERROR(msym(c),": 1 positional argument expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": 1 positional argument expected, ",n," given");
   }
  }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::size: adapt<D>(o.output_size(),p,c); sz=true; break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no output size given");
  TORCH_CHECK(adapt(o.output_size()), msym(c),": no output size");
@@ -1716,7 +1716,7 @@ template<size_t D> static nn::FractionalMaxPoolOptions<D> fpool(K x,J i,Cast c) 
     case 0: o.kernel_size(exarray<D>(x,i+j,c,Setting::size)); sz=true; break;
     case 1: if(e) o.output_size( c10::nullopt); else o.output_size ( exarray<D>(x,i+j,c,Setting::outsize)); break;
     case 2: if(e) o.output_ratio(c10::nullopt); else o.output_ratio(exdouble<D>(x,i+j,c,Setting::ratio));   break;
-    default: AT_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 3 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p)) {
@@ -1725,7 +1725,7 @@ template<size_t D> static nn::FractionalMaxPoolOptions<D> fpool(K x,J i,Cast c) 
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::outsize: if(e) o.output_size (c10::nullopt); else o.output_size(exarray  <D>(p,c)); break;
    case Setting::ratio:   if(e) o.output_ratio(c10::nullopt); else o.output_ratio(exdouble<D>(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  }
  TORCH_CHECK(sz, msym(c), ": no kernel size given");
@@ -1754,7 +1754,7 @@ template<size_t D> static nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
     case 1: o.kernel_size(exarray<D>(x,i+j,c,Setting::size));   sz=true; break;
     case 2: o.stride     (exarray<D>(x,i+j,c,Setting::stride)); st=true; break;
     case 3: o.ceil_mode  (mbool    (x,i+j,c,Setting::ceiling)); break;
-    default: AT_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 4 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -1763,7 +1763,7 @@ template<size_t D> static nn::LPPoolOptions<D> lppool(K x,J i,Cast c) {
    case Setting::size:    o.kernel_size(exarray<D>(p,c)); sz=true; break;
    case Setting::stride:  o.stride     (exarray<D>(p,c)); st=true; break;
    case Setting::ceiling: o.ceil_mode  (mbool(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(pw, msym(c),": no power given");
  TORCH_CHECK(sz, msym(c),": no kernel size given");
@@ -1804,7 +1804,7 @@ static K pool(K x,Cast c) {
    case Cast::fmaxpool3d: r=fnn::fractional_max_pool3d(t ? *t : kput(x,0), fpool<3>(x,1,c)); break;
    case Cast::lppool1d:   r=fnn::lp_pool1d(t ? *t : kput(x,0), lppool<1>(x,1,c)); break;
    case Cast::lppool2d:   r=fnn::lp_pool2d(t ? *t : kput(x,0), lppool<2>(x,1,c)); break;
-   default: AT_ERROR("unrecognized pooling function");
+   default: TORCH_ERROR("unrecognized pooling function");
   }
   return kresult(t,r);
  KCATCH("pool");
@@ -1837,7 +1837,7 @@ static void padmode(fnn::PadFuncOptions& o,S s) {
   case Enum::reflect:   o.mode(torch::kReflect); break;
   case Enum::replicate: o.mode(torch::kReplicate); break;
   case Enum::circular:  o.mode(torch::kCircular); break;
-  default: AT_ERROR("unrecognized padding mode: ",s); break;
+  default: TORCH_ERROR("unrecognized padding mode: ",s); break;
  }
 }
 
@@ -1849,17 +1849,17 @@ static fnn::PadFuncOptions pad(K x,J i,Cast c) {
    case 1:
     if(xsym(x,i+j,s)) padmode(o,s);
     else if(n==2)     o.value(mdouble(x,i+j,c,Setting::value));
-    else AT_ERROR("pad: unrecognized 2nd arg, expecting mode or value");
+    else TORCH_ERROR("pad: unrecognized 2nd arg, expecting mode or value");
     break;
    case 2: o.value(mdouble(x,i+j,c,Setting::value)); break;
-   default: AT_ERROR(msym(c),": up to 3 positional args expected(padding;mode;value), ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 3 positional args expected(padding;mode;value), ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::pad:   o.pad(mlongs(p,c)); break;
    case Setting::mode:  padmode(o,code(p,c)); break;
    case Setting::value: o.value(mdouble(p,c)); break;
-   default: AT_ERROR("padding option: ",p.k," not recognized");
+   default: TORCH_ERROR("padding option: ",p.k," not recognized");
   }
  n=o.pad().size();
  TORCH_CHECK(n>0 && !(n % 2), msym(c),": ",n," pad size(s) given, expecting pairs for left,right or left,right,top,bottom.. etc");
@@ -1892,13 +1892,13 @@ template<size_t D,typename M> static M cpad(K x,J i,Cast c) {
    switch(j) {
     case 0: o.padding(exarray<D*2>(x,i+j,c,Setting::pad)); sz=true; break;
     case 1: o.value(mdouble(x,i+j,c,Setting::value)); break;
-    default: AT_ERROR(msym(c),": up to 2 positional args expected(padding;value), ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 2 positional args expected(padding;value), ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
    case Setting::value: o.value(mdouble(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no padding sizes given");
  return o;
@@ -1920,12 +1920,12 @@ template<size_t D,typename M> static M npad(K x,J i,Cast c) {
  for(J j=0;j<n;++j)
    switch(j) {
     case 0: o.padding(exarray<D*2>(x,i+j,c,Setting::pad)); sz=true; break;
-    default: AT_ERROR(msym(c),": only 1 positional argument expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": only 1 positional argument expected, ",n," given");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::pad: o.padding(exarray<D*2>(p,c)); sz=true; break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(sz, msym(c),": no padding sizes given");
  return o;
@@ -1985,13 +1985,13 @@ template<typename O> static O alpha(K x,J i,Cast c) {
    o.alpha(mdouble(x,i,   c, Setting::alpha));
    o.inplace(mbool(x,i+1, c, Setting::inplace));
  } else if(n) {
-  AT_ERROR(msym(c), ": unrecognized positional option(s), expecting alpha, inplace flag, or (alpha;inplace flag)");
+  TORCH_ERROR(msym(c), ": unrecognized positional option(s), expecting alpha, inplace flag, or (alpha;inplace flag)");
  }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::alpha:   o.alpha(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
   }
  return o;
 }
@@ -2017,13 +2017,13 @@ static nn::LeakyReLUOptions slope(K x,J i,Cast c) {
    o.negative_slope(mdouble(x, i, c, Setting::slope));
    o.inplace(mbool(x,i+1, c, Setting::inplace));
  } else if(n) {
-  AT_ERROR(msym(c), ": unrecognized positional option(s), expecting slope, inplace flag, or (slope;inplace flag)");
+  TORCH_ERROR(msym(c), ": unrecognized positional option(s), expecting slope, inplace flag, or (slope;inplace flag)");
  }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::slope:   o.negative_slope(mdouble(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
   }
  return o;
 }
@@ -2095,13 +2095,13 @@ static OneHotOptions onehot(K x,J i,Cast c) {  //process arg(s) for number of cl
   switch(j) {
    case 0: o.num_classes(int64(x,i+j,c,Setting::classes)); break;
    case 1: o.dtype(otype(x,i+j,c,Setting::dtype)); break;
-   default: AT_ERROR(msym(c),": up to 2 positional args(no. of classes; datatype) expected, ",n," supplied");
+   default: TORCH_ERROR(msym(c),": up to 2 positional args(no. of classes; datatype) expected, ",n," supplied");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::classes: o.num_classes(int64(p,c)); break;
    case Setting::dtype:   o.dtype(otype(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.num_classes()>-2, msym(c),": number of classes must be nonnegative or set to -1 to derive from input");
  return o;
@@ -2141,15 +2141,15 @@ static J softdim(size_t d) {return !(d==0 || d==1 || d==3);}
 static void softargs(K x,J i,Cast c,J &d,c10::optional<Dtype>& s) { 
  s=c10::nullopt; Pairs p; J n=xargc(x,i,p);
  if(!((n==0 && p.n) || (xlong(x,i,d) && (n==1 || (n==2 && xtype(x,i+1,s))))))
-  AT_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
+  TORCH_ERROR(msym(c),": unrecognized arg(s), expecting dim or (dim;data type)");
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::dim:   d=int64(p,c); break;
    case Setting::dtype: s=otype(p,c); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  if(null(d)) 
-  AT_ERROR("specify the dimension along which ",msym(c)," will be computed");
+  TORCH_ERROR("specify the dimension along which ",msym(c)," will be computed");
 }
 
 // -----------------------------------------------------------------------------------
@@ -2178,7 +2178,7 @@ static void rrelu(K x,J i,Cast c,bool fn,bool& tr,bool& in,double& lo,double& up
    case Setting::upper:   up=mdouble(p,c); break;
    case Setting::train:   TORCH_CHECK(fn,"rrelu: training flag not set for module"); tr=mbool(p,c);   break;
    case Setting::inplace: in=mbool(p,c);   break;
-   default: AT_ERROR("rrelu option: ",p.k," not recognized");
+   default: TORCH_ERROR("rrelu option: ",p.k," not recognized");
   }
 }
 
@@ -2214,7 +2214,7 @@ static nn::HardtanhOptions hardtanh(K x,J i,Cast c) {
    case Setting::min:     v1=mdouble(p,c); break;
    case Setting::max:     v2=mdouble(p,c); break;
    case Setting::inplace: b=mbool(p,c); break;
-   default: AT_ERROR("hardtanh option: ",p.k," not recognized");
+   default: TORCH_ERROR("hardtanh option: ",p.k," not recognized");
   }
  return o.min_val(v1).max_val(v2).inplace(b);
 }
@@ -2240,7 +2240,7 @@ static nn::SoftplusOptions softplus(K x,J i,Cast c) {
   switch(mset(p.k,c)) {
    case Setting::beta:      v1=mdouble(p,c); break;
    case Setting::threshold: v2=mdouble(p,c); break;
-   default: AT_ERROR("softplus option: ",p.k," not recognized");
+   default: TORCH_ERROR("softplus option: ",p.k," not recognized");
   }
  return o.beta(v1).threshold(v2);
 }
@@ -2268,7 +2268,7 @@ static nn::ThresholdOptions threshold(K x,J i,Cast c) {
    case Setting::threshold: v1=mdouble(p,c); break;
    case Setting::value:     v2=mdouble(p,c); break;
    case Setting::inplace:   b=mbool(p,c); break;
-   default: AT_ERROR("threshold option: ",p.k," not recognized");
+   default: TORCH_ERROR("threshold option: ",p.k," not recognized");
   }
  TORCH_CHECK(v1 == v1 && v2 == v2, "threshold: both threshold level & replacement value must be given");
  return nn::ThresholdOptions(v1,v2).inplace(b);
@@ -2313,7 +2313,7 @@ static K act(K x,Cast c,const char* s) {
      case Cast::softmin:    r=fnn::detail::softmin(t,d,s); break;
      case Cast::softmax:    r=fnn::detail::softmax(t,d,s); break;
      case Cast::logsoftmax: r=fnn::detail::log_softmax(t,d,s); break;
-     default: AT_ERROR("unrecognized activation function");
+     default: TORCH_ERROR("unrecognized activation function");
     }
     break;
    }
@@ -2325,7 +2325,7 @@ static K act(K x,Cast c,const char* s) {
    case Cast::hardtanh:  r=fnn::hardtanh (t,  hardtanh(a ? x : nullptr,1,c)); break;
    case Cast::softplus:  r=fnn::softplus (t,  softplus(a ? x : nullptr,1,c)); break;
    case Cast::threshold: r=fnn::threshold(t, threshold(a ? x : nullptr,1,c)); break;
-   default: AT_ERROR("unrecognized activation function"); break;
+   default: TORCH_ERROR("unrecognized activation function"); break;
   }
   return p && r.is_same(t) ? (K)0 : kresult(p,r);
  KCATCH(s);
@@ -2362,7 +2362,7 @@ static nn::PReLUOptions prelu(K x,J i,Cast c) {
   switch(mset(p.k,c)) {
    case Setting::in:    m=int64(p,c); break;
    case Setting::init:  w=mdouble(p,c); break;
-   default: AT_ERROR("prelu option: ",p.k," not recognized");
+   default: TORCH_ERROR("prelu option: ",p.k," not recognized");
   }
  return o.num_parameters(m).init(w);
 }
@@ -2382,7 +2382,7 @@ KAPI Prelu(K x) {
   else if(0<x->t && x->t<98 && x->n==2)
    p=false, t=kput(x), w=t[1], t=t[0];
   else
-   AT_ERROR("prelu expects 2 args: input & weight, received ",kname(x->t),", count: ",xlen(x));
+   TORCH_ERROR("prelu expects 2 args: input & weight, received ",kname(x->t),", count: ",xlen(x));
   return kresult(p, torch::prelu(t,w));
  KCATCH("prelu");
 }
@@ -2398,13 +2398,13 @@ nn::CosineSimilarityOptions similar(K x,J i,Cast c) {
   switch(j) {
    case 0: o.dim(int64(x,i+j,c,Setting::dim)); break;
    case 1: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
-   default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 2 args(dim,eps) expected, ",n," supplied");
+   default: TORCH_ERROR(msym(c),": unrecognized positional arg(s), up to 2 args(dim,eps) expected, ",n," supplied");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::dim: o.dim(int64(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for cosine similarity distance");
+   default: TORCH_ERROR("unrecognized option: ",p.k," for cosine similarity distance");
   }
  return o;
 }
@@ -2424,14 +2424,14 @@ nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
    case 0: o.p(mdouble(x,i+j,c,Setting::p)); break;
    case 1: o.eps(mdouble(x,i+j,c,Setting::eps)); break;
    case 2: o.keepdim(mbool(x,i+j,c,Setting::keepdim)); break;
-   default: AT_ERROR(msym(c),": unrecognized positional arg(s), up to 3 args(p,eps,keepdim) expected, ",n," supplied");
+   default: TORCH_ERROR(msym(c),": unrecognized positional arg(s), up to 3 args(p,eps,keepdim) expected, ",n," supplied");
   }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::p: o.p(mdouble(p,c)); break;
    case Setting::eps: o.eps(mdouble(p,c)); break;
    case Setting::keepdim: o.keepdim(mbool(p,c)); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for pairwise distance");
+   default: TORCH_ERROR("unrecognized option: ",p.k," for pairwise distance");
   }
  return o;
 }
@@ -2455,7 +2455,7 @@ static K distance(K x,Cast c) {
   switch(c) {
    case Cast::pairwise: r=fnn::pairwise_distance(a ? *a : kput(x,0), b ? *b : kput(x,1), pairwise(x,2,c)); break;
    case Cast::similar:  r=fnn::cosine_similarity(a ? *a : kput(x,0), b ? *b : kput(x,1), similar(x,2,c)); break;
-   default: AT_ERROR("unrecognized distance function");
+   default: TORCH_ERROR("unrecognized distance function");
   }
   return kresult(a||b,r);
  KCATCH("distance");
@@ -2484,13 +2484,13 @@ static nn::FlattenOptions flatten(K x,J i,Cast c,bool f) {
    switch(j) {
     case 0: o.start_dim(int64(x,i+j,c,Setting::start));  break;
     case 1: o.end_dim(int64(x,i+j,c,Setting::end));  break;
-    default: AT_ERROR(msym(c),": up to 2 positional arguments(start dim;end dim) expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 2 positional arguments(start dim;end dim) expected, ",n," given");
    }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::start: o.start_dim(int64(p,c)); break;
    case Setting::end:   o.end_dim(int64(p,c)); break;
-   default: AT_ERROR("flatten option: ",p.k," not recognized");
+   default: TORCH_ERROR("flatten option: ",p.k," not recognized");
   }
  return o;
 }
@@ -2525,13 +2525,13 @@ static SelectOptions select(K x,J i,Cast c) {
    switch(j) {
     case 0: o.dim(int64(x,i+j,c,Setting::dim));  break;
     case 1: o.index(int64(x,i+j,c,Setting::index));  break;
-    default: AT_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 2 positional arguments expected, ",n," given");
    }
   while(xpair(p))
    switch(mset(p.k,c)) {
     case Setting::dim:   o.dim(int64(p,c)); break;
     case Setting::index: o.index(int64(p,c)); break;
-    default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+    default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
    }
   return o;
 }
@@ -2557,13 +2557,13 @@ static SqueezeOptions squeeze(K x,J i,Cast c) {
    o.dim(   int64n(x,i,   c, Setting::dim));
    o.inplace(mbool(x,i+1, c, Setting::inplace));
  } else if(n) {
-  AT_ERROR(msym(c), ": unrecognized positional arg(s), expecting dim, inplace flag, or (dim;inplace flag)");
+  TORCH_ERROR(msym(c), ": unrecognized positional arg(s), expecting dim, inplace flag, or (dim;inplace flag)");
  }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::dim:     o.dim(int64n(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
   }
  TORCH_CHECK(c==Cast::squeeze || o.dim().has_value(), msym(c),": no dimension given");
  return o;
@@ -2591,7 +2591,7 @@ static nn::MultiheadAttentionOptions attention(K x,J i,Cast c) {
     case 5: o.add_zero_attn(mbool(x,i+j,c,Setting::addzero)); break;
     case 6: o.kdim(int64(x,i+j,c,Setting::kdim)); break;
     case 7: o.vdim(int64(x,i+j,c,Setting::vdim)); break;
-    default: AT_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
+    default: TORCH_ERROR(msym(c),": up to 8 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -2604,7 +2604,7 @@ static nn::MultiheadAttentionOptions attention(K x,J i,Cast c) {
    case Setting::addzero: o.add_zero_attn(mbool(p,c)); break;
    case Setting::kdim:    o.kdim(int64(p,c)); break;
    case Setting::vdim:    o.vdim(int64(p,c)); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.embed_dim()>0, msym(c), ": positive embedding dimension required");
  TORCH_CHECK(o.num_heads()>0, msym(c), ": positive number of heads required");
@@ -2633,7 +2633,7 @@ static c10::variant<torch::enumtype::kReLU, torch::enumtype::kGELU> codefn(Cast 
  switch(emap(s)) {
   case Enum::relu: return torch::kReLU;
   case Enum::gelu: return torch::kGELU;
-  default: AT_ERROR("unrecognized ", msym(c), " activation fn: ",s); break;
+  default: TORCH_ERROR("unrecognized ", msym(c), " activation fn: ",s); break;
  }
 }
 
@@ -2647,7 +2647,7 @@ template<typename O>static O codelayer(K x,J i,Cast c) {
    case 2: o.dim_feedforward(int64(x,i+j,c,Setting::dim)); break;
    case 3: o.dropout(mdouble(x,i+j,c,Setting::dropout)); break;
    case 4: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
-   default: AT_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 5 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -2657,7 +2657,7 @@ template<typename O>static O codelayer(K x,J i,Cast c) {
    case Setting::dim:     o.dim_feedforward(int64(p,c)); break;
    case Setting::dropout: o.dropout(mdouble(p,c)); break;
    case Setting::fn:      o.activation(codefn(c,code(p,c))); break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
  TORCH_CHECK(  o.nhead()>0, msym(c), ": positive number of heads required");
@@ -2735,7 +2735,7 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
    case 0: m1=codelayer<L,O>(y,c,v); break;
    case 1: l=int64(x,i+j,c,Setting::layers); break;
    case 2: if(!xempty(y)) m2=codenorm(x,0,c,v); break;
-   default: AT_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 3 positional arguments(layer args;number of layers;norm args) expected, ",n," given");
   }
  }
  while(xpair(p)) {
@@ -2759,7 +2759,7 @@ template<typename R,typename L,typename O>static R coder(K x,J i,Cast c) {
      m2=codenorm(p.t==-KJ ? nullptr : p.v, p.j, c, v);
     }
     break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  }
  TORCH_CHECK(l>=0, msym(c), ": non-negative number of layers must be defined");
@@ -2835,7 +2835,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
    case 6: o.activation(codefn(c,code(x,i+j,c,Setting::fn))); break;
    case 7: if(!xempty(x,i+j)) o.custom_encoder(customcoder(kK(x)[i+j],Setting::encoder,v)); break;
    case 8: if(!xempty(x,i+j)) o.custom_decoder(customcoder(kK(x)[i+j],Setting::decoder,v)); break;
-   default: AT_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
+   default: TORCH_ERROR(msym(c),": up to 9 positional arguments expected, ",n," given");
   }
  }
  while(xpair(p))
@@ -2855,7 +2855,7 @@ static nn::TransformerOptions transformer(K x,J i,Cast c) {
      s==Setting::encoder ?  o.custom_encoder(a) : o.custom_decoder(a);
     }
     break;
-   default: AT_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",msym(c)," option: ",p.k); break;
   }
  TORCH_CHECK(o.d_model()>0, msym(c), ": positive number of input features required");
  TORCH_CHECK(  o.nhead()>0, msym(c), ": positive number of heads required");
@@ -2904,7 +2904,7 @@ static SizeOptions getsize(K x,J i,Cast c) {
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::size: o.size(mlongs(p,c)); break;
-   default: AT_ERROR(msym(c)," option: ",p.k," not recognized");
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
   }
  return o;
 }
@@ -3056,9 +3056,9 @@ static Moduleptr mcreate(K x,J i,Cast c) {
 
   default:
    if(container(c))
-    AT_ERROR("cannot create container module: ",msym(c));
+    TORCH_ERROR("cannot create container module: ",msym(c));
    else
-    AT_ERROR("unrecognized module: cannot create module from unrecognized enumeration ",(I)c);
+    TORCH_ERROR("unrecognized module: cannot create module from unrecognized enumeration ",(I)c);
  }
 }
 
@@ -3179,12 +3179,12 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::zeropad2d:       return ANY(nn::ZeroPad2d, m);
 
   case Cast::interpolate:
-  case Cast::normalize:       AT_ERROR(msym(c),": unable to create type-erased module, only functional form implemented");
+  case Cast::normalize:       TORCH_ERROR(msym(c),": unable to create type-erased module, only functional form implemented");
   case Cast::modulelist:
-  case Cast::parmdict:        AT_ERROR(msym(c),": unable to create type-erased module, no forward method defined");
-  case Cast::sequential:      AT_ERROR(msym(c),": unable to create type-erased module, forward method uses template");
+  case Cast::parmdict:        TORCH_ERROR(msym(c),": unable to create type-erased module, no forward method defined");
+  case Cast::sequential:      TORCH_ERROR(msym(c),": unable to create type-erased module, forward method uses template");
 
-  default: AT_ERROR("can't create type-erased module, unrecognized cast: ",(I)c);
+  default: TORCH_ERROR("can't create type-erased module, unrecognized cast: ",(I)c);
  }
 }
 
@@ -3331,7 +3331,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::pairwise:         return pairwise(a,m.as<nn::PairwiseDistance>()->options);
   case Cast::similar:          return similar(a,m.as<nn::CosineSimilarity>()->options);
 
-  default: AT_ERROR("unrecognized module: ",m.name(),", unable to retrieve options");
+  default: TORCH_ERROR("unrecognized module: ",m.name(),", unable to retrieve options");
  }
 }
 
@@ -3403,7 +3403,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  } else if(auto *m=x->as<BaseModule>()) {
   m->register_module(s ? s : c10::to_string(m->children().size()), y);
  } else {
-  AT_ERROR("unable to add a ", mlabel(y)," module as a child of a ",mlabel(x), " module");
+  TORCH_ERROR("unable to add a ", mlabel(y)," module as a child of a ",mlabel(x), " module");
  }
 }
 
@@ -3659,7 +3659,7 @@ KAPI module(K x) {
     else
      return mdv(nullptr,0,l,d,kK(x)[2]);         // add single module definition at indicated depth
    } else {
-    AT_ERROR("module: ", mlabel(l), " given as 1st arg, but unable to parse remaining arg(s)");
+    TORCH_ERROR("module: ", mlabel(l), " given as 1st arg, but unable to parse remaining arg(s)");
    }
   } else if(xstate(x)) {                         // module table or dictionary supplied
    return mtable(x);
@@ -3710,7 +3710,7 @@ static K kclip(K x, bool b,const char *c) {
    case Class::dict:   return kclip(b,f,p,((Kdict*)g)->d);
    case Class::module: return kclip(b,f,p,((Kmodule*)g)->m);
    case Class::model:  return kclip(b,f,p,((Kmodel*)g)->m);
-   default: AT_ERROR(c,": not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR(c,": not implemented for ",mapclass(g->a));
   }
  KCATCH(c);
 }
@@ -3851,7 +3851,7 @@ K modulehelp(Cast c) {
    }
    return xT(xD(k,knk(3,s,d,o)));
   }
-  default: AT_ERROR("no help implemented for module: ",msym(c));
+  default: TORCH_ERROR("no help implemented for module: ",msym(c));
  }
 }
 

@@ -40,7 +40,7 @@ static K razelist(K x) {
    case KB:
    case KC:
    case KG: for(i=0; i<y->n; ++i) kG(y)[i]=kK(x)[i]->g; break;
-   default: AT_ERROR("unable to raze general list -> ",kname(y));
+   default: TORCH_ERROR("unable to raze general list -> ",kname(y));
   }
   return r0(x), y;
  } else {
@@ -68,7 +68,7 @@ K kgetscalar(const Tensor &t){
   case torch::kBool:   return kb(s.toBool());
   case torch::kByte:   return kg(s.toByte());
   case torch::kChar:   return kc(s.toChar());
-  default: AT_ERROR("unrecognized scalar tensor type: ", t.dtype(), ", cannot return k scalar"); return (K)0;
+  default: TORCH_ERROR("unrecognized scalar tensor type: ", t.dtype(), ", cannot return k scalar"); return (K)0;
  }
 }
 
@@ -126,7 +126,7 @@ K kget(const TensorVector& v,K x) { // x-nullptr by default, else indices
   for(J i=0; i<x->n; ++i) kK(r)[i]=kget(v.at(kJ(x)[i]));
   return razelist(r);
  } else {
-  AT_ERROR("vector: expecting 2nd arg of long indices, given ",kname(x));
+  TORCH_ERROR("vector: expecting 2nd arg of long indices, given ",kname(x));
  }
 }
 
@@ -147,7 +147,7 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
    kK(r)[i]=kget(d[kS(x)[i]]);
   return razelist(r);
  } else {
-  AT_ERROR("dict: expecting 2nd arg of symbol(s) for indexing, given ",kname(x));
+  TORCH_ERROR("dict: expecting 2nd arg of symbol(s) for indexing, given ",kname(x));
  }
 }
 
@@ -198,13 +198,13 @@ void kputscalar(K x,Tensor &t) {
 
 static void kdepth(K x,I i,H k,Ksize &s){
  if(x->t < 0) {
-  AT_ERROR("unable to map mixed array to tensor: ",kname(x->t)," encountered at depth ",i);
+  TORCH_ERROR("unable to map mixed array to tensor: ",kname(x->t)," encountered at depth ",i);
  } else if(k != nh) {             // if base type already encountered
   I j=s.size()-1;                 // last size index
   if(x->n != s[i]) {              // check that dimensions are consistent
-   AT_ERROR("dimension mismatch at depth ",i,", ",s[i]," vs ",x->n);
+   TORCH_ERROR("dimension mismatch at depth ",i,", ",s[i]," vs ",x->n);
   } else if(x->t != (i<j ? 0 : k)) {  // check for same data type at same depth
-   AT_ERROR("type mismatch at depth ",i,", ",kname(i<j ? 0 : k)," vs ",kname(x->t));
+   TORCH_ERROR("type mismatch at depth ",i,", ",kname(i<j ? 0 : k)," vs ",kname(x->t));
   }
  } else {
   s.push_back(x->n);              // no error, no base type yet, accumulate sizes
@@ -243,7 +243,7 @@ Tensor kput(K x,J i) {
  if(xind(x,i)) 
   return kput(kK(x)[i]);
  else
-  AT_ERROR("unable to index ",kname(x->t),", element: ",i);
+  TORCH_ERROR("unable to index ",kname(x->t),", element: ",i);
 }
 
 // --------------------------------------------------------------------
@@ -286,7 +286,7 @@ static void kput(TensorVector& v,K x,K y) {
      if(xten(y,i)) kfree(y,i);
   }
  } else {
-  AT_ERROR("vector: expecting long indices as 2nd arg, given ",kname(x));
+  TORCH_ERROR("vector: expecting long indices as 2nd arg, given ",kname(x));
  }
 }
 
@@ -330,7 +330,7 @@ static void kput(TensorDict& d,K x,K y) {
      if(xten(y,i)) kfree(y,i);
   }
  } else {
-  AT_ERROR("dict: given ptr, expecting symbol keys & values, but 2nd arg is ",kname(x));
+  TORCH_ERROR("dict: given ptr, expecting symbol keys & values, but 2nd arg is ",kname(x));
  }
 }
 
@@ -339,7 +339,7 @@ TensorDict kputd(K x) {
  if(xdict(x) || (x->n==2 && (kK(x)[0]->t==KS || kK(x)[0]->t==-KS)))
   kput(d,kK(x)[0],kK(x)[1]);
  else if(!xempty(x))
-  AT_ERROR("dict: expecting k dictionary or (syms;vals), given ",kname(x));
+  TORCH_ERROR("dict: expecting k dictionary or (syms;vals), given ",kname(x));
  return d;
 }
 
@@ -372,7 +372,7 @@ static void tensorlike(K x,Tensormode m,const Tensor &t,Tensor &r) {  // t:input
    else if(nx==4 && xlong(x,2,i) && xlong(x,3,j)) r=torch::randint_like(t,i,j,o);
    break;
   default:
-   AT_ERROR("tensor creation via: ",kK(x)[0]->s," not implemented with input tensor"); break;
+   TORCH_ERROR("tensor creation via: ",kK(x)[0]->s," not implemented with input tensor"); break;
  }
 }
 
@@ -501,7 +501,7 @@ static K tensorget(const Tensor& t,K x) { // g-tag with tensor, x-null ptr or in
  else if(x->t == KJ)
   return kget(torch::index_select(t,0,kput(x).to(t.device())));
  else
-   AT_ERROR("tensor: 2nd arg expected to be long(s) for indexing, given ",kname(x));
+   TORCH_ERROR("tensor: 2nd arg expected to be long(s) for indexing, given ",kname(x));
 }
 
 static K vectorptr(const TensorVector& v,K x) {
@@ -516,7 +516,7 @@ static K vectorptr(const TensorVector& v,K x) {
   for(J i=0; i<x->n;++i) kK(r)[i]=kten(v.at(kJ(x)[i]));
   return r;
  } else {
-   AT_ERROR("tensor: given vector, 2nd arg expected to be long(s) for indexing, not ",kname(x));
+   TORCH_ERROR("tensor: given vector, 2nd arg expected to be long(s) for indexing, not ",kname(x));
  }
 }
 
@@ -536,7 +536,7 @@ static K dictptr(const TensorDict& d,K x) {
    for(J i=0; i<x->n;++i) kK(r)[i]=kten(d[kS(x)[i]]);
    return r;
  } else {
-   AT_ERROR("tensor: given dictionary, 2nd arg expected to be symbols(s) for indexing, not ",kname(x));
+   TORCH_ERROR("tensor: given dictionary, 2nd arg expected to be symbols(s) for indexing, not ",kname(x));
  }
 }
 
@@ -549,7 +549,7 @@ KAPI tensor(K x) {
     case Class::tensor: return tensorget(((Kten*)g)->t, x->n==2 ? kK(x)[1] : nullptr);
     case Class::vector: return vectorptr(((Kvec*)g)->v, x->n==2 ? kK(x)[1] : nullptr);
     case Class::dict:   return  dictptr(((Kdict*)g)->d, x->n==2 ? kK(x)[1] : nullptr);
-    default: AT_ERROR("tensor not implemented for ",mapclass(g->a));
+    default: TORCH_ERROR("tensor not implemented for ",mapclass(g->a));
    }
   } else if(xmode(x,0,s,m)) {
    return tensormode(x,s,m);
@@ -606,7 +606,7 @@ KAPI vector(K x) {
     kput(*v, kK(x)[1], kK(x)[2]);
     return (K)0;
    } else {
-    AT_ERROR("vector: given ptr, expecting indices, vector ptr or (indices;values), but given ",x->n-1," additional arg(s)");
+    TORCH_ERROR("vector: given ptr, expecting indices, vector ptr or (indices;values), but given ",x->n-1," additional arg(s)");
    }
   } else {
    return kvec(vec(x,true));
@@ -629,7 +629,7 @@ KAPI dict(K x) {
    } else if(x->n==3) { 
     return kput(*d,kK(x)[1],kK(x)[2]), (K)0;
    } else {
-    AT_ERROR("dict: expecting 1-3 args, but ",x->n," args supplied, not one of ptr, (ptr;dict), (ptr;syms), (ptr;syms;vals)");
+    TORCH_ERROR("dict: expecting 1-3 args, but ",x->n," args supplied, not one of ptr, (ptr;dict), (ptr;syms), (ptr;syms;vals)");
    }
   } else {
    return kdict(kputd(x));
@@ -694,7 +694,7 @@ KAPI expand(K x) {
   } else if(xsize(x,n) && n.size()==2) {
     return kget(torch::scalar_to_tensor(n[0]).expand(n[1]));
   } else {
-   AT_ERROR("expand expects (input array/tensor; size) or (input array/tensor; tensor w'size to match)");
+   TORCH_ERROR("expand expects (input array/tensor; size) or (input array/tensor; tensor w'size to match)");
   }
  KCATCH("expand");
 }
@@ -719,7 +719,7 @@ K ksqueeze(K x,bool a,const char* s) {
   } else if(a) {
    return kget(kput(x).squeeze());
   } else {
-   AT_ERROR(s, ": unexpected arg(s), expects (input;dim;optional in-place flag)");
+   TORCH_ERROR(s, ": unexpected arg(s), expects (input;dim;optional in-place flag)");
   }
  KCATCH(s);
 }
@@ -738,7 +738,7 @@ static J storlong(const Storage& s,Attr a) {
  switch(a) {
   case Attr::ptr:         return (intptr_t)s.data();
   case Attr::ref:         return s.use_count();
-  default: AT_ERROR(mapattr(a),": not implemented for storage");
+  default: TORCH_ERROR(mapattr(a),": not implemented for storage");
  }
 }
 
@@ -753,7 +753,7 @@ J tensorlong(const Tensor& t,Attr a) {
   case Attr::ptr:       return (intptr_t)t.unsafeGetTensorImpl();
   case Attr::sparsedim: return t.is_sparse() ? t.sparse_dim() : 0;
   case Attr::storage:   return t.is_sparse() ? nj : (intptr_t)t.storage().data();
-  default: AT_ERROR(mapattr(a),": not implemented for tensors");
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
@@ -764,7 +764,7 @@ S tensorsym(const Tensor& t,Attr a) {
   case Attr::layout:   return optsym(t.layout());
   case Attr::gradient: return optsym(t.requires_grad());
   case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
-  default: AT_ERROR(mapattr(a),": not implemented for tensors");
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
@@ -775,7 +775,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
   case Attr::pinned:     return t.is_pinned();
-  default: AT_ERROR(mapattr(a),": not implemented for tensors");
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
@@ -783,7 +783,7 @@ K tensorsize(const Tensor &t,Attr a) {
  switch(a) {
   case Attr::size:    return klist(t.dim(),t.sizes().data());
   case Attr::stride:  return t.is_sparse() ? ktn(0,0) : klist(t.dim(),t.strides().data());
-  default: AT_ERROR(mapattr(a),": not implemented for tensors");
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
@@ -793,7 +793,7 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
   case  KJ: return tensorsize(t,a);
   case -KS: return ks(tensorsym(t,a));
   case -KB: return kb(tensorflag(t,a));
-  default: AT_ERROR(mapattr(a),": not implemented for tensors");
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
@@ -812,7 +812,7 @@ template<typename V> static K vattr(const V &v,Ktype k,Attr a) {
     case  KJ: kK(x)[i]=tensorsize(t,a); break;
     case -KS: kS(x)[i]=tensorsym(t,a);  break;
     case -KB: kG(x)[i]=tensorflag(t,a); break;
-    default: AT_ERROR(mapattr(a),": not implemented for tensors");
+    default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
    }
    ++i;
   }
@@ -847,7 +847,7 @@ KAPI options(K x) {
     optval(v->at(i).options(),y,i);
    return xT(xD(optkey(),y));
   } else {
-   AT_ERROR("unrecognized arg(s) for options, expected tensor(s)");
+   TORCH_ERROR("unrecognized arg(s) for options, expected tensor(s)");
   }
  KCATCH("options");
 }
@@ -929,9 +929,9 @@ static void vcheck(const TensorVector& v,int64_t d) {
   if(!i)
    n=t.size(d),c=t.device();
   else if(n != t.size(d))
-   AT_ERROR("size mismatch: tensor[",i,"] size=",t.size(d),", but previous tensor(s) have size=",n," for dim ",d);
+   TORCH_ERROR("size mismatch: tensor[",i,"] size=",t.size(d),", but previous tensor(s) have size=",n," for dim ",d);
   else if (c != t.device())
-   AT_ERROR("device mismatch: tensor[",i,"] is on ",t.device(),", but previous tensor(s) are on ", c);
+   TORCH_ERROR("device mismatch: tensor[",i,"] is on ",t.device(),", but previous tensor(s) are on ", c);
   ++i;
  }
 }
@@ -964,10 +964,10 @@ KAPI kshuffle(K x) {
    switch(g->a) {
     case Class::tensor: return kshuffle1(((Kten*)g)->t,d,b);
     case Class::vector: return kshuffle2(((Kvec*)g)->v,d,b);
-    default: AT_ERROR("shuffle not implemented for ",mapclass(g->a));
+    default: TORCH_ERROR("shuffle not implemented for ",mapclass(g->a));
    }
   else
-   AT_ERROR("unrecognized arg(s) for shuffle");
+   TORCH_ERROR("unrecognized arg(s) for shuffle");
  KCATCH("shuffle");
 }
 
@@ -1078,7 +1078,7 @@ KAPI transpose(K x) {
   else if(xint64(x,1,i) && xint64(x,2,j) && n==3)
    return p ? (b ? t.transpose_(i,j),(K)0 : kten(t.transpose(i,j))) : kget(t.transpose(i,j));
   else
-   AT_ERROR("transpose expects tensor or (tensor;inplace flag) or (tensor;dim1;dim2;optional inplace flag");
+   TORCH_ERROR("transpose expects tensor or (tensor;inplace flag) or (tensor;dim1;dim2;optional inplace flag");
  KCATCH("transpose");
 }
 
@@ -1106,7 +1106,7 @@ static std::vector<int64_t> infersize(IntArrayRef s, int64_t m) {
     } else if(s[d] >= 0) {
       n *= s[d];
     } else {
-      AT_ERROR("invalid shape dimension ", s[d]);
+      TORCH_ERROR("invalid shape dimension ", s[d]);
     }
   }
   if (m == n || (i && n > 0 && m % n == 0)) {
@@ -1117,7 +1117,7 @@ static std::vector<int64_t> infersize(IntArrayRef s, int64_t m) {
     }
     return r;
   }
-  AT_ERROR("shape ",s," is invalid for input of size ",m);
+  TORCH_ERROR("shape ",s," is invalid for input of size ",m);
 }
 
 static K kresize1(I m,bool p,Tensor&& t, const IntArrayRef& s) {
@@ -1209,7 +1209,7 @@ KAPI fill(K x) {
    else
     return kget(kput(x,0).fill_(s));
   else
-   AT_ERROR("fill expects (tensor/array;fill element)");
+   TORCH_ERROR("fill expects (tensor/array;fill element)");
  KCATCH("fill");
 }
 
@@ -1222,7 +1222,7 @@ KAPI filldiagonal(K x) {
    else
     return kget(kput(x,0).fill_diagonal_(s,w));
   else
-   AT_ERROR("fill diagonal expects (tensor/array;fill element;optional wrap flag)");
+   TORCH_ERROR("fill diagonal expects (tensor/array;fill element;optional wrap flag)");
  KCATCH("fill diagonal");
 }
 
@@ -1260,7 +1260,7 @@ KAPI makegrid(K x,K y,K z) {
    if(t.dim()==3) t=t.unsqueeze(1);
    return kresult(b,imagegrid(t,r,c,p,v));
   } else {
-   AT_ERROR("makegrid: unrecognized arg(s), expecting 2-5 args, (input array/tensor; rows; cols; padding; pad value)");
+   TORCH_ERROR("makegrid: unrecognized arg(s), expecting 2-5 args, (input array/tensor; rows; cols; padding; pad value)");
   }
  KCATCH("makegrid");
 }
@@ -1271,9 +1271,9 @@ KAPI makegrid(K x,K y,K z) {
 // ------------------------------------------------------------------------------------------
 void tensorcopy(Tensor &t,const Tensor &s,bool a) {
  if(s.dtype() != t.dtype()) {
-  AT_ERROR("unable to copy values from ",s.dtype()," tensor to ",t.dtype()," tensor");
+  TORCH_ERROR("unable to copy values from ",s.dtype()," tensor to ",t.dtype()," tensor");
  } else if(s.device() != t.device()) {
-  AT_ERROR("unable to copy values across devices, from ",s.device()," to ",t.device());
+  TORCH_ERROR("unable to copy values across devices, from ",s.device()," to ",t.device());
  } else {
   t.resize_as_(s).copy_(s,a);
  }
@@ -1322,11 +1322,11 @@ KAPI gradflag(K x) {
     case Class::dict:
      for(auto& t:((Kdict*)k)->d.values()) t.set_requires_grad(b);
      break;
-    default: AT_ERROR("gradflag: not implemented for ",mapclass(k->a));
+    default: TORCH_ERROR("gradflag: not implemented for ",mapclass(k->a));
    }
    return (K)0;
   } else {
-   AT_ERROR("gradflag: unrecognized arg(s), expecting tensor/vector/dictionary and optional flag");
+   TORCH_ERROR("gradflag: unrecognized arg(s), expecting tensor/vector/dictionary and optional flag");
   }
  KCATCH("gradflag");
 }
@@ -1409,7 +1409,7 @@ KAPI detach(K x) {
     }
     return (K)0;
    }
-   default: AT_ERROR("detach: not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("detach: not implemented for ",mapclass(g->a));
   }
   return (K)0;
  KCATCH("detach");

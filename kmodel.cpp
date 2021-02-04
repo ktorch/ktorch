@@ -13,7 +13,7 @@ static void modelpart(K x,J i,Kmodule*& q,Kmodule*& l,Kopt*& o) {
    case Class::module:    q=(Kmodule*)g;  break;
    case Class::loss:      l=(Kmodule*)g; break;
    case Class::optimizer: o=(Kopt*)g;  break;
-   default: AT_ERROR("model arg[",i,"] unrecognized: ",
+   default: TORCH_ERROR("model arg[",i,"] unrecognized: ",
                     (g ? mapclass(g->a) : kname(x,i))); break;
   }
  }
@@ -74,7 +74,7 @@ K mbackward(K a) {
  if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
   r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,*x),*y);
  } else {
-  AT_ERROR("backward expects (model; inputs; targets)");
+  TORCH_ERROR("backward expects (model; inputs; targets)");
  }
  r.backward();
  return kget(r);
@@ -86,7 +86,7 @@ Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
  else if(v.size()==3)
   return lossfwd(m->lc,*m->l,x,v[1],v[2]);
  else
-  AT_ERROR("model: ", v.size()," inputs given, expecting 2-3");
+  TORCH_ERROR("model: ", v.size()," inputs given, expecting 2-3");
 }
 
 Tensor mloss(Kmodel *m,const TensorVector &v) {return mloss(m,mforward(m,v),v);}
@@ -206,7 +206,7 @@ static Tensor evalfwd(Cast c,Module& m,Tensor& x,int64_t w) {
 static Metric metric(S s) {
  for(auto& m:env().metric) 
   if(std::get<0>(m)==s) return std::get<1>(m);
- AT_ERROR("unrecognized metric: ",s);
+ TORCH_ERROR("unrecognized metric: ",s);
 }
 
 static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
@@ -218,7 +218,7 @@ static Tensor metric(Metric e,Kmodel *m,const TensorVector& v,const Tensor& y) {
                           return mloss(m,y,v);
   case Metric::max:       return torch::argmax(y,-1);
   case Metric::out:       return y;
-  default: AT_ERROR("unrecognized metric");
+  default: TORCH_ERROR("unrecognized metric");
  }
 }
 

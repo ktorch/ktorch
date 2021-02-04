@@ -238,15 +238,11 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
   bool e=lstm.is_empty() && gru.is_empty() && rnn.is_empty();
   if(const auto& a=std::dynamic_pointer_cast<torch::nn::SequentialImpl>(m)) {
     if(e) {
-     if(in.is_empty())
-      in=register_module("in", torch::nn::Sequential(a));
-     else
-      AT_ERROR("recur: cannot add a sequential module for output processing until a recurrent module(lstm,gru,rnn) defined");
+     TORCH_CHECK(in.is_empty(), "recur: cannot add a sequential module for output processing until a recurrent module(lstm,gru,rnn) defined");
+     in=register_module("in", torch::nn::Sequential(a));
     } else {
-     if(out.is_empty())
-      out=register_module("out", torch::nn::Sequential(a));
-     else
-      AT_ERROR("recur: sequential module for output processing already added, cannot add another sequential module");
+     TORCH_CHECK(out.is_empty(), "recur: sequential module for output processing already added, cannot add another sequential module");
+     out=register_module("out", torch::nn::Sequential(a));
     }
   } else if(const auto& a=std::dynamic_pointer_cast<torch::nn::LSTMImpl>(m)) {
    TORCH_CHECK(e, "recur: cannot add lstm module, ",(gru.is_empty() ? "rnn" : "gru")," module already defined");
@@ -258,8 +254,9 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
    TORCH_CHECK(e, "recur: cannot add rnn module, ",(gru.is_empty() ? "lstm" : "gru")," module already defined");
    rnn=register_module("rnn",torch::nn::RNN(a));
   } else {
-   AT_ERROR("recur: unable to add ",mlabel(m),
-            ", expecting sequential modules for input/output processing or recurrent module(lstm,gru,rnn)");
+   TORCH_CHECK(false, 
+               "recur: unable to add ",mlabel(m),
+               ", expecting sequential modules for input/output processing or recurrent module(lstm,gru,rnn)");
   }
  }
 
@@ -280,7 +277,7 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
     v.push_back(out->is_empty() ? std::get<0>(r) : out->forward(std::get<0>(r)));
     v.push_back(std::get<1>(r));
   } else {
-   AT_ERROR("recur: no recurrent lstm, gru or rnn module defined");
+   TORCH_CHECK(false, "recur: no recurrent lstm, gru or rnn module defined");
   }
   return v;
  }
@@ -354,12 +351,11 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
  }
 
  void push_back(std::string s,const torch::nn::Sequential& q) {
+  TORCH_CHECK(children().size()<2, "seqjoin: both sequential layers already defined");
   if(children().size()==0)
    qx=register_module(s,std::move(q));
-  else if(children().size()==1)
-   qy=register_module(s,std::move(q));
   else
-   AT_ERROR("seqjoin: both sequential layers already defined");
+   qy=register_module(s,std::move(q));
  }
 
  void push_back(const torch::nn::AnyModule& a) {
@@ -385,32 +381,6 @@ class TORCH_API SeqJoinImpl : public torch::nn::Cloneable<SeqJoinImpl> {
 TORCH_MODULE(SeqJoin);
 
 // ----------------------------------------------------------------------
-// SeqRNN
-// ----------------------------------------------------------------------
-/*
-  if(LSTM) {
-   auto a=rnn->forward(x,h);
-   x=std::get<0>(a);
-   y=std::get<0>(std::get<1>(a));
-   z=std::get<1>(std::get<1>(a));
-  } else {
-   auto a=rnn->forward(x,h);
-   x=std::get<0>(a);
-   y=std::get<1>(a);
-  }
-  x=seq(x);
-  if(hidden) {
-   if(detach) {y.detach_(); if(z.defined()) z.detach_();}
-   v.push_back(x);
-   v.push_back(y);
-   v.push_back(z);
-   return v
-  } else {
-   return {x};
-  }
-*/
-
-// ----------------------------------------------------------------------
 // generic module to accept tensor parameters, buffers and child modules
 // ----------------------------------------------------------------------
 class TORCH_API BaseModuleImpl : public torch::nn::Cloneable<BaseModuleImpl> {
@@ -418,7 +388,7 @@ class TORCH_API BaseModuleImpl : public torch::nn::Cloneable<BaseModuleImpl> {
  BaseModuleImpl() = default;
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "BaseModule";}
- torch::Tensor forward(const torch::Tensor& x) {AT_ERROR("nyi");}
+ torch::Tensor forward(const torch::Tensor& x) {TORCH_CHECK(false,"nyi");}
 };
 TORCH_MODULE(BaseModule);
 

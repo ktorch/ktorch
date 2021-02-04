@@ -57,7 +57,7 @@ bool match(const Scalar &x,const Scalar &y) {
   if(y.isFloatingPoint() || y.isIntegral(false))
    return x.toDouble() == y.toDouble();
  }
- AT_ERROR("unexpected scalar type(s), neither integral or floating point, cannot compare");
+ TORCH_ERROR("unexpected scalar type(s), neither integral or floating point, cannot compare");
 }
 
 K kscalar(const Scalar &s) {
@@ -65,7 +65,7 @@ K kscalar(const Scalar &s) {
   return kj(s.toLong());
  else if(s.isFloatingPoint())
   return kf(s.toDouble());
- AT_ERROR("unexpected scalar type(s), neither integral or floating point, cannot convert");
+ TORCH_ERROR("unexpected scalar type(s), neither integral or floating point, cannot convert");
 }
 
 // ------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ J xlen(K x,J i) {return xind(x,i) ? xlen(kK(x)[i]) : -1;}
 S mapclass(Class a) {
  for(auto& m:env().kclass)
   if(a==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized class: ", (I)a);
+ TORCH_ERROR("unrecognized class: ", (I)a);
 }
 
 const char* kname(Ktype k) {
@@ -155,14 +155,14 @@ J ksizeof(Ktype k) {
   case KC: return sizeof(C);
   case KB:
   case KG: return sizeof(G);
-  default: AT_ERROR("no element size for k ",kname(k)); return -1;
+  default: TORCH_ERROR("no element size for k ",kname(k)); return -1;
  }
 }
 
 Ktype maptype(TypeMeta s) {
  for(auto &m:env().dtype)
   if(s==std::get<1>(m)) return std::get<2>(m);
- AT_ERROR("no k data type found for torch type: ",s);
+ TORCH_ERROR("no k data type found for torch type: ",s);
  return 0;
 }
 
@@ -170,13 +170,13 @@ TypeMeta maptype(Ktype k) {
  Ktype t=(k<0) ? -k : k;
  for(auto &m:env().ktype)
   if(t==std::get<0>(m)) return std::get<1>(m);
- AT_ERROR("no torch type found for k: ",kname(k));
+ TORCH_ERROR("no torch type found for k: ",kname(k));
 }
 
 S mapattr(Attr a) {
  for(auto& m:env().attr)
   if(a==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized attribute: ", (I)a);
+ TORCH_ERROR("unrecognized attribute: ", (I)a);
 }
 
 Enum emap(S s) {
@@ -194,12 +194,12 @@ Enum emap(S s) {
 // ------------------------------------------------------------------------------------------
 S statekey(State e) {
  for(auto &m:env().state)if(e==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized state attribute: ",(I)e);
+ TORCH_ERROR("unrecognized state attribute: ",(I)e);
 }
 
 J statefind(State e,K x,bool r) {
  if(!xstate(x))
-  AT_ERROR("expected dictionary or table describing state, given ",kname(x));
+  TORCH_ERROR("expected dictionary or table describing state, given ",kname(x));
  S s=statekey(e); K k=kK(x->t == 98 ? x->k : x)[0];
  for(J i=0;i<k->n;++i) if(kS(k)[i]==s) return i;
  TORCH_CHECK(!r, "unable to find state attribute: ",statekey(e));
@@ -226,7 +226,7 @@ static J statelong(State e,bool r,K x,J j) { //e:enum, e.g. State::depth, r:requ
   TORCH_CHECK(j>-1 && j<v->n, statekey(e),"[", j,"] index beyond ",v->n,"-row table");
   return kJ(v)[j];
  } else {
-  AT_ERROR("expecting state dictionary or table, given ",kname(x));
+  TORCH_ERROR("expecting state dictionary or table, given ",kname(x));
  }
 }
 
@@ -250,7 +250,7 @@ static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:req
   TORCH_CHECK(j>-1 && j<v->n, statekey(e),"[", j,"] index beyond ",v->n,"-row table");
   return kS(v)[j];
  } else {
-  AT_ERROR("expecting state dictionary or table, given ",kname(x));
+  TORCH_ERROR("expecting state dictionary or table, given ",kname(x));
  }
 }
 
@@ -442,7 +442,7 @@ bool xsize(K x,J d,int64_t *a) {
   if((b=d == x->n))
    for(J i=0;i<d;++i) a[i]=kJ(x)[i];
   else
-   AT_ERROR(d,"-element list of long integers expected, ",x->n," supplied");
+   TORCH_ERROR(d,"-element list of long integers expected, ",x->n," supplied");
  }
  return b;
 }
@@ -455,7 +455,7 @@ bool xsize(K x,J d,double *a) {
   if((b=d == x->n))
    for(J i=0;i<d;++i) a[i]=kF(x)[i];
   else
-   AT_ERROR(d,"-element list of doubles expected, ",x->n," supplied");
+   TORCH_ERROR(d,"-element list of doubles expected, ",x->n," supplied");
  }
  return b;
 }
@@ -641,12 +641,12 @@ bool xbool(K x,J i,bool &b) {return xind(x,i) && xbool(kK(x)[i],b);}
 
 TypeMeta mtype(S s) {
   for(auto &m:env().dtype) if(s==std::get<0>(m)) return std::get<1>(m);
-  AT_ERROR("unrecognized data type: ",(s==nullsym() ? "(null)" : s));
+  TORCH_ERROR("unrecognized data type: ",(s==nullsym() ? "(null)" : s));
 }
 
 S mtype(TypeMeta t) {
   for(auto &m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
-  AT_ERROR("unrecognized data type: ",t);
+  TORCH_ERROR("unrecognized data type: ",t);
 }
 
 Dtype stype(S s) {return torch::typeMetaToScalarType(mtype(s));}
@@ -688,7 +688,7 @@ bool xopt(K x,TensorOptions &o) {
   for(i=0; i<n; ++i) {
    S s=a ? x->s : kS(x)[i];
    if (!xopt(s,o))
-    AT_ERROR("unrecognized tensor option: `", s);
+    TORCH_ERROR("unrecognized tensor option: `", s);
   }
   return true;
  } else {
@@ -712,7 +712,7 @@ bool xto(K x,TensorOptions &o) {
   for(i=0; i<n; ++i) {
    S s=a ? x->s : kS(x)[i];
    if (!xto(s,o))
-    AT_ERROR("unrecognized option: `",s,", expecting valid device and/or datatype, e.g. `cpu or `cuda`float");
+    TORCH_ERROR("unrecognized option: `",s,", expecting valid device and/or datatype, e.g. `cpu or `cuda`float");
   }
   return true;
  } else {
@@ -726,7 +726,7 @@ bool xmode(K x,S &s,Tensormode &m) {
  if(x->t == -KS) {
   for(auto &v:env().tensormode)
    if(x->s == std::get<0>(v)) return s=x->s,m=std::get<1>(v), true;
-  AT_ERROR("unrecognized tensor creation mode: ",x->s);
+  TORCH_ERROR("unrecognized tensor creation mode: ",x->s);
  }
  return false;
 }
@@ -737,7 +737,7 @@ bool xbacksym(K x,bool& a,bool& b) {
  if(x->t == -KS) {
   for(auto &s:env().backsym)
    if(x->s == std::get<0>(s)) return a=std::get<1>(s),b=std::get<2>(s), true;
-  AT_ERROR("unrecognized setting for backprop: ",x->s,", expecting one of: free,retain,create or createfree");
+  TORCH_ERROR("unrecognized setting for backprop: ",x->s,", expecting one of: free,retain,create or createfree");
  }
  return false;
 }
@@ -757,12 +757,12 @@ bool xpairs(K x,Pairs& p) {   // initialize Pairs structure from k value
   if(y->t==KS || !(y->t || y->n))
    p.a=1, p.n=y->n;
   else
-   AT_ERROR("unexpected name,value dictionary with ",kname(kK(x)[0]->t)," as keys: ",kstring(x));
+   TORCH_ERROR("unexpected name,value dictionary with ",kname(kK(x)[0]->t)," as keys: ",kstring(x));
  } else if(x->t==KS) {
   if(x->n%2==0)
    p.a=4, p.n=x->n/2;
   else
-   AT_ERROR("uneven no. of symbols for name,value pairs: ", kstring(x));
+   TORCH_ERROR("uneven no. of symbols for name,value pairs: ", kstring(x));
  } else if(!x->t) {
   if(!x->n) {                      // empty list
    p.a=2, p.n=0;
@@ -770,7 +770,7 @@ bool xpairs(K x,Pairs& p) {   // initialize Pairs structure from k value
    if(x->n%2==0)
     p.a=3, p.n=x->n/2;
    else
-    AT_ERROR("uneven no. of elements for name,value pairs in list: ",kstring(x));
+    TORCH_ERROR("uneven no. of elements for name,value pairs in list: ",kstring(x));
   } else {                         // assume list of pairs if symbol in first pair
    K y=kK(x)[0];
    if(y->n==2 && (y->t==KS || (!y->t && kK(y)[0]->t==-KS)))
@@ -792,11 +792,11 @@ static void xpair(Pairs& p,K x,J i) {
    case -KJ: p.j=x->j; p.t=-KJ; break;
    case -KE: p.f=x->e; p.t=-KF; break;
    case -KF: p.f=x->f; p.t=-KF; break;
-   default: AT_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
+   default: TORCH_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
   }
  } else if (i>-1) {
   if(i>=x->n)
-   AT_ERROR("name,value index[",i,"] invalid for ",kname(x->t)," with ",x->n," elements");
+   TORCH_ERROR("name,value index[",i,"] invalid for ",kname(x->t)," with ",x->n," elements");
   switch(x->t) {
    case 0:  xpair(p,kK(x)[i],-1); break;
    case KS: p.s=kS(x)[i]; p.t=-KS; break;
@@ -806,7 +806,7 @@ static void xpair(Pairs& p,K x,J i) {
    case KJ: p.j=kJ(x)[i]; p.t=-KJ; break;
    case KE: p.f=kE(x)[i]; p.t=-KF; break;
    case KF: p.f=kF(x)[i]; p.t=-KF; break;
-   default: AT_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
+   default: TORCH_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
   }
  } else {
   p.v=x; p.t=x->t;
@@ -822,13 +822,13 @@ bool xpair(Pairs& p) {
   case 2:  //list of name-value pairs
    y=kK(p.x)[i];
    if(xlen(y)!= 2) {
-    AT_ERROR("name,value pair[",i,"] has ",xlen(y)," elements (expected 2)");
+    TORCH_ERROR("name,value pair[",i,"] has ",xlen(y)," elements (expected 2)");
    } else if(y->t==KS) {
     p.k=kS(y)[0]; xpair(p,y,1);
    } else if(!y->t && kK(y)[0]->t==-KS) {
     p.k=kK(y)[0]->s; xpair(p,kK(y)[1],-1);
    } else {
-    AT_ERROR("name,value pair[",i,"] has no name symbol");
+    TORCH_ERROR("name,value pair[",i,"] has no name symbol");
    }
    break;
   case 3:  //list of name,value,name,value..
@@ -836,12 +836,12 @@ bool xpair(Pairs& p) {
    if(y->t==-KS) {
     p.k=y->s; xpair(p,kK(p.x)[i+1],-1);
    } else {
-    AT_ERROR("unrecognized name for pair, element[",i,"], expected symbol, received: ",kname(y->t));
+    TORCH_ERROR("unrecognized name for pair, element[",i,"], expected symbol, received: ",kname(y->t));
    }
    break;
   case 4:  // list of symbols
     i*=2; p.k=kS(p.x)[i]; xpair(p,p.x,i+1); break;
-  default: AT_ERROR("unrecognized name-value argument"); break;
+  default: TORCH_ERROR("unrecognized name-value argument"); break;
  }
  return p.i++, true;
 }
@@ -856,7 +856,7 @@ J xargc(K x,J i,Pairs& p) { // x:arg(s), i:offset, -1 if not applicable, p:pairs
  } else if(!x->n) {
   return 0;                          // return 0 for any empty list
  } else if(!(-1<i && i<=x->n)) {
-  AT_ERROR("invalid offset: ",i,", for ",kname(x->t)," of length ",x->n);
+  TORCH_ERROR("invalid offset: ",i,", for ",kname(x->t)," of length ",x->n);
  } else {
   return x->n-i-(x->n>i ? xpairs(x,x->n-1,p) : false);  // subtract name-value pairs from regular args to process
  }
@@ -878,13 +878,13 @@ bool xnone(K x,J i) {Pairs p; return !(xargc(x,i,p) || p.n);}
 // pdoubles - check if long/double scalar or list, set DoubleArrayRef, else error
 // pten - attempt to define a tensor from provided scalar or array
 // ------------------------------------------------------------------------------------------
-void perr(const Pairs& p,const char* s) {AT_ERROR("option: ",p.k," is a ",kname(p.t),", expected a ",s);}
+void perr(const Pairs& p,const char* s) {TORCH_ERROR("option: ",p.k," is a ",kname(p.t),", expected a ",s);}
 
 static void plen(const Pairs& p,J n,J m) {
  if(n==0 && (p.t<0 || m)) {
-   AT_ERROR("option: ",p.k," requires zero elements, but single scalar value supplied");
+   TORCH_ERROR("option: ",p.k," requires zero elements, but single scalar value supplied");
  } else if(n>0 && (p.t>=0 && m!=n)) {
-  AT_ERROR("option: ",p.k," requires ",n," elements, but ",m," supplied");
+  TORCH_ERROR("option: ",p.k," requires ",n," elements, but ",m," supplied");
  }
 }
 
@@ -997,7 +997,7 @@ K kbool(K x) {return kcast(1,x);}
 // kexpand - given element count & data ptr from expanding array return scalar or list
 // -----------------------------------------------------------------------------------------
 J kfind(K k,const std::string &s) {
- if(k->t != KS) AT_ERROR("unable to look up `",s," in ",kname(k->t),", expecting symbols");
+ if(k->t != KS) TORCH_ERROR("unable to look up `",s," in ",kname(k->t),", expecting symbols");
  for(J i=0; i<k->n; ++i) if(!s.compare(kS(k)[i])) return i;
  return -1;
 }
@@ -1125,7 +1125,7 @@ KAPI addref(K x) {
    case Class::module:    return kmodule(g->c, ((Kmodule*)g)->m);
    case Class::loss:      return kloss  (g->c, ((Kmodule*)g)->m);
    case Class::optimizer: return kopt(g->c,  ((Kopt*)g)->o, ((Kopt*)g)->m);
-   default: AT_ERROR("addref not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("addref not implemented for ",mapclass(g->a));
   }
  KCATCH("addref");
 }
@@ -1164,7 +1164,7 @@ KAPI use(K x,K y) {
    case Class::tensor: {auto *a=xten(y);         ((Kten*)g)->t=a ? *a : kput(y); b=a; break;}
    case Class::vector: {auto *a=xvec(y);         ((Kvec*)g)->v=a ? *a : vec(y,true); b=a; break;}
    case Class::dict:   {auto *a=xtensordict(y); ((Kdict*)g)->d=a ? *a : kputd(y); b=a; break;}
-   default: AT_ERROR("use: not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("use: not implemented for ",mapclass(g->a));
   }
   TORCH_CHECK(!b || kfree(y), "use: unable to free source ",mapclass(g->a));
   return (K)0;
@@ -1297,7 +1297,7 @@ static K objcount(K x,Attr a) {
    case Attr::bytes:    return kj(objbytes(g));
    case Attr::elements: return kj(objnum(g));
    case Attr::tcount:   return g->a==Class::tensor ? kj(1) : objsize(g);
-   default: AT_ERROR("object attribute: ",mapattr(a)," not implemented");
+   default: TORCH_ERROR("object attribute: ",mapattr(a)," not implemented");
   }
  KCATCH("object counts");
 }
@@ -1324,7 +1324,7 @@ KAPI kstate(K x) {
    case Class::loss:      return lossdict(a,true,g->c,*((Kmodule*)g)->m);
    case Class::optimizer: return optstate(a,true,(Kopt*)g);
    case Class::model:     return modelstate(a,true,(Kmodel*)g);
-   default: AT_ERROR("state not defined for ",mapclass(g->a));
+   default: TORCH_ERROR("state not defined for ",mapclass(g->a));
   }
  KCATCH("state")
 }
@@ -1343,10 +1343,10 @@ KAPI To(K x) {
     case Class::vector: return to((Kvec*)g,o,a);
     case Class::module:
     case Class::loss:   return to((Kmodule*)g,o,a);
-    default: AT_ERROR("to: not implemented for ",mapclass(g->a));
+    default: TORCH_ERROR("to: not implemented for ",mapclass(g->a));
    }
   } else {
-   AT_ERROR("to: unrecognized arg(s)");
+   TORCH_ERROR("to: unrecognized arg(s)");
   }
  KCATCH("to");
 }
@@ -1357,7 +1357,7 @@ static K kinfo(K x,bool b,const char* e) {
   TORCH_CHECK(g, e," not implemented for ",kname(x->t));
   switch(g->a) {
    case Class::tensor:     return tensorinfo(((Kten*)g)->t,b);
-   default: AT_ERROR(e," not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR(e," not implemented for ",mapclass(g->a));
   }
  KCATCH(e);
 }
@@ -1380,7 +1380,7 @@ KAPI zerograd(K x) {
    case Class::vector:     for(auto& t:((Kvec*)g)->v) f(t); break;
    case Class::optimizer:  ((Kopt*)g)->o->zero_grad(); break;
    case Class::model:      ((Kmodel*)g)->o->zero_grad(); break;
-   default: AT_ERROR("zerograd not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("zerograd not implemented for ",mapclass(g->a));
   }
   return (K)0;
  KCATCH("zero gradients");
@@ -1393,7 +1393,7 @@ KAPI forward(K x) {
   switch(g->a) {
    case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
    case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}
-   default: AT_ERROR("forward not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("forward not implemented for ",mapclass(g->a));
   }
  KCATCH("forward");
 }
@@ -1405,7 +1405,7 @@ KAPI kbackward(K x) {
   switch(g->a) {
    case Class::tensor: return tensorback(x);
    case Class::model:  return mbackward(x);
-   default: AT_ERROR("backward not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("backward not implemented for ",mapclass(g->a));
   }
   return (K)0;
  KCATCH("backward");
@@ -1436,7 +1436,7 @@ KAPI cudadevice(K x) {
   if(xempty(x)) {
    for(auto &m:env().device)
     if(g->getDevice()==std::get<1>(m)) return ks(std::get<0>(m));
-   AT_ERROR("unable to map CUDA device: ",g->getDevice().index()," to symbol");
+   TORCH_ERROR("unable to map CUDA device: ",g->getDevice().index()," to symbol");
   } else if(xdev(x,d) && d.is_cuda() && d.has_index()) {
    return g->setDevice(d), K(0);
   } else {
@@ -1460,22 +1460,22 @@ static K defaultdevice() {
 // ---------------------------------------------------------------------------------------------
 S& optsym(const Device& d) {
  for(auto &m:env().device) if(d==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized device: ",d);
+ TORCH_ERROR("unrecognized device: ",d);
 }
 
 S& optsym(const TypeMeta& t) {
  for(auto &m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized data type: ",t);
+ TORCH_ERROR("unrecognized data type: ",t);
 }
 
 S& optsym(const torch::Layout& l) {
  for(auto &m:env().layout) if(l==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized layout: ",l);
+ TORCH_ERROR("unrecognized layout: ",l);
 }
 
 S& optsym(const bool& g) {
  for(auto &m:env().gradient) if(g==std::get<1>(m)) return std::get<0>(m);
- AT_ERROR("unrecognized gradient setting: ",g);
+ TORCH_ERROR("unrecognized gradient setting: ",g);
 }
 
 K optkey() {
@@ -1551,10 +1551,10 @@ KAPI ksetting(K x) {
    else if(s==cs("deterministic"))  c.setDeterministicCuDNN(b);
    else if(s==cs("stackframe"))     e.frame=b;
    else if(s==cs("alloptions"))     e.alloptions=b;
-   else                             AT_ERROR("unable to change setting: ",s);
+   else                             TORCH_ERROR("unable to change setting: ",s);
    return(K)0;
   } else if (xsym(x,0,s) && s==cs("threads") && xlong(x,1,n) && x->n==2) {
-   if(!o) AT_ERROR("unable to set number of threads, OpenMP not available");
+   if(!o) TORCH_ERROR("unable to set number of threads, OpenMP not available");
    torch::set_num_threads(n);
    return(K)0;
   } else {
@@ -1644,7 +1644,7 @@ static K mattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
   case Attr::ptr:     return kj((intptr_t)p.get());
   case Attr::device:  return ks(objdevice(*p, optsym(Device(torch::kCPU))));
   case Attr::result:  return ks(mresult(r));
-  default: AT_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
+  default: TORCH_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
  }
 }
 
@@ -1659,7 +1659,7 @@ K attr(K x,Ktype k,Attr a) {
    case Class::module:
    case Class::loss:      return mattr(g->a,g->r,((Kmodule*)g)->m,k,a);
    case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
-   default: AT_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }
  KCATCH("attr");
 }
@@ -1778,7 +1778,7 @@ static K helpcast(S s) {
   if(std::get<0>(a)==s) return losshelp(std::get<1>(a));
  for(auto& a:env().opt)
   if(std::get<0>(a)==s) return opthelp(std::get<1>(a));
- AT_ERROR("no help found: ",s);
+ TORCH_ERROR("no help found: ",s);
 }
 
 KAPI help(K x) {

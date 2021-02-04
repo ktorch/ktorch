@@ -111,7 +111,7 @@ static K math2(K x,Ftt f,Fts fn,Gtt g,Tt m,Ts mn,const char* s) {
     return kresult(p, b.defined() ? f(a,b) : fn(a,n));
    }
   } else {
-   AT_ERROR(s,": expects args of(input1;input2;optional output tensor), input1 is array or tensor, input2 may also be a number");
+   TORCH_ERROR(s,": expects args of(input1;input2;optional output tensor), input1 is array or tensor, input2 may also be a number");
    return KERR(s);
   }
  KCATCH(s);
@@ -139,9 +139,9 @@ KAPI Add(K x) {
  KTRY
   Scalar m=1; Tensor a,b,r; bool s=xnum(x,1,m); I p=2;
   if(x->t) {
-   AT_ERROR("add not implemented for ",kname(x->t));
+   TORCH_ERROR("add not implemented for ",kname(x->t));
   } else if(x->n<2 || x->n>4) {
-   AT_ERROR("add expects 2-4 args, received ",x->n);
+   TORCH_ERROR("add expects 2-4 args, received ",x->n);
   } else if(x->n==2) {
    if(s && !(p=xten(x,0,a))) 
     a=kput(x,0);
@@ -157,7 +157,7 @@ KAPI Add(K x) {
    if(xempty(x,2))       p--;
    else if(!xten(x,2,b)) p--, b=kput(x,2);
   } else {
-   AT_ERROR("add expects arrays/tensors a,b and scalar s in form: (a;b), (a;s) or (a;s;b)\n",
+   TORCH_ERROR("add expects arrays/tensors a,b and scalar s in form: (a;b), (a;s) or (a;s;b)\n",
             "with optional output tensor r use: (a;b;r), (a;s;();r) or (a;s;b;r)");
    return KERR("add");
   }
@@ -173,9 +173,9 @@ static K addc(K x,Fttts f,Gttts g,const char* e) {
   I p=3; Scalar m=1; Tensor a,b,c,r;
   bool s=xnum(x,1,m); //s:true if scalar multiplier supplied as 2nd arg
   if(x->t) {
-   AT_ERROR(e, " not implemented for ",kname(x->t));
+   TORCH_ERROR(e, " not implemented for ",kname(x->t));
   } else if(x->n<3 || x->n>5) {
-   AT_ERROR("expected 3-5 args for ",e,", received ",x->n);
+   TORCH_ERROR("expected 3-5 args for ",e,", received ",x->n);
   }
   if ((x->n==3 || (!s && x->n==4 && xten(x,3,r))) || (s && (x->n==4 || (x->n==5 && xten(x,4,r))))) {
    if(!xten(x,0,a)) p--,a=kput(x,0);
@@ -186,7 +186,7 @@ static K addc(K x,Fttts f,Gttts g,const char* e) {
    else
     return kresult(p, f(a,b,c,m));
   } else {
-    AT_ERROR(e," expects tensor/array a,b,c & multiplier m, (a;b;c), (a;m;b;c), (a;b;c;output), or (a;m;b;c;output)");
+    TORCH_ERROR(e," expects tensor/array a,b,c & multiplier m, (a;b;c), (a;m;b;c), (a;b;c;output), or (a;m;b;c;output)");
     return KERR(e);
   }
  KCATCH(e);
@@ -221,7 +221,7 @@ static K prodsum(K x,bool b,const char* e) { // b:true -> prod, false -> sum
     (xtype(x,2,s) &&  n==3)||                      // (input;dim;type)
     (xbool(x,2,k) && (n==3 ||                      // (input;dim;keepdim)
                      (n==4 && xtype(x,3,s)))))) {  // (input;dim;keepdim;type)
-   if(b && d.size()!=1) AT_ERROR(e," requires a single dimension, ", d.size(), " supplied");
+   if(b && d.size()!=1) TORCH_ERROR(e," requires a single dimension, ", d.size(), " supplied");
    if(!(p=xten(x,0,t))) t=kput(x,0);
    if(r.defined())
     return (b ? torch::prod_out(r,t,d[0],k,s) : torch::sum_out(r,t,d,k,s)), (K)0;
@@ -229,9 +229,9 @@ static K prodsum(K x,bool b,const char* e) { // b:true -> prod, false -> sum
     return kresult(p, b ? torch::prod(t,d[0],k,s) : torch::sum(t,d,k,s));
   } else {
    if(b) {
-    AT_ERROR("prod expects input, (input;type), (input;dim;type), (input;dim;keepdim) or (input;dim;keepdim;type) w'optional output tensor");
+    TORCH_ERROR("prod expects input, (input;type), (input;dim;type), (input;dim;keepdim) or (input;dim;keepdim;type) w'optional output tensor");
    } else {
-    AT_ERROR("sum expects input, (input;type), (input;dim(s);type), (input;dim(s);keepdim) or (input;dim(s);keepdim;type) w'optional output tensor");
+    TORCH_ERROR("sum expects input, (input;type), (input;dim(s);type), (input;dim(s);keepdim) or (input;dim(s);keepdim;type) w'optional output tensor");
    }
    return KERR(e);
   }
@@ -255,7 +255,7 @@ static K cprodsum(K x,bool b,const char* e) { // b:true -> prod, false -> sum
    else
     return kresult(p, b ? torch::cumprod(t,d,s) : torch::cumsum(t,d,s));
   } else {
-   AT_ERROR(e," expects (input;dim) or (input;dim;type) w'optional output tensor as additional final argument");
+   TORCH_ERROR(e," expects (input;dim) or (input;dim;type) w'optional output tensor as additional final argument");
    return KERR(e);
   }
  KCATCH(e);
@@ -289,11 +289,11 @@ KAPI Clamp(K x) {
  KTRY
   bool p; c10::optional<Scalar> lo,hi; Tensor t,r;
   if(x->t) {
-    AT_ERROR("clamp not implemented for ",kname(x->t));
+    TORCH_ERROR("clamp not implemented for ",kname(x->t));
   } else if( !(xnumn(x,1,lo) && xnumn(x,2,hi)) ) {
-   AT_ERROR("expected 2nd & 3rd argument of scalar low & high limits (or nulls)");
+   TORCH_ERROR("expected 2nd & 3rd argument of scalar low & high limits (or nulls)");
   } else if(!(x->n==3 || (x->n==4 && xten(x,3,r)))) {
-    AT_ERROR("unexpected clamp arg(s), not one of (tensor/array;lo;hi) or (tensor;lo;hi;output tensor)");
+    TORCH_ERROR("unexpected clamp arg(s), not one of (tensor/array;lo;hi) or (tensor;lo;hi;output tensor)");
   }
   if(!(p=xten(x,0,t))) t=kput(x,0);
   if(r.defined())
@@ -347,7 +347,7 @@ KAPI Pow(K x) {
   } else if(e) {
    if     (m==1) a.pow_(s);
    else if(m==2) a.pow_(b);
-   else AT_ERROR("pow cannot be called in-place on a scalar");
+   else TORCH_ERROR("pow cannot be called in-place on a scalar");
    return xptr(x,0) ? (K)0 : kget(a);
   } else if(r.defined()) {
    if     (m==0) torch::pow_out(r,s,b);
@@ -373,9 +373,9 @@ KAPI Dist(K x) {
  KTRY
   bool p; Scalar n=2; Tensor a,b;
   if(x->t<0) {
-   AT_ERROR("dist not implemented for ",kname(x->t));
+   TORCH_ERROR("dist not implemented for ",kname(x->t));
   } else if(!(x->n==2 || (x->n==3 && (x->t || xnum(x,2,n))))) {
-   AT_ERROR("dist expects args of tensor/array a,b and optional exponent n, (a;b) or (a;b;n)");
+   TORCH_ERROR("dist expects args of tensor/array a,b and optional exponent n, (a;b) or (a;b;n)");
   }
   if(x->t)
    return a=kput(x), kget(torch::dist(a[0],a[1],(x->n==2) ? n : a[2].item()));
@@ -516,7 +516,7 @@ KAPI Mean(K x) {
    else
     return kresult(p, torch::mean(t,d,k,s));
   } else {
-   AT_ERROR("mean expects input, (input;type), (input;dim(s);type), (input;dim(s);keepdim) or (input;dim(s);keepdim;type) w'optional output tensor");
+   TORCH_ERROR("mean expects input, (input;type), (input;dim(s);type), (input;dim(s);keepdim) or (input;dim(s);keepdim;type) w'optional output tensor");
    return KERR("mean");
   }
  KCATCH("mean");
@@ -540,7 +540,7 @@ static K kmed(K x,bool m,const char* e) {  //m-true if median, else mode
    else
     return std::tie(v,i) = m ? torch::median(t,d,k) : torch::mode(t,d,k), ktenpair(p,v,i);
   } else {
-   AT_ERROR(e," expects input tensor/array, (input;dim) or (input;dim;keepdim) w'optional output pair of tensors for values,indices");
+   TORCH_ERROR(e," expects input tensor/array, (input;dim) or (input;dim;keepdim) w'optional output pair of tensors for values,indices");
    return KERR(e);
   }
  KCATCH(e);
@@ -572,7 +572,7 @@ static K compare2(K x,Ftt f,Fts fn,Gtt g,Gts gn,Tt m,Ts mn,const char* s) {
    else
     return kresult(p, b.defined() ? f(a,b) : fn(a,n));
   } else {
-   AT_ERROR(s,": expects args of(input1;input2;optional output tensor), input1 is array or tensor, input2 may also be a scalar");
+   TORCH_ERROR(s,": expects args of(input1;input2;optional output tensor), input1 is array or tensor, input2 may also be a scalar");
   }
  KCATCH(s);
 }
@@ -591,13 +591,13 @@ KAPI Allclose(K x) {
  bool na=false; double rt=1e-05,at=1e-08; Tensor a,b;
  KTRY
   if(x->t)
-   AT_ERROR("allclose not implemented for single ",kname(x->t));
+   TORCH_ERROR("allclose not implemented for single ",kname(x->t));
   J n=xbool(x,x->n-1,na) ? x->n-1 : x->n;
   if(n==2 || (xdouble(x,2,rt) && (n==3 || (n==4 && xdouble(x,3,at))))) {
    xtenarg(x,a,b);
    return kb(torch::allclose(a,b,rt,at,na));
   } else {
-   AT_ERROR("allclose expects (a;b), (a;b;nan equal), (a;b;rel tol), (a;b;rel tol;abs tol), or (a;b;rel;abs;nan equal)");
+   TORCH_ERROR("allclose expects (a;b), (a;b;nan equal), (a;b;rel tol), (a;b;rel tol;abs tol), or (a;b;rel;abs;nan equal)");
    return KERR("allclose");
   }
  KCATCH("allclose");
@@ -640,12 +640,12 @@ KAPI Nan(K x)    {return special(x, torch::isnan);}
 // ------------------------------------------------------------------------------------------------
 static void minmaxerr(I m,const char* e) {
  if(m==0 || m==1) {
-  AT_ERROR(e," expects input array/tensor a, or a pair a,b, or input w'dim d and optional keepdim flag k, output val v,ind i:\n"
+  TORCH_ERROR(e," expects input array/tensor a, or a pair a,b, or input w'dim d and optional keepdim flag k, output val v,ind i:\n"
              "a, (a;b), (a;b;v), (a;d), (a;d;k), (a;d;(v;i)) or (a;d;k;(v;i))");
  } else if(m>1 && m<6) {
-  AT_ERROR(e," expects input array/tensor a, dimension d, optional keep dim flag k: a, (a;d), (a;d;k)");
+  TORCH_ERROR(e," expects input array/tensor a, dimension d, optional keep dim flag k: a, (a;d), (a;d;k)");
  } else {
-  AT_ERROR("invalid mode for min/max: ",m);
+  TORCH_ERROR("invalid mode for min/max: ",m);
  }
 }
 
@@ -729,11 +729,11 @@ static K ksort(K x,bool a,const char* e) {  //x:arg(s), a:flag for argsort() cal
  KTRY
   bool b=false,p; J d=-1,n=1; Tensor t,v,i;
   if(x->t<0)
-   AT_ERROR("sort not implemented for ",kname(x->t));
+   TORCH_ERROR("sort not implemented for ",kname(x->t));
   n=xtenpair(x,x->n-1,v,i) ? x->n-1 : x->n;  // check for pair of output tensors at end
   if(v.defined()) {
-   if(a) {         AT_ERROR("no output pair for argsort() call");
-   } else if(!n) { AT_ERROR("output tensor pair cannot be 1st argument");
+   if(a) {         TORCH_ERROR("no output pair for argsort() call");
+   } else if(!n) { TORCH_ERROR("output tensor pair cannot be 1st argument");
    }
   }
   // input tensor, (input;desc), (input;dim) or (input;dim;desc)
@@ -759,10 +759,10 @@ KAPI Topk(K x) {
  KTRY
   bool l=true,s=true,p; J k,d=-1,n; Tensor t,v,i;
   if(x->t)
-   AT_ERROR("topk not implemented for single ",kname(x->t));
+   TORCH_ERROR("topk not implemented for single ",kname(x->t));
   n=xtenpair(x,x->n-1,v,i) ? x->n-1 : x->n;
   if(!n && v.defined())
-   AT_ERROR("output tensor pair cannot be 1st argument");
+   TORCH_ERROR("output tensor pair cannot be 1st argument");
   if(xlong(x,1,k) && (n==2 ||                  // (input;k)
     (xlong(x,2,d) && (n==3 ||                  // (input;k;dim)
     (xbool(x,3,l) && (n==4 ||                  // (input;k;dim;desc)
@@ -776,7 +776,7 @@ KAPI Topk(K x) {
     return ktenpair(p,v,i);
    }
   } else {
-   AT_ERROR("topk expects: (input;k), (input;k;dim), (input;k;dim;largest) or (input;k;dim;largest;sorted) w'optional (output value;index) tensors");
+   TORCH_ERROR("topk expects: (input;k), (input;k;dim), (input;k;dim;largest) or (input;k;dim;largest;sorted) w'optional (output value;index) tensors");
    return KERR("topk");
   }
  KCATCH("topk");
@@ -786,10 +786,10 @@ KAPI Kthvalue(K x) {
  KTRY
   bool b=false,p; J k,d=-1,n; Tensor t,v,i;
   if(x->t)
-   AT_ERROR("kth value not implemented for ",kname(x->t));
+   TORCH_ERROR("kth value not implemented for ",kname(x->t));
   n=xtenpair(x,x->n-1,v,i) ? x->n-1 : x->n;
   if(!n && v.defined())
-   AT_ERROR("output tensor pair cannot be 1st argument");
+   TORCH_ERROR("output tensor pair cannot be 1st argument");
   if(xlong(x,1,k) && (n==2 ||                 // (input;k)
     (xlong(x,2,d) && (n==3 ||                 // (input;k;dim)
     (xbool(x,3,b) &&  n==4))))) {             // (input;k;dim;keepdim)
@@ -802,7 +802,7 @@ KAPI Kthvalue(K x) {
     return ktenpair(p,v,i);
    }
   } else {
-   AT_ERROR("kth value expects: (input;k), (input;k;dim) or (input;k;dim;keepdim) with optional (output value;index) tensors");
+   TORCH_ERROR("kth value expects: (input;k), (input;k;dim) or (input;k;dim;keepdim) with optional (output value;index) tensors");
    return KERR("kth value");
   }
  KCATCH("kth value");
@@ -829,14 +829,14 @@ static K kwindow(K x,I m,const char* e) { // m: 0-bartlett, 1-blackman, 2-hann, 
        else if(n==3) t=torch::hamming_window(w,p,a,o);
        else if(n==4) t=torch::hamming_window(w,p,a,b,o);
        break;
-    default: AT_ERROR("unrecognized windowing mode, expecting 0-3, received: ",m); break;
+    default: TORCH_ERROR("unrecognized windowing mode, expecting 0-3, received: ",m); break;
    }
    return kten(t);
   } else {
    if(m<3) {
-    AT_ERROR(e," expects arg(s) of window, (window;tensor options), (window;periodic;tensor options)");
+    TORCH_ERROR(e," expects arg(s) of window, (window;tensor options), (window;periodic;tensor options)");
    } else {
-    AT_ERROR(e," expects arg(s) of window, (window;periodic), (window;periodic;alpha) or (window;periodic;alpha;beta), along w'optional tensor options");
+    TORCH_ERROR(e," expects arg(s) of window, (window;periodic), (window;periodic;alpha) or (window;periodic;alpha;beta), along w'optional tensor options");
    }
    return KERR(e);
   }
@@ -870,16 +870,16 @@ static K kfft(K x,I m,const char* e) {
     case 1: r=torch::ifft(t,d,b1); break;
     case 2: r=torch::rfft(t,d,b1,b2); break;
     case 3: r=torch::irfft(t,d,b1,b2,s); break;
-    default: AT_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
+    default: TORCH_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
    }
    return kresult(p,r);
   } else {
    switch(m) {
     case 0:
-    case 1: AT_ERROR(e," expects args of (input;dim) or (input;dim;normalized)"); break;
-    case 2: AT_ERROR(e," expects args of (input;dim), (input;dim;normalized) or (input;dim;normalized;onesided)"); break;
-    case 3: AT_ERROR(e," expects args of (input;dim), (input;dim;normalized), (input;dim;normalized;onesided) or (input;dim;normalized;onesided; sizes)"); break;
-    default: AT_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
+    case 1: TORCH_ERROR(e," expects args of (input;dim) or (input;dim;normalized)"); break;
+    case 2: TORCH_ERROR(e," expects args of (input;dim), (input;dim;normalized) or (input;dim;normalized;onesided)"); break;
+    case 3: TORCH_ERROR(e," expects args of (input;dim), (input;dim;normalized), (input;dim;normalized;onesided) or (input;dim;normalized;onesided; sizes)"); break;
+    default: TORCH_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
    }
    return KERR(e);
   }
@@ -912,7 +912,7 @@ KAPI Bincount(K x) {
  KTRY
   bool p=false; J m=0; Tensor t,w,r;
   if(x->t<0) {
-   AT_ERROR("bincount not implemented for single ",kname(x->t));
+   TORCH_ERROR("bincount not implemented for single ",kname(x->t));
   } else if(x->t) {
    t=kput(x);
   } else if(xten(x,t)) {
@@ -922,7 +922,7 @@ KAPI Bincount(K x) {
   } else if(x->n==2 || (x->n==3 && xlong(x,2,m))) {
    p=xtenarg(x,t,w);
   } else {
-   AT_ERROR("bincount expects input, (input;min bins), (input;weight) or (input;weight;min bins)");
+   TORCH_ERROR("bincount expects input, (input;min bins), (input;weight) or (input;weight;min bins)");
   }
   return kresult(p, torch::bincount(t,w,m));
  KCATCH("bincount");
@@ -960,13 +960,13 @@ static K diagfns(K x,Fti f,Gti g,Tn m,const char* s) {
   } else if(xten(x,t) || !xmixed(x,3)) {            // input tensor or vector/matrix
    if(!(p=t.defined())) t=kput(x);
   } else {
-   AT_ERROR(s," expects vector/matrix/tensor a, optional diagonal d, optional output tensor r: a, (a;d), (a;r) or (a;d;r)");
+   TORCH_ERROR(s," expects vector/matrix/tensor a, optional diagonal d, optional output tensor r: a, (a;d), (a;r) or (a;d;r)");
   }
   if(e && p) {
    if(m) 
     return (t.*m)(d), (K)0;
    else
-    AT_ERROR(s,": no in-place option");
+    TORCH_ERROR(s,": no in-place option");
   } else if(r.defined()) {
    return g(r,t,d), (K)0;
   } else {
@@ -976,7 +976,7 @@ static K diagfns(K x,Fti f,Gti g,Tn m,const char* s) {
 }
 
 static Tensor& diagflat_out(Tensor& r, const Tensor& t, int64_t d) {
- AT_ERROR("diagflat: not implemented with output tensor");
+ TORCH_ERROR("diagflat: not implemented with output tensor");
 }
 
 KAPI Diag(K x)     {return diagfns(x, torch::diag,     torch::diag_out,  nullptr,        "diagonal diag()");}
@@ -988,7 +988,7 @@ KAPI Diagonal(K x) {  //extract diagonal elements, optional offset & dimensions 
  KTRY
   bool p; J o=0,i=0,j=1; Tensor t;
   if(x->t) {
-   AT_ERROR("diagonal not implemented for ",kname(x->t));
+   TORCH_ERROR("diagonal not implemented for ",kname(x->t));
   } else if(xlong(x,1,o) && (x->n==2 || (xlong(x,2,i) && (x->n==3 || (x->n==4 && xlong(x,3,j)))))) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
   } else {
@@ -1015,7 +1015,7 @@ KAPI Histc(K x) {
    return kten(torch::histc(t));
   J n=(x->n>1 && xten(x,x->n-1,r)) ? x->n-1 : x->n;  //arg count excluding output tensor if supplied
   if( !(n==1 || (xlong(x,1,b) && (n==2 || (xnum(x,2,lo) && (n==3 || (xnum(x,3,hi) && n==4)))))) )
-   AT_ERROR("histc arg(s): (input tensor/array; optional bin count; optional lo; optional hi; optional output tensor)");
+   TORCH_ERROR("histc arg(s): (input tensor/array; optional bin count; optional lo; optional hi; optional output tensor)");
   if( !(p=xten(x,0,t)) )
    t=kput(x,0);
   if(r.defined())
@@ -1029,7 +1029,7 @@ KAPI Cross(K x) {
  KTRY
   J d=-1; Tensor r,a,b;
   if( !(!x->t && (x->n==2 || (xlong(x,2,d) && (x->n==3 || (x->n==4 && xten(x,3,r)))))) )
-   AT_ERROR("unexpected arg(s) for cross, expected (tensor/array; tensor/array; optional dim; optional output tensor)");
+   TORCH_ERROR("unexpected arg(s) for cross, expected (tensor/array; tensor/array; optional dim; optional output tensor)");
   bool p=xtenarg(x,a,b);
   if(r.defined()) {
    return torch::cross_out(r,a,b,d), (K)0;
@@ -1043,7 +1043,7 @@ KAPI Renorm(K x) {
  KTRY
   bool b; J d; Scalar p,m; Tensor r,t;
   if(!(xnum(x,1,p) && xlong(x,2,d) && xnum(x,3,m) && (x->n==4 || (x->n==5 && xten(x,4,r)))))
-   AT_ERROR("unexpected arg(s) for renorm, expected (tensor/array; power; dim; maxnorm; optional output tensor)");
+   TORCH_ERROR("unexpected arg(s) for renorm, expected (tensor/array; power; dim; maxnorm; optional output tensor)");
   if(!(b=xten(x,0,t))) t=kput(x,0);
   if(r.defined()) {
    return torch::renorm_out(r,t,p,d,m), (K)0;
@@ -1069,11 +1069,11 @@ KAPI Tensordot(K x) {
  KTRY
   J d=2; IntArrayRef i,j; Tensor a,b;
   if(x->t<0) {
-   AT_ERROR("tensor dot is not implemented for ",kname(x->t));
+   TORCH_ERROR("tensor dot is not implemented for ",kname(x->t));
   } else if(x->t && (x->n==2 || x->n==3)) {
    a=kput(x);
    if(x->n==3 && a[2].item().toDouble()!=0)
-    AT_ERROR("tensordot: non-zero dimension specified for scalars");
+    TORCH_ERROR("tensordot: non-zero dimension specified for scalars");
    return kget(torch::tensordot(a[0],a[1],i,j));
   } else if(x->n==2 || (x->n==3 && xlong(x,2,d)) || (x->n==4 && xsize(x,2,i) && xsize(x,3,j))) {
    bool p=xtenarg(x,a,b);
@@ -1084,7 +1084,7 @@ KAPI Tensordot(K x) {
    }
    return kresult(p, torch::tensordot(a,b,i,j));
   } else {
-   AT_ERROR("tensor args: (array/tensor; array/tensor) with optional dim or (dimension list;dimension list)");
+   TORCH_ERROR("tensor args: (array/tensor; array/tensor) with optional dim or (dimension list;dimension list)");
    return KERR("tensordot");
   }
  KCATCH("tensordot");
@@ -1111,7 +1111,7 @@ KAPI Unique(K x) {
    (n==5 &&  xbool(x,1,bs) &&  xbool(x,2,bi) &&  xbool(x,3,bc) && xlong(x,4,d))) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
   } else {
-   AT_ERROR("unique expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
+   TORCH_ERROR("unique expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
             "(input;sort flag;indices flag;counts flag;dimension)");
   }
   std::tie(u,i,c)=null(d) ? torch::_unique2(t,bs,bi,bc) : torch::unique_dim(t,d,bs,bi,bc);
@@ -1132,7 +1132,7 @@ KAPI Uniquec(K x) {
    (n==4 &&  xbool(x,1,bi) &&  xbool(x,2,bc) && xint64(x,3,d))) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
   } else {
-   AT_ERROR("unique consecutive expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
+   TORCH_ERROR("unique consecutive expects input array/tensor, followed by optional flag(s) and optional dimension as last arg:\n"
             "(input;indices flag;counts flag;dimension)");
   }
   std::tie(u,i,c)=torch::unique_consecutive(t,bi,bc,null(d) ? torch::nullopt : torch::make_optional(d));
@@ -1160,7 +1160,7 @@ static K kaddmm(K x,Fmm f,Gmm g,const char* e) {
    else
     return kresult(p, f(t,t1,t2,b,a));
   }
-  AT_ERROR(e," expects 3 tensor or array inputs, followed by optional beta,alpha & output tensor(if both beta & alpha, supply beta first)");
+  TORCH_ERROR(e," expects 3 tensor or array inputs, followed by optional beta,alpha & output tensor(if both beta & alpha, supply beta first)");
   return KERR(e);
  KCATCH(e);
 }
@@ -1188,7 +1188,7 @@ KAPI lufact(K x,bool y,const char* e) {  // x:args, y:true if info required, e:e
   } else if(xbool(x,1,b) && x->n==2) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
   } else {
-   AT_ERROR(e, " expects input tensor/array or (input;pivot flag) w'optional set of ",(y ? 3 : 2)," output tensors at end");
+   TORCH_ERROR(e, " expects input tensor/array or (input;pivot flag) w'optional set of ",(y ? 3 : 2)," output tensors at end");
   }
   std::tie(U,V,I)=torch::_lu_with_info(t,b,!y); // set check error flag true if no info required, else unneccessary
   if(u.defined()) {
@@ -1225,7 +1225,7 @@ KAPI Lu_unpack(K x) {
  KTRY
   bool b1=true,b2=true; Tensor a,b,l,u,v;
   if(!(x->n==2 || (xbool(x,2,b1) && (x->n==3 || (xbool(x,3,b2) && x->n==4))))) {
-   AT_ERROR("lu_unpack expects 2 input arrays/tensors and 2 optional boolean flags");
+   TORCH_ERROR("lu_unpack expects 2 input arrays/tensors and 2 optional boolean flags");
    return KERR("lu_unpack");
   }
   bool p=xtenarg(x,a,b); J n=a.size(-1);
@@ -1332,9 +1332,9 @@ static K blas2(K x, Ftt f, Gtt g, const char* e) {
     return kresult(p, f(a,b));
   } else {
   if(x->t) {
-   AT_ERROR(e," not implemented for single ",kname(x->t));
+   TORCH_ERROR(e," not implemented for single ",kname(x->t));
   } else {
-   AT_ERROR("unrecognized arg(s) for: ",e,", expecting (a;b) or (a;b;output tensor) where a & b are arrays or tensors");
+   TORCH_ERROR("unrecognized arg(s) for: ",e,", expecting (a;b) or (a;b;output tensor) where a & b are arrays or tensors");
   }
   }
  KCATCH(e);
@@ -1383,13 +1383,13 @@ KAPI Qr(K x) {
  KTRY
   bool b=true; Tensor t,q,r;  //flag true for reduced, false for complete QR decomposition
   if(x->t) {
-   AT_ERROR("qr factorization not supported for ",kname(x->t));
+   TORCH_ERROR("qr factorization not supported for ",kname(x->t));
   } else if(xtenpair(x,x->n-1,q,r)) {
     if (x->n==2 || (x->n==3 && xbool(x,1,b))) {
      torch::qr_out(q,r,xten(x,0,t) ? t : kput(x,0),b);
      return (K)0;
     } else {
-     AT_ERROR("ar factorization: output pair detected, but args not of form: (matrix/tensor;output pair) or (matrix/tensor;flag;output pair)");
+     TORCH_ERROR("ar factorization: output pair detected, but args not of form: (matrix/tensor;output pair) or (matrix/tensor;flag;output pair)");
     }
   } else {
    bool p;
@@ -1441,7 +1441,7 @@ KAPI Svd(K x) {
   } else if(!xmixed(x,2)) {
    p=false,t=kput(x);
   } else {
-   AT_ERROR("svd expects matrix/tensor input or (input;optional flag1;optional flag2;optional output triplet of tensors");
+   TORCH_ERROR("svd expects matrix/tensor input or (input;optional flag1;optional flag2;optional output triplet of tensors");
   }
   if(u.defined())
    return torch::svd_out(u,s,v,t,b1,b2), (K)0;
@@ -1463,7 +1463,7 @@ static K gls(K x,Ftuple2 f,Gtuple2 g,const char* e) {
   else if(x->n==3 && xtenpair(x,2,c,d))
    return p=xtenarg(x,b,a), g(c,d,b,a), (K)0;
   else
-   AT_ERROR(e," expects args of (tensor/matrix;tensor/matrix;optional output pair of tensors)");
+   TORCH_ERROR(e," expects args of (tensor/matrix;tensor/matrix;optional output pair of tensors)");
  KCATCH(e);
 }
 
@@ -1520,7 +1520,7 @@ KAPI Choleskysolve(K x) {
    else
     return kresult(p, torch::cholesky_solve(a,b,u));
   } else {
-   AT_ERROR("unexpected args for cholesky_solve, expected (matrix;matrix;optional upper flag;optional output tensor)");
+   TORCH_ERROR("unexpected args for cholesky_solve, expected (matrix;matrix;optional upper flag;optional output tensor)");
    return KERR("cholesky solve");
   }
  KCATCH("cholesky solve");
@@ -1574,7 +1574,7 @@ KAPI Symeig(K x) {
 // ------------------------------------------------------------------------------------------
 static S prob(Prob p) {
  for(auto& m:env().prob) if(std::get<1>(m)==p) return std::get<0>(m);
- AT_ERROR("unrecognized probability distribution: ",(I)p);
+ TORCH_ERROR("unrecognized probability distribution: ",(I)p);
 }
 
 static K kprob(K x,Prob p) {
@@ -1585,7 +1585,7 @@ static K kprob(K x,Prob p) {
    switch(p) {
     case Prob::cauchy:      t->cauchy_(); break;
     case Prob::exponential: t->exponential_(); break;
-    case Prob::geometric:   AT_ERROR(prob(p)," requires a probability argument"); break;
+    case Prob::geometric:   TORCH_ERROR(prob(p)," requires a probability argument"); break;
     case Prob::lognormal:   t->log_normal_(); break;
     case Prob::normal:      t->normal_(); break;
     case Prob::random:      t->random_(); break;
@@ -1610,14 +1610,14 @@ static K kprob(K x,Prob p) {
    switch(p) {
     case Prob::cauchy:      t->cauchy_(a.toDouble(),b.toDouble()); break;
     case Prob::exponential:
-    case Prob::geometric:   AT_ERROR(prob(p),": tales up to 2 args, ",x->n," supplied"); break;
+    case Prob::geometric:   TORCH_ERROR(prob(p),": tales up to 2 args, ",x->n," supplied"); break;
     case Prob::lognormal:   t->log_normal_(a.toDouble(),b.toDouble()); break;
     case Prob::normal:      t->normal_(a.toDouble(),b.toDouble()); break;
     case Prob::random:      t->random_(a.toLong(),b.toLong()); break;
     case Prob::uniform:     t->uniform_(a.toDouble(),b.toDouble()); break;
    }
   } else {
-    AT_ERROR(prob(p)," accepts no more than ",(p==Prob::exponential || p==Prob::geometric) ? 2 : 3," args, ",x->n," supplied");
+    TORCH_ERROR(prob(p)," accepts no more than ",(p==Prob::exponential || p==Prob::geometric) ? 2 : 3," args, ",x->n," supplied");
   }
   return (K)0;
  KCATCH("probability");
@@ -1647,7 +1647,7 @@ KAPI Bernoulli(K x) {
    else if(x->n==3 && xempty(x,2)) 
     return a.bernoulli_(f), p ? (K)0 : kget(a);
    else
-    AT_ERROR("bernoulli with scalar probability as 2nd arg expects (input;prob) or (input;prob;[]) for in-place");
+    TORCH_ERROR("bernoulli with scalar probability as 2nd arg expects (input;prob) or (input;prob;[]) for in-place");
   } else if(xten(x,1,b)) {              // (input;output tensor) or (input;prob;[])
    if(!(p=xten(x,0,a))) a=kput(x,0);
    if(x->n==2)
@@ -1655,7 +1655,7 @@ KAPI Bernoulli(K x) {
    else if(x->n==3 && xempty(x,2))
     return a.bernoulli_(b), p ? (K)0 : kget(a);
    else
-    AT_ERROR("bernoulli with tensor as 2nd arg expects (input;output tensor) or (input;tensor;[]) for in-place");
+    TORCH_ERROR("bernoulli with tensor as 2nd arg expects (input;output tensor) or (input;tensor;[]) for in-place");
   } else if(xten(x,0,a)) {
    b=kput(x,1);
    if(x->n==2)
@@ -1663,7 +1663,7 @@ KAPI Bernoulli(K x) {
    else if(x->n==3 && xempty(x,2))
     return a.bernoulli_(b), (K)0;
    else
-    AT_ERROR("bernoulli with 1st arg of tensor expects (tensor;prob), (tensor;output tensor)");
+    TORCH_ERROR("bernoulli with 1st arg of tensor expects (tensor;prob), (tensor;output tensor)");
   } else {
    return kget(torch::bernoulli(kput(x)));
   }
@@ -1687,7 +1687,7 @@ KAPI Multinomial(K x) {
    else
     return kresult(t,torch::multinomial(t ? *t : kput(x,0), n, b));    // else return array/tensor
   } else {
-   AT_ERROR("multimonial: unrecognized arg(s), expecting (input tensor/array; number of samples; replacement flag; output tensor)");
+   TORCH_ERROR("multimonial: unrecognized arg(s), expecting (input tensor/array; number of samples; replacement flag; output tensor)");
   }
  KCATCH("multinomial");
 }

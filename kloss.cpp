@@ -17,25 +17,25 @@ K kloss(Cast c,const Moduleptr& m) {return kmodule(c,m,Class::loss);}
 static Cast lmap(S s) {
  for(auto&m:env().loss)
   if(std::get<0>(m)==s) return std::get<1>(m);
- AT_ERROR("unrecognized loss function: ",s);
+ TORCH_ERROR("unrecognized loss function: ",s);
 }
 
 static S lmap(Cast c) {
  for(auto&m:env().loss)
   if(std::get<1>(m)==c) return std::get<0>(m);
- AT_ERROR("unrecognized loss function: ",(I)c);
+ TORCH_ERROR("unrecognized loss function: ",(I)c);
 }
 
 static S lset(Setting s) {
  for(auto&m:env().lset)
   if(std::get<1>(m)==s) return std::get<0>(m);
- AT_ERROR("unrecognized loss setting: ",(I)s);
+ TORCH_ERROR("unrecognized loss setting: ",(I)s);
 }
 
 static Setting lset(S s) {
  for(auto&m:env().lset)
   if(std::get<0>(m)==s) return std::get<1>(m);
- AT_ERROR("unrecognized loss setting: ",s);
+ TORCH_ERROR("unrecognized loss setting: ",s);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ static void reduce(Reduce1& r,Cast c,S s) {
   case Enum::none: r=torch::kNone; break;
   case Enum::mean: r=torch::kMean; break;
   case Enum::sum:  r=torch::kSum; break;
-  default: AT_ERROR(lmap(c)," reduce:",s," is not one of none,mean,sum");
+  default: TORCH_ERROR(lmap(c)," reduce:",s," is not one of none,mean,sum");
  }
 }
 
@@ -108,7 +108,7 @@ static void reduce(Reduce2& r,Cast c,S s) {
   case Enum::batchmean: r=torch::kBatchMean; break;
   case Enum::mean:      r=torch::kMean; break;
   case Enum::sum:       r=torch::kSum; break;
-  default: AT_ERROR(lmap(c)," reduce:",s," is not one of none,batchmean,mean,sum");
+  default: TORCH_ERROR(lmap(c)," reduce:",s," is not one of none,batchmean,mean,sum");
  }
 }
 
@@ -165,7 +165,7 @@ static K lossfunc(K a,Cast c) {
    case Cast::softmargin:
     r=b ? fnn::soft_margin_loss(x,y) : fnn::soft_margin_loss(x,y,reduce<nn::SoftMarginLossOptions>(a,2,c));
     break;
-   default: AT_ERROR("unrecognized loss function"); break;
+   default: TORCH_ERROR("unrecognized loss function"); break;
   }
  return kresult(p,r);
  KCATCH("loss");
@@ -215,7 +215,7 @@ static void classwt(K x,J i,Cast c,S& s,Tensor& w) {
   switch(lset(p.k)) {
    case Setting::weight: if(!pempty(p)) pten(p,w); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized ",lmap(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",lmap(c)," option: ",p.k); break;
   }
 }
 
@@ -240,14 +240,14 @@ template<typename O> O classwt(K x,J i,Cast c) {
   switch(j) {
    case 0: if(!xempty(x,i+j) && !xten(x,i+j,w)) w=kput(x,i+j); break;
    case 1: o.ignore_index(int64(x,i+j,c,Setting::ignore)); break;
-   default: AT_ERROR(lmap(c),": up to 3 positional args expected(class weight;index to ignore;reduce mode), ",n," given");
+   default: TORCH_ERROR(lmap(c),": up to 3 positional args expected(class weight;index to ignore;reduce mode), ",n," given");
   }
  while(xpair(p))
   switch(lset(p.k)) {
    case Setting::weight: if(!pempty(p)) pten(p,w); break;
    case Setting::ignore: o.ignore_index(int64(p,c)); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for ",lmap(c)," loss"); break;
+   default: TORCH_ERROR("unrecognized option: ",p.k," for ",lmap(c)," loss"); break;
   }
  if(s) reduce(o.reduction(),c,s);
  if(w.defined()) o.weight(w);
@@ -293,7 +293,7 @@ static K classwt(K a,Cast c) {
    case Cast::ce:        r=fnn::cross_entropy(x,y,classwt<nn::CrossEntropyLossOptions>(a,2,c)); break;
    case Cast::nll:       r=fnn::nll_loss(x,y,classwt<nn::NLLLossOptions>(a,2,c)); break;
    case Cast::multisoft: r=fnn::multilabel_soft_margin_loss(x,y,classwt(a,2,c,nn::MultiLabelSoftMarginLossOptions())); break;
-   default: AT_ERROR("unrecognized loss function");
+   default: TORCH_ERROR("unrecognized loss function");
   }
   return kresult(p,r);
  KCATCH("loss");
@@ -339,7 +339,7 @@ template<typename O> static O margin(K x,J i,Cast c) {
   switch(lset(p.k)) {
    case Setting::margin: o.margin(ldouble(p,c)); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized ",lmap(c)," option: ",p.k); break;
+   default: TORCH_ERROR("unrecognized ",lmap(c)," option: ",p.k); break;
   }
  if(s) reduce(o.reduction(),c,s);
  return o;
@@ -375,7 +375,7 @@ static K marginloss(K a,Cast c) {
    case Cast::margin:
     r=b ? fnn::margin_ranking_loss(x1,x2,y) : fnn::margin_ranking_loss(x1,x2,y,margin<nn::MarginRankingLossOptions>(a,3,c));
     break;
-   default: AT_ERROR("unrecognized loss function"); break;
+   default: TORCH_ERROR("unrecognized loss function"); break;
   }
   return kresult(p,r);
  KCATCH("loss")
@@ -397,7 +397,7 @@ static nn::MultiMarginLossOptions multi(K x,J i,Cast c) {
    case 0: o.p(int64(x,i+j,c,Setting::p)); break;
    case 1: o.margin(ldouble(x,i+j,c,Setting::margin)); break;
    case 2: if(!xempty(x,i+j) && !xten(x,i+j,w)) w=kput(x,i+j); break;
-   default: AT_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 4 args, p,margin,weight,reduce");
+   default: TORCH_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 4 args, p,margin,weight,reduce");
   }
  while(xpair(p))
   switch(lset(p.k)) {
@@ -405,7 +405,7 @@ static nn::MultiMarginLossOptions multi(K x,J i,Cast c) {
    case Setting::margin: o.margin(ldouble(p,c)); break;
    case Setting::weight: if(!pempty(p)) pten(p,w); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for multi-margin loss"); break;
+   default: TORCH_ERROR("unrecognized option: ",p.k," for multi-margin loss"); break;
   }
  if(w.defined()) o.weight(w);
  if(s) reduce(o.reduction(),c,s);
@@ -445,7 +445,7 @@ static nn::TripletMarginLossOptions triplet(K x,J i,Cast c) {
    case 1: o.p(ldouble(x,i+j,c,Setting::p)); break;
    case 2: o.eps(ldouble(x,i+j,c,Setting::eps)); break;
    case 3: o.swap(lbool(x,i+j,c,Setting::swap)); break;
-   default: AT_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 5 args, margin,p,eps,swap flag,reduce");
+   default: TORCH_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 5 args, margin,p,eps,swap flag,reduce");
   }
  while(xpair(p))
   switch(lset(p.k)) {
@@ -454,7 +454,7 @@ static nn::TripletMarginLossOptions triplet(K x,J i,Cast c) {
    case Setting::eps:    o.eps(ldouble(p,c)); break;
    case Setting::swap:   o.swap(lbool(p,c)); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for multi-margin loss"); break;
+   default: TORCH_ERROR("unrecognized option: ",p.k," for multi-margin loss"); break;
   }
  if(s) reduce(o.reduction(),c,s);
  return o;
@@ -494,7 +494,7 @@ static nn::PoissonNLLLossOptions poisson(K x,J i,Cast c) {
    case 0: o.log_input(lbool(x,i+j,c,Setting::log)); break;
    case 1: o.full(lbool(x,i+j,c,Setting::full)); break;
    case 2: o.eps(ldouble(x,i+j,c,Setting::eps)); break;
-   default: AT_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 4 args, log,full,eps,reduce");
+   default: TORCH_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 4 args, log,full,eps,reduce");
   }
  while(xpair(p))
   switch(lset(p.k)) {
@@ -502,7 +502,7 @@ static nn::PoissonNLLLossOptions poisson(K x,J i,Cast c) {
    case Setting::full:   o.full(lbool(p,c)); break;
    case Setting::eps:    o.eps(ldouble(p,c)); break;
    case Setting::reduce: s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for poisson-nll loss"); break;
+   default: TORCH_ERROR("unrecognized option: ",p.k," for poisson-nll loss"); break;
   }
  if(s) reduce(o.reduction(),c,s);
  return o;
@@ -540,14 +540,14 @@ static nn::CTCLossOptions ctc(K x,J i,Cast c) {
   switch(j) {
    case 0: o.blank(int64(x,i+j,c,Setting::blank)); break;
    case 1: o.zero_infinity(lbool(x,i+j,c,Setting::zeroinf)); break;
-   default: AT_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 3 args, blank label, zero infinity flag & reduce mode");
+   default: TORCH_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 3 args, blank label, zero infinity flag & reduce mode");
   }
  while(xpair(p))
   switch(lset(p.k)) {
    case Setting::blank:   o.blank(int64(p,c)); break;
    case Setting::zeroinf: o.zero_infinity(lbool(p,c)); break;
    case Setting::reduce:  s=lsym(p,c); break;
-   default: AT_ERROR("unrecognized option: ",p.k," for CTC loss"); break;
+   default: TORCH_ERROR("unrecognized option: ",p.k," for CTC loss"); break;
   }
  if(s) reduce(o.reduction(),c,s);
  return o;
@@ -565,9 +565,9 @@ KAPI Ctc(K a) {
  KTRY
   bool p; Tensor x,y,nx,ny;
   if(a->t) {
-   AT_ERROR("cts loss not implemented for ",kname(a->t));
+   TORCH_ERROR("cts loss not implemented for ",kname(a->t));
   } else if(a->n < 4) {
-   AT_ERROR("ctc loss expects at least 4 args, (input;target;input lengths;target lengths)");
+   TORCH_ERROR("ctc loss expects at least 4 args, (input;target;input lengths;target lengths)");
   }
   p=xtenarg(a,x,y); xtenarg(a,2,nx,ny);
   return kresult(p, fnn::ctc_loss(x,y,nx,ny,ctc(a,4,Cast::ctc)));
@@ -607,7 +607,7 @@ static Moduleptr lossinit(Cast c,K x,J i) {
   case Cast::pairwise:    return nn::PairwiseDistance(pairwise(x,i,c)).ptr();
   case Cast::similar:     return nn::CosineSimilarity(similar(x,i,c)).ptr();
 
-  default: AT_ERROR("unrecognized loss function: ",lmap(c));
+  default: TORCH_ERROR("unrecognized loss function: ",lmap(c));
  }
 }
 
@@ -637,7 +637,7 @@ static K lossopt(bool a,Cast c,const Module& m) {
   case Cast::pairwise:    return pairwise(a,m.as<nn::PairwiseDistance>()->options);
   case Cast::similar:     return similar(a,m.as<nn::CosineSimilarity>()->options);
 
-  default: AT_ERROR("unrecognized loss module");
+  default: TORCH_ERROR("unrecognized loss module");
  }
 }
 
@@ -667,7 +667,7 @@ Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {
   case Cast::smoothl1:    return m.as<nn::SmoothL1Loss>()->forward(x,y);
   case Cast::similar:     return m.as<nn::CosineSimilarity>()->forward(x,y);
   case Cast::softmargin:  return m.as<nn::SoftMarginLoss>()->forward(x,y);
-  default: AT_ERROR("unable to calculate ",m.name()," loss given input & target tensors");
+  default: TORCH_ERROR("unable to calculate ",m.name()," loss given input & target tensors");
  }
 }
 
@@ -678,14 +678,14 @@ Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z)
   case Cast::cosineloss: return m.as<nn::CosineEmbeddingLoss>()->forward(x,y,z);
   case Cast::margin:     return m.as<nn::MarginRankingLoss>()->forward(x,y,z);
   case Cast::triplet:    return m.as<nn::TripletMarginLoss>()->forward(x,y,z);
-  default: AT_ERROR("unable to calculate ",m.name()," loss given 3 tensors (e.g. input,target,weight  or input1,input2,target");
+  default: TORCH_ERROR("unable to calculate ",m.name()," loss given 3 tensors (e.g. input,target,weight  or input1,input2,target");
  }
 }
 
 Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& nx,const Tensor& ny) {
  switch(c) {
   case Cast::ctc:  return m.as<nn::CTCLoss>()->forward(x,y,nx,ny);
-  default: AT_ERROR("unable to calculate ",m.name()," loss given 4 tensors");
+  default: TORCH_ERROR("unable to calculate ",m.name()," loss given 4 tensors");
  }
 }
 
@@ -701,7 +701,7 @@ static K lossfwd(Cast c,Module& m,K a) {
   Tensor nx,ny; p=xtenarg(a,1,x,y); xtenarg(a,3,nx,ny);
   r=lossfwd(c,m,x,y,nx,ny);
  } else {
-  AT_ERROR("unrecognized arg(s) for ",mlabel(m)," forward call");
+  TORCH_ERROR("unrecognized arg(s) for ",mlabel(m)," forward call");
  }
  return kresult(p,r);
 }
@@ -724,7 +724,7 @@ KAPI loss(K x) {
   } else if((m=xmodel(x))) {
    return kloss(m->lc,m->l);
   } else {
-   AT_ERROR("loss: unrecognized arg(s)");
+   TORCH_ERROR("loss: unrecognized arg(s)");
   }
  KCATCH("loss");
 }
@@ -763,7 +763,7 @@ K losshelp(Cast c) {
    }
    return xT(xD(k,knk(3,s,d,o)));
   }
-  default: AT_ERROR("no help implemented for loss enumeration: ",(I)c);
+  default: TORCH_ERROR("no help implemented for loss enumeration: ",(I)c);
  }
 }
 

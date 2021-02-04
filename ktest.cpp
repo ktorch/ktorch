@@ -128,7 +128,7 @@ Cast mcast2(const Moduleptr& m) {
  } else if(m->as<nn::Upsample>()) {                return Cast::upsample;
  } else if(m->as<nn::ZeroPad2d>()) {               return Cast::zeropad2d;
  } else {
-  AT_ERROR("unable to determine module enumeration");
+  TORCH_ERROR("unable to determine module enumeration");
  }
 }
 
@@ -257,7 +257,7 @@ KAPI trainx(K x) {
   } else if(xten(x,1)) {
    // (m;x;y;w)
   } else {
-   AT_ERROR("train: unrecognized 2nd arg, expecting tensor, vector or dictionary of tensor, given ",kname(x,1));
+   TORCH_ERROR("train: unrecognized 2nd arg, expecting tensor, vector or dictionary of tensor, given ",kname(x,1));
   }
   return (K)0;
  KCATCH("train");
@@ -291,7 +291,7 @@ KAPI parms(K x) {
    case Class::module:    m=((Kmodule*)g)->m; break;
    case Class::model:     m=((Kmodel*) g)->m; break;
    case Class::optimizer: m=((Kopt*)   g)->m; break;
-   default: AT_ERROR("parms: not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("parms: not implemented for ",mapclass(g->a));
   }
   S s=mname(*m);
   if(y) {
@@ -315,7 +315,7 @@ KAPI names(K x) {
    case Class::module:    m=((Kmodule*)g)->m; break;
    case Class::model:     m=((Kmodel*) g)->m; break;
    case Class::optimizer: m=((Kopt*)   g)->m; break;
-   default: AT_ERROR("parms: not implemented for ",mapclass(g->a));
+   default: TORCH_ERROR("parms: not implemented for ",mapclass(g->a));
   }
   S s=mname(*m);
   const auto& k=m->named_modules(s ? s : "").keys();
@@ -427,111 +427,111 @@ KAPI cast(K x) {
 
 Tensor c1(Cast c,Moduleptr& m,const Tensor& t) {
  switch(c) {
-  case Cast::adaptavg1d:      AT_ERROR("nyi");
-  case Cast::adaptavg2d:      AT_ERROR("nyi");
-  case Cast::adaptavg3d:      AT_ERROR("nyi");
-  case Cast::adaptmax1d:      AT_ERROR("nyi");
-  case Cast::adaptmax2d:      AT_ERROR("nyi");
-  case Cast::adaptmax3d:      AT_ERROR("nyi");
-  case Cast::adrop:           AT_ERROR("nyi");
-  case Cast::attention:       AT_ERROR("nyi");
-  case Cast::avgpool1d:       AT_ERROR("nyi");
-  case Cast::avgpool2d:       AT_ERROR("nyi");
-  case Cast::avgpool3d:       AT_ERROR("nyi");
-  case Cast::base:            AT_ERROR("nyi");
-  case Cast::batchnorm1d:     AT_ERROR("nyi");
-  case Cast::batchnorm2d:     AT_ERROR("nyi");
-  case Cast::batchnorm3d:     AT_ERROR("nyi");
-  case Cast::bilinear:        AT_ERROR("nyi");
-  case Cast::cat:             AT_ERROR("nyi");
-  case Cast::celu:            AT_ERROR("nyi");
-  case Cast::conv1d:          AT_ERROR("nyi");
-  case Cast::conv2d:          AT_ERROR("nyi");
-  case Cast::conv3d:          AT_ERROR("nyi");
-  case Cast::convtranspose1d: AT_ERROR("nyi");
-  case Cast::convtranspose2d: AT_ERROR("nyi");
-  case Cast::convtranspose3d: AT_ERROR("nyi");
-  case Cast::crossmap2d:      AT_ERROR("nyi");
-  case Cast::decoder:         AT_ERROR("nyi");
-  case Cast::decoderlayer:    AT_ERROR("nyi");
-  case Cast::drop:            AT_ERROR("nyi");
-  case Cast::drop2d:          AT_ERROR("nyi");
-  case Cast::drop3d:          AT_ERROR("nyi");
-  case Cast::elu:             AT_ERROR("nyi");
-  case Cast::embed:           AT_ERROR("nyi");
-  case Cast::embedbag:        AT_ERROR("nyi");
-  case Cast::encoder:         AT_ERROR("nyi");
-  case Cast::encoderlayer:    AT_ERROR("nyi");
-  case Cast::expand:          AT_ERROR("nyi");
-  case Cast::fadrop:          AT_ERROR("nyi");
-  case Cast::flatten:         AT_ERROR("nyi");
-  case Cast::fmaxpool2d:      AT_ERROR("nyi");
-  case Cast::fmaxpool3d:      AT_ERROR("nyi");
-  case Cast::fold:            AT_ERROR("nyi");
-  case Cast::gelu:            AT_ERROR("nyi");
-  case Cast::glu:             AT_ERROR("nyi");
-  case Cast::groupnorm:       AT_ERROR("nyi");
-  case Cast::gru:             AT_ERROR("nyi");
-  case Cast::hardshrink:      AT_ERROR("nyi");
-  case Cast::hardtanh:        AT_ERROR("nyi");
-  case Cast::identity:        AT_ERROR("nyi");
-  case Cast::instancenorm1d:  AT_ERROR("nyi");
-  case Cast::instancenorm2d:  AT_ERROR("nyi");
-  case Cast::instancenorm3d:  AT_ERROR("nyi");
-  case Cast::interpolate:     AT_ERROR("nyi");
-  case Cast::layernorm:       AT_ERROR("nyi");
-  case Cast::leakyrelu:       AT_ERROR("nyi");
+  case Cast::adaptavg1d:      TORCH_ERROR("nyi");
+  case Cast::adaptavg2d:      TORCH_ERROR("nyi");
+  case Cast::adaptavg3d:      TORCH_ERROR("nyi");
+  case Cast::adaptmax1d:      TORCH_ERROR("nyi");
+  case Cast::adaptmax2d:      TORCH_ERROR("nyi");
+  case Cast::adaptmax3d:      TORCH_ERROR("nyi");
+  case Cast::adrop:           TORCH_ERROR("nyi");
+  case Cast::attention:       TORCH_ERROR("nyi");
+  case Cast::avgpool1d:       TORCH_ERROR("nyi");
+  case Cast::avgpool2d:       TORCH_ERROR("nyi");
+  case Cast::avgpool3d:       TORCH_ERROR("nyi");
+  case Cast::base:            TORCH_ERROR("nyi");
+  case Cast::batchnorm1d:     TORCH_ERROR("nyi");
+  case Cast::batchnorm2d:     TORCH_ERROR("nyi");
+  case Cast::batchnorm3d:     TORCH_ERROR("nyi");
+  case Cast::bilinear:        TORCH_ERROR("nyi");
+  case Cast::cat:             TORCH_ERROR("nyi");
+  case Cast::celu:            TORCH_ERROR("nyi");
+  case Cast::conv1d:          TORCH_ERROR("nyi");
+  case Cast::conv2d:          TORCH_ERROR("nyi");
+  case Cast::conv3d:          TORCH_ERROR("nyi");
+  case Cast::convtranspose1d: TORCH_ERROR("nyi");
+  case Cast::convtranspose2d: TORCH_ERROR("nyi");
+  case Cast::convtranspose3d: TORCH_ERROR("nyi");
+  case Cast::crossmap2d:      TORCH_ERROR("nyi");
+  case Cast::decoder:         TORCH_ERROR("nyi");
+  case Cast::decoderlayer:    TORCH_ERROR("nyi");
+  case Cast::drop:            TORCH_ERROR("nyi");
+  case Cast::drop2d:          TORCH_ERROR("nyi");
+  case Cast::drop3d:          TORCH_ERROR("nyi");
+  case Cast::elu:             TORCH_ERROR("nyi");
+  case Cast::embed:           TORCH_ERROR("nyi");
+  case Cast::embedbag:        TORCH_ERROR("nyi");
+  case Cast::encoder:         TORCH_ERROR("nyi");
+  case Cast::encoderlayer:    TORCH_ERROR("nyi");
+  case Cast::expand:          TORCH_ERROR("nyi");
+  case Cast::fadrop:          TORCH_ERROR("nyi");
+  case Cast::flatten:         TORCH_ERROR("nyi");
+  case Cast::fmaxpool2d:      TORCH_ERROR("nyi");
+  case Cast::fmaxpool3d:      TORCH_ERROR("nyi");
+  case Cast::fold:            TORCH_ERROR("nyi");
+  case Cast::gelu:            TORCH_ERROR("nyi");
+  case Cast::glu:             TORCH_ERROR("nyi");
+  case Cast::groupnorm:       TORCH_ERROR("nyi");
+  case Cast::gru:             TORCH_ERROR("nyi");
+  case Cast::hardshrink:      TORCH_ERROR("nyi");
+  case Cast::hardtanh:        TORCH_ERROR("nyi");
+  case Cast::identity:        TORCH_ERROR("nyi");
+  case Cast::instancenorm1d:  TORCH_ERROR("nyi");
+  case Cast::instancenorm2d:  TORCH_ERROR("nyi");
+  case Cast::instancenorm3d:  TORCH_ERROR("nyi");
+  case Cast::interpolate:     TORCH_ERROR("nyi");
+  case Cast::layernorm:       TORCH_ERROR("nyi");
+  case Cast::leakyrelu:       TORCH_ERROR("nyi");
   case Cast::linear:          return std::dynamic_pointer_cast<torch::nn::LinearImpl>(m)->forward(t);
-  case Cast::localnorm:       AT_ERROR("nyi");
-  case Cast::logsigmoid:      AT_ERROR("nyi");
-  case Cast::logsoftmax:      AT_ERROR("nyi");
-  case Cast::lppool1d:        AT_ERROR("nyi");
-  case Cast::lppool2d:        AT_ERROR("nyi");
-  case Cast::lstm:            AT_ERROR("nyi");
-  case Cast::maxpool1d:       AT_ERROR("nyi");
-  case Cast::maxpool2d:       AT_ERROR("nyi");
-  case Cast::maxpool3d:       AT_ERROR("nyi");
-  case Cast::modulelist:      AT_ERROR("nyi");
-  case Cast::mul:             AT_ERROR("nyi");
-  case Cast::normalize:       AT_ERROR("nyi");
-  case Cast::pad:             AT_ERROR("nyi");
-  case Cast::pad1d:           AT_ERROR("nyi");
-  case Cast::pad2d:           AT_ERROR("nyi");
-  case Cast::pad3d:           AT_ERROR("nyi");
-  case Cast::pairwise:        AT_ERROR("nyi");
-  case Cast::prelu:           AT_ERROR("nyi");
-  case Cast::reflect1d:       AT_ERROR("nyi");
-  case Cast::reflect2d:       AT_ERROR("nyi");
-  case Cast::relu:            AT_ERROR("nyi");
-  case Cast::relu6:           AT_ERROR("nyi");
-  case Cast::replicate1d:     AT_ERROR("nyi");
-  case Cast::replicate2d:     AT_ERROR("nyi");
-  case Cast::replicate3d:     AT_ERROR("nyi");
-  case Cast::reshape:         AT_ERROR("nyi");
-  case Cast::rnn:             AT_ERROR("nyi");
-  case Cast::rrelu:           AT_ERROR("nyi");
-  case Cast::selu:            AT_ERROR("nyi");
-  case Cast::seqjoin:         AT_ERROR("nyi");
-  case Cast::seqnest:         AT_ERROR("nyi");
-  case Cast::sequential:      AT_ERROR("nyi");
-  case Cast::sigmoid:         AT_ERROR("nyi");
-  case Cast::similar:         AT_ERROR("nyi");
-  case Cast::softmax:         AT_ERROR("nyi");
-  case Cast::softmax2d:       AT_ERROR("nyi");
-  case Cast::softmin:         AT_ERROR("nyi");
-  case Cast::softplus:        AT_ERROR("nyi");
-  case Cast::softshrink:      AT_ERROR("nyi");
-  case Cast::softsign:        AT_ERROR("nyi");
-  case Cast::squeeze:         AT_ERROR("nyi");
-  case Cast::tanh:            AT_ERROR("nyi");
-  case Cast::tanhshrink:      AT_ERROR("nyi");
-  case Cast::threshold:       AT_ERROR("nyi");
-  case Cast::transformer:     AT_ERROR("nyi");
-  case Cast::unfold:          AT_ERROR("nyi");
-  case Cast::unsqueeze:       AT_ERROR("nyi");
-  case Cast::upsample:        AT_ERROR("nyi");
-  case Cast::zeropad2d:       AT_ERROR("nyi");
-  default: AT_ERROR("unrecognized module");
+  case Cast::localnorm:       TORCH_ERROR("nyi");
+  case Cast::logsigmoid:      TORCH_ERROR("nyi");
+  case Cast::logsoftmax:      TORCH_ERROR("nyi");
+  case Cast::lppool1d:        TORCH_ERROR("nyi");
+  case Cast::lppool2d:        TORCH_ERROR("nyi");
+  case Cast::lstm:            TORCH_ERROR("nyi");
+  case Cast::maxpool1d:       TORCH_ERROR("nyi");
+  case Cast::maxpool2d:       TORCH_ERROR("nyi");
+  case Cast::maxpool3d:       TORCH_ERROR("nyi");
+  case Cast::modulelist:      TORCH_ERROR("nyi");
+  case Cast::mul:             TORCH_ERROR("nyi");
+  case Cast::normalize:       TORCH_ERROR("nyi");
+  case Cast::pad:             TORCH_ERROR("nyi");
+  case Cast::pad1d:           TORCH_ERROR("nyi");
+  case Cast::pad2d:           TORCH_ERROR("nyi");
+  case Cast::pad3d:           TORCH_ERROR("nyi");
+  case Cast::pairwise:        TORCH_ERROR("nyi");
+  case Cast::prelu:           TORCH_ERROR("nyi");
+  case Cast::reflect1d:       TORCH_ERROR("nyi");
+  case Cast::reflect2d:       TORCH_ERROR("nyi");
+  case Cast::relu:            TORCH_ERROR("nyi");
+  case Cast::relu6:           TORCH_ERROR("nyi");
+  case Cast::replicate1d:     TORCH_ERROR("nyi");
+  case Cast::replicate2d:     TORCH_ERROR("nyi");
+  case Cast::replicate3d:     TORCH_ERROR("nyi");
+  case Cast::reshape:         TORCH_ERROR("nyi");
+  case Cast::rnn:             TORCH_ERROR("nyi");
+  case Cast::rrelu:           TORCH_ERROR("nyi");
+  case Cast::selu:            TORCH_ERROR("nyi");
+  case Cast::seqjoin:         TORCH_ERROR("nyi");
+  case Cast::seqnest:         TORCH_ERROR("nyi");
+  case Cast::sequential:      TORCH_ERROR("nyi");
+  case Cast::sigmoid:         TORCH_ERROR("nyi");
+  case Cast::similar:         TORCH_ERROR("nyi");
+  case Cast::softmax:         TORCH_ERROR("nyi");
+  case Cast::softmax2d:       TORCH_ERROR("nyi");
+  case Cast::softmin:         TORCH_ERROR("nyi");
+  case Cast::softplus:        TORCH_ERROR("nyi");
+  case Cast::softshrink:      TORCH_ERROR("nyi");
+  case Cast::softsign:        TORCH_ERROR("nyi");
+  case Cast::squeeze:         TORCH_ERROR("nyi");
+  case Cast::tanh:            TORCH_ERROR("nyi");
+  case Cast::tanhshrink:      TORCH_ERROR("nyi");
+  case Cast::threshold:       TORCH_ERROR("nyi");
+  case Cast::transformer:     TORCH_ERROR("nyi");
+  case Cast::unfold:          TORCH_ERROR("nyi");
+  case Cast::unsqueeze:       TORCH_ERROR("nyi");
+  case Cast::upsample:        TORCH_ERROR("nyi");
+  case Cast::zeropad2d:       TORCH_ERROR("nyi");
+  default: TORCH_ERROR("unrecognized module");
  }
 }
 
@@ -670,13 +670,13 @@ KAPI dtest(K x) {
 
 void xerror(const char* s,K x) {
  if(x->t) {
-  AT_ERROR(s, kname(x));
+  TORCH_ERROR(s, kname(x));
  } else {
   switch(x->n) {
-   case 0:  AT_ERROR(s, "empty list");
-   case 1:  AT_ERROR(s, "1-element list containing ", kname(x));
-   case 2:  AT_ERROR(s, "2-element list containing ", kname(kK(x)[0]), " and ", kname(kK(x)[1]));
-   default: AT_ERROR(s, x->n, "-element list containing ", kname(kK(x)[0]), ", ", kname(kK(x)[1]),", ..");
+   case 0:  TORCH_ERROR(s, "empty list");
+   case 1:  TORCH_ERROR(s, "1-element list containing ", kname(x));
+   case 2:  TORCH_ERROR(s, "2-element list containing ", kname(kK(x)[0]), " and ", kname(kK(x)[1]));
+   default: TORCH_ERROR(s, x->n, "-element list containing ", kname(kK(x)[0]), ", ", kname(kK(x)[1]),", ..");
   }
  }
 }
@@ -749,7 +749,7 @@ void putbuffers(K x,Cast c,const Tensor& t,const torch::optim::OptimizerParamSta
    break;
   }
 */
-  default: AT_ERROR("unrecognized optimizer: ",(I)c,", unable to set parameter state");
+  default: TORCH_ERROR("unrecognized optimizer: ",(I)c,", unable to set parameter state");
  }
 }
 
@@ -944,7 +944,7 @@ static void reduce(Reduce1& r,Cast c,S s) {
   case Enum::none: r=torch::kNone; break;
   case Enum::mean: r=torch::kMean; break;
   case Enum::sum:  r=torch::kSum; break;
-  default: AT_ERROR("not one of none,mean,sum");
+  default: TORCH_ERROR("not one of none,mean,sum");
  }
 }
 
@@ -954,7 +954,7 @@ static void reduce(Reduce2& r,Cast c,S s) {
   case Enum::batchmean: r=torch::kBatchMean; break;
   case Enum::mean:      r=torch::kMean; break;
   case Enum::sum:       r=torch::kSum; break;
-  default: AT_ERROR("not one of none,batchmean,mean,sum");
+  default: TORCH_ERROR("not one of none,batchmean,mean,sum");
  }
 }
 
@@ -1100,9 +1100,9 @@ KAPI hashtest(K x) {
 
 void errfail() {
  if(true) {
-  AT_ERROR("err");
+  TORCH_ERROR("err");
  } else {
-  AT_ERROR("false");
+  TORCH_ERROR("false");
  }
 }
 
@@ -1182,7 +1182,7 @@ static K ksub(K x,const char* e) {
  Tensor t;
  if(!x || (x->t==-KS && x->s==cs("help"))) {
   std::cerr << " still in ksub " << (!x ? "null" : "with args")<< "\n";
-  AT_ERROR(e," help here..");
+  TORCH_ERROR(e," help here..");
  }
 
  if(xten(x,t)) {
@@ -1203,7 +1203,7 @@ K help(bool b,const char* s) {return b ? KERR(s) : (fprintf(stderr,"%s\n",s), (K
   if((cond))              \
    AT_WARN(__VA_ARGS__);  \
   else                    \
-   AT_ERROR(__VA_ARGS__); \
+   TORCH_ERROR(__VA_ARGS__); \
 
 typedef struct {
  std::array<std::tuple<S,Cast,std::function<Tensor(Tensor)>>,2> fn = {{
@@ -1342,7 +1342,7 @@ KAPI to_sparse(K x) {
  if(auto* t=xten(x))
   return kten(t->to_sparse());
  else
-  AT_ERROR("to_sparse not implemented for ",kname(x->t));
+  TORCH_ERROR("to_sparse not implemented for ",kname(x->t));
 }
 
 
