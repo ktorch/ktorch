@@ -214,6 +214,49 @@ class TORCH_API RNNOutputImpl : public torch::nn::Cloneable<RNNOutputImpl> {
 };
 TORCH_MODULE(RNNOutput);
 
+// ---------------------------------------------------------------------------------------
+// fork - create two branches with AnyModule/Sequential to separately process input tensor
+// ---------------------------------------------------------------------------------------
+class TORCH_API ForkImpl : public torch::nn::Cloneable<ForkImpl> {
+ using Tensor=torch::Tensor;
+ using Tuple=std::tuple<Tensor,Tensor>;
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Fork";}
+
+ void push_back(std::string s,const torch::nn::AnyModule& m) {
+  if(a.is_empty() && qa.is_empty()) 
+   a=std::move(m), register_module(s.size() ? s : "a", m.ptr());
+  else if(b.is_empty() && qb.is_empty())
+   b=std::move(m), register_module(s.size() ? s : "b", m.ptr());
+  else
+   TORCH_CHECK(false, "fork: cannot add ",mlabel(m.ptr())," module, both left & right forks already defined");
+ }
+ 
+ void push_back(const torch::nn::AnyModule& m) {push_back(std::string(),m);}
+
+ void push_back(std::string s,const torch::nn::Sequential& q) {
+  if(a.is_empty() && qa.is_empty()) 
+   qa=register_module(s.size() ? s : "qa", q);
+  else if(b.is_empty() && qb.is_empty())
+   qb=register_module(s.size() ? s : "qb", q);
+  else
+   TORCH_CHECK(false, "fork: cannot add ",mlabel(q.ptr())," module, both left & right forks already defined");
+ }
+
+ void push_back(const torch::nn::Sequential& q) {push_back(std::string(),q);}
+
+ Tuple forward(const Tensor& x) {
+  Tensor y=a.is_empty() ? (qa.is_empty() ? x : qa->forward(x)) : a.forward(x);
+  Tensor z=b.is_empty() ? (qb.is_empty() ? x : qb->forward(x)) : b.forward(x);
+  return std::make_tuple(y,z);
+ }
+
+ torch::nn::AnyModule a,b;
+ torch::nn::Sequential qa=nullptr,qb=nullptr;
+};
+TORCH_MODULE(Fork);
+
 // --------------------------------------------------------------------------------
 // Recur - receive input & hidden state for rnn layer
 //         sequential modules in/out apply transformations to input & rnn output

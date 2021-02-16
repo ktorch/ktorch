@@ -2,6 +2,31 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+enum class Return:char {
+ k,tensor,vector,dict
+};
+
+enum class Clip:char {
+ none,norm,value
+};
+
+struct TORCH_API TrainOptions {
+ TORCH_ARG(int64_t, batchsize);
+ TORCH_ARG(double,  clipvalue);
+ TORCH_ARG(double,  clipnorm);
+ TORCH_ARG(double,  clippower);
+ TORCH_ARG(Return,  rtype);     // return type: k array, tensor, vector, dict
+ TORCH_ARG(Clip,    clip);
+ TORCH_ARG(bool,    shuffle);
+ TORCH_ARG(bool,    output);
+ TORCH_ARG(bool,    hidden);
+ TORCH_ARG(bool,    loss);
+ TORCH_ARG(bool,    predict);
+ TORCH_ARG(bool,    accuracy);
+ TORCH_ARG(bool,    x1);
+ //TORCH_ARG(bool,    x2);
+};
+
 void atest1(const Moduleptr& m) {
  std::cerr << *m << "\n";
  // fails: AnyModule a(m);
@@ -11,9 +36,24 @@ KAPI atest(K x) {
  KTRY
   nn::Linear l(1,2);
   AnyModule a(l);
+  AnyModule b(l.ptr());
   atest1(a.ptr());
   return (K)0;
  KCATCH("atest");
+}
+
+static void marg1(const Moduleptr& m) {
+ //std::cerr << "forward expects at least " << m->_forward_num_required_args() << " args\n";
+}
+
+KAPI marg(K x) {
+ KTRY
+  nn::Linear m(1,2);
+  nn::Sequential r(m);
+  Tensor t=torch::ones({1,2});
+  r->forward(t,t);
+  return (K)0;
+ KCATCH("marg");
 }
 
 Cast mcast2(const Moduleptr& m) {
@@ -866,6 +906,7 @@ KAPI ksizes(K x) {
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
+ std::cerr << "Training options: " << sizeof(TrainOptions) << "\n";
  return (K)0;
 }
 

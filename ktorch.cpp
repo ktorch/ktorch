@@ -1631,7 +1631,7 @@ KAPI kseed(K x) {
 // mattr - handle a limited set of module attributes
 // attr - attempt to get attribute of given object (more attributes implemented for tensors)
 // -----------------------------------------------------------------------------------------
-static S mresult(Result r) {
+S mresult(Result r) {
  for(const auto& a:env().result)
   if(std::get<1>(a) == r) return std::get<0>(a);
  TORCH_CHECK(r==Result::undefined, "module result type is unrecognized: ",(I)r);

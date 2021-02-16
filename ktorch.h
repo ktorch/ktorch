@@ -162,7 +162,7 @@ enum class Cast:short {
  decoder,        decoderlayer,    drop,            drop2d,          drop3d,
  elu,            embed,           embedbag,        encoder,         encoderlayer,
  expand,         fadrop,          flatten,         fmaxpool2d,      fmaxpool3d,
- fold,           gelu,            glu,             groupnorm,       gru,  gruout,
+ fold,           fork,            gelu,            glu,             groupnorm,       gru,  gruout,
  hardshrink,     hardtanh,        identity,        instancenorm1d,  instancenorm2d,
  instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
@@ -510,6 +510,7 @@ void kfree(const std::vector<K>&);
 void fn(K,const char*,void*,I);
 void randomfn(K);
 void mathfn(K);
+S mresult(Result);
 K attr(K,Ktype,Attr);
 
 // tensor & vector routines:
@@ -710,7 +711,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,112> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,113> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -752,6 +753,7 @@ typedef struct {
   std::make_tuple(cs("fmaxpool2d"),       Cast::fmaxpool2d,      typeid(torch::nn::FractionalMaxPool2dImpl).hash_code(), "torch.nn.FractionalMaxPool2d"),
   std::make_tuple(cs("fmaxpool3d"),       Cast::fmaxpool3d,      typeid(torch::nn::FractionalMaxPool3dImpl).hash_code(), "torch.nn.FractionalMaxPool3d"),
   std::make_tuple(cs("fold"),             Cast::fold,            typeid(torch::nn::FoldImpl).hash_code(),                "torch.nn.Fold"),
+  std::make_tuple(cs("fork"),             Cast::fork,            typeid(ForkImpl).hash_code(),                           ""),
   std::make_tuple(cs("gelu"),             Cast::gelu,            typeid(torch::nn::GELUImpl).hash_code(),                "torch.nn.GELU"),
   std::make_tuple(cs("glu"),              Cast::glu,             typeid(torch::nn::GLUImpl).hash_code(),                 "torch.nn.functional.glu"),
   std::make_tuple(cs("groupnorm"),        Cast::groupnorm,       typeid(torch::nn::GroupNormImpl).hash_code(),           "torch.nn.GroupNorm"),

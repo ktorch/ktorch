@@ -167,10 +167,11 @@ static Result rtype(Cast c) {
   case Cast::moduledict:
   case Cast::modulelist:
   case Cast::parmdict:   return Result::none;       // these modules have no forward method
+  case Cast::fork:       return Result::tuple;      // Fork(x) -> (y,z)
   case Cast::rnn:
   case Cast::gru:
   case Cast::lstm:
-  case Cast::recur:      return Result::vector;     // rerurrent container, returns output,hidden..
+  case Cast::recur:      return Result::vector;     // recurrent container, returns output,hidden..
   default:               return Result::tensor;     // assume other modules forward methods return tensor
  }
 }
@@ -215,8 +216,9 @@ static bool container(Cast c) {
   case Cast::moduledict:
   case Cast::modulelist:
   case Cast::parmdict:
-  case Cast::base:
+  case Cast::fork:
   case Cast::recur:
+  case Cast::base:
    return true;
   default: return false;
  }
@@ -229,6 +231,7 @@ static bool container(const Module& m) {
  else if(m.as<nn::ModuleDict>())    return true;
  else if(m.as<nn::ModuleList>())    return true;
  else if(m.as<nn::ParameterDict>()) return true;
+ else if(m.as<Fork>())              return true;
  else if(m.as<Recur>())             return true;
  else if(m.as<BaseModule>())        return true;
  else                               return false;
@@ -424,50 +427,69 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
  }
 }
 
-// -----------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
 // tupvector - copy tuple(s) returned from recurrent modules to vector of tensors
-// rseq - handle sequential modules with final recurrent module in their sequence
-// rforward - forward calculation of recurrent modules, return vector w'output, hidden state
-// -----------------------------------------------------------------------------------------
+// vcheck - check for requisite number of tensors for vector-returning forward calcs
+// vforward - handle container modules, e.g. sequential, via template
+//            forward calc returns vector, e.g. rnn, return output, hidden state
+// ---------------------------------------------------------------------------------
 static void tupvector(TensorVector& v,const std::tuple<Tensor,Tensor>& x) {
  v.push_back(std::get<0>(x));
  v.push_back(std::get<1>(x));
 }
 
-static void tupvector(TensorVector& v,const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
- v.push_back(std::get<0>(x));
- tupvector(v,std::get<1>(x));
+static TensorVector tupvector(const std::tuple<Tensor,Tensor>& x) {
+ TensorVector v; tupvector(v,x); return v;
 }
 
-template<typename S> static void rseq(Result r,Module& m,TensorVector& v,const Tensor& x,const Tensor& y,const Tensor& z) {
+static TensorVector tupvector(const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
+ TensorVector v;
+ v.push_back(std::get<0>(x));
+ tupvector(v,std::get<1>(x));
+ return v;
+}
+
+static size_t vcheck(Cast c,size_t lo,size_t hi,const Tensor& x,const Tensor& y, const Tensor& z) {
+ size_t n=x.defined() + y.defined() + z.defined();
+ TORCH_CHECK(lo<=n, msym(c),": requires at least ",lo," tensor",(lo==1 ? "" : "s"),", but ",n," supplied"); 
+ TORCH_CHECK(n<=hi, msym(c),": requires at most ", hi," tensor",(hi==1 ? "" : "s"),", but ",n," supplied");
+ TORCH_CHECK(!z.defined() || y.defined(), msym(c),": 3rd tensor given, but 2nd tensor is not defined");
+ return n;
+}
+
+template<typename M>
+static TensorVector vforward(Cast c,Result r,M* m,const Tensor& x,const Tensor& y,const Tensor& z) {
  using Tuple=std::tuple<Tensor,Tensor>;
  using Nested=std::tuple<Tensor,Tuple>;
  using OptTuple=c10::optional<Tuple>;
- if(r==Result::tuple)
-  tupvector(v,m.as<S>()->template forward<Tuple>(x,y));
- else
-  tupvector(v, z.defined() ? m.as<S>()->template forward<Nested>(x,OptTuple(std::make_tuple(y,z)))
-                           : m.as<S>()->template forward<Nested>(x));
+ auto n=vcheck(c,1,3,x,y,z);
+ if(r==Result::tuple) {
+  TORCH_CHECK(n<3, msym(c),": forward calculation requires 1-2 tensor arguments, ",n," supplied");
+  return tupvector(n==1 ? m->template forward<Tuple>(x) : m->template forward<Tuple>(x,y));
+ } else if(r==Result::nested) {
+  return tupvector(z.defined() ? m->template forward<Nested>(x,OptTuple(std::make_tuple(y,z)))
+                               : m->template forward<Nested>(x));
+ } else if(r==Result::vector) {
+  return m->template forward<TensorVector>(x,y,z);
+ } else {
+  TORCH_ERROR(msym(c),": unable to call forward for result type ",mresult(r));
+ }
 }
 
-TensorVector rforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
  using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
- TensorVector v;
- if(z.defined()) {
-//TORCH_CHECK(r==Result::nested, "unexpected 3rd tensor given for recurrent ",msym(c)," module's forward calculation");
-  TORCH_CHECK(y.defined(), "hidden state incomplete for recurrent ",msym(c)," module's forward calculation");
- }
  switch(c) {
-  case Cast::rnn:  tupvector(v,m.as<nn::RNN>()->forward(x,y)); break;
-  case Cast::gru:  tupvector(v,m.as<nn::GRU>()->forward(x,y)); break;
-  case Cast::lstm: tupvector(v, z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
-                                            : m.as<nn::LSTM>()->forward(x));
-                   break;
-  case Cast::recur: return m.as<Recur>()->forward(x,y,z);
-  case Cast::sequential: rseq<nn::Sequential>(r,m,v,x,y,z); break;
-  default: TORCH_ERROR("unrecognized recurrent layer: ",m.name(),", unable to run forward calculation");
+  case Cast::fork:  vcheck(c,1,1,x,y,z); return tupvector(m.as<Fork>()->forward(x));
+  case Cast::rnn:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::RNN>()->forward(x,y));
+  case Cast::gru:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::GRU>()->forward(x,y));
+  case Cast::recur: vcheck(c,1,3,x,y,z); return m.as<Recur>()->forward(x,y,z);
+  case Cast::lstm:  vcheck(c,1,3,x,y,z); 
+   return tupvector(z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
+                                : m.as<nn::LSTM>()->forward(x));
+  case Cast::sequential: return vforward(c,r,m.as<nn::Sequential>(),x,y,z);
+  default:
+   TORCH_ERROR("unrecognized layer: ",mlabel(m),", unable to run forward calculation");
  }
- return v;
 }
 
 // ----------------------------------------------------------------------------------------
@@ -499,7 +521,7 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
   case Result::vector:
   case Result::tuple:
   case Result::nested:
-   return kvec(rforward(c,r,m,x,y,z));
+   return kvec(vforward(c,r,m,x,y,z));
   case Result::none:
    TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
   case Result::undefined:
@@ -2925,6 +2947,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::seqjoin:     noarg(c,x,i); return SeqJoin().ptr();
   case Cast::moduledict:  noarg(c,x,i); return nn::ModuleDict().ptr();
   case Cast::modulelist:  noarg(c,x,i); return nn::ModuleList().ptr();
+  case Cast::fork:        noarg(c,x,i); return Fork().ptr();
   case Cast::base:        noarg(c,x,i); return BaseModule().ptr();
   case Cast::parmdict:    return parmdict(x,i); // dictionary can contain parms as options
 
@@ -3112,6 +3135,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::fmaxpool2d:      return ANY(nn::FractionalMaxPool2d, m);
   case Cast::fmaxpool3d:      return ANY(nn::FractionalMaxPool3d, m);
   case Cast::fold:            return ANY(nn::Fold, m);
+  case Cast::fork:            return ANY(Fork, m);
   case Cast::gelu:            return ANY(nn::GELU, m);
   case Cast::glu:             return ANY(nn::GLU, m);
   case Cast::groupnorm:       return ANY(nn::GroupNorm, m);
@@ -3203,6 +3227,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::seqjoin:
   case Cast::moduledict:
   case Cast::modulelist:
+  case Cast::fork:
   case Cast::base:
   case Cast::gruout:          //take output tensor (from tuple of rnn output)
   case Cast::lstmout:
@@ -3396,6 +3421,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  if(auto *m=x->as<nn::Sequential>())        { addany(m,s,y);
  } else if(auto *m=x->as<SeqNest>())        { addany(m,s,y);
  } else if(auto *m=x->as<SeqJoin>())        { addseq(m,s,y);
+ } else if(auto *m=x->as<Fork>())           { addseq(m,s,y);
  } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleDict>()) {
@@ -3768,6 +3794,7 @@ K modulehelp(Cast c) {
   case Cast::fmaxpool2d:      return fpool(true,nn::FractionalMaxPool2dOptions({2,4})  .output_size(ExpandingArray<2>({16,32})));
   case Cast::fmaxpool3d:      return fpool(true,nn::FractionalMaxPool3dOptions({2,4,3}).output_size(ExpandingArray<3>({16,32,24})));
   case Cast::fold:            return fold(true,nn::FoldOptions({4,6},{2,3}));
+  case Cast::fork:            return KDICT;
   case Cast::gelu:            return KDICT;
   case Cast::glu:             return dim(true,c,nn::GLUOptions().dim());
   case Cast::groupnorm:       return groupnorm(true,nn::GroupNormOptions(3,6));
