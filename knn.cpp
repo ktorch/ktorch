@@ -163,6 +163,7 @@ KAPI seq(K x) {
 // -------------------------------------------------------------------
 static Result rtype(Cast c) {
  switch(c) {
+  case Cast::seqnest:
   case Cast::sequential: return Result::undefined;  // need to look at children for result type
   case Cast::moduledict:
   case Cast::modulelist:
@@ -217,6 +218,7 @@ static bool container(Cast c) {
   case Cast::modulelist:
   case Cast::parmdict:
   case Cast::fork:
+  case Cast::nbeats:
   case Cast::recur:
   case Cast::base:
    return true;
@@ -232,6 +234,7 @@ static bool container(const Module& m) {
  else if(m.as<nn::ModuleList>())    return true;
  else if(m.as<nn::ParameterDict>()) return true;
  else if(m.as<Fork>())              return true;
+ else if(m.as<NBeats>())            return true;
  else if(m.as<Recur>())             return true;
  else if(m.as<BaseModule>())        return true;
  else                               return false;
@@ -358,6 +361,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
   case Cast::maxpool3d:       return m.as<nn::MaxPool3d>()->forward(x);
 //case Cast::normalize:       return m.as<nn::normalize>()->forward(x);
+  case Cast::nbeats:          return m.as<NBeats>()->forward(x);
   case Cast::onehot:          return m.as<OneHot>()->forward(x);
   case Cast::pad:             return m.as<Pad>()->forward(x);
   case Cast::pad1d:           return m.as<nn::ConstantPad1d>()->forward(x);
@@ -2948,6 +2952,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::moduledict:  noarg(c,x,i); return nn::ModuleDict().ptr();
   case Cast::modulelist:  noarg(c,x,i); return nn::ModuleList().ptr();
   case Cast::fork:        noarg(c,x,i); return Fork().ptr();
+  case Cast::nbeats:      noarg(c,x,i); return NBeats().ptr();
   case Cast::base:        noarg(c,x,i); return BaseModule().ptr();
   case Cast::parmdict:    return parmdict(x,i); // dictionary can contain parms as options
 
@@ -3161,6 +3166,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
   case Cast::maxpool3d:       return ANY(nn::MaxPool3d, m);
   case Cast::mul:             return ANY(Mul, m);
+  case Cast::nbeats:          return ANY(NBeats, m);
   case Cast::onehot:          return ANY(OneHot, m);
   case Cast::pad:             return ANY(Pad, m);
   case Cast::pad1d:           return ANY(nn::ConstantPad1d, m);
@@ -3228,6 +3234,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::moduledict:
   case Cast::modulelist:
   case Cast::fork:
+  case Cast::nbeats:
   case Cast::base:
   case Cast::gruout:          //take output tensor (from tuple of rnn output)
   case Cast::lstmout:
@@ -3422,6 +3429,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  } else if(auto *m=x->as<SeqNest>())        { addany(m,s,y);
  } else if(auto *m=x->as<SeqJoin>())        { addseq(m,s,y);
  } else if(auto *m=x->as<Fork>())           { addseq(m,s,y);
+ } else if(auto *m=x->as<NBeats>())         { m->push_back(y);
  } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleDict>()) {
@@ -3823,6 +3831,7 @@ K modulehelp(Cast c) {
   case Cast::moduledict:      return KDICT;
   case Cast::modulelist:      return KDICT;
   case Cast::mul:             return KDICT;
+  case Cast::nbeats:          return KDICT;
   case Cast::normalize:       return normalize(true,fnn::NormalizeFuncOptions());
   case Cast::onehot:          return onehot(true,OneHotOptions(10));
   case Cast::pad:             return pad(true,fnn::PadFuncOptions({1, 2, 2, 1, 1, 2}));
@@ -3978,7 +3987,7 @@ LSTMCell
 
 /* adding a new module
 	- add to knn.h if not defined in pytorch
-	- add Cast enumeration and entry in Env.module, man need to add to Setting's
+	- add Cast enumeration and entry in Env.module, may need to add to Setting's
         - if container, need to amend container functions
           also, need to modify addmodule to handle particular case..
         - if forward() result not a tensor, need to define result type and handle in forward calcs

@@ -166,7 +166,7 @@ enum class Cast:short {
  hardshrink,     hardtanh,        identity,        instancenorm1d,  instancenorm2d,
  instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
  localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
- lstm, lstmout,  maxpool1d,       maxpool2d,       maxpool3d,       mul,
+ lstm, lstmout,  maxpool1d,       maxpool2d,       maxpool3d,       mul, nbeats,
  normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
  prelu,          recur,           reflect1d,       reflect2d,       relu,            relu6,
  replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout,
@@ -711,7 +711,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,113> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,114> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -782,6 +782,7 @@ typedef struct {
   std::make_tuple(cs("moduledict"),       Cast::moduledict,      typeid(torch::nn::ModuleDictImpl).hash_code(),          "torch.nn.ModuleDict"),
   std::make_tuple(cs("modulelist"),       Cast::modulelist,      typeid(torch::nn::ModuleListImpl).hash_code(),          "torch.nn.ModuleList"),
   std::make_tuple(cs("mul"),              Cast::mul,             typeid(MulImpl).hash_code(),                            "torch.mul"),
+  std::make_tuple(cs("nbeats"),           Cast::nbeats,          typeid(NBeatsImpl).hash_code(),                         ""),
   std::make_tuple(cs("normalize"),        Cast::normalize,       typeid(torch::nn::functional::normalize).hash_code(),   "torch.nn.functional.normalize"),
   std::make_tuple(cs("onehot"),           Cast::onehot,          typeid(OneHotImpl).hash_code(),                         "torch.nn.functional.one_hot"),
   std::make_tuple(cs("pad"),              Cast::pad,             typeid(PadImpl).hash_code(),                            "torch.nn.functional.pad"),

@@ -27,33 +27,21 @@ struct TORCH_API TrainOptions {
  //TORCH_ARG(bool,    x2);
 };
 
-void atest1(const Moduleptr& m) {
- std::cerr << *m << "\n";
- // fails: AnyModule a(m);
-}
-
 KAPI atest(K x) {
  KTRY
-  nn::Linear l(1,2);
-  AnyModule a(l);
-  AnyModule b(l.ptr());
-  atest1(a.ptr());
+  Fork f;
+  f->push_back(nn::AnyModule(nn::Identity()));
+  f->push_back(nn::AnyModule(nn::Identity()));
+
+  NBeats list(
+      nn::Sequential(f),
+      nn::Linear(10,5));
+  
+  std::cerr << *list << "\n";
+  list->forward(torch::randn({64,10}));
+
   return (K)0;
  KCATCH("atest");
-}
-
-static void marg1(const Moduleptr& m) {
- //std::cerr << "forward expects at least " << m->_forward_num_required_args() << " args\n";
-}
-
-KAPI marg(K x) {
- KTRY
-  nn::Linear m(1,2);
-  nn::Sequential r(m);
-  Tensor t=torch::ones({1,2});
-  r->forward(t,t);
-  return (K)0;
- KCATCH("marg");
 }
 
 Cast mcast2(const Moduleptr& m) {

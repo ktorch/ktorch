@@ -335,6 +335,30 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
 TORCH_MODULE(Recur);
 
 // ----------------------------------------------------------------------------------
+//  nbeats - container for N-BEATS model for forecasting
+//         = a ModuleList for processing blocks (generic/seasonal/trend)
+// ----------------------------------------------------------------------------------
+class TORCH_API NBeatsImpl : public torch::nn::ModuleListImpl {
+ using ModuleListImpl::ModuleListImpl;
+ using Tensor=torch::Tensor;
+ using Tuple=std::tuple<Tensor,Tensor>;
+ public:
+
+ Tensor forward(Tensor x) {
+  Tensor y; size_t i=0;
+  for(auto& a:children()) {
+   auto *q=a->as<torch::nn::Sequential>();
+   TORCH_CHECK(q, "nbeats: unexpected ",mlabel(a)," module in block[",i,"], expecting sequential block");
+   Tensor b,f;
+   std::tie(b,f)=q->forward<Tuple>(x);
+   x=x-b; y=y.defined() ? y+f : f; i++;
+  }
+  return y;
+ }
+};
+TORCH_MODULE(NBeats);
+
+// ----------------------------------------------------------------------------------
 //  Eval - define AnyModule/Sequential for additional evaluation calcs on output
 // ----------------------------------------------------------------------------------
 class TORCH_API EvalImpl : public torch::nn::Cloneable<EvalImpl> {
