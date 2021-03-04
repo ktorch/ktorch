@@ -94,6 +94,7 @@ Cast mcast2(const Moduleptr& m) {
  } else if(m->as<nn::Hardshrink>()) {              return Cast::hardshrink;
  } else if(m->as<nn::Hardtanh>()) {                return Cast::hardtanh;
  } else if(m->as<nn::Identity>()) {                return Cast::identity;
+ } else if(m->as<Index>()) {                       return Cast::index;
  } else if(m->as<nn::InstanceNorm1d>()) {          return Cast::instancenorm1d;
  } else if(m->as<nn::InstanceNorm2d>()) {          return Cast::instancenorm2d;
  } else if(m->as<nn::InstanceNorm3d>()) {          return Cast::instancenorm3d;
@@ -133,7 +134,6 @@ Cast mcast2(const Moduleptr& m) {
  } else if(m->as<nn::RNN>()) {                     return Cast::rnn;
  } else if(m->as<RNNOutput>()) {                   return Cast::rnnout;
  } else if(m->as<nn::RReLU>()) {                   return Cast::rrelu;
- } else if(m->as<Select>()) {                      return Cast::select;
  } else if(m->as<nn::SELU>()) {                    return Cast::selu;
  } else if(m->as<SeqJoin>()) {                     return Cast::seqjoin;
  } else if(m->as<SeqNest>()) {                     return Cast::seqnest;

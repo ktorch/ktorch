@@ -121,7 +121,7 @@ struct TORCH_API CatOptions {
 
 class TORCH_API CatImpl : public torch::nn::Cloneable<CatImpl> {
  public:
- CatImpl(const CatOptions& o) : options(o) {}
+ CatImpl(const CatOptions& o) : options(o) {reset();}
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "Cat(dim=" << options.dim() << ")";}
  torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y) {
@@ -142,7 +142,7 @@ struct TORCH_API OneHotOptions {
 
 class TORCH_API OneHotImpl : public torch::nn::Cloneable<OneHotImpl> {
  public:
- OneHotImpl(const OneHotOptions& o) : options(o) {}
+ OneHotImpl(const OneHotOptions& o) : options(o) {reset();}
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "OneHot(num_classes=" << options.num_classes() << ")";}
  torch::Tensor forward(const torch::Tensor& x) {
@@ -152,26 +152,35 @@ class TORCH_API OneHotImpl : public torch::nn::Cloneable<OneHotImpl> {
 };
 TORCH_MODULE(OneHot);
 
-// ----------------------------------------------------------------------------------------------------
-// select - add convenience module for select(dim,index)
-// ----------------------------------------------------------------------------------------------------
-struct TORCH_API SelectOptions {
- SelectOptions(int64_t d,int64_t i) : dim_(d),index_(i) {}
+// ------------------------------------------------------------------------------------------
+// index - add convenience module for tensor.select(dim,ind) or index_select(tensor,dim,ind)
+// ------------------------------------------------------------------------------------------
+struct TORCH_API IndexOptions {
+ IndexOptions(int64_t d,int64_t i) : dim_(d),ind_(torch::full({},torch::Scalar(i))) {}
+ IndexOptions(int64_t d,torch::Tensor i) : dim_(d),ind_(i) {}
  TORCH_ARG(int64_t, dim);
- TORCH_ARG(int64_t, index);
+ TORCH_ARG(torch::Tensor, ind);
 };
 
-class TORCH_API SelectImpl : public torch::nn::Cloneable<SelectImpl> {
+class TORCH_API IndexImpl : public torch::nn::Cloneable<IndexImpl> {
  public:
- SelectImpl(const SelectOptions& o) : options(o) {}
- void reset() override {}
- void pretty_print(std::ostream& s) const override {s << "Select(dim=" << options.dim() << ",index=" << options.index() << ")";}
- torch::Tensor forward(const torch::Tensor& x) {
-  return x.select(options.dim(),options.index());
+ IndexImpl(const IndexOptions& o) : options(o) {reset();}
+ void reset() override {
+  TORCH_CHECK(options.ind().dtype() == torch::kLong, "select: long(s) expected for indices, ",options.ind().dtype(),"(s) supplied");
+  TORCH_CHECK(options.ind().dim()<2, "select: single index or list expected, ",options.ind().dim(),"-d tensor supplied");
+  ind=register_buffer("ind", options.ind());
  }
- SelectOptions options;
+ void pretty_print(std::ostream& s) const override {s << "Index(dim=" << options.dim() << ",ind=" << options.ind() << ")";}
+ torch::Tensor forward(const torch::Tensor& x) {
+  if(ind.dim())
+   return torch::index_select(x,options.dim(),ind);
+  else
+   return x.select(options.dim(),ind.item().toLong());
+ }
+ IndexOptions options;
+ torch::Tensor ind;
 };
-TORCH_MODULE(Select);
+TORCH_MODULE(Index);
 
 // ----------------------------------------------------------------------------------------------------
 // mul - add convenience module for multiply
@@ -272,7 +281,7 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
  using OptTuple=c10::optional<Tuple>;
  using Nested=std::tuple<Tensor,Tuple>;
  public:
- explicit RecurImpl(const RecurOptions& o) : options(o) {}
+ explicit RecurImpl(const RecurOptions& o) : options(o) {reset();}
 
  void reset() override {}
  void pretty_print(std::ostream& s) const override {s << "Recur";}
@@ -343,8 +352,9 @@ class TORCH_API NBeatsImpl : public torch::nn::ModuleListImpl {
  using Tensor=torch::Tensor;
  using Tuple=std::tuple<Tensor,Tensor>;
  public:
+ void pretty_print(std::ostream& stream) const override {stream << "NBeats";}
 
- Tensor forward(Tensor x) {
+ Tensor forward1(Tensor x) {
   Tensor y; size_t i=0;
   for(auto& a:children()) {
    auto *q=a->as<torch::nn::Sequential>();
@@ -353,6 +363,25 @@ class TORCH_API NBeatsImpl : public torch::nn::ModuleListImpl {
    std::tie(b,f)=q->forward<Tuple>(x);
    x=x-b; y=y.defined() ? y+f : f; i++;
   }
+  return y;
+ }
+
+ void blockforward(std::shared_ptr<torch::nn::Module>& m,Tensor& x,Tensor& y) {
+  if(auto *a=m->as<torch::nn::Sequential>()) {
+   Tensor b,f; std::tie(b,f)=a->forward<Tuple>(x);
+   x=x-b; y=y.defined() ? y+f : f;
+  } else if(auto *a=m->as<torch::nn::ModuleList>()) {
+   for(auto& q:a->children())
+    blockforward(q,x,y);
+  } else {
+   TORCH_CHECK(false,"nbeats: not a sequential or list module");
+  }
+ }
+  
+ Tensor forward(Tensor x) {
+  Tensor y; size_t i=0;
+  for(auto& m:children())
+   blockforward(m,x,y), i++;
   return y;
  }
 };

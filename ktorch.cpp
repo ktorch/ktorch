@@ -1680,6 +1680,20 @@ KAPI kclass(K x) {
  KCATCH("class");
 }
 
+KAPI str(K x) {
+ KTRY
+  Ktag *g=xtag(x); std::string s;
+  TORCH_CHECK(g, "str: need allocated torch object, e.g. tensor, module, given ",kname(x));
+  switch(g->a) {
+   case Class::tensor:    s=c10::str(((Kten*)g)->t); break;
+   case Class::loss:
+   case Class::module:    s=c10::str(*((Kmodule*)g)->m); break;
+   default: TORCH_ERROR("str: not implemented for ",mapclass(g->a));
+  }
+  return kp(const_cast<S>(s.c_str()));
+ KCATCH("class");
+}
+
 KAPI     device(K x) {return xempty(x) ? defaultdevice() : attr(x, -KS, Attr::device);}
 KAPI      dtype(K x) {return attr(x, -KS, Attr::dtype);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
@@ -1846,6 +1860,7 @@ KAPI fns(K x){
  fn(x, "pinned",      KFN(pinned),      1);
  fn(x, "size",        KFN(size),        1);
  fn(x, "stride",      KFN(stride),      1);
+ fn(x, "str",         KFN(str),         1);
  fn(x, "help",        KFN(help),        1);
 
  tensorfn(x);

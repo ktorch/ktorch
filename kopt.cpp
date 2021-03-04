@@ -1031,6 +1031,7 @@ static K lrget(const std::vector<ParamGroup>& v,Cast c) {
   switch(c) {
    case Cast::adagrad: r=static_cast<const AdagradOptions&>(g.options()).lr(); break;
    case Cast::adam:    r=static_cast<const    AdamOptions&>(g.options()).lr(); break;
+   case Cast::adamw:   r=static_cast<const   AdamWOptions&>(g.options()).lr(); break;
    case Cast::lbfgs:   r=static_cast<const   LBFGSOptions&>(g.options()).lr(); break;
    case Cast::rmsprop: r=static_cast<const RMSpropOptions&>(g.options()).lr(); break;
    case Cast::sgd:     r=static_cast<const     SGDOptions&>(g.options()).lr(); break;
