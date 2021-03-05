@@ -342,6 +342,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::hardshrink:      return m.as<nn::Hardshrink>()->forward(x);
   case Cast::hardtanh:        return m.as<nn::Hardtanh>()->forward(x);
   case Cast::identity:        return m.as<nn::Identity>()->forward(x);
+  case Cast::index:           return m.as<Index>()->forward(x);
   case Cast::instancenorm1d:  return m.as<nn::InstanceNorm1d>()->forward(x);
   case Cast::instancenorm2d:  return m.as<nn::InstanceNorm2d>()->forward(x);
   case Cast::instancenorm3d:  return m.as<nn::InstanceNorm3d>()->forward(x);
