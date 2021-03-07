@@ -15,25 +15,25 @@ namespace fnn=torch::nn::functional;
 K kloss(Cast c,const Moduleptr& m) {return kmodule(c,m,Class::loss);}
 
 static Cast lmap(S s) {
- for(auto&m:env().loss)
+ for(const auto& m:env().loss)
   if(std::get<0>(m)==s) return std::get<1>(m);
  TORCH_ERROR("unrecognized loss function: ",s);
 }
 
 static S lmap(Cast c) {
- for(auto&m:env().loss)
+ for(const auto& m:env().loss)
   if(std::get<1>(m)==c) return std::get<0>(m);
  TORCH_ERROR("unrecognized loss function: ",(I)c);
 }
 
 static S lset(Setting s) {
- for(auto&m:env().lset)
+ for(const auto& m:env().lset)
   if(std::get<1>(m)==s) return std::get<0>(m);
  TORCH_ERROR("unrecognized loss setting: ",(I)s);
 }
 
 static Setting lset(S s) {
- for(auto&m:env().lset)
+ for(const auto& m:env().lset)
   if(std::get<0>(m)==s) return std::get<1>(m);
  TORCH_ERROR("unrecognized loss setting: ",s);
 }
@@ -756,7 +756,7 @@ K losshelp(Cast c) {
    const auto& e=env().loss; J i=0,n=e.size();
    K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
    kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
-   for(auto& a:e) {
+   for(const auto& a:e) {
     kS(s)[i]=std::get<0>(a);
     kK(d)[i]=kp((S)std::get<2>(a).c_str());
     kK(o)[i]=losshelp(std::get<1>(a)); ++i;

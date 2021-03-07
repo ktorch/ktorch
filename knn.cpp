@@ -50,7 +50,7 @@ static S msym(Cast c) {
 }
 
 static Cast msym(S s) {
- for(auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
+ for(const auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  TORCH_ERROR("unrecognized module: ",s);
 }
 
@@ -79,7 +79,7 @@ static S mset(Setting x) {
 
 static Setting mset(S x,Cast c=Cast::undefined);
 static Setting mset(S x,Cast c) {
- for(auto& m:env().mset) if(x == std::get<0>(m)) return std::get<1>(m);
+ for(const auto& m:env().mset) if(x == std::get<0>(m)) return std::get<1>(m);
  if(c == Cast::undefined)
   TORCH_ERROR("unrecognized option: `",x);
  else
@@ -258,11 +258,11 @@ static Moduleptr parmdict(K x,J i) {
 // mfirst - return first module put on stack (pare down stack, signal error if given empty stack)
 // mresult - if existing module, update result type & return null, else return new module structure
 // -------------------------------------------------------------------------------------------------
-static void mstack(size_t d,Moduleptr& m,Modules& q) {
+static void mstack(size_t d,const Moduleptr& m,Modules& q) {
  while(q.size()>d) q.pop();
  if(container(m)) {
   q.push(m);
-  for(auto& i:m->children())
+  for(const auto& i:m->children())
    mstack(d+1,i,q);
  }
 }
@@ -531,6 +531,7 @@ K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Te
    TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
   case Result::undefined:
    TORCH_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
+  default: TORCH_ERROR("forward: unrecognized result enumeration(",(I)r,") for ",mlabel(m));
  }
 }
 
@@ -658,7 +659,7 @@ static Tensor longtensor(const Pairs& p,Cast c) {
 static DoubleVector mdoubles(K x,J i,Cast c,Setting s) {
  J n; F *f; IntArrayRef a; DoubleVector v;
  if(xsize(x,i,a)) {
-  for(auto j:a) v.push_back(j);
+  for(const auto j:a) v.push_back(j);
  } else if(xdouble(x,i,n,f)) {
   v=DoubleArrayRef(f,n).vec();
  } else {
@@ -671,7 +672,7 @@ static DoubleVector mdoubles(const Pairs& p,Cast c) {
  DoubleVector v;
  if(p.t==-KJ || p.t==KJ) {
   IntArrayRef a; psize(p,a);
-  for(auto j:a) v.push_back(j);
+  for(const auto j:a) v.push_back(j);
  } else if(p.t==-KF || p.t==KF) {
   DoubleArrayRef a; pdoubles(p,a); v=a.vec();
  } else {
@@ -1717,8 +1718,8 @@ template<size_t D> static void adapt(ExpandingArray<D>& a,const Pairs& p,Cast c)
 template<size_t D> static void adapt(Exoptional<D>& a,K x,J i,Cast c)        {a=exoptional<D>(x,i,c,Setting::size);}
 template<size_t D> static void adapt(Exoptional<D>& a,const Pairs& p,Cast c) {a=exoptional<D>(p,c);}
 
-template<size_t D> static bool adapt(ExpandingArray<D>& a) {for(auto &v:*a) if(v != nj) return true; return false;}
-template<size_t D> static bool adapt(Exoptional<D>& a)     {for(auto &v:*a) if(v)       return true; return false;}
+template<size_t D> static bool adapt(ExpandingArray<D>& a) {for(const auto &v:*a) if(v != nj) return true; return false;}
+template<size_t D> static bool adapt(Exoptional<D>& a)     {for(const auto &v:*a) if(v)       return true; return false;}
 
 template<size_t D,typename T> static T adapt(K x,J i,Cast c) {
  T o(0); bool sz=false; Pairs p; J n=xargc(x,i,p);
@@ -3513,7 +3514,7 @@ static bool mcompare(Cast c,const Module& m1,const Module& m2) {
 static void mfind(Cast c,J j,S s,Moduleptr& p,K x,K y,K z) {
  TORCH_CHECK(s, "attempting to find ",msym(c)," layer in ",mlabel(p),", but no name given");
  J i=0; bool b=false; 
- for(auto& a:p->named_modules(std::string(),false)) {
+ for(const auto& a:p->named_modules(std::string(),false)) {
   if(i==j) {
    TORCH_CHECK(msuffix(a.key(),s),"child module mismatch: ",a.key()," does not end with expected suffix '",s,"'");
    auto& m=*a.value();
@@ -3534,10 +3535,10 @@ static void mfind(Cast c,J j,S s,Moduleptr& p,K x,K y,K z) {
 // mpushtable - used when full table format is used to define modules (w'extra submodule rows)
 // --------------------------------------------------------------------------------------------
 static void mdepth(Cast c,J d,Modules& q) {
- J n=q.size(); // convert to signed to be able to compare with depth d
- TORCH_CHECK(d >=(n ? 1 : 0), msym(c), ": depth ",d," below min depth of ",n ? 1 : 0);
- TORCH_CHECK(d <= n,          msym(c), ": depth ",d," above max depth of ",n);
- while(q.size()>d) q.pop();
+ auto n=q.size(); decltype(n) dn=d;  // convert depth to unsigned to be able to compare with stack size
+ TORCH_CHECK(dn >=(n ? 1 : 0), msym(c), ": depth ",dn," below min depth of ",n ? 1 : 0);
+ TORCH_CHECK(dn <= n,          msym(c), ": depth ",dn," above max depth of ",n);
+ while(q.size()>dn) q.pop();
 }
 
 static Moduleptr mparent(const Modules& q) {
@@ -3659,7 +3660,7 @@ static void mget(bool a,bool b,int64_t d,const char* s,bool t,const Module& m,K 
   if(x->n == 6)
    jk(&k[4], kget(m.named_parameters(false))),
    jk(&k[5], kget(m.named_buffers(false)));
-  for(auto& i:m.named_children())
+  for(const auto& i:m.named_children())
    mget(a,b,d+1,i.key().c_str(),t,*i.value(),x);
  } else {
   TORCH_CHECK(!m.children().size(), msym(c), ": unexpected child module(s)");
@@ -3897,7 +3898,7 @@ K modulehelp(Cast c) {
    const auto& e=env().module; J i=0,n=e.size();
    K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
    kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
-   for(auto& a:e) {
+   for(const auto& a:e) {
     kS(s)[i]=std::get<0>(a);
     kK(d)[i]=kp((S)std::get<3>(a).c_str());
     kK(o)[i]=modulehelp(std::get<1>(a)); ++i;

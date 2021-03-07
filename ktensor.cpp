@@ -806,7 +806,7 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
 template<typename V> static K vattr(const V &v,Ktype k,Attr a) {
  size_t i=0; K x=ktn(k<0 ? abs(k) : 0, v.size());
  try {
-  for(auto&t:v) {
+  for(const auto& t:v) {
    switch(k) {
     case -KJ: kJ(x)[i]=tensorlong(t,a); break;
     case  KJ: kK(x)[i]=tensorsize(t,a); break;
@@ -830,7 +830,7 @@ K vectorattr(const TensorVector &v,Ktype k,Attr a) {
 K dictattr(const TensorDict& d,Ktype k,Attr a) {
  K y=vattr(d.values(),k,a);
  J i=0; K x=ktn(KS,d.size());
- for(auto& s:d.keys()) kS(x)[i++]=cs(s.c_str());
+ for(const auto& s:d.keys()) kS(x)[i++]=cs(s.c_str());
  return xD(x,y);
 }
 
@@ -925,7 +925,7 @@ static Tensor perm(const Tensor& t,int64_t d) {
 
 static void vcheck(const TensorVector& v,int64_t d) {
  int64_t i=0,n; Device c=torch::kCPU;
- for(auto& t:v) {
+ for(const auto& t:v) {
   if(!i)
    n=t.size(d),c=t.device();
   else if(n != t.size(d))
@@ -943,7 +943,7 @@ void shuffle_(Tensor &t,int64_t d) {t=shuffle(t,d);}
 
 TensorVector shuffle(const TensorVector& v,int64_t d) {
  auto p=vperm(v,d); TensorVector r;
- for(auto& t:v) r.emplace_back(t.index_select(d,p));
+ for(const auto& t:v) r.emplace_back(t.index_select(d,p));
  return r;
 }
  
@@ -1052,7 +1052,7 @@ KAPI narrow(K x) {
     return (K)0;
    } else {
     TensorVector r;
-    for(auto &t:*v) r.emplace_back(t.narrow(d,i,w));
+    for(const auto &t:*v) r.emplace_back(t.narrow(d,i,w));
     return kvec(r);
    }
   } else if(auto *t=xten(x,0)) {
@@ -1161,7 +1161,7 @@ int64_t maxsize(const Tensor& t,int64_t d) {
 
 int64_t maxsize(const TensorVector& v,int64_t d) {
  int64_t i=0,m=-1;
- for(auto&t:v) {
+ for(const auto&t:v) {
   if(i) {
    auto n=maxsize(t,d);
    TORCH_CHECK(m==n, "tensor[",i,"] size=",n,", but previous tensor(s) have size=",m," for dim ",d);

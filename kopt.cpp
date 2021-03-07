@@ -40,7 +40,7 @@ using SGDParamState     = torch::optim::SGDParamState;
 K kopt(Cast x,const Optptr& y,const Moduleptr& z) {return kptr(new Kopt(x,y,z));}
 
 static Cast omap(S s) {
- for(auto& m:env().opt)
+ for(const auto& m:env().opt)
   if(s==std::get<0>(m)) return std::get<1>(m);
  TORCH_ERROR("unrecognized optimizer: ",s);
 }
@@ -52,7 +52,7 @@ static S omap(Cast c) {
 }
 
 static Setting oset(S s) {
- for(auto& m:env().oset)
+ for(const auto& m:env().oset)
   if(s==std::get<0>(m)) return std::get<1>(m);
  TORCH_ERROR("unrecognized optimizer setting: ",s);
 }
@@ -543,8 +543,8 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
  J g=0,i=0,n=osize(o);
  K pt=ktn(KJ,n),gp=ktn(KJ,n),md=ktn(KS,n),nm=ktn(KS,n),sz=ktn(0,n),bf=nullptr; if(b) bf=ktn(0,n);
  const auto& s=o.state();
- for(auto& pg:o.param_groups()) {
-  for(auto& p:pg.params()) {
+ for(const auto& pg:o.param_groups()) {
+  for(const auto& p:pg.params()) {
     auto *t=p.unsafeGetTensorImpl();
     kJ(gp)[i]=g;
     kJ(pt)[i]=(intptr_t)t;
@@ -595,7 +595,7 @@ static nn::ParameterDictImpl* dictfind(Moduleptr& m) {
  nn::ParameterDictImpl *p=nullptr;
  if((p=m->as<nn::ParameterDict>())) {           // module is a parameter dictionary
  } else if(auto *d=m->as<nn::ModuleDict>()) {   // search module dictionary children
-   for(auto& c:d->children())
+   for(const auto& c:d->children())
     if((p=c->as<nn::ParameterDict>())) break;
  }
  return p;
@@ -1026,7 +1026,7 @@ KAPI kstep(K x) {
 // ---------------------------------------------------------------------------------------
 static K lrget(const std::vector<ParamGroup>& v,Cast c) {
  J i=0; F r; K x=ktn(KF,v.size());
- for(auto& g:v) {
+ for(const auto& g:v) {
   TORCH_CHECK(g.has_options(), "parameter group options not defined");
   switch(c) {
    case Cast::adagrad: r=static_cast<const AdagradOptions&>(g.options()).lr(); break;
@@ -1103,7 +1103,7 @@ K opthelp(Cast c) {
    const auto& e=env().opt; J i=0,n=e.size();
    K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
    kS(k)[0]=cs("module"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
-   for(auto& a:e) {
+   for(const auto& a:e) {
     kS(s)[i]=std::get<0>(a);
     kK(d)[i]=kp((S)std::get<2>(a).c_str());
     kK(o)[i]=opthelp(std::get<1>(a)); ++i;

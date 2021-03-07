@@ -2,6 +2,14 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI cudatest(K x) {
+ auto t=torch::ones({2,1}).cuda();
+ auto m=torch::nn::Linear(1,2);
+ m->to(torch::kCUDA);
+ auto r=m->forward(t);
+ return (K)0;
+}
+
 enum class Return:char {
  k,tensor,vector,dict
 };
@@ -195,7 +203,7 @@ KAPI ctest(K x,K y,K z) {
  KTRY
   Kmodule *k=xmodule(z); const Module& m=*k->m;
   TORCH_CHECK(k && x->t==-KJ && y->t==-KJ,"unrecognized arg(s)");
-  J n=x->j,b=y->j; bool c;
+  J n=x->j,b=y->j; bool c=false;
   if(b) {
    std::cerr << "using as() on " << mlabel(m) << "\n";
    for(J i=0; i<n; ++i) {
@@ -1115,7 +1123,7 @@ KAPI hashtest(K x) {
  Ptrs.insert(20);
 
  std::cerr << "size: " << Ptrs.size() << "\n";
- for(auto j:Ptrs)
+ for(const auto j:Ptrs)
   std::cerr << j << "\n";
 
  //std::cerr << " find: " << Ptrs.find(20) << "\n";
@@ -1185,7 +1193,6 @@ KAPI namecheck(K x) {
       s->push_back("", torch::nn::Linear(3, 4)),
       "Submodule name must not be empty");
   std::cout << "size after name errors: " << s->size() << "\n";
-  //for(auto&c:s->named_children()) n++;
   std::cout << "size of modules: "        << s->modules(false).size() << "\n";
   std::cout << "size of named children: " << s->named_children().size() << "\n";
 

@@ -204,7 +204,7 @@ static Tensor evalfwd(Cast c,Module& m,Tensor& x,int64_t w) {
 //  metrics - handle multiple metrics, return scalar/list/tensor or k list of metrics
 // --------------------------------------------------------------------------------------------
 static Metric metric(S s) {
- for(auto& m:env().metric) 
+ for(const auto& m:env().metric) 
   if(std::get<0>(m)==s) return std::get<1>(m);
  TORCH_ERROR("unrecognized metric: ",s);
 }

@@ -491,6 +491,8 @@ TORCH_MODULE(BaseModule);
 // ----------------------------------------------------------------------
 // ModuleDict - defined here in antcipation of release in 1.7.1 or 1.8
 // ----------------------------------------------------------------------
+// 1.8 PATCH
+/*
 namespace torch {
 namespace nn {
 
@@ -588,3 +590,4 @@ TORCH_MODULE(ModuleDict);
 
 } // namespace nn
 } // namespace torch
+*/

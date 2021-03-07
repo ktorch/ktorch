@@ -848,6 +848,18 @@ KAPI Blackman(K x) {return kwindow(x, 1, "blackman");}
 KAPI     Hann(K x) {return kwindow(x, 2, "hann");}
 KAPI  Hamming(K x) {return kwindow(x, 3, "hamming");}
 
+/*
+c10::optional<std::string> fftnorm(K x) {
+ static std::array<S> s={cs("forward"),cs("backward"),cs("ortho")};
+ if(!x->t && x->n>1 && kK(x)[x->n-1]->t == -KS) {
+  auto *a=kK(x)[x->n-1]->s;
+  for(const auto& c=
+ } else {
+  return c10::optnull;
+ }
+}
+*/
+
 // ---------------------------------------------------------------------------------
 // fft - complex-to-complex discrete Fourier transform
 // ifft - complex-to-complex inverse discrete Fourier transform
@@ -865,11 +877,10 @@ static K kfft(K x,I m,const char* e) {
     (n==5 && xbool(x,2,b1) && xbool(x,3,b2) && xsize(x,4,s) && m>2))) {
    if(!(p=xten(x,0,t))) t=kput(x,0);
    switch(m) {
-    case 0: r=torch::fft(t,d,b1); break;
- // case 0: r=   at::fft(t,d,b1); break;  // PATCH for version 1.7 & new torch::fft namespace
-    case 1: r=torch::ifft(t,d,b1); break;
-    case 2: r=torch::rfft(t,d,b1,b2); break;
-    case 3: r=torch::irfft(t,d,b1,b2,s); break;
+    case 0: r=torch::fft::fft(t,d,b1); break;
+    case 1: r=torch::fft::ifft(t,d,b1); break;
+    // PATCH 1.8 case 2: r=torch::fft::rfft(t,d,b1,b2); break;
+    // PATCH 1.8 case 3: r=torch::fft::irfft(t,d,b1,b2,s); break;
     default: TORCH_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
    }
    return kresult(p,r);
@@ -1253,8 +1264,12 @@ KAPI Lu_unpack(K x) {
    for(i=0;i<n;++i) {
     for(j=0;j<m;++j) vp[j]=j;
     for(j=0;j<m;++j) {auto k=*bp++; auto v=vp[j]; vp[j]=vp[k]; vp[k]=v;}
+/*
+    1.8 PATCH
     if(d) v.index_put_(vi,v.index(vi).index_select(-1,vj.to(v.device())));
     else v=index_select(v,-1,vj.to(v.device()));
+*/
+    v=index_select(v,-1,vj.to(v.device()));
     for(j=d-1;j>-1;--j) {if(vi[j].item().toLong()==v.size(j)-1) {vi[j].zero_();} else {vi[j]+=1; break;}}
    }
    kK(r)[0]=p ? kten(v) : kget(v);
@@ -1573,7 +1588,7 @@ KAPI Symeig(K x) {
 // probablity distribution methods: given tensor, fill w'random vars from chosen distribution
 // ------------------------------------------------------------------------------------------
 static S prob(Prob p) {
- for(auto& m:env().prob) if(std::get<1>(m)==p) return std::get<0>(m);
+ for(const auto& m:env().prob) if(std::get<1>(m)==p) return std::get<0>(m);
  TORCH_ERROR("unrecognized probability distribution: ",(I)p);
 }
 

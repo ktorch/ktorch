@@ -83,7 +83,7 @@ J xlen(K x) {
 J xlen(K x,J i) {return xind(x,i) ? xlen(kK(x)[i]) : -1;}
 
 S mapclass(Class a) {
- for(auto& m:env().kclass)
+ for(const auto& m:env().kclass)
   if(a==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized class: ", (I)a);
 }
@@ -160,7 +160,7 @@ J ksizeof(Ktype k) {
 }
 
 Ktype maptype(TypeMeta s) {
- for(auto &m:env().dtype)
+ for(const auto& m:env().dtype)
   if(s==std::get<1>(m)) return std::get<2>(m);
  TORCH_ERROR("no k data type found for torch type: ",s);
  return 0;
@@ -168,19 +168,19 @@ Ktype maptype(TypeMeta s) {
 
 TypeMeta maptype(Ktype k) {
  Ktype t=(k<0) ? -k : k;
- for(auto &m:env().ktype)
+ for(const auto &m:env().ktype)
   if(t==std::get<0>(m)) return std::get<1>(m);
  TORCH_ERROR("no torch type found for k: ",kname(k));
 }
 
 S mapattr(Attr a) {
- for(auto& m:env().attr)
+ for(const auto& m:env().attr)
   if(a==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized attribute: ", (I)a);
 }
 
 Enum emap(S s) {
- for(const auto &m:env().enums)
+ for(const auto& m:env().enums)
   if(std::get<0>(m)==s) return std::get<1>(m);
  return Enum::undefined;
 }
@@ -193,7 +193,7 @@ Enum emap(S s) {
 // statedict - given enumeration, return k dictionary stored at matching key/col else null
 // ------------------------------------------------------------------------------------------
 S statekey(State e) {
- for(auto &m:env().state)if(e==std::get<1>(m)) return std::get<0>(m);
+ for(const auto& m:env().state)if(e==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized state attribute: ",(I)e);
 }
 
@@ -379,7 +379,7 @@ bool xsyms(K x,S &s) {
 
 bool xdev(K x,Device &d) {
  if(x->t==-KS) {
-  for(auto &m:env().device)
+  for(const auto& m:env().device)
    if(x->s==std::get<0>(m)) return d=std::get<1>(m),true;
  }
  return false;
@@ -640,12 +640,12 @@ bool xbool(K x,bool &b) {return (x->t == -KB) ? b=x->g,true : false;}
 bool xbool(K x,J i,bool &b) {return xind(x,i) && xbool(kK(x)[i],b);}
 
 TypeMeta mtype(S s) {
-  for(auto &m:env().dtype) if(s==std::get<0>(m)) return std::get<1>(m);
+  for(const auto& m:env().dtype) if(s==std::get<0>(m)) return std::get<1>(m);
   TORCH_ERROR("unrecognized data type: ",(s==nullsym() ? "(null)" : s));
 }
 
 S mtype(TypeMeta t) {
-  for(auto &m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
+  for(const auto& m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
   TORCH_ERROR("unrecognized data type: ",t);
 }
 
@@ -671,13 +671,13 @@ bool xtype(K x,J i,c10::optional<Dtype> &t) {return xind(x,i) && xtype(kK(x)[i],
 
 bool xopt(S s,TensorOptions &o) {
  auto &e=env();
- for(auto &m:e.device)
+ for(const auto& m:e.device)
   if(s == std::get<0>(m)) return o=o.device(std::get<1>(m)), true;
- for(auto &m:e.dtype)
+ for(const auto& m:e.dtype)
   if(s == std::get<0>(m)) return o=o.dtype(std::get<1>(m)), true;
- for(auto &m:e.layout)
+ for(const auto& m:e.layout)
   if(s == std::get<0>(m)) return o=o.layout(std::get<1>(m)), true;
- for(auto &m:e.gradient)
+ for(const auto& m:e.gradient)
   if(s == std::get<0>(m)) return o=o.requires_grad(std::get<1>(m)), true;
  return false;
 }
@@ -699,9 +699,9 @@ bool xopt(K x,TensorOptions &o) {
 bool xopt(K x,J i,TensorOptions &o) { return !x->t && -1<x->n && i<x->n && xopt(kK(x)[i],o);}
 
 bool xto(S s,TensorOptions &o) {
- for(auto &m:env().device)
+ for(const auto& m:env().device)
   if(s == std::get<0>(m)) return o=o.device(std::get<1>(m)), true;
- for(auto &m:env().dtype)
+ for(const auto& m:env().dtype)
   if(s == std::get<0>(m)) return o=o.dtype(std::get<1>(m)), true;
  return false;
 }
@@ -724,7 +724,7 @@ bool xto(K x,J i,TensorOptions &o) {return xind(x,i) ? xto(kK(x)[i],o) : false;}
 
 bool xmode(K x,S &s,Tensormode &m) {
  if(x->t == -KS) {
-  for(auto &v:env().tensormode)
+  for(const auto& v:env().tensormode)
    if(x->s == std::get<0>(v)) return s=x->s,m=std::get<1>(v), true;
   TORCH_ERROR("unrecognized tensor creation mode: ",x->s);
  }
@@ -735,7 +735,7 @@ bool xmode(K x,J i,S &s,Tensormode &m) {return xind(x,i) && xmode(kK(x)[i],s,m);
 
 bool xbacksym(K x,bool& a,bool& b) {
  if(x->t == -KS) {
-  for(auto &s:env().backsym)
+  for(const auto& s:env().backsym)
    if(x->s == std::get<0>(s)) return a=std::get<1>(s),b=std::get<2>(s), true;
   TORCH_ERROR("unrecognized setting for backprop: ",x->s,", expecting one of: free,retain,create or createfree");
  }
@@ -1217,9 +1217,9 @@ static K objsize(Ktag *x) {
 J objnum(int64_t x) {return 1;}
 J objnum(double  x) {return 1;}
 J objnum(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize()) : 0;}
-J objnum(const TensorVector& v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
+J objnum(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objnum(t); return n;}
 J objnum(const c10::optional<TensorVector>& v) {return v ? objnum(*v) : 0;}
-J objnum(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objnum(t); return n;}
+J objnum(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objnum(t); return n;}
 J objnum(const Module& m) {return objnum(m.parameters()) + objnum(m.buffers());}
 static J objnum(Cast c,const Optimizer& o) {return buffersize(true,c,o);}
 static J objnum(Kopt* x) {return objnum(x->c,*x->o);}
@@ -1242,9 +1242,9 @@ J objbytes(int64_t x) {return sizeof(int64_t);}
 J objbytes(double  x) {return sizeof(double);}
 J objbytes(const Storage& s) {return s.nbytes();}
 J objbytes(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage())) : 0;}
-J objbytes(const TensorVector& v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+J objbytes(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
-J objbytes(const TensorDeque&  v) {J n=0; for(auto& t:v) n+=objbytes(t); return n;}
+J objbytes(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
 static J objbytes(Cast c,const Optimizer& o) {return buffersize(false,c,o);}
 static J objbytes(Kopt* x) {return objbytes(x->c,*x->o);}
@@ -1274,7 +1274,7 @@ KAPI kobj(K x) {
   kS(k)[4]=cs("size");     kK(v)[4]=ktn(0,n);
   kS(k)[5]=cs("elements"); kK(v)[5]=ktn(KJ,n);
   kS(k)[6]=cs("bytes");    kK(v)[6]=ktn(KJ,n);
-  for(auto j:pointer()) {
+  for(const auto j:pointer()) {
    auto *g=(Ktag*)j;
    kK(kK(v)[0])[i] = knk(1,kj(j));
    kS(kK(v)[1])[i] = mapclass(g->a);
@@ -1421,7 +1421,7 @@ KAPI cudadevices(K x) {
   return kj(env().cuda);
  } else if(xempty(x)) {
   K s=ktn(KS,0);
-  for(auto& m:env().device) if((std::get<1>(m)).is_cuda()) js(&s,std::get<0>(m));
+  for(const auto& m:env().device) if((std::get<1>(m)).is_cuda()) js(&s,std::get<0>(m));
   return s;
  } else {
   return KERR("cudadevices[] returns count of available GPUs, cudadevices() returns CUDA syms");
@@ -1434,7 +1434,7 @@ KAPI cudadevice(K x) {
   Device d(torch::kCUDA);
   auto *g = c10::impl::getDeviceGuardImpl(d.type());
   if(xempty(x)) {
-   for(auto &m:env().device)
+   for(const auto &m:env().device)
     if(g->getDevice()==std::get<1>(m)) return ks(std::get<0>(m));
    TORCH_ERROR("unable to map CUDA device: ",g->getDevice().index()," to symbol");
   } else if(xdev(x,d) && d.is_cuda() && d.has_index()) {
@@ -1447,7 +1447,7 @@ KAPI cudadevice(K x) {
 
 static K defaultdevice() {
  auto d=Device(env().cuda ? DeviceType::CUDA : DeviceType::CPU);
- for(auto& c:env().device)
+ for(const auto& c:env().device)
   if(std::get<1>(c)==d) return ks(std::get<0>(c));
  return KERR("unable to get default device");
 }
@@ -1459,22 +1459,22 @@ static K defaultdevice() {
 // optval - symbol vector/lists of option values
 // ---------------------------------------------------------------------------------------------
 S& optsym(const Device& d) {
- for(auto &m:env().device) if(d==std::get<1>(m)) return std::get<0>(m);
+ for(auto& m:env().device) if(d==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized device: ",d);
 }
 
 S& optsym(const TypeMeta& t) {
- for(auto &m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
+ for(auto& m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized data type: ",t);
 }
 
 S& optsym(const torch::Layout& l) {
- for(auto &m:env().layout) if(l==std::get<1>(m)) return std::get<0>(m);
+ for(auto& m:env().layout) if(l==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized layout: ",l);
 }
 
 S& optsym(const bool& g) {
- for(auto &m:env().gradient) if(g==std::get<1>(m)) return std::get<0>(m);
+ for(auto& m:env().gradient) if(g==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized gradient setting: ",g);
 }
 
@@ -1771,7 +1771,7 @@ static void kinit() {
 // ---------------------------------------------------------------------------------
 static K helpsym(void) {
  K x=ktn(KS,4);
- for(auto& a:env().kclass)
+ for(const auto& a:env().kclass)
   if(std::get<1>(a)==Class::tensor)         kS(x)[0]=std::get<0>(a);
   else if(std::get<1>(a)==Class::module)    kS(x)[1]=std::get<0>(a);
   else if(std::get<1>(a)==Class::loss)      kS(x)[2]=std::get<0>(a);
@@ -1780,17 +1780,17 @@ static K helpsym(void) {
 }
  
 static Class helpclass(S s) {
- for(auto& a:env().kclass)
+ for(const auto& a:env().kclass)
   if(std::get<0>(a)==s) return std::get<1>(a);
  return Class::undefined;
 }
 
 static K helpcast(S s) {
- for(auto& a:env().module)
+ for(const auto& a:env().module)
   if(std::get<0>(a)==s) return modulehelp(std::get<1>(a));
- for(auto& a:env().loss)
+ for(const auto& a:env().loss)
   if(std::get<0>(a)==s) return losshelp(std::get<1>(a));
- for(auto& a:env().opt)
+ for(const auto& a:env().opt)
   if(std::get<0>(a)==s) return opthelp(std::get<1>(a));
  TORCH_ERROR("no help found: ",s);
 }
