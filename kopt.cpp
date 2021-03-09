@@ -205,20 +205,6 @@ template<typename S>static void adamput(K x,const Device& d,const std::string& k
  o.state()[k]=std::move(s);
 }
 
-template<typename O,typename A> static Optptr adam(const TensorVector& w,const A& a,K y) {
- auto o=std::make_shared<O>(w,a);
- auto n=o->state().size();
- if(y && n) {
-/* PATCH
-  bset(n, "step_buffers",                o->parameters(), o->step_buffers,               y);
-  bset(n, "exp_average_buffers",         o->parameters(), o->exp_average_buffers,        y);
-  bset(n, "exp_average_sq_buffers",      o->parameters(), o->exp_average_sq_buffers,     y);
-  bset(n, "max_exp_average_sq_buffers",  o->parameters(), o->max_exp_average_sq_buffers, y);
-*/
- }
- return o;
-}
-
 template<typename O> static K adam(bool a,const Optimizer& o) { //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); O d; const auto& v=static_cast<const O&>(o.defaults());
  if(a || d.lr()           != v.lr())                       OPTSET(x, lr,      kf(v.lr()));

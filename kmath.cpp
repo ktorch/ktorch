@@ -848,17 +848,166 @@ KAPI Blackman(K x) {return kwindow(x, 1, "blackman");}
 KAPI     Hann(K x) {return kwindow(x, 2, "hann");}
 KAPI  Hamming(K x) {return kwindow(x, 3, "hamming");}
 
-/*
-c10::optional<std::string> fftnorm(K x) {
- static std::array<S> s={cs("forward"),cs("backward"),cs("ortho")};
- if(!x->t && x->n>1 && kK(x)[x->n-1]->t == -KS) {
-  auto *a=kK(x)[x->n-1]->s;
-  for(const auto& c=
+// -------------------------------------------------------------------------------
+// Fast Fourier Transform - utilities
+// fftnorm - check k sym for valid FFT norm string, error else
+// fftargs - return true if additional optional args given with input tensor/array
+// -------------------------------------------------------------------------------
+static c10::optional<std::string> fftnorm(K x) {
+ static std::array<S,3> s={cs("forward"),cs("backward"),cs("ortho")};
+ if(nullsym(x)) {
+  return c10::nullopt;
  } else {
-  return c10::optnull;
+  for(const auto c:s)
+   if(c == x->s) return std::string(c);
+  TORCH_ERROR("unrecognized fft norm: ",x->s);
  }
 }
-*/
+
+static bool fftnorm(K x,c10::optional<std::string>& s) {
+ bool b=!x->t && x->n>1 && kK(x)[x->n-1]->t == -KS;
+ s=b ? fftnorm(kK(x)[x->n-1]) : c10::nullopt;
+ return b;
+}
+
+static bool fftargs(K x,Tensor *& t) {       // check if arg(s) given with tensor/array
+ if((t=xten(x)))        return false;        // only arg is previously created tensor
+ else if((t=xten(x,0))) return x->n>1;       // 1st element is tensor, remaining contain arg(s)
+ else                   return xmixed(x,4);  // assume "mixed" x is form of (array;arg..)
+}
+
+using optint=c10::optional<int64_t>;
+using optstr=c10::optional<std::string>;
+using optarr=c10::optional<IntArrayRef>;
+
+// ----------------------------------------------------------------------------------------------------
+// 1-d Fast Fourier transforms
+// ----------------------------------------------------------------------------------------------------
+// fft,ifft   - 1-d fft & inverse over a single given dimension
+// rfft,irfft - 1-dimensional fft & inverse of real input with onesided Hermitian output.
+// hfft,ihfft - 1-d fft of a onesided Hermitian signal and inverse of real-valued fourier domain signal
+// ----------------------------------------------------------------------------------------------------
+using fd1 = Tensor (*)(const Tensor&, optint, int64_t, optstr);
+
+static bool fftargs(K x,const char* nm,Tensor *& t,optint& n,int64_t& d,optstr& s) {
+ if(fftargs(x,t)) {
+  TORCH_CHECK(!x->t, nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
+  J j=x->n - 1 - fftnorm(x,s);
+  for(J i=0; i<j; ++i) {
+   K y=kK(x)[i+1];
+   switch(i) {
+    case 1:
+    case 2:
+    default: TORCH_ERROR("nyi");
+   }
+  }
+  return true;
+ } else {
+  return false;
+ }
+}
+
+K ffd1(K x,fd1 f,const char* nm) {
+ KTRY
+  Tensor *t=nullptr; optint n=c10::nullopt; int64_t d=-1; optstr s=c10::nullopt;
+  bool a=fftargs(x,nm,t,n,d,s);
+  return kresult(t, f(t ? *t : (a ? kput(x,0) : kput(x)), n,d,s));
+ KCATCH(nm);
+}
+
+KAPI   fft(K x) {return ffd1(x, torch::fft::fft,   "fft");}
+KAPI  ifft(K x) {return ffd1(x, torch::fft::ifft,  "ifft");}
+KAPI  rfft(K x) {return ffd1(x, torch::fft::rfft,  "rfft");}
+KAPI irfft(K x) {return ffd1(x, torch::fft::irfft, "irfft");}
+KAPI  hfft(K x) {return ffd1(x, torch::fft::hfft,  "hfft");}
+KAPI ihfft(K x) {return ffd1(x, torch::fft::ihfft, "ihfft");}
+
+KAPI fftargs(K x) {
+ KTRY
+  auto s=fftnorm(x);
+  std::cerr << (s ? *s : "null string") << "\n";
+  return (K)0;
+ KCATCH("fft");
+}
+
+// ----------------------------------------------------------------------------------------------------
+// 2-d Fast Fourier transforms
+// ----------------------------------------------------------------------------------------------------
+// fft2,ifft2 - 2-d fft & inverse over two dimensions
+// rfft2,irfft2 - 2-d fft and inverse of real input (returns a onesided Hermitian output)
+// ----------------------------------------------------------------------------------------------------
+using fd2 = Tensor (*)(const Tensor& t, optarr, IntArrayRef, optstr);
+
+static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,IntArrayRef& d,optstr& s) {
+ if(fftargs(x,t)) {
+  TORCH_CHECK(!x->t, nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
+  J j=x->n - 1 - fftnorm(x,s);
+  for(J i=0; i<j; ++i) {
+   K y=kK(x)[i+1];
+   switch(i) {
+    case 1:
+    case 2:
+    default: TORCH_ERROR("nyi");
+   }
+  }
+  return true;
+ } else {
+  return false;
+ }
+}
+
+K ffd2(K x,fd2 f,const char* nm) {
+ KTRY
+  Tensor *t=nullptr; optarr n=c10::nullopt; IntArrayRef d={-2, -1}; optstr s=c10::nullopt;
+  bool a=fftargs(x,nm,t,n,d,s);
+  return kresult(t, f(t ? *t : (a ? kput(x,0) : kput(x)), n,d,s));
+ KCATCH(nm);
+}
+
+KAPI   fft2(K x) {return ffd2(x, torch::fft::fft2,   "fft2");}
+KAPI  ifft2(K x) {return ffd2(x, torch::fft::ifft2,  "ifft2");}
+KAPI  rfft2(K x) {return ffd2(x, torch::fft::rfft2,  "rfft2");}
+KAPI irfft2(K x) {return ffd2(x, torch::fft::irfft2, "irfft2");}
+
+// ----------------------------------------------------------------------------------------------------
+// n-dimensional Fast Fourier transforms
+// ----------------------------------------------------------------------------------------------------
+// fftn,ifftn - n-dimensional fft & inverse transform over n given dimensions
+// rfftn/irfftn - n-dimensional FFT/inverse of real input with onesided Hermitian output
+// ----------------------------------------------------------------------------------------------------
+using fdn = Tensor (*)(const Tensor& t, optarr, optarr, optstr);
+
+static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,optarr& d,optstr& s) {
+ if(fftargs(x,t)) {
+  TORCH_CHECK(!x->t, nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
+  J j=x->n - 1 - fftnorm(x,s);
+  for(J i=0; i<j; ++i) {
+   K y=kK(x)[i+1];
+   switch(i) {
+    case 1:
+    case 2:
+    default: TORCH_ERROR("nyi");
+   }
+  }
+  return true;
+ } else {
+  return false;
+ }
+}
+
+K ffdn(K x,fdn f,const char* nm) {
+ KTRY
+  Tensor *t=nullptr; optarr n=c10::nullopt, d=c10::nullopt; optstr s=c10::nullopt;
+  bool a=fftargs(x,nm,t,n,d,s);
+  return kresult(t, f(t ? *t : (a ? kput(x,0) : kput(x)), n,d,s));
+ KCATCH(nm);
+}
+
+KAPI   fftn(K x) {return ffdn(x, torch::fft::fftn,   "fftn");}
+KAPI  ifftn(K x) {return ffdn(x, torch::fft::ifftn,  "ifftn");}
+KAPI  rfftn(K x) {return ffdn(x, torch::fft::rfftn,  "rfftn");}
+KAPI irfftn(K x) {return ffdn(x, torch::fft::irfftn, "irfftn");}
+
 
 // ---------------------------------------------------------------------------------
 // fft - complex-to-complex discrete Fourier transform
