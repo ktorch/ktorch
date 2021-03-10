@@ -331,7 +331,7 @@ bool nullsym(K x) {return x->t==-KS && nullsym(x->s);}
 // xsym - if arg is k symbol, return true and set sym, else false
 // xsyms - if sym scalar or non-empty sym list, set 1st sym and return true
 // xdev  - check sym for map to list of known devices, `cpu`cuda`cuda:0`cuda:1..
-// xint64 - check for long scalar/list element and convert to int64_t
+// xint64 - check for long scalar/list element and convert to int64_t or optional int64_t
 // xlong - check for long scalar/list, set value(s) and return true else false
 // xdouble - check for scalar double from k, set value and return true, false else
 // xdict - return true if k value is a dictionary
@@ -397,6 +397,26 @@ bool xint64(K x,J i,int64_t &j) {
   return false;
 }
 //bool xint64(K x,J i,int64_t &j) {return xind(x,i) && xint64(kK(x)[i],j);}
+
+bool xint64(K x,c10::optional<int64_t> &j) {
+ int64_t n; j=c10::nullopt;
+ if(xint64(x,n)) {
+  if(n != nj) j=n;
+  return true;
+ } else {
+  return false;
+ }
+}
+
+bool xint64(K x,J i,c10::optional<int64_t> &j) {
+ int64_t n; j=c10::nullopt;
+ if(xint64(x,i,n)) {
+  if(n != nj) j=n;
+  return true;
+ } else {
+  return false;
+ }
+}
 
 bool xlong(K x,J &j) {return (x->t == -KJ) ? j=x->j,true : false;}       //check k scalar
 bool xlong(K x,J i,J &j) {return xind(x,i) && xlong(kK(x)[i],j);}        //check k list element

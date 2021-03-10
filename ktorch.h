@@ -357,6 +357,8 @@ bool xdev(K,J,Device&);
 
 bool xint64(K,int64_t&);
 bool xint64(K,J,int64_t&);
+bool xint64(K,c10::optional<int64_t>&);
+bool xint64(K,J,c10::optional<int64_t>&);
 bool xlong(K,J&);
 bool xlong(K,J,J&);
 bool xlong(K,J&,J*&);

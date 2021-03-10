@@ -896,9 +896,9 @@ static bool fftargs(K x,const char* nm,Tensor *& t,optint& n,int64_t& d,optstr& 
   for(J i=0; i<j; ++i) {
    K y=kK(x)[i+1];
    switch(i) {
-    case 1:
-    case 2:
-    default: TORCH_ERROR("nyi");
+    case 0: TORCH_CHECK(xint64(y,n), nm,": 1st optional arg is signal length, long scalar expected, given ",kname(y)); break;
+    case 1: TORCH_CHECK(xint64(y,d), nm,": 2nd optional arg is dimension, long scalar expected, given ",kname(y)); if(d==nj) d=-1; break;
+    default: TORCH_ERROR(nm,": up to 3 optional args expected, e.g. (tensor/array; length; dim; norm), but ",x->n-1," args given");
    }
   }
   return true;
@@ -922,14 +922,6 @@ KAPI irfft(K x) {return ffd1(x, torch::fft::irfft, "irfft");}
 KAPI  hfft(K x) {return ffd1(x, torch::fft::hfft,  "hfft");}
 KAPI ihfft(K x) {return ffd1(x, torch::fft::ihfft, "ihfft");}
 
-KAPI fftargs(K x) {
- KTRY
-  auto s=fftnorm(x);
-  std::cerr << (s ? *s : "null string") << "\n";
-  return (K)0;
- KCATCH("fft");
-}
-
 // ----------------------------------------------------------------------------------------------------
 // 2-d Fast Fourier transforms
 // ----------------------------------------------------------------------------------------------------
@@ -939,15 +931,22 @@ KAPI fftargs(K x) {
 using fd2 = Tensor (*)(const Tensor& t, optarr, IntArrayRef, optstr);
 
 static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,IntArrayRef& d,optstr& s) {
+ IntArrayRef a; n=c10::nullopt;
  if(fftargs(x,t)) {
   TORCH_CHECK(!x->t, nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
   J j=x->n - 1 - fftnorm(x,s);
   for(J i=0; i<j; ++i) {
    K y=kK(x)[i+1];
    switch(i) {
+    case 0:
+     TORCH_CHECK(xsize(y,a), nm,": 1st optional arg, size, expected as long(s), given ",kname(y)); 
+     if(a.size()) n=a;
+     break;
     case 1:
-    case 2:
-    default: TORCH_ERROR("nyi");
+     TORCH_CHECK(xsize(y,d), nm,": 2nd optional arg, dim, expected as long(s), given ",kname(y)); 
+     if(!d.size()) d={-2,-1};
+     break;
+    default: TORCH_ERROR(nm,": up to 3 optional args expected, e.g. (tensor/array; size; dim; norm), but ",x->n-1," args given");
    }
   }
   return true;
@@ -978,15 +977,22 @@ KAPI irfft2(K x) {return ffd2(x, torch::fft::irfft2, "irfft2");}
 using fdn = Tensor (*)(const Tensor& t, optarr, optarr, optstr);
 
 static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,optarr& d,optstr& s) {
+ IntArrayRef a; n=c10::nullopt; d=c10::nullopt;
  if(fftargs(x,t)) {
   TORCH_CHECK(!x->t, nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
   J j=x->n - 1 - fftnorm(x,s);
   for(J i=0; i<j; ++i) {
    K y=kK(x)[i+1];
    switch(i) {
+    case 0:
+     TORCH_CHECK(xsize(y,a), nm,": 1st optional arg, size, expected as long(s), given ",kname(y)); 
+     if(a.size()) n=a;
+     break;
     case 1:
-    case 2:
-    default: TORCH_ERROR("nyi");
+     TORCH_CHECK(xsize(y,a), nm,": 2nd optional arg, dim, expected as long(s), given ",kname(y)); 
+     if(a.size()) d=a;
+     break;
+    default: TORCH_ERROR(nm,": up to 3 optional args expected, e.g. (tensor/array; size; dim; norm), but ",x->n-1," args given");
    }
   }
   return true;
