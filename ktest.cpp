@@ -10,6 +10,16 @@ KAPI cudatest(K x) {
  return (K)0;
 }
 
+KAPI complex(K x) {
+ KTRY
+  auto t=torch::randn({2,5},torch::kComplexDouble);
+  std::cerr << t << "\n";
+  auto h=torch::randn({2,5},torch::kComplexHalf);
+  std::cerr << h << "\n";
+  return(K)0;
+ KCATCH("complex");
+}
+
 enum class Return:char {
  k,tensor,vector,dict
 };

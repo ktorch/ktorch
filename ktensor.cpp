@@ -90,6 +90,8 @@ static K kgets(I i,I j,Ktype k,J b,const int64_t *s,S &p) {
 K kget(const Tensor &t) {
  if(!t.defined())
   return ktn(0,0);
+ else if (t.is_complex())
+  return kget(torch::view_as_real(t));
  else if (!t.dim())      // if 0-dimensional
   return kgetscalar(t);  // return scalar
  Tensor c;

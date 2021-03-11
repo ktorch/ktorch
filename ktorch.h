@@ -624,26 +624,29 @@ typedef struct {
  std::vector<std::tuple<S,Device>> device;
 
  std::array<std::tuple<Ktype,TypeMeta>,8> ktype = {{           //k type -> torch type
-  std::make_tuple(KE, at::scalarTypeToTypeMeta(at::kFloat)),
-  std::make_tuple(KF, at::scalarTypeToTypeMeta(at::kDouble)),
-  std::make_tuple(KJ, at::scalarTypeToTypeMeta(at::kLong)),
-  std::make_tuple(KI, at::scalarTypeToTypeMeta(at::kInt)),
-  std::make_tuple(KH, at::scalarTypeToTypeMeta(at::kShort)),
-  std::make_tuple(KB, at::scalarTypeToTypeMeta(at::kBool)),
-  std::make_tuple(KG, at::scalarTypeToTypeMeta(at::kByte)),
-  std::make_tuple(KC, at::scalarTypeToTypeMeta(at::kChar))
+  std::make_tuple(KE, torch::scalarTypeToTypeMeta(torch::kFloat)),
+  std::make_tuple(KF, torch::scalarTypeToTypeMeta(torch::kDouble)),
+  std::make_tuple(KJ, torch::scalarTypeToTypeMeta(torch::kLong)),
+  std::make_tuple(KI, torch::scalarTypeToTypeMeta(torch::kInt)),
+  std::make_tuple(KH, torch::scalarTypeToTypeMeta(torch::kShort)),
+  std::make_tuple(KB, torch::scalarTypeToTypeMeta(torch::kBool)),
+  std::make_tuple(KG, torch::scalarTypeToTypeMeta(torch::kByte)),
+  std::make_tuple(KC, torch::scalarTypeToTypeMeta(torch::kChar))
  }};
 
- std::array<std::tuple<S,TypeMeta,Ktype>,9> dtype = {{       //sym -> torch type -> k type
-  std::make_tuple(cs("float"),  at::scalarTypeToTypeMeta(at::kFloat),  KE),
-  std::make_tuple(cs("double"), at::scalarTypeToTypeMeta(at::kDouble), KF),
-  std::make_tuple(cs("half"),   at::scalarTypeToTypeMeta(at::kHalf),   KE),
-  std::make_tuple(cs("bool"),   at::scalarTypeToTypeMeta(at::kBool),   KB),
-  std::make_tuple(cs("byte"),   at::scalarTypeToTypeMeta(at::kByte),   KG),
-  std::make_tuple(cs("char"),   at::scalarTypeToTypeMeta(at::kChar),   KC),
-  std::make_tuple(cs("long"),   at::scalarTypeToTypeMeta(at::kLong),   KJ),
-  std::make_tuple(cs("int"),    at::scalarTypeToTypeMeta(at::kInt),    KI),
-  std::make_tuple(cs("short"),  at::scalarTypeToTypeMeta(at::kShort),  KH)
+ std::array<std::tuple<S,TypeMeta,Ktype>,12> dtype = {{       //sym -> torch type -> k type
+  std::make_tuple(cs("float"),   torch::scalarTypeToTypeMeta(torch::kFloat),         KE),
+  std::make_tuple(cs("double"),  torch::scalarTypeToTypeMeta(torch::kDouble),        KF),
+  std::make_tuple(cs("half"),    torch::scalarTypeToTypeMeta(torch::kHalf),          KE),
+  std::make_tuple(cs("bool"),    torch::scalarTypeToTypeMeta(torch::kBool),          KB),
+  std::make_tuple(cs("byte"),    torch::scalarTypeToTypeMeta(torch::kByte),          KG),
+  std::make_tuple(cs("char"),    torch::scalarTypeToTypeMeta(torch::kChar),          KC),
+  std::make_tuple(cs("long"),    torch::scalarTypeToTypeMeta(torch::kLong),          KJ),
+  std::make_tuple(cs("int"),     torch::scalarTypeToTypeMeta(torch::kInt),           KI),
+  std::make_tuple(cs("short"),   torch::scalarTypeToTypeMeta(torch::kShort),         KH),
+  std::make_tuple(cs("chalf"),   torch::scalarTypeToTypeMeta(torch::kComplexHalf),   KH),
+  std::make_tuple(cs("cfloat"),  torch::scalarTypeToTypeMeta(torch::kComplexFloat),  KH),
+  std::make_tuple(cs("cdouble"), torch::scalarTypeToTypeMeta(torch::kComplexDouble), KH)
  }};
 
  std::array<std::tuple<S,torch::Layout>,2> layout = {{

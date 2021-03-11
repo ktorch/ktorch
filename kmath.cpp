@@ -1014,48 +1014,6 @@ KAPI  ifftn(K x) {return ffdn(x, torch::fft::ifftn,  "ifftn");}
 KAPI  rfftn(K x) {return ffdn(x, torch::fft::rfftn,  "rfftn");}
 KAPI irfftn(K x) {return ffdn(x, torch::fft::irfftn, "irfftn");}
 
-
-// ---------------------------------------------------------------------------------
-// fft - complex-to-complex discrete Fourier transform
-// ifft - complex-to-complex inverse discrete Fourier transform
-// rfft - real-to-complex discrete Fourier transform
-// irfft - complex-to-real inverse discrete Fourier transform
-// stft - short-time Fourier transform
-// ---------------------------------------------------------------------------------
-static K kfft(K x,I m,const char* e) {
- KTRY
-  bool p,b1=false,b2=true; J d,n=xlen(x); IntArrayRef s; Tensor r,t;  // b1-normalized, b2-onesided
-  if(xlong(x,1,d) &&
-    (n==2 ||
-    (n==3 && xbool(x,2,b1)) ||
-    (n==4 && xbool(x,2,b1) && xbool(x,3,b2) && m>1) ||
-    (n==5 && xbool(x,2,b1) && xbool(x,3,b2) && xsize(x,4,s) && m>2))) {
-   if(!(p=xten(x,0,t))) t=kput(x,0);
-   switch(m) {
-    case 0: r=torch::fft::fft(t,d,b1); break;
-    case 1: r=torch::fft::ifft(t,d,b1); break;
-    // PATCH 1.8 case 2: r=torch::fft::rfft(t,d,b1,b2); break;
-    // PATCH 1.8 case 3: r=torch::fft::irfft(t,d,b1,b2,s); break;
-    default: TORCH_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
-   }
-   return kresult(p,r);
-  } else {
-   switch(m) {
-    case 0:
-    case 1: TORCH_ERROR(e," expects args of (input;dim) or (input;dim;normalized)"); break;
-    case 2: TORCH_ERROR(e," expects args of (input;dim), (input;dim;normalized) or (input;dim;normalized;onesided)"); break;
-    case 3: TORCH_ERROR(e," expects args of (input;dim), (input;dim;normalized), (input;dim;normalized;onesided) or (input;dim;normalized;onesided; sizes)"); break;
-    default: TORCH_ERROR("unrecognized fft mode, expecting 0-3, received: ",m); break;
-   }
-   return KERR(e);
-  }
- KCATCH(e);
-}
-
-KAPI   Fft(K x) {return kfft(x, 0, "fft");}
-KAPI  Ifft(K x) {return kfft(x, 1, "ifft");}
-KAPI  Rfft(K x) {return kfft(x, 2, "rfft");}
-KAPI Irfft(K x) {return kfft(x, 3, "irfft");}
 /*
 Tensor stft(const Tensor & self,J n_fft,J hop_length,J win_length,const Tensor& window={},bool normalized=false,bool onesided=true);
 torch.stft(input, n_fft, hop_length=None, win_length=None, window=None, center=True, pad_mode='reflect', normalized=False, onesided=True)
@@ -1917,7 +1875,9 @@ void mathfn(K x) {
  fn(x, "Exp",                KFN(Exp),                1);
  fn(x, "expm1",              KFN(Expm1),              1);
  fn(x, "exponential",        KFN(Exponential),        1);
- fn(x, "fft",                KFN(Fft),                1);
+ fn(x, "fft",                KFN(fft),                1);
+ fn(x, "fft2",               KFN(fft2),               1);
+ fn(x, "fftn",               KFN(fftn),               1);
  fn(x, "Flip",               KFN(Flip),               1);
  fn(x, "Floor",              KFN(Floor),              1);
  fn(x, "finite",             KFN(Finite),             1);
@@ -1931,11 +1891,17 @@ void mathfn(K x) {
  fn(x, "gt",                 KFN(GT),                 1);
  fn(x, "hann",               KFN(Hann),               1);
  fn(x, "hamming",            KFN(Hamming),            1);
+ fn(x, "hfft",               KFN(hfft),               1);
  fn(x, "histc",              KFN(Histc),              1);
  fn(x, "inverse",            KFN(Inverse),            1);
- fn(x, "ifft",               KFN(Ifft),               1);
+ fn(x, "ifft",               KFN(ifft),               1);
+ fn(x, "ifft2",              KFN(ifft2),              1);
+ fn(x, "ifftn",              KFN(ifftn),              1);
+ fn(x, "ihfft",              KFN(ihfft),              1);
  fn(x, "inf",                KFN(Inf),                1);
- fn(x, "irfft",              KFN(Irfft),              1);
+ fn(x, "irfft",              KFN(irfft),              1);
+ fn(x, "irfft2",             KFN(irfft2),             1);
+ fn(x, "irfftn",             KFN(irfftn),             1);
  fn(x, "kthvalue",           KFN(Kthvalue),           1);
  fn(x, "le",                 KFN(Le),                 1);
  fn(x, "lerp",               KFN(Lerp),               1);
@@ -1987,7 +1953,9 @@ void mathfn(K x) {
  fn(x, "remainder",          KFN(Remainder),          1);
  fn(x, "roll",               KFN(Roll),               1);
  fn(x, "renorm",             KFN(Renorm),             1);
- fn(x, "rfft",               KFN(Rfft),               1);
+ fn(x, "rfft",               KFN(rfft),               1);
+ fn(x, "rfft2",              KFN(rfft2),              1);
+ fn(x, "rfftn",              KFN(rfftn),              1);
  fn(x, "round",              KFN(Round),              1);
  fn(x, "rsqrt",              KFN(Rsqrt),              1);
  fn(x, "sigmoid",            KFN(Ksigmoid),           1);
