@@ -716,7 +716,7 @@ bool xopt(K x,TensorOptions &o) {
  }
 }
 
-bool xopt(K x,J i,TensorOptions &o) { return !x->t && -1<x->n && i<x->n && xopt(kK(x)[i],o);}
+bool xopt(K x,J i,TensorOptions &o) { return !x->t && 0<x->n && i<x->n && xopt(kK(x)[i],o);}
 
 bool xto(S s,TensorOptions &o) {
  for(const auto& m:env().device)

@@ -1014,6 +1014,39 @@ KAPI  ifftn(K x) {return ffdn(x, torch::fft::ifftn,  "ifftn");}
 KAPI  rfftn(K x) {return ffdn(x, torch::fft::rfftn,  "rfftn");}
 KAPI irfftn(K x) {return ffdn(x, torch::fft::irfftn, "irfftn");}
 
+// ----------------------------------------------------------------------------------------------------
+// fftfreq - discrete Fourier Transform sample frequencies for a signal of size n
+// rfftfreq - computes the sample frequencies for rfft with a signal of size n.
+// ----------------------------------------------------------------------------------------------------
+using ffq = Tensor (*)(int64_t, double, const TensorOptions&);
+
+K ftfreq(K x,ffq f,const char* nm) {
+ KTRY
+  int64_t n=nj; double d=1.0; TensorOptions o;
+  if(x->t == -KJ) {
+   n=x->j;
+  } else if(x->t == KJ) {
+   TORCH_CHECK(x->n==2, nm,": expecting FFT length and spacing but list contains ",x->n," element(s)");
+   n=kJ(x)[0]; d=kJ(x)[1];
+  } else {
+   TORCH_CHECK(!x->t, nm,": unrecognized arg(s), expecting numeric length & scale or general list, given ",kname(x));
+   J a=x->n - (xopt(x,x->n-1,o) ? 1 : 0);
+   if(a==1 || a==2) {
+    TORCH_CHECK(xint64(x,0,n), nm,": expecting FFT length as first argument (long), given ",kname(x,0));
+    if(a==2)
+     TORCH_CHECK(xnum(x,0,d), nm,": expecting number for scale/spacing, given ",kname(x,1));
+   } else {
+    TORCH_ERROR(nm,": unexpected args, expecting (length; scale; tensor options..), but ",x->n," args given");
+   }
+  }
+  TORCH_CHECK(n>-1, nm,": non-negative FFT length required");
+  return kten(f(n,d,o));
+ KCATCH(nm);
+}
+
+KAPI  fftfreq(K x) {return ftfreq(x, torch::fft::fftfreq,  "fftfreq");}
+KAPI rfftfreq(K x) {return ftfreq(x, torch::fft::rfftfreq, "rfftfreq");}
+
 /*
 Tensor stft(const Tensor & self,J n_fft,J hop_length,J win_length,const Tensor& window={},bool normalized=false,bool onesided=true);
 torch.stft(input, n_fft, hop_length=None, win_length=None, window=None, center=True, pad_mode='reflect', normalized=False, onesided=True)
@@ -1877,6 +1910,7 @@ void mathfn(K x) {
  fn(x, "exponential",        KFN(Exponential),        1);
  fn(x, "fft",                KFN(fft),                1);
  fn(x, "fft2",               KFN(fft2),               1);
+ fn(x, "fftfreq",            KFN(fftfreq),            1);
  fn(x, "fftn",               KFN(fftn),               1);
  fn(x, "Flip",               KFN(Flip),               1);
  fn(x, "Floor",              KFN(Floor),              1);
@@ -1955,6 +1989,7 @@ void mathfn(K x) {
  fn(x, "renorm",             KFN(Renorm),             1);
  fn(x, "rfft",               KFN(rfft),               1);
  fn(x, "rfft2",              KFN(rfft2),              1);
+ fn(x, "rfftfreq",           KFN(rfftfreq),           1);
  fn(x, "rfftn",              KFN(rfftn),              1);
  fn(x, "round",              KFN(Round),              1);
  fn(x, "rsqrt",              KFN(Rsqrt),              1);

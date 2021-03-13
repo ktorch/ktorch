@@ -10,13 +10,22 @@ KAPI cudatest(K x) {
  return (K)0;
 }
 
+Tensor perm1(const Tensor& x) {
+ auto i=torch::arange(x.dim()).roll(1);
+ return x.permute(IntArrayRef(i.data_ptr<int64_t>(),x.dim()));
+}
+
+Tensor perm2(const Tensor& x) {
+ std::vector<int64_t> d;
+ for(size_t i=0; i<x.dim(); ++i) d.push_back(i-1);
+ return x.permute(d);
+}
+
 KAPI complex(K x) {
  KTRY
-  auto t=torch::randn({2,5},torch::kComplexDouble);
-  std::cerr << t << "\n";
-  auto h=torch::randn({2,5},torch::kComplexHalf);
-  std::cerr << h << "\n";
-  return(K)0;
+  auto t=torch::arange(6).view({2,3}).to(torch::kComplexDouble);
+  auto a=torch::view_as_real(t);
+  return kget(perm2(a));
  KCATCH("complex");
 }
 
