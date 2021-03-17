@@ -51,6 +51,7 @@ static K math1(K x,Ft f,Gt g,Tm m,const char* s) {
 
 KAPI Abs(K x)        {return math1(x, torch::abs,         torch::abs_out,         &Tensor::abs_,         "absolute value");}
 KAPI Acos(K x)       {return math1(x, torch::acos,        torch::acos_out,        &Tensor::acos_,        "arccosine");}
+KAPI Angle(K x)      {return math1(x, torch::angle,       torch::angle_out,       nullptr,               "angle");}
 KAPI Asin(K x)       {return math1(x, torch::asin,        torch::asin_out,        &Tensor::asin_,        "arcsine");}
 KAPI Atan(K x)       {return math1(x, torch::atan,        torch::atan_out,        &Tensor::atan_,        "arctangent");}
 KAPI Bitwisenot(K x) {return math1(x, torch::bitwise_not, torch::bitwise_not_out, &Tensor::bitwise_not_, "bitwise not");}
@@ -76,6 +77,7 @@ KAPI Reciprocal(K x) {return math1(x, torch::reciprocal,  torch::reciprocal_out,
 KAPI Round(K x)      {return math1(x, torch::round,       torch::round_out,       &Tensor::round_,       "round");}
 KAPI Rsqrt(K x)      {return math1(x, torch::rsqrt,       torch::rsqrt_out,       &Tensor::rsqrt_,       "reciprocal square root");}
 KAPI Ksigmoid(K x)   {return math1(x, torch::sigmoid,     torch::sigmoid_out,     &Tensor::sigmoid_,     "sigmoid");}
+KAPI Sgn(K x)        {return math1(x, torch::sgn,         torch::sgn_out,         &Tensor::sgn_,         "sgn");}
 KAPI Sign(K x)       {return math1(x, torch::sign,        torch::sign_out,        &Tensor::sign_,        "sign");}
 KAPI Sin(K x)        {return math1(x, torch::sin,         torch::sin_out,         &Tensor::sin_,         "sine");}
 KAPI Sinh(K x)       {return math1(x, torch::sinh,        torch::sinh_out,        &Tensor::sinh_,        "hyperbolic sine");}
@@ -907,7 +909,7 @@ static bool fftargs(K x,const char* nm,Tensor *& t,optint& n,int64_t& d,optstr& 
  }
 }
 
-K ffd1(K x,fd1 f,const char* nm) {
+static K ffd1(K x,fd1 f,const char* nm) {
  KTRY
   Tensor *t=nullptr; optint n=c10::nullopt; int64_t d=-1; optstr s=c10::nullopt;
   bool a=fftargs(x,nm,t,n,d,s);
@@ -955,7 +957,7 @@ static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,IntArrayRef& d,opts
  }
 }
 
-K ffd2(K x,fd2 f,const char* nm) {
+static K ffd2(K x,fd2 f,const char* nm) {
  KTRY
   Tensor *t=nullptr; optarr n=c10::nullopt; IntArrayRef d={-2, -1}; optstr s=c10::nullopt;
   bool a=fftargs(x,nm,t,n,d,s);
@@ -1001,7 +1003,7 @@ static bool fftargs(K x,const char* nm,Tensor *& t,optarr& n,optarr& d,optstr& s
  }
 }
 
-K ffdn(K x,fdn f,const char* nm) {
+static K ffdn(K x,fdn f,const char* nm) {
  KTRY
   Tensor *t=nullptr; optarr n=c10::nullopt, d=c10::nullopt; optstr s=c10::nullopt;
   bool a=fftargs(x,nm,t,n,d,s);
@@ -1014,13 +1016,35 @@ KAPI  ifftn(K x) {return ffdn(x, torch::fft::ifftn,  "ifftn");}
 KAPI  rfftn(K x) {return ffdn(x, torch::fft::rfftn,  "rfftn");}
 KAPI irfftn(K x) {return ffdn(x, torch::fft::irfftn, "irfftn");}
 
+// ---------------------------------------------------------------------------------------------------
+// fftshift - reorders n-dimensional FFT output to have negative frequency terms first, via torch.roll
+// ifftshift -  inverse transform, from centered Fourier space back to centered spatial data
+// ---------------------------------------------------------------------------------------------------
+using fsh = Tensor (*)(const Tensor&,optarr);
+
+static K fshift(K x,fsh f,const char* nm) {
+ KTRY
+  bool a; Tensor *t=nullptr; optarr d=c10::nullopt; IntArrayRef z;
+  if((a=fftargs(x,t))) {
+   TORCH_CHECK(!x->t,   nm, ": unexpected k type for arg(s), expecting general list, given ",kname(x));
+   TORCH_CHECK(x->n==2, nm, ": expected (tensor/input; dim) but ",x->n," arg(s) given");
+   TORCH_CHECK(xsize(kK(x)[1],z), nm,": optional arg, dim, expected as long(s), given ",kname(x,1)); 
+   if(z.size()) d=z;
+  }
+  return kresult(t, f(t ? *t : (a ? kput(x,0) : kput(x)), d));
+ KCATCH(nm)
+}
+
+KAPI  fftshift(K x) {return fshift(x, torch::fft::fftshift,  "fftshift");}
+KAPI ifftshift(K x) {return fshift(x, torch::fft::ifftshift, "ifftshift");}
+
 // ----------------------------------------------------------------------------------------------------
 // fftfreq - discrete Fourier Transform sample frequencies for a signal of size n
 // rfftfreq - computes the sample frequencies for rfft with a signal of size n.
 // ----------------------------------------------------------------------------------------------------
 using ffq = Tensor (*)(int64_t, double, const TensorOptions&);
 
-K ftfreq(K x,ffq f,const char* nm) {
+static K ftfreq(K x,ffq f,const char* nm) {
  KTRY
   int64_t n=nj; double d=1.0; TensorOptions o;
   if(x->t == -KJ) {
@@ -1410,12 +1434,14 @@ KAPI Lu_unpack(K x) {
    for(i=0;i<n;++i) {
     for(j=0;j<m;++j) vp[j]=j;
     for(j=0;j<m;++j) {auto k=*bp++; auto v=vp[j]; vp[j]=vp[k]; vp[k]=v;}
-/*
-    1.8 PATCH
-    if(d) v.index_put_(vi,v.index(vi).index_select(-1,vj.to(v.device())));
-    else v=index_select(v,-1,vj.to(v.device()));
-*/
-    v=index_select(v,-1,vj.to(v.device()));
+    if(d) {
+      // version 1.8 requires List of optional tensor for indexing -- may be better way than explicit copy(?)
+      c10::List<c10::optional<Tensor>> i;
+      for(const auto& t:vi) i.push_back(t);
+      v.index_put_(i,v.index(i).index_select(-1,vj.to(v.device())));
+    } else {
+     v=index_select(v,-1,vj.to(v.device()));
+    }
     for(j=d-1;j>-1;--j) {if(vi[j].item().toLong()==v.size(j)-1) {vi[j].zero_();} else {vi[j]+=1; break;}}
    }
    kK(r)[0]=p ? kten(v) : kget(v);
@@ -1867,6 +1893,7 @@ void mathfn(K x) {
  fn(x, "addcdiv",            KFN(Addcdiv),            1);
  fn(x, "addcmul",            KFN(Addcmul),            1);
  fn(x, "allclose",           KFN(Allclose),           1);
+ fn(x, "angle",              KFN(Angle),              1);
  fn(x, "argmax",             KFN(Argmax),             1);
  fn(x, "argmin",             KFN(Argmin),             1);
  fn(x, "argsort",            KFN(Argsort),            1);
@@ -1912,6 +1939,7 @@ void mathfn(K x) {
  fn(x, "fft2",               KFN(fft2),               1);
  fn(x, "fftfreq",            KFN(fftfreq),            1);
  fn(x, "fftn",               KFN(fftn),               1);
+ fn(x, "fftshift",           KFN(fftshift),           1);
  fn(x, "Flip",               KFN(Flip),               1);
  fn(x, "Floor",              KFN(Floor),              1);
  fn(x, "finite",             KFN(Finite),             1);
@@ -1931,6 +1959,7 @@ void mathfn(K x) {
  fn(x, "ifft",               KFN(ifft),               1);
  fn(x, "ifft2",              KFN(ifft2),              1);
  fn(x, "ifftn",              KFN(ifftn),              1);
+ fn(x, "ifftshift",          KFN(ifftshift),          1);
  fn(x, "ihfft",              KFN(ihfft),              1);
  fn(x, "inf",                KFN(Inf),                1);
  fn(x, "irfft",              KFN(irfft),              1);
@@ -1994,6 +2023,7 @@ void mathfn(K x) {
  fn(x, "round",              KFN(Round),              1);
  fn(x, "rsqrt",              KFN(Rsqrt),              1);
  fn(x, "sigmoid",            KFN(Ksigmoid),           1);
+ fn(x, "sgn",                KFN(Sgn),                1);
  fn(x, "sign",               KFN(Sign),               1);
  fn(x, "Sin",                KFN(Sin),                1);
  fn(x, "sinh",               KFN(Sinh),               1);

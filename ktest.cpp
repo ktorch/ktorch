@@ -21,11 +21,22 @@ Tensor perm2(const Tensor& x) {
  return x.permute(d);
 }
 
+Tensor cpermute(const Tensor& t,bool b) {
+ auto d=t.dim(); std::vector<int64_t> i;
+ if(b) {
+  for(size_t j=0; j<d; ++j) i.push_back(j-1);
+ } else {
+  for(size_t j=0; j<d-1; ++j) i.push_back(j+1);
+  if(d) i.push_back(0);
+ }
+ return t.permute(i);
+}
+
 KAPI complex(K x) {
  KTRY
   auto t=torch::arange(6).view({2,3}).to(torch::kComplexDouble);
   auto a=torch::view_as_real(t);
-  return kget(perm2(a));
+  return kget(cpermute(a,x->g));
  KCATCH("complex");
 }
 

@@ -639,6 +639,31 @@ KAPI dict(K x) {
  KCATCH("dict");
 }
 
+// --------------------------------------------------------------------------------------
+//  complex tensors
+// --------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------
+static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
+ KTRY
+  bool b=true; Tensor *t=xten(x);
+  if(!t) b=false, t=xten(x,0);  // enlisted tensor, return as k array
+  TORCH_CHECK(t && x->n==1, nm, ": expects a complex tensor (enlisted to return as k value), given ",kname(x));
+  return kresult(b,f(*t));
+ KCATCH(nm);
+}
+
+KAPI real(K x) {return kreal(x, torch::real, "real");}
+KAPI imag(K x) {return kreal(x, torch::imag, "imag");}
+
+KAPI permute(K x) {
+ KTRY
+  Tensor *t=xten(x,0); IntArrayRef n;
+  TORCH_CHECK(!x->t && x->n==2, "permute: unexpected arg(s), expecting (input/tensor; reordered dimensions)");
+  TORCH_CHECK(xsize(x,1,n), "permute: expecting 2nd arg of reordered dimensions, given ",kname(x,1));
+  return kresult(t, (t ? *t : kput(x,0)).permute(n));
+ KCATCH("permute");
+}
+
 // ----------------------------------------------------------------------------------------------
 // kcat1 - check for tensor(s) at first level of a general list, e.g. cat(a;b)
 // kcat2 - check for (inputs;dim) or (inputs;dim;out tensor) or (inputs;out tensor)
@@ -1450,6 +1475,9 @@ void tensorfn(K x) {
  fn(x, "alias",        KFN(alias),         1);
  fn(x, "vector",       KFN(vector),        1);
  fn(x, "dict",         KFN(dict),          1);
+ fn(x, "real",         KFN(real),          1);
+ fn(x, "imag",         KFN(imag),          1);
+ fn(x, "permute",      KFN(permute),       1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "stack",        KFN(stack),         1);
  fn(x, "expand",       KFN(expand),        1);
