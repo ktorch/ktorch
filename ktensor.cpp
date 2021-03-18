@@ -351,6 +351,7 @@ TensorDict kputd(K x) {
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given
 // tensoropt - tensor creation routines where tensor size and option(s) given
 // tensormode - determines whether a template tensor or output tensor given w'other args
+// tensorcast - derive/apply tensor options, e.g. data type, device, gradient required
 // tensorput - put k value(s) -> tensor, return new tensor ptr unless output tensor given
 // tensorget - given tensor ptr, return tensor as k array, accepts optional 1st dim index
 // vectorptr - given vector ptr, return tensor pointers, or single pointer if index given
@@ -479,6 +480,11 @@ static K tensormode(K x,S s,Tensormode m) {
  return out ? (K)0 : kten(r);
 }
 
+static Tensor tensorcast(const Tensor& t,TensorOptions& o) {
+ if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
+ return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.device(),o.dtype()).set_requires_grad(o.requires_grad());
+}
+
 static K tensorput(K x) {
  Tensor r,t; TensorOptions o;
  t=((xopt(x,1,o) || xten(x,1,r)) && x->n==2) ? kput(x,0) : kput(x);
@@ -486,12 +492,7 @@ static K tensorput(K x) {
   r.resize_(t.sizes()).copy_(t,true);
   return (K)0;
  } else {
-  if(!o.has_dtype()) 
-   o=o.dtype(t.dtype()); //if no explicit data type given, use k type
-  if(o.layout()==torch::kSparse)
-   t=t.to_sparse();
-  t=t.to(o.device(),o.dtype()).set_requires_grad(o.requires_grad());
-  return kten(t);
+  return kten(tensorcast(t,o));
  }
 }
 
@@ -642,6 +643,13 @@ KAPI dict(K x) {
 // --------------------------------------------------------------------------------------
 //  complex tensors
 // --------------------------------------------------------------------------------------
+// kreal - handle api calls to extract real & imaginary parts of tensor
+// real,imag - return real & imaginary parts of tensor as tensor or k value
+// isreal - return boolean with 1's where value is real
+// cget - return complex tensor as k value, permute dims to return real/imag on 1st dim
+// ctype - if complex data type specified, get real equivalent, use default type else
+// cput - put k array to complex tensor, with option to permute and convert type, device
+// ctensor - create/retrieve complex tensor, flag for real/imaginary on 1st/last dim
 // --------------------------------------------------------------------------------------
 static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
  KTRY
@@ -652,16 +660,65 @@ static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
  KCATCH(nm);
 }
 
-KAPI real(K x) {return kreal(x, torch::real, "real");}
-KAPI imag(K x) {return kreal(x, torch::imag, "imag");}
+KAPI   real(K x) {return kreal(x, torch::real,   "real");}
+KAPI   imag(K x) {return kreal(x, torch::imag,   "imag");}
+KAPI isreal(K x) {return kreal(x, torch::isreal, "isreal");}
 
-KAPI permute(K x) {
+static K cget(const Tensor& t,bool b) {
+ if(b) {
+  std::vector<int64_t> d; auto n=t.dim()+1;
+  for(size_t i=0; i<n; ++i) d.push_back(i-1);
+  return kget(torch::view_as_real(t).permute(d));
+ } else {
+  return kget(torch::view_as_real(t));
+ }
+}
+ 
+static TensorOptions ctype(const TensorOptions& o) {
+ if(o.has_dtype()) {
+  switch(torch::typeMetaToScalarType(o.dtype())) {
+   case torch::kComplexHalf:   return o.dtype(torch::kHalf);    // find real equivalent of complex data type
+   case torch::kComplexFloat:  return o.dtype(torch::kFloat);
+   case torch::kComplexDouble: return o.dtype(torch::kDouble);
+   default: return o;
+  }
+ } else {
+  return o.dtype(torch::get_default_dtype_as_scalartype());    // use default float/double in case integers given
+ }
+}
+
+static K cput(const Tensor& t,bool b,TensorOptions& o) {
+ o=ctype(o);
+ if(b) {
+  std::vector<int64_t> d;
+  for(size_t i=1; i<t.dim(); ++i) d.push_back(i);
+  if(t.dim()) d.push_back(0);
+  return kten(torch::view_as_complex(tensorcast(t,o).permute(d).contiguous()));
+ } else {
+  return kten(torch::view_as_complex(tensorcast(t,o)));
+ }
+}
+ 
+KAPI ctensor(K x) {
  KTRY
-  Tensor *t=xten(x,0); IntArrayRef n;
-  TORCH_CHECK(!x->t && x->n==2, "permute: unexpected arg(s), expecting (input/tensor; reordered dimensions)");
-  TORCH_CHECK(xsize(x,1,n), "permute: expecting 2nd arg of reordered dimensions, given ",kname(x,1));
-  return kresult(t, (t ? *t : kput(x,0)).permute(n));
- KCATCH("permute");
+  bool b=false; Tensor *t=xten(x);
+  if(t) {
+   return cget(*t,b);
+  } else if((t=xten(x,0))) {
+   TORCH_CHECK(x->n==2,      "ctensor: given tensor as 1st arg, expecting 2nd arg of permute flag but ",x->n," arg(s) given");
+   TORCH_CHECK(xbool(x,1,b), "ctensor: given tensor as 1st arg, expecting 2nd arg to be permute flag but ",kname(x,1)," given");
+   return cget(*t,b);
+  } else {
+   TensorOptions o;
+   if(xmixed(x,3)) {
+    TORCH_CHECK( (xbool(x,1,b) && (x->n==2 || (x->n==3 && xopt(x,2,o)))) || (x->n==2 && xopt(x,1,o)),
+                "ctensor: unexpected arg(s), expecting input or (input; permute flag) or (input; permute flag; tensor option(s))");
+    return cput(kput(x,0),b,o);
+   } else {
+    return cput(kput(x),b,o);
+   }
+  }
+ KCATCH("ctensor");
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -707,9 +764,19 @@ KAPI cat(K x)   {return kcat(x, torch::cat,   torch::cat_out,   "cat");}
 KAPI stack(K x) {return kcat(x, torch::stack, torch::stack_out, "stack");}
 
 // ----------------------------------------------------------------------------------------------
+// permute - k api for permute (not just for complex tensors)
 // expand - expand tensor or array given sizes or tensor w'size to copy
 // squeeze/unsqueeze - remove or add dimension to input array/tensor, boolean in-place option
 // ----------------------------------------------------------------------------------------------
+KAPI permute(K x) {
+ KTRY
+  Tensor *t=xten(x,0); IntArrayRef n;
+  TORCH_CHECK(!x->t && x->n==2, "permute: unexpected arg(s), expecting (input/tensor; reordered dimensions)");
+  TORCH_CHECK(xsize(x,1,n), "permute: expecting 2nd arg of reordered dimensions, given ",kname(x,1));
+  return kresult(t, (t ? *t : kput(x,0)).permute(n));
+ KCATCH("permute");
+}
+
 KAPI expand(K x) {
  KTRY
   IntArrayRef n; Tensor *t=xten(x,0),*s=xten(x,1);
@@ -1477,8 +1544,10 @@ void tensorfn(K x) {
  fn(x, "dict",         KFN(dict),          1);
  fn(x, "real",         KFN(real),          1);
  fn(x, "imag",         KFN(imag),          1);
- fn(x, "permute",      KFN(permute),       1);
+ fn(x, "isreal",       KFN(isreal),        1);
+ fn(x, "ctensor",      KFN(ctensor),       1);
  fn(x, "cat",          KFN(cat),           1);
+ fn(x, "permute",      KFN(permute),       1);
  fn(x, "stack",        KFN(stack),         1);
  fn(x, "expand",       KFN(expand),        1);
  fn(x, "squeeze",      KFN(squeeze),       1);

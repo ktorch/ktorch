@@ -11,16 +11,28 @@ using Fti     = Tensor  (*)(const Tensor&, int64_t);
 using Gti     = Tensor& (*)(Tensor&, const Tensor&, int64_t);
 using Fts     = Tensor  (*)(const Tensor&, Scalar);
 using Gts     = Tensor& (*)(Tensor&, const Tensor&, Scalar);
+/* version 1.9.0
+using Fts     = Tensor  (*)(const Tensor&, const Scalar&);
+using Gts     = Tensor& (*)(Tensor&, const Tensor&, const Scalar&);
+*/
 using Ftt     = Tensor  (*)(const Tensor&, const Tensor&);
 using Gtt     = Tensor& (*)(Tensor&, const Tensor&, const Tensor&);
 using Fttts   = Tensor  (*)(const Tensor&, const Tensor&, const Tensor&, Scalar);
 using Gttts   = Tensor& (*)(Tensor&, const Tensor&, const Tensor&, const Tensor&, Scalar);
+/* version 1.9.0
+using Fttts   = Tensor  (*)(const Tensor&, const Tensor&, const Tensor&, const Scalar&);
+using Gttts   = Tensor& (*)(Tensor&, const Tensor&, const Tensor&, const Tensor&, const Scalar&);
+*/
 using Ftuple1 = std::tuple<Tensor,Tensor>   (*)(const Tensor&);
 using Ftuple2 = std::tuple<Tensor,Tensor>   (*)(const Tensor&, const Tensor&);
 using Gtuple1 = std::tuple<Tensor&,Tensor&> (*)(Tensor&, Tensor&, const Tensor&);
 using Gtuple2 = std::tuple<Tensor&,Tensor&> (*)(Tensor&, Tensor&, const Tensor&, const Tensor&);
 using Fmm     = Tensor  (*)(const Tensor&, const Tensor&, const Tensor&, Scalar, Scalar);
 using Gmm     = Tensor& (*)(Tensor&, const Tensor&, const Tensor&, const Tensor&, Scalar, Scalar);
+/* version 1.9.0
+using Fmm     = Tensor  (*)(const Tensor&, const Tensor&, const Tensor&, const Scalar&, const Scalar&);
+using Gmm     = Tensor& (*)(Tensor&, const Tensor&, const Tensor&, const Tensor&, const Scalar&, const Scalar&);
+*/
 
 // -----------------------------------------------------------------------------------------
 // tensor methods (used for in-place methods, e.g. abs_)
@@ -28,6 +40,9 @@ using Gmm     = Tensor& (*)(Tensor&, const Tensor&, const Tensor&, const Tensor&
 using Tm = Tensor& (Tensor::*)() const;
 using Tn = Tensor& (Tensor::*)(int64_t) const;
 using Ts = Tensor& (Tensor::*)(Scalar) const;
+/* version 1.9.0
+using Ts = Tensor& (Tensor::*)(const Scalar&) const;
+*/
 using Tt = Tensor& (Tensor::*)(const Tensor&) const;
 
 // -----------------------------------------------------------------------------------------
