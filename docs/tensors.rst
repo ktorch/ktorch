@@ -285,7 +285,7 @@ Alternate form using an input tensor for size:
 
 Alternate form using an output tensor instead of options that control data type, device, etc.
 
-.. function:: tensor(mode;size;value;out-tensor) -> ptr
+.. function:: tensor(mode;size;value;out-tensor) -> null
 
 ::
 
@@ -295,8 +295,16 @@ Alternate form using an output tensor instead of options that control data type,
    3 3 3 3 3
    3 3 3 3 3
 
-   q)first tensor t
-   3 3 3 3 3f
+   q)b:tensor(`full;t;1b)  / create boolean tensor, use t's size
+
+   q)tensor b
+   11111b
+   11111b
+
+   q)tensor(`full;7;4.5;b)  / use b's properties, fill with 4.5 -> boolean
+
+   q)tensor b
+   1111111b
 
 .. index:: rand, randn
 
@@ -306,6 +314,39 @@ Creating random tensors by size: rand, randn
 Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
 
 Parameters and function calls are as above for mode of ```zeros``, ```ones`` and ```empty``.
+
+.. function:: tensor(mode;size) -> ptr
+
+.. function:: tensor(mode;size;options) -> ptr
+
+   | Create a tensor given mode, size  and optional attribute(s).
+
+   :param sym mode: one of ```rand``, or```randn``.
+   :param long size: scalar/list specifiying size of array.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
+
+.. function:: tensor(mode;in-tensor) -> ptr
+
+.. function:: tensor(mode;in-tensor;options) -> ptr
+
+   | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
+
+   :param sym mode: ```rand`` or ```randn``.
+   :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+Alternate form using an output tensor instead of options that control data type, device, etc.
+
+.. function:: tensor(mode;size;out-tensor) -> null
+
+   :param sym mode: one of ```rand`` or ```randn``.
+   :param long size: scalar/list specifiying size of array.
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
 
