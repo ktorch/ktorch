@@ -308,7 +308,7 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: rand, randn
 
-Creating random tensors by size: rand, randn
+Random tensors by size: rand, randn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
@@ -321,7 +321,7 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
    | Create a tensor given mode, size  and optional attribute(s).
 
-   :param sym mode: one of ```rand``, or```randn``.
+   :param sym mode: one of ```rand`` or ```randn``.
    :param long size: scalar/list specifiying size of array.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
@@ -356,4 +356,13 @@ Alternate form using an output tensor instead of options that control data type,
    q)free t
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
+
+Random integers by size: randint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Random permutations: randperm
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Evenly spaced tensors: linspace, logspace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
