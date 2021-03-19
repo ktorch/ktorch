@@ -233,16 +233,17 @@ similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
-Alternate form using an output tensor instead of options that control type, device, etc.
+Alternate form using an output tensor instead of options that control data type, device, etc.
 
 .. function:: tensor(mode;size;out-tensor) -> null
-   :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param long size: scalar/list specifiying size of array
-   :param out-tensor ptr: an :ref:`api-pointer <pointers>` to a previously allocated output tensor
-   :return: null return, resets values according to size given and attributes of the output tensor
+
+   :param sym mode: one of ```zeros``, ```ones``, ```empty``.
+   :param long size: scalar/list specifiying size of array.
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
 
@@ -251,11 +252,11 @@ Alternate form using an output tensor instead of options that control type, devi
    0 0
    0 0
 
-   q)tensor(`ones;5;t)
+   q)tensor(`ones;5;t)  / use t as an output tensor
    q)tensor t
    1 1 1 1 1e
 
-   q)tensor(`empty;100;t)
+   q)tensor(`empty;100;t) / t is filled with unitialized values
    q)tensor t
    1 1 1 1 1 0 4.332332e-37 0 2.791531e+20 1.693048e+22 7.501883e+28 2.733884e+2..
 
@@ -275,6 +276,17 @@ Creating tensor with single value: full
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
+Alternate form using an input tensor for size:
+
+.. function:: tensor(mode;in-tensor;value) -> ptr
+.. function:: tensor(mode;in-tensor;value;options) -> ptr
+
+   | Create a tensor given mode of ```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
+
+Alternate form using an output tensor instead of options that control data type, device, etc.
+
+.. function:: tensor(mode;size;value;out-tensor) -> ptr
+
 ::
 
    q)t:tensor(`full; 2 5; 3.0)
@@ -285,11 +297,6 @@ Creating tensor with single value: full
 
    q)first tensor t
    3 3 3 3 3f
-
-.. function:: tensor(mode;in-tensor;value) -> ptr
-.. function:: tensor(mode;in-tensor;value;options) -> ptr
-
-   | Create a tensor given mode of ```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
 
 .. index:: rand, randn
 
