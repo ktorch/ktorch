@@ -232,7 +232,7 @@ similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :param in-tensor ptr: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
@@ -241,7 +241,7 @@ Alternate form using an output tensor instead of options that control type, devi
 .. function:: tensor(mode;size;out-tensor) -> null
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param long size: scalar/list specifiying size of array
-   :param :ref:`api-pointer <pointers>` out-tensor: output tensor
+   :param out-tensor ptr: an :ref:`api-pointer <pointers>` to a previously allocated output tensor
    :return: null return, resets values according to size given and attributes of the output tensor
 
 ::
