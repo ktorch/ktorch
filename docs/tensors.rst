@@ -363,7 +363,9 @@ Create a tensor filled with random integers between given range: `randint <https
 Called by specifying low, high and size, or high and size (low defaults to zero), as well as other combinations with input and output tensors.
 
 .. function:: tensor(mode;high;size) -> ptr
+
 .. function:: tensor(mode;low;high;size) -> ptr
+
 .. function:: tensor(mode;low;high;size;options) -> ptr
 
    | Create a tensor given mode, range and size, along with optional tensor attributes.
@@ -375,12 +377,51 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
+An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
+
 .. function:: tensor(mode;in-tensor;high) -> ptr
+
 .. function:: tensor(mode;in-tensor;low;high) -> ptr
+
 .. function:: tensor(mode;in-tensor;low;high;options) -> ptr
 
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+Creation can also use a final argument of a previously allocated tensor as an output tensor:
+
+.. function:: tensor(mode;high;size;out-tensor) -> ptr
+
+.. function:: tensor(mode;low;high;size;out-tensor) -> ptr
+
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
+
+::
+   q)free t
+   q)t:tensor(`randint; -5; 6; 2 5; `float`cuda)
+   q)tensor t
+   4 0  -2 2 0
+   4 -5 2  3 3
+
+   q)tensor(`randint; 100; 3 9; t)
+   q)tensor t
+   85 55 87 0  1  81 36 97 22
+   98 20 66 12 0  95 39 66 12
+   21 82 59 39 64 91 54 59 91
+
+   q)dtype t
+   `float
+   q)device t
+   `cuda:0
+   q)size t
+   3 9
+
+   q)tensor(`randint; 100; 1000000; t)
+   q)avg tensor t
+   49.48276
+   q)size t
+   ,1000000
 
 Random permutations: randperm
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
