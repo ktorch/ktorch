@@ -262,8 +262,8 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: full
 
-Creating tensor with single value: full
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: tensor(mode;size;value) -> ptr
 .. function:: tensor(mode;size;value;options) -> ptr
@@ -359,6 +359,28 @@ Alternate form using an output tensor instead of options that control data type,
 
 Random integers by size: randint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Create a tensor filled with random integers between given range: `randint <https://pytorch.org/docs/stable/torch.html#torch.randint>`_
+Called by specifying low, high and size, or high and size (low defaults to zero), as well as other combinations with input and output tensors.
+
+.. function:: tensor(mode;high;size) -> ptr
+.. function:: tensor(mode;low;high;size) -> ptr
+.. function:: tensor(mode;low;high;size;options) -> ptr
+
+   | Create a tensor given mode, range and size, along with optional tensor attributes.
+
+   :param sym mode: ```randint``.
+   :param long low: lowest intger to be drawn from the distribution, set to zero if not given.
+   :param long high: one above the highest intger to be drawn from the distribution.
+   :param long size: scalar/list specifiying size of array.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+.. function:: tensor(mode;in-tensor;high) -> ptr
+.. function:: tensor(mode;in-tensor;low;high) -> ptr
+.. function:: tensor(mode;in-tensor;low;high;options) -> ptr
+
+   :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 Random permutations: randperm
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
