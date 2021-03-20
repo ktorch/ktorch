@@ -699,6 +699,8 @@ bool xopt(S s,TensorOptions &o) {
   if(s == std::get<0>(m)) return o=o.layout(std::get<1>(m)), true;
  for(const auto& m:e.gradient)
   if(s == std::get<0>(m)) return o=o.requires_grad(std::get<1>(m)), true;
+ for(const auto& m:e.memory)
+  if(s == std::get<0>(m)) return o=o.memory_format(std::get<1>(m)), true;
  return false;
 }
 
@@ -1478,52 +1480,69 @@ static K defaultdevice() {
 // optkey - symbol keys/cols for tensor option dictionary or table
 // optval - symbol vector/lists of option values
 // ---------------------------------------------------------------------------------------------
-S& optsym(const Device& d) {
+S& optdev(const Device& d) {
  for(auto& m:env().device) if(d==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized device: ",d);
 }
 
-S& optsym(const TypeMeta& t) {
+S& optdtype(const TypeMeta& t) {
  for(auto& m:env().dtype) if(t==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized data type: ",t);
 }
 
-S& optsym(const torch::Layout& l) {
+S& optlayout(const torch::Layout& l) {
  for(auto& m:env().layout) if(l==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized layout: ",l);
 }
 
-S& optsym(const bool& g) {
+S& optgrad(const bool& g) {
  for(auto& m:env().gradient) if(g==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized gradient setting: ",g);
 }
 
+S& optpin(const bool& p) {
+ for(auto& m:env().pin) if(p==std::get<1>(m)) return std::get<0>(m);
+ TORCH_ERROR("unrecognized pinned memory setting");
+}
+
+S& optmemory(const c10::optional<torch::MemoryFormat>& l) {
+ if(!l) return optmemory(torch::MemoryFormat::Contiguous);
+ for(auto& m:env().memory) if(l==std::get<1>(m)) return std::get<0>(m);
+ TORCH_ERROR("unrecognized memory format");
+}
+
 K optkey() {
- K x=ktn(KS,4);
+ K x=ktn(KS,6);
  kS(x)[0]=mapattr(Attr::device);
  kS(x)[1]=mapattr(Attr::dtype);
  kS(x)[2]=mapattr(Attr::layout);
  kS(x)[3]=mapattr(Attr::gradient);
+ kS(x)[4]=mapattr(Attr::pinned);
+ kS(x)[5]=mapattr(Attr::memory);
  return x;
 }
 
 K optval(const TensorOptions &o,K x,J i) {
  if(x->t==KS) {
-  kS(x)[0]=optsym(o.device());
-  kS(x)[1]=optsym(o.dtype());
-  kS(x)[2]=optsym(o.layout());
-  kS(x)[3]=optsym(o.requires_grad());
+  kS(x)[0]=optdev(o.device());
+  kS(x)[1]=optdtype(o.dtype());
+  kS(x)[2]=optlayout(o.layout());
+  kS(x)[3]=optgrad(o.requires_grad());
+  kS(x)[4]=optpin(o.pinned_memory());
+  kS(x)[5]=optmemory(o.memory_format_opt());
  } else {
-  kS(kK(x)[0])[i]=optsym(o.device());
-  kS(kK(x)[1])[i]=optsym(o.dtype());
-  kS(kK(x)[2])[i]=optsym(o.layout());
-  kS(kK(x)[3])[i]=optsym(o.requires_grad());
+  kS(kK(x)[0])[i]=optdev(o.device());
+  kS(kK(x)[1])[i]=optdtype(o.dtype());
+  kS(kK(x)[2])[i]=optlayout(o.layout());
+  kS(kK(x)[3])[i]=optgrad(o.requires_grad());
+  kS(kK(x)[4])[i]=optpin(o.pinned_memory());
+  kS(kK(x)[5])[i]=optmemory(o.memory_format_opt());
  }
  return x;
 }
 
 K optmap(const TensorOptions &o) {
- return xD(optkey(),optval(o,ktn(KS,4)));
+ return xD(optkey(),optval(o,ktn(KS,6)));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1537,7 +1556,7 @@ KAPI kdefault(K x) {
   if(xempty(x)) {
    return optmap(o);
   } else if(xopt(x,o)) {
-   TORCH_CHECK(!(o.has_device() || o.has_layout() || o.has_requires_grad()),
+   TORCH_CHECK(!(o.has_device() || o.has_layout() || o.has_requires_grad() || o.has_memory_format()),
                "currently, only default data type can be reset");
    torch::set_default_dtype(o.dtype());
    return(K)0;
@@ -1662,7 +1681,7 @@ static K mattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
   case Attr::ref:     return kj(p.use_count());
   case Attr::ptr:     return kj((intptr_t)p.get());
-  case Attr::device:  return ks(objdevice(*p, optsym(Device(torch::kCPU))));
+  case Attr::device:  return ks(objdevice(*p, optdev(Device(torch::kCPU))));
   case Attr::result:  return ks(mresult(r));
   default: TORCH_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
  }

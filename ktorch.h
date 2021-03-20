@@ -222,7 +222,7 @@ enum class Attr:char {
  undefined = 0,
  bytes, dim, elements, itemsize, numel,  offset,              // long scalars
  ptr, ref, tcount, sparsedim, weakref,
- device, dtype, gradfn, gradient, layout, result,             // symbol
+ device, dtype, gradfn, gradient, layout, memory, result,     // symbol
  coalesced, contiguous, gradflag, leaf, pinned,               // boolean
  size, stride,                                                // long list
  data, storage                                                // other: list,dict,..
@@ -464,10 +464,12 @@ void psize(const Pairs&,J,double*);
 void pdoubles(const Pairs&,DoubleArrayRef&,J n=-1);
 void pten(const Pairs&,Tensor&);
 
-S& optsym(const Device&);
-S& optsym(const TypeMeta&);
-S& optsym(const torch::Layout&);
-S& optsym(const bool&);
+S& optdev(const Device&);
+S& optdtype(const TypeMeta&);
+S& optlayout(const torch::Layout&);
+S& optmemory(const c10::optional<torch::MemoryFormat>&);
+S& optgrad(const bool&);
+S& optpin(const bool&);
 K optkey();
 K optval(const TensorOptions &o,K x,J i=-1);
 K optmap(const TensorOptions&);
@@ -657,6 +659,18 @@ typedef struct {
  std::array<std::tuple<S,bool>,2> gradient = {{
   std::make_tuple(cs("grad"),   true),          
   std::make_tuple(cs("nograd"), false)
+ }};
+
+ std::array<std::tuple<S,bool>,2> pin = {{
+  std::make_tuple(cs("pinned"),   true),          
+  std::make_tuple(cs("unpinned"), false)
+ }};
+
+ std::array<std::tuple<S,torch::MemoryFormat>,4> memory = {{
+  std::make_tuple(cs("contiguous"), torch::MemoryFormat::Contiguous),          
+  std::make_tuple(cs("preserve"),   torch::MemoryFormat::Preserve),          
+  std::make_tuple(cs("channel3d"),  torch::MemoryFormat::ChannelsLast3d),
+  std::make_tuple(cs("channel4d"),  torch::MemoryFormat::ChannelsLast)
  }};
 
 /*
@@ -999,7 +1013,7 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,26> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,27> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("bytes"),       Attr::bytes),
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
@@ -1014,6 +1028,7 @@ typedef struct {
   std::make_tuple(cs("itemsize"),    Attr::itemsize),
   std::make_tuple(cs("layout"),      Attr::layout),
   std::make_tuple(cs("leaf"),        Attr::leaf),
+  std::make_tuple(cs("memory"),      Attr::memory),
   std::make_tuple(cs("numel"),       Attr::numel),
   std::make_tuple(cs("offset"),      Attr::offset),
   std::make_tuple(cs("pinned"),      Attr::pinned),

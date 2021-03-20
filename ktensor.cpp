@@ -853,10 +853,10 @@ J tensorlong(const Tensor& t,Attr a) {
 
 S tensorsym(const Tensor& t,Attr a) {
  switch(a) {
-  case Attr::device:   return optsym(t.device());
-  case Attr::dtype:    return optsym(t.dtype());
-  case Attr::layout:   return optsym(t.layout());
-  case Attr::gradient: return optsym(t.requires_grad());
+  case Attr::device:   return optdev(t.device());
+  case Attr::dtype:    return optdtype(t.dtype());
+  case Attr::layout:   return optlayout(t.layout());
+  case Attr::gradient: return optgrad(t.requires_grad());
   case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
