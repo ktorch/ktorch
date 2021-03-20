@@ -15,8 +15,8 @@ The simplest way to create a tensor is to use a k value, e.g.
 
 .. index::  tensor; attributes
 
-Setting properties of a tensor
-******************************
+Setting properties
+******************
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
 The main two are :ref:`device <devices>` and :ref:`data type <types>`,
@@ -51,8 +51,8 @@ The ``default`` function will display the defaults usually in effect if no optio
 
 .. index:: tensor; creating from a k value
 
-Creating a tensor from a k value
-********************************
+Creating from a k value
+***********************
 
 The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type throughout and the same size at each dimension.
 
@@ -262,8 +262,10 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: full
 
-Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Tensor with single value
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_.
 
 .. function:: tensor(mode;size;value) -> ptr
 .. function:: tensor(mode;size;value;options) -> ptr
@@ -308,8 +310,8 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: rand, randn
 
-Random tensors by size: rand, randn
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Random tensors
+^^^^^^^^^^^^^^
 
 Return a tensor filled with random numbers from a uniform distribution on ``[0, 1)`` (`rand <https://pytorch.org/docs/stable/torch.html#torch.rand>`_) or unit normal (`randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_).
 
@@ -357,9 +359,9 @@ Alternate form using an output tensor instead of options that control data type,
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
 
-Random integers by size: randint
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Create a tensor filled with random integers between given range: `randint <https://pytorch.org/docs/stable/torch.html#torch.randint>`_
+Random integers
+^^^^^^^^^^^^^^^
+Create a tensor filled with random integers between given range: `randint <https://pytorch.org/docs/stable/torch.html#torch.randint>`_.
 Called by specifying low, high and size, or high and size (low defaults to zero), as well as other combinations with input and output tensors.
 
 .. function:: tensor(mode;high;size) -> ptr
@@ -388,7 +390,7 @@ An alternate form where an input tensor is supplied to provide the size of the c
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
-Creation can also use a final argument of a previously allocated tensor as an output tensor:
+The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;high;size;out-tensor) -> ptr
 
@@ -398,6 +400,7 @@ Creation can also use a final argument of a previously allocated tensor as an ou
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
+
    q)free t
    q)t:tensor(`randint; -5; 6; 2 5; `float`cuda)
    q)tensor t
@@ -423,9 +426,12 @@ Creation can also use a final argument of a previously allocated tensor as an ou
    q)size t
    ,1000000
 
-Random permutations: randperm
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Random permutations
+^^^^^^^^^^^^^^^^^^^
 
-Evenly spaced tensors: linspace, logspace
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Evenly spaced tensors
+^^^^^^^^^^^^^^^^^^^^^
+
+Identity matrix
+^^^^^^^^^^^^^^^
 
