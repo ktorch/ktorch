@@ -15,6 +15,8 @@ k api to pytorch
    pointers
    devices
    tensors
+   vectors
+   dictionaries
    modules
 
 Index
