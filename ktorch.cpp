@@ -1498,18 +1498,18 @@ S& optlayout(const torch::Layout& l) {
 }
 
 S& optgrad(const bool& g) {
- for(auto& m:env().gradient) if(g==std::get<1>(m)) return std::get<0>(m);
+ for(auto& a:env().gradient) if(g==std::get<1>(a)) return std::get<0>(a);
  TORCH_ERROR("unrecognized gradient setting: ",g);
 }
 
 S& optpin(const bool& p) {
- for(auto& m:env().pin) if(p==std::get<1>(m)) return std::get<0>(m);
+ for(auto& a:env().pin) if(p==std::get<1>(a)) return std::get<0>(a);
  TORCH_ERROR("unrecognized pinned memory setting");
 }
 
-S& optmemory(const c10::optional<torch::MemoryFormat>& l) {
- if(!l) return optmemory(torch::MemoryFormat::Contiguous);
- for(auto& m:env().memory) if(l==std::get<1>(m)) return std::get<0>(m);
+S& optmemory(const c10::optional<torch::MemoryFormat>& m) {
+ if(!m) return optmemory(torch::MemoryFormat::Contiguous);
+ for(auto& a:env().memory) if(m==std::get<1>(a)) return std::get<0>(a);
  TORCH_ERROR("unrecognized memory format");
 }
 
@@ -1521,6 +1521,25 @@ K optkey() {
  kS(x)[3]=mapattr(Attr::gradient);
  kS(x)[4]=mapattr(Attr::pinned);
  kS(x)[5]=mapattr(Attr::memory);
+ return x;
+}
+
+K optval(const Tensor &t,K x,J i) {
+ if(x->t==KS) {
+  kS(x)[0]=optdev(t.device());
+  kS(x)[1]=optdtype(t.dtype());
+  kS(x)[2]=optlayout(t.layout());
+  kS(x)[3]=optgrad(t.requires_grad());
+  kS(x)[4]=optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
+  kS(x)[5]=optmemory(t.suggest_memory_format());
+ } else {
+  kS(kK(x)[0])[i]=optdev(t.device());
+  kS(kK(x)[1])[i]=optdtype(t.dtype());
+  kS(kK(x)[2])[i]=optlayout(t.layout());
+  kS(kK(x)[3])[i]=optgrad(t.requires_grad());
+  kS(kK(x)[4])[i]=optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
+  kS(kK(x)[5])[i]=optmemory(t.suggest_memory_format());
+ }
  return x;
 }
 
@@ -1541,6 +1560,10 @@ K optval(const TensorOptions &o,K x,J i) {
   kS(kK(x)[5])[i]=optmemory(o.memory_format_opt());
  }
  return x;
+}
+
+K optmap(const Tensor &t) {
+ K k=optkey(); return xD(k,optval(t,ktn(KS,k->n)));
 }
 
 K optmap(const TensorOptions &o) {

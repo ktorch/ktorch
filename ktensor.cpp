@@ -870,7 +870,7 @@ S tensorsym(const Tensor& t,Attr a) {
   case Attr::layout:   return optlayout(t.layout());
   case Attr::gradient: return optgrad(t.requires_grad());
   case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
-  case Attr::pinned:   return optpin(t.is_pinned());
+  case Attr::pinned:   return optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
   case Attr::memory:   return optmemory(t.suggest_memory_format());
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
@@ -882,7 +882,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
-  case Attr::pinned:     return t.is_pinned();
+  case Attr::pinned:     return t.is_sparse() ? t.values().is_pinned() : t.is_pinned();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -944,15 +944,14 @@ K dictattr(const TensorDict& d,Ktype k,Attr a) {
 
 KAPI options(K x) {
  KTRY
-  Tensor t;
-  if(xten(x,t)) {
-   return optmap(t.options());
+  if(auto *t=xten(x)) {
+   return optmap(*t);
   } else if(auto* v=xvec(x)) {
    K k=optkey(); K y=ktn(0,k->n);
    for(size_t i=0; i<k->n; ++i) 
     kK(y)[i]=ktn(KS,v->size());
    for(size_t i=0; i<v->size(); ++i)
-    optval(v->at(i).options(),y,i);
+    optval(v->at(i),y,i);
    return xT(xD(k,y));
   } else if(auto* d=xtensordict(x)) {
    K c=optkey(); K k=ktn(KS,d->size()),y=ktn(0,c->n); size_t i;
@@ -960,7 +959,7 @@ KAPI options(K x) {
    i=0;
    for(const auto& a:*d) {
     kS(k)[i]=cs(a.key().c_str());
-    optval(a.value().options(),y,i++);
+    optval(a.value(),y,i++);
    }
    return xD(k,xT(xD(c,y)));
   } else {
