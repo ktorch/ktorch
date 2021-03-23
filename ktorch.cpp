@@ -699,6 +699,8 @@ bool xopt(S s,TensorOptions &o) {
   if(s == std::get<0>(m)) return o=o.layout(std::get<1>(m)), true;
  for(const auto& m:e.gradient)
   if(s == std::get<0>(m)) return o=o.requires_grad(std::get<1>(m)), true;
+ for(const auto& m:e.pin)
+  if(s == std::get<0>(m)) return o=o.pinned_memory(std::get<1>(m)), true;
  for(const auto& m:e.memory)
   if(s == std::get<0>(m)) return o=o.memory_format(std::get<1>(m)), true;
  return false;
@@ -1542,7 +1544,7 @@ K optval(const TensorOptions &o,K x,J i) {
 }
 
 K optmap(const TensorOptions &o) {
- return xD(optkey(),optval(o,ktn(KS,6)));
+ K k=optkey(); return xD(k,optval(o,ktn(KS,k->n)));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1738,6 +1740,7 @@ KAPI      dtype(K x) {return attr(x, -KS, Attr::dtype);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
 KAPI   gradient(K x) {return attr(x, -KS, Attr::gradient);}
 KAPI     gradfn(K x) {return attr(x, -KS, Attr::gradfn);}
+KAPI     memory(K x) {return attr(x, -KS, Attr::memory);}
 KAPI     result(K x) {return attr(x, -KS, Attr::result);}
 
 KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
@@ -1894,6 +1897,8 @@ KAPI fns(K x){
  fn(x, "gradfn",      KFN(gradfn),      1);
  fn(x, "gradient",    KFN(gradient),    1);
  fn(x, "layout",      KFN(layout),      1);
+ fn(x, "layout",      KFN(layout),      1);
+ fn(x, "memory",      KFN(memory),      1);
  fn(x, "contiguous",  KFN(contiguous),  1);
  fn(x, "leaf",        KFN(leaf),        1);
  fn(x, "pinned",      KFN(pinned),      1);

@@ -669,8 +669,8 @@ typedef struct {
  std::array<std::tuple<S,torch::MemoryFormat>,4> memory = {{
   std::make_tuple(cs("contiguous"), torch::MemoryFormat::Contiguous),          
   std::make_tuple(cs("preserve"),   torch::MemoryFormat::Preserve),          
-  std::make_tuple(cs("channel3d"),  torch::MemoryFormat::ChannelsLast3d),
-  std::make_tuple(cs("channel4d"),  torch::MemoryFormat::ChannelsLast)
+  std::make_tuple(cs("channel2d"),  torch::MemoryFormat::ChannelsLast),
+  std::make_tuple(cs("channel3d"),  torch::MemoryFormat::ChannelsLast3d)
  }};
 
 /*
@@ -1031,7 +1031,7 @@ typedef struct {
   std::make_tuple(cs("memory"),      Attr::memory),
   std::make_tuple(cs("numel"),       Attr::numel),
   std::make_tuple(cs("offset"),      Attr::offset),
-  std::make_tuple(cs("pinned"),      Attr::pinned),
+  std::make_tuple(cs("pin"),         Attr::pinned),
   std::make_tuple(cs("ptr"),         Attr::ptr),
   std::make_tuple(cs("ref"),         Attr::ref),
   std::make_tuple(cs("result"),      Attr::result),

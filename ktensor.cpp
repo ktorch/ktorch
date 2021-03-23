@@ -344,7 +344,6 @@ TensorDict kputd(K x) {
   TORCH_ERROR("dict: expecting k dictionary or (syms;vals), given ",kname(x));
  return d;
 }
-
  
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
@@ -469,6 +468,12 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
    break;
   default: break;
  }
+ // most tensor creation functions don't support newer memory format options yet (as of version 1.8)
+ if(o.has_memory_format() && r.suggest_memory_format() != o.memory_format_opt().value()) {
+  torch::NoGradGuard g;
+  r=r.is_pinned() ? r.contiguous(*o.memory_format_opt()).pin_memory() : r.contiguous(*o.memory_format_opt());
+  if(o.requires_grad()) r.set_requires_grad(true);
+ }
 }
 
 static K tensormode(K x,S s,Tensormode m) {
@@ -482,7 +487,14 @@ static K tensormode(K x,S s,Tensormode m) {
 
 static Tensor tensorcast(const Tensor& t,TensorOptions& o) {
  if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
- return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.device(),o.dtype()).set_requires_grad(o.requires_grad());
+ // as if version 1.8.0, errors using to() with sparse or gradients:
+ // pinned memory isn't handled from within any .to() method
+ //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
+ //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
+ if(o.pinned_memory())
+  return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.requires_grad(false)).pin_memory().set_requires_grad(o.requires_grad());
+ else
+  return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.requires_grad(false)).set_requires_grad(o.requires_grad());
 }
 
 static K tensorput(K x) {
@@ -858,6 +870,8 @@ S tensorsym(const Tensor& t,Attr a) {
   case Attr::layout:   return optlayout(t.layout());
   case Attr::gradient: return optgrad(t.requires_grad());
   case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
+  case Attr::pinned:   return optpin(t.is_pinned());
+  case Attr::memory:   return optmemory(t.suggest_memory_format());
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -934,14 +948,23 @@ KAPI options(K x) {
   if(xten(x,t)) {
    return optmap(t.options());
   } else if(auto* v=xvec(x)) {
-   K y=ktn(0,4);
-   for(size_t i=0; i<4; ++i) 
+   K k=optkey(); K y=ktn(0,k->n);
+   for(size_t i=0; i<k->n; ++i) 
     kK(y)[i]=ktn(KS,v->size());
    for(size_t i=0; i<v->size(); ++i)
     optval(v->at(i).options(),y,i);
-   return xT(xD(optkey(),y));
+   return xT(xD(k,y));
+  } else if(auto* d=xtensordict(x)) {
+   K c=optkey(); K k=ktn(KS,d->size()),y=ktn(0,c->n); size_t i;
+   for(i=0; i<y->n; ++i) kK(y)[i]=ktn(KS,d->size());
+   i=0;
+   for(const auto& a:*d) {
+    kS(k)[i]=cs(a.key().c_str());
+    optval(a.value().options(),y,i++);
+   }
+   return xD(k,xT(xD(c,y)));
   } else {
-   TORCH_ERROR("unrecognized arg(s) for options, expected tensor(s)");
+   TORCH_ERROR("unrecognized arg(s) for options, expected tensor or vector/dictionary of tensors");
   }
  KCATCH("options");
 }
@@ -951,7 +974,7 @@ KAPI options(K x) {
 // ------------------------------------------------------------------------------------------------
 // stordata - return storage data as k list (first move from cuda -> cpu, convert half to float)
 // storinfo - return storage attributes & data as dictionary
-// tensorinfo - return dictionary of attributes given tensor and detail level 0,1,2
+// tensorinfo - return dictionary of attributes given tensor and detail flag
 // ------------------------------------------------------------------------------------------------
 static K stordata(const Tensor& a) {
  const auto& t=(a.dtype()==torch::kHalf) ? a.cpu().to(torch::kFloat) : a.cpu();
@@ -985,6 +1008,8 @@ K tensorinfo(const Tensor& t,bool d) {
  js(a, mapattr(Attr::dtype));       jk(b, ks(tensorsym(t,  Attr::dtype)));
  js(a, mapattr(Attr::layout));      jk(b, ks(tensorsym(t,  Attr::layout)));
  js(a, mapattr(Attr::gradient));    jk(b, ks(tensorsym(t,  Attr::gradient)));
+ js(a, mapattr(Attr::pinned));      jk(b, ks(tensorsym(t,  Attr::pinned)));
+ js(a, mapattr(Attr::memory));      jk(b, ks(tensorsym(t,  Attr::memory)));
  js(a, mapattr(Attr::leaf));        jk(b, kb(tensorflag(t, Attr::leaf)));
  js(a, mapattr(Attr::gradfn));      jk(b, ks(tensorsym(t,  Attr::gradfn)));
  js(a, mapattr(Attr::dim));         jk(b, kj(tensorlong(t, Attr::dim)));
@@ -1395,7 +1420,7 @@ KAPI kgrad(K x) {
    if(p) return t.grad().defined() ? kten(t.grad()) : KERR("no gradient defined");
    else  return t.grad().defined() ? kget(t.grad()) : (K)0;
  } else {
-  return KERR("unexpected arg(s) for gradient, expectining tensor (enlist to return gradient ptr)");
+  return KERR("unexpected arg(s) for gradient, expecting tensor (enlist to return gradient ptr)");
  }
  KCATCH("unable to get gradient");
 }

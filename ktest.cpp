@@ -2,6 +2,33 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI optparse(K x) {
+ KTRY
+  TensorOptions o;
+  TORCH_CHECK(xopt(x,o), "need tensor options");
+  return optmap(o);
+ KCATCH("optparse");
+}
+
+bool pincheck(const Tensor& t) {
+ return t.is_sparse() ? t.values().is_pinned() : t.is_pinned();
+}
+
+KAPI otest(K x) {
+ KTRY
+  auto *t=xten(x);
+  TORCH_CHECK(t,"tensor required");
+  const auto& o=t->options();
+  std::cerr << "device: " << t->device() <<        "\t option: " << o.device()  << "\n";
+  std::cerr << " dtype: " << t->dtype()  <<        "\t option: " << o.dtype()   << "\n";
+  std::cerr << "layout: " << t->layout() <<        "\t option: " << o.layout()   << "\n";
+  std::cerr << "  grad: " << t->requires_grad() << "\t option: " << o.requires_grad() << "\n";
+  std::cerr << "pinned: " << pincheck(*t)        << "\t option: " << o.pinned_memory() << "\n";
+  std::cerr << "memory: " << t->suggest_memory_format() << "\t option: " << (o.memory_format_opt().has_value() ? o.memory_format_opt().value() : torch::MemoryFormat::Contiguous) << "\n";
+  return (K)0;
+ KCATCH("options test");
+}
+
 KAPI cudatest(K x) {
  auto t=torch::ones({2,1}).cuda();
  auto m=torch::nn::Linear(1,2);
