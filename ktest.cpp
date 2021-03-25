@@ -2,6 +2,7 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+
 KAPI optparse(K x) {
  KTRY
   TensorOptions o;
@@ -11,7 +12,7 @@ KAPI optparse(K x) {
 }
 
 bool pincheck(const Tensor& t) {
- return t.is_sparse() ? t.values().is_pinned() : t.is_pinned();
+ return t.is_sparse() ? false : t.is_pinned();
 }
 
 KAPI otest(K x) {
@@ -1392,18 +1393,20 @@ KAPI kindex(K x) {
 }
 
 KAPI opttest(K x) {
- TensorOptions o;
- //o.is_variable(true);
+ Tensor t; TensorOptions o; xten(x,t);
+ if(t.defined())
+  o=o.device(t.device()).dtype(t.dtype());
+
  std::cout << "dtype:       " << o.dtype() << "\n";
  std::cout << "device:      " << o.device() << "\n";
  std::cout << "layout:      " << o.layout() << "\n";
  std::cout << "gradient:    " << o.requires_grad() << "\n";
- //std::cout << "variable:    " << o.is_variable() << "\n";
  std::cout << "has dtype:   " << o.has_dtype()  << "\n";
  std::cout << "has device:  " << o.has_device() << "\n";
  std::cout << "has layout:  " << o.has_layout() << "\n";
- //std::cout << "has variable:" << o.has_is_variable() << "\n";
- std::cout << "has gradient:" << o.has_requires_grad() << "\n";
+ std::cout << "has grad:    " << o.has_requires_grad() << "\n";
+ std::cout << "has pinned:  " << o.has_pinned_memory() << "\n";
+ std::cout << "has memory:  " << o.has_memory_format() << "\n";
  return (K)0;
 }
 

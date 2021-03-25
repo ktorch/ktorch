@@ -158,13 +158,41 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
 // ktenpair - given a pair of tensors return pair of pointers or array
 // kten3 - given a triplet of tensors return triplet of pointers or array
 // -------------------------------------------------------------------------------
+static Tensor to(const Tensor& t,const TensorOptions& o,bool a=false,bool b=false);
+static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
+ //if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
+ // as of version 1.8.0, errors using to() with sparse or gradients:
+ // pinned memory doesn't seem to be handled from within any .to() method
+ //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
+ //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
+ if(o.layout()==torch::kSparse) {
+  TORCH_CHECK(!o.pinned_memory(), "sparse tensors cannot have pinned memory");
+  TORCH_CHECK(!(o.has_memory_format() && (o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast ||
+                                          o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast3d)),
+              "sparse tensors cannot use memory formats with channels as last dimension");
+   return t.to_sparse().to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
+ } else if(o.pinned_memory()) {
+  return t.to(o.requires_grad(false),a,b).pin_memory().set_requires_grad(o.requires_grad());
+ } else {
+  return t.to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
+ }
+}
+
 K to(Kten* t,const TensorOptions& o,bool a,bool b) {
- auto r=t->t.to(o,a,b);
+ //auto r=t->t.to(o,a,b);
+ auto r=to(t->t,o,a,b);
  if(b)                 // if copy flag set
   return kten(r);      // return new tensor
  if(!t->t.is_same(r))  // else if device/dtype caused new tensor
   t->t=r;              // replace tensor in k ptr
  return (K)0;
+}
+
+void to(TensorDict& d,const TensorOptions& o,bool a) {
+ for(auto& i:d) {
+  auto t=i.value().to(o,a);
+  if(!i.value().is_same(t)) i.value()=std::move(t);
+ }
 }
 
 void to(TensorVector& v,const TensorOptions& o,bool a) {
@@ -174,7 +202,8 @@ void to(TensorVector& v,const TensorOptions& o,bool a) {
  }
 }
 
-K to(Kvec* v,const TensorOptions& o,bool a) {to(v->v,o,a); return (K)0;}
+K to(Kdict* d,const TensorOptions& o,bool a) {to(d->d,o,a); return (K)0;}
+K to(Kvec*  v,const TensorOptions& o,bool a) {to(v->v,o,a); return (K)0;}
 
 K ktenpair(bool p,Tensor& a,Tensor& b) {  // p:true if returning tensor pointers
  if(p) return knk(2,kten(a),kten(b));
@@ -487,8 +516,8 @@ static K tensormode(K x,S s,Tensormode m) {
 
 static Tensor tensorcast(const Tensor& t,TensorOptions& o) {
  if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
- // as if version 1.8.0, errors using to() with sparse or gradients:
- // pinned memory isn't handled from within any .to() method
+ // as of version 1.8.0, errors using to() with sparse or gradients:
+ // pinned memory doesn't seem to be handled from within any .to() method
  //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
  //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
  if(o.pinned_memory())
@@ -870,7 +899,7 @@ S tensorsym(const Tensor& t,Attr a) {
   case Attr::layout:   return optlayout(t.layout());
   case Attr::gradient: return optgrad(t.requires_grad());
   case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
-  case Attr::pinned:   return optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
+  case Attr::pinned:   return optpin(t.is_sparse() ? false : t.is_pinned());
   case Attr::memory:   return optmemory(t.suggest_memory_format());
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
@@ -882,7 +911,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
-  case Attr::pinned:     return t.is_sparse() ? t.values().is_pinned() : t.is_pinned();
+  case Attr::pinned:     return t.is_sparse() ? false : t.is_pinned();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }

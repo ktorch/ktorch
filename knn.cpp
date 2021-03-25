@@ -197,6 +197,8 @@ static Result rtype(Cast c,const Moduleptr& m) {
 K kmodule(Cast c,const Moduleptr& m,Class a) {return kptr(new Kmodule(a,c,rtype(c,m),m));}
 
 void to(Module& m,const TensorOptions& o,bool a) {
+ TORCH_CHECK( !(o.has_layout() || o.has_requires_grad() || o.has_pinned_memory() || o.has_memory_format()),
+             "to: converts device & type, but cannot be used for layout,gradient,pinned memory or memory format");
  auto s=torch::typeMetaToScalarType(o.dtype());
  if(o.has_device() && o.has_dtype()) m.to(o.device(),s,a);
  else if(o.has_device())             m.to(o.device(),a);

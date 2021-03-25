@@ -652,7 +652,6 @@ bool xscalar(K x,J i,Scalar &s) {return xind(x,i) && xscalar(kK(x)[i],s);}
 // stype = match sym to/from TypeMeta to Dtype (torch::Dtype, aka at::ScalarType)
 // xtype - symbol to scalar type or type meta, return true if scalar type/type meta set, else false
 // xopt - sym(s) -> tensor options, return true if ok, false if not sym(s) or error if unknown sym
-// xto - device and datatype sym(s) -> tensor options, return true if ok, false if not sym(s)
 // xmode - check if sym, if matches a known tensor creation mode, set mode and return true else false
 // xbacksym - check if sym, if matches back prop graph setting, set retain/create graph flags else false
 // ------------------------------------------------------------------------------------------------------
@@ -721,30 +720,6 @@ bool xopt(K x,TensorOptions &o) {
 }
 
 bool xopt(K x,J i,TensorOptions &o) { return !x->t && 0<x->n && i<x->n && xopt(kK(x)[i],o);}
-
-bool xto(S s,TensorOptions &o) {
- for(const auto& m:env().device)
-  if(s == std::get<0>(m)) return o=o.device(std::get<1>(m)), true;
- for(const auto& m:env().dtype)
-  if(s == std::get<0>(m)) return o=o.dtype(std::get<1>(m)), true;
- return false;
-}
-
-bool xto(K x,TensorOptions &o) { 
- if (x->t == -KS || x->t == KS) {
-  bool a=x->t < 0; I i,n=a ? 1 : x->n;
-  for(i=0; i<n; ++i) {
-   S s=a ? x->s : kS(x)[i];
-   if (!xto(s,o))
-    TORCH_ERROR("unrecognized option: `",s,", expecting valid device and/or datatype, e.g. `cpu or `cuda`float");
-  }
-  return true;
- } else {
-  return false;
- }
-}
-
-bool xto(K x,J i,TensorOptions &o) {return xind(x,i) ? xto(kK(x)[i],o) : false;}
 
 bool xmode(K x,S &s,Tensormode &m) {
  if(x->t == -KS) {
@@ -1356,14 +1331,15 @@ KAPI kstate(K x) {
 KAPI To(K x) {
  KTRY
   bool a=false,b=false; Ktag *g; Tensor t; TensorOptions o;
-  if((g=xtag(x,0)) && (xto(x,1,o) || xten(x,1,t)) &&
+  if((g=xtag(x,0)) && (xopt(x,1,o) || xten(x,1,t)) &&
      (x->n==2 || (xbool(x,2,a) && (x->n==3 || (x->n==4 && xbool(x,3,b)))))) {
    TORCH_CHECK(b ? g->a == Class::tensor : true,
-               "4th arg, copy flag, can not be true for ",mapclass(g->a));
+               "4th arg, copy flag, can not be set true for ",mapclass(g->a));
    if(t.defined())
     o=o.device(t.device()).dtype(t.dtype());
    switch(g->a) {
     case Class::tensor: return to((Kten*)g,o,a,b);
+    case Class::dict:   return to((Kdict*)g,o,a);
     case Class::vector: return to((Kvec*)g,o,a);
     case Class::module:
     case Class::loss:   return to((Kmodule*)g,o,a);
@@ -1530,14 +1506,14 @@ K optval(const Tensor &t,K x,J i) {
   kS(x)[1]=optdtype(t.dtype());
   kS(x)[2]=optlayout(t.layout());
   kS(x)[3]=optgrad(t.requires_grad());
-  kS(x)[4]=optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
+  kS(x)[4]=optpin(t.is_sparse() ? false : t.is_pinned());
   kS(x)[5]=optmemory(t.suggest_memory_format());
  } else {
   kS(kK(x)[0])[i]=optdev(t.device());
   kS(kK(x)[1])[i]=optdtype(t.dtype());
   kS(kK(x)[2])[i]=optlayout(t.layout());
   kS(kK(x)[3])[i]=optgrad(t.requires_grad());
-  kS(kK(x)[4])[i]=optpin(t.is_sparse() ? t.values().is_pinned() : t.is_pinned());
+  kS(kK(x)[4])[i]=optpin(t.is_sparse() ? false : t.is_pinned());
   kS(kK(x)[5])[i]=optmemory(t.suggest_memory_format());
  }
  return x;
