@@ -154,28 +154,53 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
 }
 
 // -------------------------------------------------------------------------------
+// checkint - check options for modes not implemented for integral types
+// checksparse - check options for sparse tensor, signal nyi combinations
 // to - change tensor/vector device/type, create new tensor if copy flag set
 // ktenpair - given a pair of tensors return pair of pointers or array
 // kten3 - given a triplet of tensors return triplet of pointers or array
 // -------------------------------------------------------------------------------
-static Tensor to(const Tensor& t,const TensorOptions& o,bool a=false,bool b=false);
-static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
- //if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
- // as of version 1.8.0, errors using to() with sparse or gradients:
- // pinned memory doesn't seem to be handled from within any .to() method
- //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
- //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
+static bool checkint(const TensorOptions& o,Tensormode m=Tensormode::undefined);
+static bool checkint(const TensorOptions& o,Tensormode m) {
+ if(o.has_dtype() && torch::isIntegralType(torch::typeMetaToScalarType(o.dtype()),true)) {
+  switch(m) {
+   case Tensormode::rand:
+   case Tensormode::randn:
+    TORCH_ERROR(modesym(m), ": not implemented for ",optdtype(o.dtype())," tensors");
+   default: break;
+  }
+  return true;
+ } else {
+  return false;
+ }
+}
+
+static bool checksparse(const TensorOptions& o,Tensormode m=Tensormode::undefined);
+static bool checksparse(const TensorOptions& o,Tensormode m) {
  if(o.layout()==torch::kSparse) {
   TORCH_CHECK(!o.pinned_memory(), "sparse tensors cannot have pinned memory");
   TORCH_CHECK(!(o.has_memory_format() && (o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast ||
                                           o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast3d)),
               "sparse tensors cannot use memory formats with channels as last dimension");
-   return t.to_sparse().to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
- } else if(o.pinned_memory()) {
-  return t.to(o.requires_grad(false),a,b).pin_memory().set_requires_grad(o.requires_grad());
+  TORCH_CHECK(m==Tensormode::empty, modesym(m), ": not implemented for sparse tensors");
+  return true;
  } else {
-  return t.to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
+  return false;
  }
+}
+
+static Tensor to(const Tensor& t,const TensorOptions& o,bool a=false,bool b=false);
+static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
+ // as of version 1.8.0, errors using to() with sparse or gradients:
+ // pinned memory doesn't seem to be handled from within any .to() method
+ //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
+ //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
+ if(checksparse(o))
+   return t.to_sparse().to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
+ else if(o.pinned_memory())
+  return t.to(o.requires_grad(false),a,b).pin_memory().set_requires_grad(o.requires_grad());
+ else
+  return t.to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
 }
 
 K to(Kten* t,const TensorOptions& o,bool a,bool b) {
@@ -448,6 +473,7 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
  double e; J i,j,nx=x->n; Scalar a,z,n; IntArrayRef s; TensorOptions o;
  bool b=xopt(x,x->n-1,o); if(b) nx--;                         //track if options in last arg
  bool sz=xsize(x,1,s) && nx==((m==Tensormode::full) ? 3 : 2); //2nd arg is size & correct arg count
+ checksparse(o,m); checkint(o,m);
  switch(m) {
   case Tensormode::empty: if(sz) r=torch::empty(s,o); break;
   case Tensormode::zeros: if(sz) r=torch::zeros(s,o); break;
@@ -533,7 +559,7 @@ static K tensorput(K x) {
   r.resize_(t.sizes()).copy_(t,true);
   return (K)0;
  } else {
-  return kten(tensorcast(t,o));
+  return kten(to(t,o));
  }
 }
 

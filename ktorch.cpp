@@ -732,6 +732,12 @@ bool xmode(K x,S &s,Tensormode &m) {
 
 bool xmode(K x,J i,S &s,Tensormode &m) {return xind(x,i) && xmode(kK(x)[i],s,m);}
 
+S modesym(Tensormode &m) {
+ for(const auto& a:env().tensormode)
+  if(m == std::get<1>(a)) return std::get<0>(a);
+ TORCH_ERROR("unrecognized tensor creation mode: ",(I)m);
+}
+
 bool xbacksym(K x,bool& a,bool& b) {
  if(x->t == -KS) {
   for(const auto& s:env().backsym)

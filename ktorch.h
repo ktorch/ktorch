@@ -438,6 +438,7 @@ bool xopt(K,TensorOptions&);
 bool xopt(K,J,TensorOptions&);
 bool xmode(K,S&,Tensormode&);
 bool xmode(K,J,S&,Tensormode&);
+S    modesym(Tensormode&);
 bool xbacksym(K,bool&,bool&);
 bool xbacksym(K,J,bool&,bool&);
 
