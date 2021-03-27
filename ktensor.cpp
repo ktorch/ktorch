@@ -51,6 +51,7 @@ static K razelist(K x) {
 // -------------------------------------------------------------------------
 // kgetscalar - return k scalar given a scalar tensor
 // kgets - process tensor at depth, creating k array
+// kgetc - handle complex tensors, convert sparse complex to real first
 // kget - take tensor reference, return k scalar/array
 //      - take reference to vector of longs/doubles, return k list
 //      - take reference to vector/deque of tensors, return k lists
@@ -87,11 +88,21 @@ static K kgets(I i,I j,Ktype k,J b,const int64_t *s,S &p) {
  return x;
 }
 
+static Tensor kgetc(const Tensor& t) {
+ if(t.is_sparse()) {
+  // as of version 1.8.1, must first make a sparse tensor of reals, then make dense
+  auto n=t.sizes().vec(); n.push_back(2);
+  return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n).to_dense();
+ } else {
+  return torch::view_as_real(t);
+ }
+}
+ 
 K kget(const Tensor &t) {
  if(!t.defined())
   return ktn(0,0);
  else if (t.is_complex())
-  return kget(torch::view_as_real(t));
+  return kget(kgetc(t));
  else if (!t.dim())      // if 0-dimensional
   return kgetscalar(t);  // return scalar
  Tensor c;
@@ -182,7 +193,7 @@ static bool checksparse(const TensorOptions& o,Tensormode m) {
   TORCH_CHECK(!(o.has_memory_format() && (o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast ||
                                           o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast3d)),
               "sparse tensors cannot use memory formats with channels as last dimension");
-  TORCH_CHECK(m==Tensormode::empty, modesym(m), ": not implemented for sparse tensors");
+  TORCH_CHECK(m==Tensormode::undefined || m==Tensormode::empty, modesym(m), ": not implemented for sparse tensors");
   return true;
  } else {
   return false;
