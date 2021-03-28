@@ -13,6 +13,7 @@ K kdict(const TensorDict &d) {return kptr(new Kdict(d));}
 // -------------------------------------------------------------------------
 // razeflag - check if general list made up entirely of scalars
 // razelist - if general list is all scalars, raze to simple list
+// sparsereal - convert sparse complex to sparse real representation
 // -------------------------------------------------------------------------
 static bool razeflag(K x) {
  if(!x->t && x->n>0) {
@@ -48,10 +49,14 @@ static K razelist(K x) {
  }
 }
 
+static Tensor sparsereal(const Tensor& t) {
+ auto n=t.sizes().vec(); n.push_back(2);
+ return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n);
+}
+
 // -------------------------------------------------------------------------
 // kgetscalar - return k scalar given a scalar tensor
 // kgets - process tensor at depth, creating k array
-// kgetc - handle complex tensors, convert sparse complex to real first
 // kget - take tensor reference, return k scalar/array
 //      - take reference to vector of longs/doubles, return k list
 //      - take reference to vector/deque of tensors, return k lists
@@ -88,21 +93,11 @@ static K kgets(I i,I j,Ktype k,J b,const int64_t *s,S &p) {
  return x;
 }
 
-static Tensor kgetc(const Tensor& t) {
- if(t.is_sparse()) {
-  // as of version 1.8.1, must first make a sparse tensor of reals, then make dense
-  auto n=t.sizes().vec(); n.push_back(2);
-  return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n).to_dense();
- } else {
-  return torch::view_as_real(t);
- }
-}
- 
 K kget(const Tensor &t) {
  if(!t.defined())
   return ktn(0,0);
  else if (t.is_complex())
-  return kget(kgetc(t));
+  return kget(t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t));
  else if (!t.dim())      // if 0-dimensional
   return kgetscalar(t);  // return scalar
  Tensor c;
@@ -733,8 +728,9 @@ static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
  KTRY
   bool b=true; Tensor *t=xten(x);
   if(!t) b=false, t=xten(x,0);  // enlisted tensor, return as k array
-  TORCH_CHECK(t && x->n==1, nm, ": expects a complex tensor (enlisted to return as k value), given ",kname(x));
-  return kresult(b,f(*t));
+  TORCH_CHECK(t && t->is_complex() && x->n==1, nm, ": expects a complex tensor (enlist to return k value), given ",kname(x));
+  // as of version 1.8.1, complex sparse tensors must  be made sparse real -> dense -> back to complex
+  return kresult(b,f(t->is_sparse() ? torch::view_as_complex(sparsereal(*t).to_dense()) : *t));
  KCATCH(nm);
 }
 
