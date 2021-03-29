@@ -102,6 +102,7 @@ template<size_t D,typename T=double>  using Exdouble=torch::ExpandingArray<D,T>;
 template<size_t D,typename T=int64_t> using Exoptional=torch::ExpandingArrayWithOptionalElem<D,T>;
 using Dtype=torch::Dtype;
 using TypeMeta=caffe2::TypeMeta;
+using ScalarType=torch::ScalarType;
 using TensorOptions=torch::TensorOptions;
 using TensorList=torch::TensorList;  // ArrayRef<Tensor>
 using TensorDict=torch::OrderedDict<std::string, torch::Tensor>;
@@ -186,9 +187,8 @@ enum class Cast:short {
 
 enum class Tensormode:char {   // tensor creation modes
  undefined,
- arange, empty, eye,     full,  linspace, logspace,
- ones,   rand,  randint, randn, randperm, range,
- zeros
+ arange, complex, empty,   eye,   full,     linspace, logspace,
+ ones,   rand,    randint, randn, randperm, range,    zeros    
 };
 
 enum class Prob:char {  // probablility distributions
@@ -705,20 +705,21 @@ typedef struct {
   std::make_tuple(cs("opt"),    Class::optimizer),
  }};
 
- std::array<std::tuple<S,Tensormode>,13> tensormode = {{    //tensor creation mode: map symbol -> enum
-  std::make_tuple(cs("empty"),    Tensormode::empty),
-  std::make_tuple(cs("full"),     Tensormode::full),
-  std::make_tuple(cs("eye"),      Tensormode::eye),
-  std::make_tuple(cs("ones"),     Tensormode::ones),
-  std::make_tuple(cs("zeros"),    Tensormode::zeros),
-  std::make_tuple(cs("rand"),     Tensormode::rand),
-  std::make_tuple(cs("randn"),    Tensormode::randn),
-  std::make_tuple(cs("randint"),  Tensormode::randint),
-  std::make_tuple(cs("randperm"), Tensormode::randperm),
-  std::make_tuple(cs("range"),    Tensormode::range),
+ std::array<std::tuple<S,Tensormode>,14> tensormode = {{    //tensor creation mode: map symbol -> enum
   std::make_tuple(cs("arange"),   Tensormode::arange),
+  std::make_tuple(cs("complex"),  Tensormode::complex),
+  std::make_tuple(cs("empty"),    Tensormode::empty),
+  std::make_tuple(cs("eye"),      Tensormode::eye),
+  std::make_tuple(cs("full"),     Tensormode::full),
   std::make_tuple(cs("linspace"), Tensormode::linspace),
-  std::make_tuple(cs("logspace"), Tensormode::logspace)
+  std::make_tuple(cs("logspace"), Tensormode::logspace),
+  std::make_tuple(cs("ones"),     Tensormode::ones),
+  std::make_tuple(cs("randint"),  Tensormode::randint),
+  std::make_tuple(cs("randn"),    Tensormode::randn),
+  std::make_tuple(cs("randperm"), Tensormode::randperm),
+  std::make_tuple(cs("rand"),     Tensormode::rand),
+  std::make_tuple(cs("range"),    Tensormode::range),
+  std::make_tuple(cs("zeros"),    Tensormode::zeros)
  }};
 
  std::array<std::tuple<S,Prob>,7> prob = {{    //probability distribution: map symbol -> enum

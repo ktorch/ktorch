@@ -406,6 +406,47 @@ TensorDict kputd(K x) {
 }
  
 // --------------------------------------------------------------------------------------
+// complextype - get component data type from complex data type or default data type
+// makecomplex - make a complex tensor from inputs: (real,'imag) or (real;imag)
+// --------------------------------------------------------------------------------------
+static ScalarType complextype(const TensorOptions& o) {
+ ScalarType d;
+ if(o.has_dtype()) {
+  switch(torch::typeMetaToScalarType(o.dtype())) {
+   case torch::kComplexHalf:   d=torch::kHalf; break;
+   case torch::kComplexFloat:  d=torch::kFloat; break;
+   case torch::kComplexDouble: d=torch::kDouble; break;
+   default:
+    TORCH_ERROR("unable to create complex tensor with given datatype: ",optdtype(o.dtype()));
+  }
+ } else {
+  d=torch::get_default_dtype_as_scalartype();
+  if(!isFloatingType(d)) d=torch::kFloat;
+ }
+ return d;
+}
+
+static Tensor makecomplex(const Tensor& t,const TensorOptions &o) {
+ if(t.is_floating_point())
+  return torch::view_as_complex(t);
+ else
+  return torch::view_as_complex(t.to(complextype(o)));
+}
+
+static Tensor makecomplex(const Tensor& r,const Tensor& i,const TensorOptions &o) {
+ if(r.is_floating_point() && i.is_floating_point()) {
+  return torch::complex(r,i);
+ } else if(r.is_floating_point()) {
+  return torch::complex(r, i.to(r.dtype()));
+ } else if(i.is_floating_point()) {
+  return torch::complex(r.to(i.dtype()), i);
+ } else {
+  auto d=complextype(o);
+  return torch::complex(r.to(d),i.to(d));
+ }
+}
+
+// --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given
 // tensoropt - tensor creation routines where tensor size and option(s) given
@@ -527,9 +568,15 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
    if(xnum(x,1,a) && xnum(x,2,z) && (nx==3 || (xlong(x,3,i) && (nx==4 || (nx==5 && b && xnum(x,4,e))))))
     r = b ? torch::logspace(a,z,i,e,o) : torch::linspace(a,z,i,o);
    break;
+  case Tensormode::complex:
+   if(nx==2) 
+    r=makecomplex(kput(x,1), o).to(o);
+   else if(nx==3)
+    r=makecomplex(kput(x,1), kput(x,2), o).to(o);
+   break;
   default: break;
  }
- // most tensor creation functions don't support newer memory format options yet (as of version 1.8)
+ // most tensor creation functions don't support newer memory format options yet (as of version 1.8.1)
  if(o.has_memory_format() && r.suggest_memory_format() != o.memory_format_opt().value()) {
   torch::NoGradGuard g;
   r=r.is_pinned() ? r.contiguous(*o.memory_format_opt()).pin_memory() : r.contiguous(*o.memory_format_opt());
