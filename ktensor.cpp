@@ -407,18 +407,26 @@ TensorDict kputd(K x) {
  
 // --------------------------------------------------------------------------------------
 // complextype - get component data type from complex data type or default data type
-// makecomplex - make a complex tensor from inputs: (real,'imag) or (real;imag)
+// complexdim  - determine first/last dim on which to split for real/imaginary
 // --------------------------------------------------------------------------------------
-static ScalarType complextype(const TensorOptions& o) {
+static ScalarType complextype(c10::optional<TypeMeta> t,ScalarType a=ScalarType::Undefined, ScalarType b=ScalarType::Undefined);
+static ScalarType complextype(c10::optional<TypeMeta> t,ScalarType a,ScalarType b) {
  ScalarType d;
- if(o.has_dtype()) {
-  switch(torch::typeMetaToScalarType(o.dtype())) {
+ if(torch::isFloatingType(a) && torch::isFloatingType(b)) {
+  TORCH_CHECK(a==b, "complex: real input is ",optdtype(a),", imaginary input is ",optdtype(b));
+ }
+ if(t) {
+  switch(torch::typeMetaToScalarType(*t)) {
    case torch::kComplexHalf:   d=torch::kHalf; break;
    case torch::kComplexFloat:  d=torch::kFloat; break;
    case torch::kComplexDouble: d=torch::kDouble; break;
    default:
-    TORCH_ERROR("unable to create complex tensor with given datatype: ",optdtype(o.dtype()));
+    TORCH_ERROR("unable to create complex tensor with given datatype: ",optdtype(*t));
   }
+ } else if(torch::isFloatingType(a)) {
+  d=a; 
+ } else if(torch::isFloatingType(b)) {
+  d=b; 
  } else {
   d=torch::get_default_dtype_as_scalartype();
   if(!isFloatingType(d)) d=torch::kFloat;
@@ -426,25 +434,49 @@ static ScalarType complextype(const TensorOptions& o) {
  return d;
 }
 
-static Tensor makecomplex(const Tensor& t,const TensorOptions &o) {
- if(t.is_floating_point())
-  return torch::view_as_complex(t);
- else
-  return torch::view_as_complex(t.to(complextype(o)));
+static int64_t complexdim(const Tensor& a,c10::optional<bool> b) {
+ bool c=b ? *b : env().cpermute; int64_t d=c ? 0 : -1;
+ TORCH_CHECK(a.dim(),      "complex: single input array must have one or more dimensions");
+ TORCH_CHECK(a.size(d)==2, "complex: single input array must have a ",
+                           (c ? "first" : "last")," dimension of size 2 (real",(c ?  ";" : ",'"),
+                           "imaginary), given size of ",a.sizes());
+ return d;
 }
 
-static Tensor makecomplex(const Tensor& r,const Tensor& i,const TensorOptions &o) {
- if(r.is_floating_point() && i.is_floating_point()) {
-  return torch::complex(r,i);
- } else if(r.is_floating_point()) {
-  return torch::complex(r, i.to(r.dtype()));
- } else if(i.is_floating_point()) {
-  return torch::complex(r.to(i.dtype()), i);
- } else {
-  auto d=complextype(o);
-  return torch::complex(r.to(d),i.to(d));
- }
+// --------------------------------------------------------------------------------------
+// complex1 - make a complex tensor from single input: (real,'imag) or (real;imag)
+// --------------------------------------------------------------------------------------
+static Tensor complex1(const Tensor& a,int64_t d,Tensor& r) {  // w'output tensor
+ return torch::complex_out(r, a.select(d,0), a.select(d,1));
 }
+
+static Tensor complex1(const Tensor& a,Tensor& r,c10::optional<bool> b=c10::nullopt);
+static Tensor complex1(const Tensor& a,Tensor& r,c10::optional<bool> b) {
+ return complex1(a.to(complextype(r.dtype())), complexdim(a,b), r);
+}
+
+static Tensor complex1(const Tensor& a,int64_t d) {   // no output tensor
+ return torch::complex(a.select(d,0), a.select(d,1));
+}
+
+static Tensor complex1(const Tensor& a,const TensorOptions& o,c10::optional<bool> b=c10::nullopt);
+static Tensor complex1(const Tensor& a,const TensorOptions& o,c10::optional<bool> b) {
+ return complex1(a.to(complextype(o.dtype_opt(),a.scalar_type())), complexdim(a,b)).to(o);
+}
+
+// --------------------------------------------------------------------------------------
+// complex2 - make a complex tensor from real & imaginary inputs
+// --------------------------------------------------------------------------------------
+static Tensor complex2(const Tensor& a,const Tensor& b,Tensor& r) {  // w'output tensor
+ auto t=complextype(r.dtype(), a.scalar_type(), b.scalar_type());
+ return torch::complex_out(r,a.to(t),b.to(t));
+}
+
+static Tensor complex2(const Tensor& a,const Tensor& b,TensorOptions& o) {
+ auto t=complextype(o.dtype_opt(), a.scalar_type(), b.scalar_type());
+ return torch::complex(a.to(t), b.to(t));
+}
+
 
 // --------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
@@ -512,6 +544,16 @@ static void tensorout(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:output, r:re
    if(xnum(x,1,a) && xnum(x,2,z) && (x->n==4 || (xlong(x,3,i) && (x->n==5 || (x->n==6 && b && xnum(x,4,e))))))
     r = b ? torch::logspace_out(t,a,z,i,e) : torch::linspace_out(t,a,z,i);
    break;
+  case Tensormode::complex:
+   if(x->n==3) {
+    r=complex1(kput(x,1),t);
+   } else if(x->n==4) {
+    if(xbool(x,2,b))
+     r=complex1(kput(x,1),b,t);
+    else
+     r=complex2(kput(x,1),kput(x,2),t);
+   }
+   break;
   default: break;
  }
 }
@@ -569,10 +611,14 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
     r = b ? torch::logspace(a,z,i,e,o) : torch::linspace(a,z,i,o);
    break;
   case Tensormode::complex:
-   if(nx==2) 
-    r=makecomplex(kput(x,1), o).to(o);
-   else if(nx==3)
-    r=makecomplex(kput(x,1), kput(x,2), o).to(o);
+   if(nx==2) {
+    r=complex1(kput(x,1), o);
+   } else if(nx==3) {
+    if(xbool(x,2,b))
+     r=complex1(kput(x,1), o, b);
+    else
+     r=complex2(kput(x,1), kput(x,2), o);
+   }
    break;
   default: break;
  }

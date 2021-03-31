@@ -1474,6 +1474,8 @@ S& optdtype(const TypeMeta& t) {
  TORCH_ERROR("unrecognized data type: ",t);
 }
 
+S& optdtype(ScalarType s) {return optdtype(torch::scalarTypeToTypeMeta(s));}
+
 S& optlayout(const torch::Layout& l) {
  for(auto& m:env().layout) if(l==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized layout: ",l);

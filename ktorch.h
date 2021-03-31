@@ -464,6 +464,7 @@ void pten(const Pairs&,Tensor&);
 
 S& optdev(const Device&);
 S& optdtype(const TypeMeta&);
+S& optdtype(ScalarType);
 S& optlayout(const torch::Layout&);
 S& optmemory(const c10::optional<torch::MemoryFormat>&);
 S& optgrad(const bool&);
@@ -623,6 +624,7 @@ typedef struct {
  S nullsym=cs("");      // internal representation of null symbol
  bool frame=false;      // if true, error message returns stack frame
  bool alloptions=true;  // if true, return all option settings, else only non-defaults
+ bool cpermute=true;    // if true, return complex tensor as (real;imag) instead of (real,'imag)
 
  std::vector<std::tuple<S,Device>> device;
 
