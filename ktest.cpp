@@ -60,11 +60,16 @@ Tensor cpermute(const Tensor& t,bool b) {
  return t.permute(i);
 }
 
-KAPI complex(K x) {
+KAPI complex(K x,K y) {
  KTRY
-  auto t=torch::arange(6).view({2,3}).to(torch::kComplexDouble);
-  auto a=torch::view_as_real(t);
-  return kget(cpermute(a,x->g));
+  Tensor *t=xten(x),r;
+  TORCH_CHECK(t,"need tensor");
+  TORCH_CHECK(y->t==-KJ,"dim");
+  for(size_t i=0; i<10000; ++i) 
+   //r=torch::stack({torch::real(*t),torch::imag(*t)},y->j);
+   r=perm2(torch::view_as_real(*t));
+  return kget(r);
+  //return kget(cpermute(a,x->g));
  KCATCH("complex");
 }
 

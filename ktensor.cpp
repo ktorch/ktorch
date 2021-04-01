@@ -13,7 +13,6 @@ K kdict(const TensorDict &d) {return kptr(new Kdict(d));}
 // -------------------------------------------------------------------------
 // razeflag - check if general list made up entirely of scalars
 // razelist - if general list is all scalars, raze to simple list
-// sparsereal - convert sparse complex to sparse real representation
 // -------------------------------------------------------------------------
 static bool razeflag(K x) {
  if(!x->t && x->n>0) {
@@ -49,9 +48,24 @@ static K razelist(K x) {
  }
 }
 
+// -----------------------------------------------------------------------------------------
+// cpermute - permute real representation of complex tensor from (real,'imag) -> (real;imag)
+// sparsereal - convert sparse complex tensor to sparse real representation (real,'imag)
+// toreal - convert complex tensor to real representation, 1 complex number to real & imag
+// -----------------------------------------------------------------------------------------
+static Tensor cpermute(const Tensor& x) {
+ std::vector<int64_t> d;
+ for(size_t i=0; i<x.dim(); ++i) d.push_back(i-1);
+ return x.permute(d);
+}
+
 static Tensor sparsereal(const Tensor& t) {
  auto n=t.sizes().vec(); n.push_back(2);
  return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n);
+}
+
+static Tensor toreal(const Tensor& t) {
+ return t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t);
 }
 
 // -------------------------------------------------------------------------
@@ -62,7 +76,7 @@ static Tensor sparsereal(const Tensor& t) {
 //      - take reference to vector/deque of tensors, return k lists
 //      - take reference to dictionary of tensors, return k dictionary
 // -------------------------------------------------------------------------
-K kgetscalar(const Tensor &t){
+static K kgetscalar(const Tensor &t){
  auto s=t.item();
  switch(t.scalar_type()) {
   case torch::kFloat:  return ke(s.toFloat());
@@ -97,7 +111,7 @@ K kget(const Tensor &t) {
  if(!t.defined())
   return ktn(0,0);
  else if (t.is_complex())
-  return kget(t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t));
+  return kget(env().complexfirst ? cpermute(toreal(t)) : toreal(t));
  else if (!t.dim())      // if 0-dimensional
   return kgetscalar(t);  // return scalar
  Tensor c;
@@ -435,7 +449,7 @@ static ScalarType complextype(c10::optional<TypeMeta> t,ScalarType a,ScalarType 
 }
 
 static int64_t complexdim(const Tensor& a,c10::optional<bool> b) {
- bool c=b ? *b : env().cpermute; int64_t d=c ? 0 : -1;
+ bool c=b ? *b : env().complexfirst; int64_t d=c ? 0 : -1;
  TORCH_CHECK(a.dim(),      "complex: single input array must have one or more dimensions");
  TORCH_CHECK(a.size(d)==2, "complex: single input array must have a ",
                            (c ? "first" : "last")," dimension of size 2 (real",(c ?  ";" : ",'"),
@@ -483,7 +497,6 @@ static Tensor complex2(const Tensor& a,const Tensor& b,TensorOptions& o) {
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given
 // tensoropt - tensor creation routines where tensor size and option(s) given
 // tensormode - determines whether a template tensor or output tensor given w'other args
-// tensorcast - derive/apply tensor options, e.g. data type, device, gradient required
 // tensorput - put k value(s) -> tensor, return new tensor ptr unless output tensor given
 // tensorget - given tensor ptr, return tensor as k array, accepts optional 1st dim index
 // vectorptr - given vector ptr, return tensor pointers, or single pointer if index given
@@ -639,18 +652,6 @@ static K tensormode(K x,S s,Tensormode m) {
  return out ? (K)0 : kten(r);
 }
 
-static Tensor tensorcast(const Tensor& t,TensorOptions& o) {
- if(!o.has_dtype()) o=o.dtype(t.dtype()); //if no explicit data type given, use k type
- // as of version 1.8.0, errors using to() with sparse or gradients:
- // pinned memory doesn't seem to be handled from within any .to() method
- //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
- //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
- if(o.pinned_memory())
-  return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.requires_grad(false)).pin_memory().set_requires_grad(o.requires_grad());
- else
-  return (o.layout()==torch::kSparse ? t.to_sparse() : t).to(o.requires_grad(false)).set_requires_grad(o.requires_grad());
-}
-
 static K tensorput(K x) {
  Tensor r,t; TensorOptions o;
  t=((xopt(x,1,o) || xten(x,1,r)) && x->n==2) ? kput(x,0) : kput(x);
@@ -674,23 +675,28 @@ static K tensorget(const Tensor& t,K x) { // g-tag with tensor, x-null ptr or in
 }
 
 static K vectorptr(const TensorVector& v,K x) {
- if(!x) {
+ if(x->n==1) {                                 // no additional args, return list of tensor ptrs
   J i=0; K r=ktn(0,v.size());
   for(const auto& t:v) kK(r)[i++]=kten(t);
   return r;
- } else if(x->t == -KJ) {
-  return kten(v.at(x->j));
- } else if(x->t == KJ) {
-  K r=ktn(0,x->n);
-  for(J i=0; i<x->n;++i) kK(r)[i]=kten(v.at(kJ(x)[i]));
-  return r;
+ } else if(x->n==2) {                          // 2nd arg of single index or list of indices
+  K y=kK(x)[1];
+  if(y->t == -KJ) {
+   return kten(v.at(y->j));                              // single index, return tensor ptr
+  } else if(y->t == KJ) {                                // indices, return list of selected tensor ptrs
+   K r=ktn(0,y->n);
+   for(J i=0; i<y->n;++i) kK(r)[i]=kten(v.at(kJ(y)[i]));
+   return r;
+  } else {
+   TORCH_ERROR("tensor: given vector, 2nd arg expected to be long(s) for indexing, not ",kname(y));
+  }
  } else {
-   TORCH_ERROR("tensor: given vector, 2nd arg expected to be long(s) for indexing, not ",kname(x));
+  TORCH_ERROR("tensor: given vector, expecting no more than one additional indexing argument but given ",x->n-1," additional args");
  }
 }
 
 static K dictptr(const TensorDict& d,K x) {
- if(!x) {
+ if(x->n==1) {                                       // no additional args, return k dict of tensor ptrs
   J i=0; K k=ktn(KS,d.size()),v=ktn(0,d.size());
   for(const auto &a:d) {
    kS(k)[i]=cs(a.key().c_str());
@@ -698,14 +704,19 @@ static K dictptr(const TensorDict& d,K x) {
    ++i;
   }
   return xD(k,v);
- } else if(x->t == -KS) {
-  return kten(d[x->s]);
- } else if(x->t == KS) {
-   K r=ktn(0,x->n);
-   for(J i=0; i<x->n;++i) kK(r)[i]=kten(d[kS(x)[i]]);
-   return r;
+ } else if(x->n==2) {                                 // additional indexing arg
+  K y=kK(x)[1];
+  if(y->t == -KS) {                                   // single symbol, return tensor pointer
+   return kten(d[y->s]);
+  } else if(y->t == KS) {                             // list of symbols, return k dict of selected tensor ptrs
+    K r=ktn(0,y->n);
+    for(J i=0; i<y->n;++i) kK(r)[i]=kten(d[kS(y)[i]]);
+    return r;
+  } else {
+   TORCH_ERROR("tensor: given dictionary, 2nd arg expected to be symbols(s) for indexing, not ",kname(y));
+  }
  } else {
-   TORCH_ERROR("tensor: given dictionary, 2nd arg expected to be symbols(s) for indexing, not ",kname(x));
+  TORCH_ERROR("tensor: given dictionary, expecting no more than one additional indexing argument but given ",x->n-1," additional args");
  }
 }
 
@@ -713,11 +724,10 @@ KAPI tensor(K x) {
  KTRY
   S s; Tensormode m; Ktag *g;
   if((g=xtag(x)) || (g=xtag(x,0))) {
-   TORCH_CHECK(x->n<3, "tensor: ",kname(x)," given, expecting at most one additional arg but ",x->n," given");
    switch(g->a) {
     case Class::tensor: return tensorget(((Kten*)g)->t, x->n==2 ? kK(x)[1] : nullptr);
-    case Class::vector: return vectorptr(((Kvec*)g)->v, x->n==2 ? kK(x)[1] : nullptr);
-    case Class::dict:   return  dictptr(((Kdict*)g)->d, x->n==2 ? kK(x)[1] : nullptr);
+    case Class::vector: return vectorptr(((Kvec*)g)->v, x);
+    case Class::dict:   return  dictptr(((Kdict*)g)->d, x);
     default: TORCH_ERROR("tensor not implemented for ",mapclass(g->a));
    }
   } else if(xmode(x,0,s,m)) {
@@ -813,9 +823,6 @@ KAPI dict(K x) {
 // real,imag - return real & imaginary parts of tensor as tensor or k value
 // isreal - return boolean with 1's where value is real
 // cget - return complex tensor as k value, permute dims to return real/imag on 1st dim
-// ctype - if complex data type specified, get real equivalent, use default type else
-// cput - put k array to complex tensor, with option to permute and convert type, device
-// ctensor - create/retrieve complex tensor, flag for real/imaginary on 1st/last dim
 // --------------------------------------------------------------------------------------
 static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
  KTRY
@@ -830,63 +837,6 @@ static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
 KAPI   real(K x) {return kreal(x, torch::real,   "real");}
 KAPI   imag(K x) {return kreal(x, torch::imag,   "imag");}
 KAPI isreal(K x) {return kreal(x, torch::isreal, "isreal");}
-
-static K cget(const Tensor& t,bool b) {
- if(b) {
-  std::vector<int64_t> d; auto n=t.dim()+1;
-  for(size_t i=0; i<n; ++i) d.push_back(i-1);
-  return kget(torch::view_as_real(t).permute(d));
- } else {
-  return kget(torch::view_as_real(t));
- }
-}
- 
-static TensorOptions ctype(const TensorOptions& o) {
- if(o.has_dtype()) {
-  switch(torch::typeMetaToScalarType(o.dtype())) {
-   case torch::kComplexHalf:   return o.dtype(torch::kHalf);    // find real equivalent of complex data type
-   case torch::kComplexFloat:  return o.dtype(torch::kFloat);
-   case torch::kComplexDouble: return o.dtype(torch::kDouble);
-   default: return o;
-  }
- } else {
-  return o.dtype(torch::get_default_dtype_as_scalartype());    // use default float/double in case integers given
- }
-}
-
-static K cput(const Tensor& t,bool b,TensorOptions& o) {
- o=ctype(o);
- if(b) {
-  std::vector<int64_t> d;
-  for(size_t i=1; i<t.dim(); ++i) d.push_back(i);
-  if(t.dim()) d.push_back(0);
-  return kten(torch::view_as_complex(tensorcast(t,o).permute(d).contiguous()));
- } else {
-  return kten(torch::view_as_complex(tensorcast(t,o)));
- }
-}
- 
-KAPI ctensor(K x) {
- KTRY
-  bool b=false; Tensor *t=xten(x);
-  if(t) {
-   return cget(*t,b);
-  } else if((t=xten(x,0))) {
-   TORCH_CHECK(x->n==2,      "ctensor: given tensor as 1st arg, expecting 2nd arg of permute flag but ",x->n," arg(s) given");
-   TORCH_CHECK(xbool(x,1,b), "ctensor: given tensor as 1st arg, expecting 2nd arg to be permute flag but ",kname(x,1)," given");
-   return cget(*t,b);
-  } else {
-   TensorOptions o;
-   if(xmixed(x,3)) {
-    TORCH_CHECK( (xbool(x,1,b) && (x->n==2 || (x->n==3 && xopt(x,2,o)))) || (x->n==2 && xopt(x,1,o)),
-                "ctensor: unexpected arg(s), expecting input or (input; permute flag) or (input; permute flag; tensor option(s))");
-    return cput(kput(x,0),b,o);
-   } else {
-    return cput(kput(x),b,o);
-   }
-  }
- KCATCH("ctensor");
-}
 
 // ----------------------------------------------------------------------------------------------
 // kcat1 - check for tensor(s) at first level of a general list, e.g. cat(a;b)
@@ -1724,7 +1674,6 @@ void tensorfn(K x) {
  fn(x, "real",         KFN(real),          1);
  fn(x, "imag",         KFN(imag),          1);
  fn(x, "isreal",       KFN(isreal),        1);
- fn(x, "ctensor",      KFN(ctensor),       1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "permute",      KFN(permute),       1);
  fn(x, "stack",        KFN(stack),         1);

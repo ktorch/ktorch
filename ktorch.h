@@ -620,11 +620,11 @@ void modelfn(K);
 
 // global environment
 typedef struct {
- I cuda;                // number of CUDA devices
- S nullsym=cs("");      // internal representation of null symbol
- bool frame=false;      // if true, error message returns stack frame
- bool alloptions=true;  // if true, return all option settings, else only non-defaults
- bool cpermute=true;    // if true, return complex tensor as (real;imag) instead of (real,'imag)
+ I cuda;                  // number of CUDA devices
+ S nullsym=cs("");        // internal representation of null symbol
+ bool frame=false;        // if true, error message returns stack frame
+ bool alloptions=true;    // if true, return all option settings, else only non-defaults
+ bool complexfirst=true;  // if true, return complex tensor as (real;imag) instead of (real,'imag)
 
  std::vector<std::tuple<S,Device>> device;
 

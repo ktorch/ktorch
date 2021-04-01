@@ -1593,12 +1593,14 @@ KAPI ksetting(K x) {
    js(s,cs("deterministic"));  jk(v,kb(c.deterministicCuDNN()));
    js(s,cs("stackframe"));     jk(v,kb(e.frame));
    js(s,cs("alloptions"));     jk(v,kb(e.alloptions));
+   js(s,cs("complexfirst"));   jk(v,kb(e.complexfirst));
    return r;
   } else if (xsym(x,0,s) && xbool(x,1,b) && x->n==2) {
    if(s==cs("benchmark"))           c.setBenchmarkCuDNN(b);
    else if(s==cs("deterministic"))  c.setDeterministicCuDNN(b);
    else if(s==cs("stackframe"))     e.frame=b;
    else if(s==cs("alloptions"))     e.alloptions=b;
+   else if(s==cs("complexfirst"))   e.complexfirst=b;
    else                             TORCH_ERROR("unable to change setting: ",s);
    return(K)0;
   } else if (xsym(x,0,s) && s==cs("threads") && xlong(x,1,n) && x->n==2) {
