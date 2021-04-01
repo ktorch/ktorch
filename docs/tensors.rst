@@ -19,13 +19,18 @@ Setting properties
 ******************
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
-The main two are :ref:`device <devices>` and :ref:`data type <types>`,
-along with layout and whether gradients are recorded for operations on the tensor. The recognized values for these axes are represented as symbols in the k interface:
+The two main attributes are :ref:`device <devices>` and :ref:`data type <types>`.
+Other attributes or options determine `layout <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=layout#torch.torch.layout>`_ and whether gradients are recorded for operations on the tensor.
+There are additional settings to determine if memory is `pinned <https://pytorch.org/docs/stable/notes/cuda.html#use-pinned-memory-buffers>`_ and `optional memory formats <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=channels_last#torch.torch.memory_format>`_ where channels in 2-dimensional and 3-dimensional images (4-d & 5-d tensors) are stored with channels as the last dimension.
+
+In the k interface, these attributes are represented as symbols:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
 - **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
+- **pin:** either ```pinned`` or ```unpinned``
+- **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d``
 
 The ``default`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 

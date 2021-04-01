@@ -492,16 +492,17 @@ static Tensor complex2(const Tensor& a,const Tensor& b,TensorOptions& o) {
 }
 
 
-// --------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // tensorlike - tensor creation routines, e.g. ones_like() where tensor given as template
 // tensorout - tensor creation routines, e.g. ones_out(), where output tensor is given
 // tensoropt - tensor creation routines where tensor size and option(s) given
 // tensormode - determines whether a template tensor or output tensor given w'other args
 // tensorput - put k value(s) -> tensor, return new tensor ptr unless output tensor given
-// tensorget - given tensor ptr, return tensor as k array, accepts optional 1st dim index
+// tensorget - given tensor ptr, return tensor as k array, accepts optional flag,dim,index
 // vectorptr - given vector ptr, return tensor pointers, or single pointer if index given
+// dictptr - given dictionary ptr, return dictionary of tensor pointers, or single pointer
 // tensor - high level function to create/retrieve/move/recast tensor from k
-// --------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 static void tensorlike(K x,Tensormode m,const Tensor &t,Tensor &r) {  // t:input, r:result tensor
  J i,j; Scalar s; TensorOptions o;
  bool b=xopt(x,x->n-1,o); I nx=x->n-b;  //set flag if options given, count non-option args
@@ -663,15 +664,43 @@ static K tensorput(K x) {
  }
 }
 
-static K tensorget(const Tensor& t,K x) { // g-tag with tensor, x-null ptr or index/indices
- if(!x)
-  return kget(t);
- else if(x->t == -KJ)
-   return kget(t[x->j]);
+static Tensor tensorget(const Tensor& t,J d,K x) { 
+ if(x->t == -KJ)
+  return t.select(d,x->j);
  else if(x->t == KJ)
-  return kget(torch::index_select(t,0,kput(x).to(t.device())));
+  return torch::index_select(t,d,kput(x).to(t.device()));
  else
-   TORCH_ERROR("tensor: 2nd arg expected to be long(s) for indexing, given ",kname(x));
+  TORCH_ERROR("tensor: last arg expected to be long(s) for indexing, given ",kname(x));
+}
+
+static Tensor tensorget(const Tensor& t,K x) { // g:tag w'tensor, x:optional additonal args
+ if(x->n==1) {
+  return t;
+ } else {
+  bool b=env().complexfirst; J d=0;
+  if(xbool(x,1,b)) {
+   TORCH_CHECK(t.is_complex(), "tensor: optional flag is only for complex tensors");
+   if(x->n==2) {                                       // flag only
+    return t;
+   } else if(x->n==3) {                                // flag & index
+    return tensorget(t,d,kK(x)[2]);
+   } else if(x->n==4) {                                // flag, dim & index
+    TORCH_CHECK(xlong(x,2,d), "tensor: 3rd arg of dimension expected as long scalar, given ",kname(x,2));
+    return tensorget(t,d,kK(x)[3]);
+   } else {
+    TORCH_ERROR("tensor: up to 4 args expected, (tensor;flag;dim;ind), but ",x->n," args given");
+   }
+  } else {
+   if(x->n==2) {
+    return tensorget(t,d,kK(x)[1]);
+   } else if(x->n==3) {
+    TORCH_CHECK(xlong(x,1,d), "tensor: 2nd arg of dimension expected as long scalar, given ",kname(x,2));
+    return tensorget(t,d,kK(x)[2]);
+   } else {
+    TORCH_ERROR("tensor: up to 3 args expected, (tensor;dim;ind), but ",x->n," args given");
+   }
+  }
+ }
 }
 
 static K vectorptr(const TensorVector& v,K x) {
@@ -725,7 +754,7 @@ KAPI tensor(K x) {
   S s; Tensormode m; Ktag *g;
   if((g=xtag(x)) || (g=xtag(x,0))) {
    switch(g->a) {
-    case Class::tensor: return tensorget(((Kten*)g)->t, x->n==2 ? kK(x)[1] : nullptr);
+    case Class::tensor: return kget(tensorget(((Kten*)g)->t, x));
     case Class::vector: return vectorptr(((Kvec*)g)->v, x);
     case Class::dict:   return  dictptr(((Kdict*)g)->d, x);
     default: TORCH_ERROR("tensor not implemented for ",mapclass(g->a));
