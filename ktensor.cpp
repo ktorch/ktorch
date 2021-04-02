@@ -1078,7 +1078,9 @@ K dictattr(const TensorDict& d,Ktype k,Attr a) {
 
 KAPI options(K x) {
  KTRY
-  if(auto *t=xten(x)) {
+  if(xempty(x)) {
+   return optmap(TensorOptions());
+  } else if(auto *t=xten(x)) {
    return optmap(*t);
   } else if(auto* v=xvec(x)) {
    K k=optkey(); K y=ktn(0,k->n);
@@ -1097,7 +1099,7 @@ KAPI options(K x) {
    }
    return xD(k,xT(xD(c,y)));
   } else {
-   TORCH_ERROR("unrecognized arg(s) for options, expected tensor or vector/dictionary of tensors");
+   TORCH_ERROR("options: unrecognized arg(s), expected empty arg for defaults or tensor,vector or dictionary of tensors");
   }
  KCATCH("options");
 }

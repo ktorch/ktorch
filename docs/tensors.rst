@@ -32,17 +32,17 @@ In the k interface, these attributes are represented as symbols:
 - **pin:** either ```pinned`` or ```unpinned``
 - **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d``
 
-The ``default`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
+The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
-.. function:: default[] -> dict
+.. function:: options[] -> dict
 
-.. function:: default(type) -> null
+.. function:: options(tensor) -> dict
 
-   | Dictionary of default attributes for tensor creation (empty arg) or reset default data type (sym arg representing data type, null return)
+   | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
 
 ::
 
-   q)default[]
+   q)options()
    device  | cpu
    dtype   | float
    layout  | strided
@@ -50,10 +50,23 @@ The ``default`` function will display the defaults usually in effect if no optio
    pin     | unpinned
    memory  | contiguous
 
-   q)default`double  /reset default datatype
+   q)t:tensor 1 2 3
+   q)options t:tensor 1 2 3
+   device  | cpu
+   dtype   | long
+   layout  | strided
+   gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
 
-   q)(1#`dtype)#default[]
-   dtype| double
+   q)free t
+   q)options t:tensor(1 2 3;`double`cuda`grad)
+   device  | cuda:0
+   dtype   | double
+   layout  | strided
+   gradient| grad
+   pin     | unpinned
+   memory  | contiguous
 
 
 .. index:: tensor; creating from a k value
