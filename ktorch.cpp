@@ -1565,7 +1565,7 @@ KAPI kdefault(K x) {
   if(xempty(x)) {
    return optmap(o);
   } else if(xopt(x,o)) {
-   TORCH_CHECK(!(o.has_device() || o.has_layout() || o.has_requires_grad() || o.has_memory_format()),
+   TORCH_CHECK(!(o.has_device() || o.has_layout() || o.has_requires_grad() || o.has_pinned_memory() || o.has_memory_format()),
                "currently, only default data type can be reset");
    torch::set_default_dtype(o.dtype());
    return(K)0;

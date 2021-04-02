@@ -19,14 +19,14 @@ Setting properties
 ******************
 
 PyTorch defines some `properties of a tensor <https://pytorch.org/docs/stable/tensor_attributes.html>`_ as construction axes or attributes.
-The two main attributes are :ref:`device <devices>` and :ref:`data type <types>`.
+The two main attributes are device, e.g. cpu or gpu, and data type.
 Other attributes or options determine `layout <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=layout#torch.torch.layout>`_ and whether gradients are recorded for operations on the tensor.
 There are additional settings to determine if memory is `pinned <https://pytorch.org/docs/stable/notes/cuda.html#use-pinned-memory-buffers>`_ and `optional memory formats <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=channels_last#torch.torch.memory_format>`_ where channels in 2-dimensional and 3-dimensional images (4-d & 5-d tensors) are stored with channels as the last dimension.
 
 In the k interface, these attributes are represented as symbols:
 
-- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``
-- **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``
+- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``  (:ref:`more detail <devices>`)
+- **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``, ```cfloat``, ```cdouble``
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
 - **pin:** either ```pinned`` or ```unpinned``
@@ -47,8 +47,10 @@ The ``default`` function will display the defaults usually in effect if no optio
    dtype   | float
    layout  | strided
    gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
 
-   q)default`double
+   q)default`double  /reset default datatype
 
    q)(1#`dtype)#default[]
    dtype| double
