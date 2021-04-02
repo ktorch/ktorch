@@ -15,6 +15,8 @@ k api to pytorch
    pointers
    devices
    tensors
+   complex
+   sparse
    vectors
    dictionaries
    modules

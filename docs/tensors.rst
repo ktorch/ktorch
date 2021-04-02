@@ -25,8 +25,8 @@ There are additional settings to determine if memory is `pinned <https://pytorch
 
 In the k interface, these attributes are represented as symbols:
 
-- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``  (:ref:`more detail <devices>`)
-- **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``, ```cfloat``, ```cdouble``
+- **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``  (:ref:`see: devices <devices>`)
+- **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``, ```cfloat``, ```cdouble`` (:ref:`see: types <types>`)
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
 - **pin:** either ```pinned`` or ```unpinned``
@@ -39,6 +39,10 @@ The ``options`` function will display the defaults usually in effect if no optio
 .. function:: options(tensor) -> dict
 
    | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
+
+.. note::
+   Sparse tensors, complex tensors, pinned memory and the newer memory formats are less widely used and still a work in progress in PyTorch.
+   Most options settings involve data type, device and gradient.
 
 ::
 

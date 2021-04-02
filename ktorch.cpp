@@ -1555,26 +1555,9 @@ K optmap(const TensorOptions &o) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// kdefault - k interface to query/set default tensor options
 // ksetting - list/change configuration settings
 // config - print or return strings of pytorch config (CUDA capability, build options, etc.)
 // ---------------------------------------------------------------------------------------------
-KAPI kdefault(K x) {
- torch::TensorOptions o;
- KTRY
-  if(xempty(x)) {
-   return optmap(o);
-  } else if(xopt(x,o)) {
-   TORCH_CHECK(!(o.has_device() || o.has_layout() || o.has_requires_grad() || o.has_pinned_memory() || o.has_memory_format()),
-               "currently, only default data type can be reset");
-   torch::set_default_dtype(o.dtype());
-   return(K)0;
-  } else {
-   return KERR("unrecognized argument for querying/setting default tensor options");
-  }
- KCATCH("default");
-}
-
 KAPI ksetting(K x) {
  KTRY
   auto &e=env(); auto &c=at::globalContext(); bool b,o=torch::hasOpenMP(); J n; S s;
@@ -1745,12 +1728,21 @@ KAPI str(K x) {
 }
 
 KAPI     device(K x) {return xempty(x) ? defaultdevice() : attr(x, -KS, Attr::device);}
-KAPI      dtype(K x) {return attr(x, -KS, Attr::dtype);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
 KAPI   gradient(K x) {return attr(x, -KS, Attr::gradient);}
 KAPI     gradfn(K x) {return attr(x, -KS, Attr::gradfn);}
 KAPI     memory(K x) {return attr(x, -KS, Attr::memory);}
 KAPI     result(K x) {return attr(x, -KS, Attr::result);}
+
+KAPI dtype(K x) {
+ TypeMeta t;
+ if(xempty(x))
+  return ks(optdtype(torch::get_default_dtype()));
+ else if(xtype(x,t))
+  return torch::set_default_dtype(t), (K)0;
+ else
+  return attr(x, -KS, Attr::dtype);
+}
 
 KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
@@ -1885,7 +1877,6 @@ KAPI fns(K x){
  fn(x, "forward",     KFN(forward),     1);
  fn(x, "zerograd",    KFN(zerograd),    1);
  fn(x, "backward",    KFN(kbackward),   1);
- fn(x, "default",     KFN(kdefault),    1);
  fn(x, "setting",     KFN(ksetting),    1);
  fn(x, "config",      KFN(config),      1);
  fn(x, "cudadevice",  KFN(cudadevice),  1);

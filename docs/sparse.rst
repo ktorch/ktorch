@@ -1,0 +1,4 @@
+.. _sparse:
+
+Sparse tensors
+==============
