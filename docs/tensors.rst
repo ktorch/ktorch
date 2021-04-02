@@ -93,8 +93,8 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`````long`````grad``
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
-Examples:
-^^^^^^^^^
+Examples
+^^^^^^^^
 
 ::
 
@@ -125,8 +125,8 @@ Examples:
 
 .. index::  tensor; creation using output tensor
 
-Using an output tensor:
-^^^^^^^^^^^^^^^^^^^^^^^
+Using an output tensor
+^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's existing attributes will be used but its values will be replaced.
@@ -168,8 +168,8 @@ The tensor's existing attributes will be used but its values will be replaced.
 
 .. index:: tensor; conversion errors
 
-Conversion errors:
-^^^^^^^^^^^^^^^^^^
+Conversion errors
+^^^^^^^^^^^^^^^^^
 The k value given must be the same data type throughout and have the same size at each depth.
 There also needs to be a defined mapping between the k type and the PyTorch type (see :ref:`data types <types>` ).
 Some examples where these conditions are not met:
@@ -197,6 +197,18 @@ Some examples where these conditions are not met:
             ^
 
 .. index:: tensor; using creation mode
+
+Retrieving tensor values
+^^^^^^^^^^^^^^^^^^^^^^^^
+The ``tensor`` function can also be used to retrieve values from a previously created tensor into a k array.
+
+.. function:: tensor ptr -> value
+.. function:: tensor(ptr;ind) -> value
+.. function:: tensor(ptr;dim;ind) -> value
+.. function:: tensor(ptr;flag;dim;ind) -> value
+
+   | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
+
 
 Tensor creation modes
 *********************
