@@ -13,11 +13,11 @@ Data types
    short, short, "16-bit integer (signed)"
    int, int, "32-bit integer (signed)"
    long, long, "64-bit integer (signed)"
-   half, real, "16-bit floating point, only available w'CUDA, converts to k ``real``"
+   half, real, "16-bit floating point, only available w'CUDA, converts to k real"
    float, real, "32-bit floating point, default data type"
    double, float, "64-bit floating point"
-   cfloat, real "complex number with 32-bit real and imaginary components"
-   cdouble, double "complex number with 64-bit real and imaginary components"
+   cfloat, real, "complex number with 32-bit real and imaginary components"
+   cdouble, double, "complex number with 64-bit real and imaginary components"
 
 PyTorch defines 9 regular and 2 complex data types for tensors.
 All but `half` have a direct mapping to a k data type: `half` values are mapped to k `real` values.
@@ -50,12 +50,12 @@ The q interface function: ``dtype`` can be used to query or set the default data
 
 ::
 
-   q)dtype[]
+   q)dtype[]          / query default data type
    `float
 
-   q)dtype`double
+   q)dtype`double     / set default data type
 
-   q)dtype()
+   q)dtype()          / verify change
    `double
 
    q)dtype t:tensor 01b
