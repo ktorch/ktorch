@@ -60,12 +60,17 @@ static Tensor cpermute(const Tensor& x) {
 }
 
 static Tensor sparsereal(const Tensor& t) {
+ // asof version 1.8.1, cannot go from sparse complex -> dense complex
+ // so attempt sparse complex -> sparse real representation -> dense real representation
  auto n=t.sizes().vec(); n.push_back(2);
  return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n);
 }
 
-static Tensor toreal(const Tensor& t) {
- return t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t);
+static Tensor toreal(const Tensor& t, c10::optional<bool> b=c10::nullopt);
+static Tensor toreal(const Tensor& t, c10::optional<bool> b) {
+ bool c=b ? *b : env().complexfirst;
+ return c ? cpermute(t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t))
+          :          t.is_sparse() ? sparsereal(t).to_dense() : torch::view_as_real(t);
 }
 
 // -------------------------------------------------------------------------
@@ -111,7 +116,7 @@ K kget(const Tensor &t) {
  if(!t.defined())
   return ktn(0,0);
  else if (t.is_complex())
-  return kget(env().complexfirst ? cpermute(toreal(t)) : toreal(t));
+  return kget(toreal(t));
  else if (!t.dim())      // if 0-dimensional
   return kgetscalar(t);  // return scalar
  Tensor c;
@@ -498,7 +503,7 @@ static Tensor complex2(const Tensor& a,const Tensor& b,TensorOptions& o) {
 // tensoropt - tensor creation routines where tensor size and option(s) given
 // tensormode - determines whether a template tensor or output tensor given w'other args
 // tensorput - put k value(s) -> tensor, return new tensor ptr unless output tensor given
-// tensorget - given tensor ptr, return tensor as k array, accepts optional flag,dim,index
+// tensorget - given tensor ptr and optional flag & indexing args, get result for k array
 // vectorptr - given vector ptr, return tensor pointers, or single pointer if index given
 // dictptr - given dictionary ptr, return dictionary of tensor pointers, or single pointer
 // tensor - high level function to create/retrieve/move/recast tensor from k
@@ -664,7 +669,7 @@ static K tensorput(K x) {
  }
 }
 
-static Tensor tensorget(const Tensor& t,J d,K x) { 
+static Tensor tensorget(const Tensor& t,J d,K x) {   // d:dimension, x:index/indices
  if(x->t == -KJ)
   return t.select(d,x->j);
  else if(x->t == KJ)
@@ -673,34 +678,21 @@ static Tensor tensorget(const Tensor& t,J d,K x) {
   TORCH_ERROR("tensor: last arg expected to be long(s) for indexing, given ",kname(x));
 }
 
-static Tensor tensorget(const Tensor& t,K x) { // g:tag w'tensor, x:optional additonal args
- if(x->n==1) {
-  return t;
+Tensor tensorget(const Tensor& t,K x) {
+ bool b=false,c; J d=0; Tensor r;
+ if((c=xbool(x,1,b)))
+  TORCH_CHECK(t.is_complex(), "tensor: optional flag is only for complex tensors");
+ if(x->n == 1+c) {                     // ptr or (ptr;flag)
+  r=t;
+ } else if(x->n == 2+c) {              // (ptr;ind) or (ptr;flag;ind)
+  r=tensorget(t,d,kK(x)[x->n-1]);
+ } else if(x->n == 3+c) {              // (ptr;dim;ind) or (ptr;flag;dim;ind)
+  TORCH_CHECK(xlong(x,1+c,d), "tensor: ",(c ? "2nd" : "3rd")," arg of dimension expected as a long scalar, given ",kname(x,1+c));
+  r=tensorget(t,d,kK(x)[x->n-1]);
  } else {
-  bool b=env().complexfirst; J d=0;
-  if(xbool(x,1,b)) {
-   TORCH_CHECK(t.is_complex(), "tensor: optional flag is only for complex tensors");
-   if(x->n==2) {                                       // flag only
-    return t;
-   } else if(x->n==3) {                                // flag & index
-    return tensorget(t,d,kK(x)[2]);
-   } else if(x->n==4) {                                // flag, dim & index
-    TORCH_CHECK(xlong(x,2,d), "tensor: 3rd arg of dimension expected as long scalar, given ",kname(x,2));
-    return tensorget(t,d,kK(x)[3]);
-   } else {
-    TORCH_ERROR("tensor: up to 4 args expected, (tensor;flag;dim;ind), but ",x->n," args given");
-   }
-  } else {
-   if(x->n==2) {
-    return tensorget(t,d,kK(x)[1]);
-   } else if(x->n==3) {
-    TORCH_CHECK(xlong(x,1,d), "tensor: 2nd arg of dimension expected as long scalar, given ",kname(x,2));
-    return tensorget(t,d,kK(x)[2]);
-   } else {
-    TORCH_ERROR("tensor: up to 3 args expected, (tensor;dim;ind), but ",x->n," args given");
-   }
-  }
+  TORCH_ERROR("tensor: up to ",3+c," args expected, (tensor;", (c ? "flag;" : ""),"dim;ind), but ",x->n," args given");
  }
+ return c ? toreal(r,b) : r;
 }
 
 static K vectorptr(const TensorVector& v,K x) {
