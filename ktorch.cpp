@@ -1698,6 +1698,9 @@ K attr(K x,Ktype k,Attr a) {
 }
 
 KAPI        dim(K x) {return attr(x, -KJ, Attr::dim);}
+KAPI   densedim(K x) {return attr(x, -KJ, Attr::densedim);}
+KAPI  sparsedim(K x) {return attr(x, -KJ, Attr::sparsedim);}
+KAPI        nnz(K x) {return attr(x, -KJ, Attr::nnz);}
 KAPI      numel(K x) {return attr(x, -KJ, Attr::numel);}
 KAPI     offset(K x) {return attr(x, -KJ, Attr::offset);}
 KAPI        ref(K x) {return attr(x, -KJ, Attr::ref);}
@@ -1744,6 +1747,7 @@ KAPI dtype(K x) {
   return attr(x, -KS, Attr::dtype);
 }
 
+KAPI  coalesced(K x) {return attr(x, -KB, Attr::coalesced);}
 KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
 KAPI     pinned(K x) {return attr(x, -KB, Attr::pinned);}
@@ -1884,6 +1888,9 @@ KAPI fns(K x){
  fn(x, "seed",        KFN(kseed),       1);
  fn(x, "png",         KFN(png),         1);
  fn(x, "dim",         KFN(dim),         1);
+ fn(x, "densedim",    KFN(densedim),    1);
+ fn(x, "sparsedim",   KFN(sparsedim),   1);
+ fn(x, "nnz",         KFN(nnz),         1);
  fn(x, "numel",       KFN(numel),       1);
  fn(x, "offset",      KFN(offset),      1);
  fn(x, "ptr",         KFN(ptr),         1);
@@ -1899,6 +1906,7 @@ KAPI fns(K x){
  fn(x, "layout",      KFN(layout),      1);
  fn(x, "layout",      KFN(layout),      1);
  fn(x, "memory",      KFN(memory),      1);
+ fn(x, "coalesced",   KFN(coalesced),   1);
  fn(x, "contiguous",  KFN(contiguous),  1);
  fn(x, "leaf",        KFN(leaf),        1);
  fn(x, "pinned",      KFN(pinned),      1);

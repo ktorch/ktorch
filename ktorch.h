@@ -188,7 +188,8 @@ enum class Cast:short {
 enum class Tensormode:char {   // tensor creation modes
  undefined,
  arange, complex, empty,   eye,   full,     linspace, logspace,
- ones,   rand,    randint, randn, randperm, range,    zeros    
+ ones,   rand,    randint, randn, randperm, range,    sparse, 
+ zeros    
 };
 
 enum class Prob:char {  // probablility distributions
@@ -220,8 +221,8 @@ enum class State:char {
 
 enum class Attr:char {
  undefined = 0,
- bytes, dim, elements, itemsize, numel,  offset,              // long scalars
- ptr, ref, tcount, sparsedim, weakref,
+ bytes,  densedim, dim, elements,  itemsize, nnz, numel,      // long scalars
+ offset, ptr,      ref, sparsedim, tcount,   weakref,
  device, dtype, gradfn, gradient, layout, memory, result,     // symbol
  coalesced, contiguous, gradflag, leaf, pinned,               // boolean
  size, stride,                                                // long list
@@ -707,7 +708,7 @@ typedef struct {
   std::make_tuple(cs("opt"),    Class::optimizer),
  }};
 
- std::array<std::tuple<S,Tensormode>,14> tensormode = {{    //tensor creation mode: map symbol -> enum
+ std::array<std::tuple<S,Tensormode>,15> tensormode = {{    //tensor creation mode: map symbol -> enum
   std::make_tuple(cs("arange"),   Tensormode::arange),
   std::make_tuple(cs("complex"),  Tensormode::complex),
   std::make_tuple(cs("empty"),    Tensormode::empty),
@@ -721,6 +722,7 @@ typedef struct {
   std::make_tuple(cs("randperm"), Tensormode::randperm),
   std::make_tuple(cs("rand"),     Tensormode::rand),
   std::make_tuple(cs("range"),    Tensormode::range),
+  std::make_tuple(cs("sparse"),   Tensormode::sparse),
   std::make_tuple(cs("zeros"),    Tensormode::zeros)
  }};
 
@@ -1017,12 +1019,13 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,27> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,29> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("bytes"),       Attr::bytes),
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
   std::make_tuple(cs("data"),        Attr::data),
   std::make_tuple(cs("device"),      Attr::device),
+  std::make_tuple(cs("densedim"),    Attr::densedim),
   std::make_tuple(cs("dim"),         Attr::dim),
   std::make_tuple(cs("dtype"),       Attr::dtype),
   std::make_tuple(cs("elements"),    Attr::elements),
@@ -1033,6 +1036,7 @@ typedef struct {
   std::make_tuple(cs("layout"),      Attr::layout),
   std::make_tuple(cs("leaf"),        Attr::leaf),
   std::make_tuple(cs("memory"),      Attr::memory),
+  std::make_tuple(cs("nnz"),         Attr::nnz),
   std::make_tuple(cs("numel"),       Attr::numel),
   std::make_tuple(cs("offset"),      Attr::offset),
   std::make_tuple(cs("pin"),         Attr::pinned),

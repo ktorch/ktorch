@@ -526,7 +526,8 @@ static void tensorlike(K x,Tensormode m,const Tensor &t,Tensor &r) {  // t:input
    else if(nx==4 && xlong(x,2,i) && xlong(x,3,j)) r=torch::randint_like(t,i,j,o);
    break;
   default:
-   TORCH_ERROR("tensor creation via: ",kK(x)[0]->s," not implemented with input tensor"); break;
+   TORCH_ERROR("tensor: mode `",kK(x)[0]->s," not implemented with input tensors");
+   break;
  }
 }
 
@@ -573,7 +574,12 @@ static void tensorout(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:output, r:re
      r=complex2(kput(x,1),kput(x,2),t);
    }
    break;
-  default: break;
+  case Tensormode::sparse:
+   TORCH_ERROR("tensor: sparse not implemented with output tensors");
+   break;
+  default:
+   TORCH_ERROR("tensor: unexpected tensor mode `",kK(x)[0]->s," supplied with output tensor");
+   break;
  }
 }
 
@@ -638,6 +644,14 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
     else
      r=complex2(kput(x,1), kput(x,2), o);
    }
+   break;
+  case Tensormode::sparse:
+   if(x->n==2)
+    r=kput(x,1).to_sparse().to(o);
+   else if(x->n==3)
+    r=torch::sparse_coo_tensor(kput(x,1),kput(x,2),o);
+   else if(x->n==4 && xsize(x,3,s))
+    r=torch::sparse_coo_tensor(kput(x,1),kput(x,2),s,o);
    break;
   default: break;
  }
@@ -983,8 +997,10 @@ J tensorlong(const Tensor& t,Attr a) {
   case Attr::ref:       return t.use_count();
   case Attr::weakref:   return t.weak_use_count();
   case Attr::ptr:       return (intptr_t)t.unsafeGetTensorImpl();
+  case Attr::densedim:  return t.is_sparse() ? t.dense_dim()  : t.dim();
   case Attr::sparsedim: return t.is_sparse() ? t.sparse_dim() : 0;
   case Attr::storage:   return t.is_sparse() ? nj : (intptr_t)t.storage().data();
+  case Attr::nnz:       return t.is_sparse() ? t._nnz() : t.count_nonzero().item().toLong();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1004,7 +1020,7 @@ S tensorsym(const Tensor& t,Attr a) {
 
 static bool tensorflag(const Tensor &t,Attr a) {
  switch(a) {
-  case Attr::coalesced:  return t.is_sparse() ? t.is_coalesced() : false;
+  case Attr::coalesced:  return t.is_sparse() ? t.is_coalesced() : true;
   case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
