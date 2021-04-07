@@ -1221,7 +1221,7 @@ static K objsize(Ktag *x) {
 
 J objnum(int64_t x) {return 1;}
 J objnum(double  x) {return 1;}
-J objnum(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objnum(t.values()) : t.storage().nbytes() / t.dtype().itemsize()) : 0;}
+J objnum(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objnum(t._values()) : t.storage().nbytes() / t.dtype().itemsize()) : 0;}
 J objnum(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objnum(t); return n;}
 J objnum(const c10::optional<TensorVector>& v) {return v ? objnum(*v) : 0;}
 J objnum(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objnum(t); return n;}
@@ -1246,7 +1246,7 @@ static J objnum(Ktag *x) {
 J objbytes(int64_t x) {return sizeof(int64_t);}
 J objbytes(double  x) {return sizeof(double);}
 J objbytes(const Storage& s) {return s.nbytes();}
-J objbytes(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objbytes(t.indices())+objbytes(t.values()) : objbytes(t.storage())) : 0;}
+J objbytes(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objbytes(t._indices())+objbytes(t._values()) : objbytes(t.storage())) : 0;}
 J objbytes(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
 J objbytes(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}

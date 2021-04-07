@@ -63,7 +63,7 @@ static Tensor sparsereal(const Tensor& t) {
  // asof version 1.8.1, cannot go from sparse complex -> dense complex
  // so attempt sparse complex -> sparse real representation -> dense real representation
  auto n=t.sizes().vec(); n.push_back(2);
- return torch::sparse_coo_tensor(t.indices(),torch::view_as_real(t.values()),n);
+ return torch::sparse_coo_tensor(t._indices(),torch::view_as_real(t._values()),n);
 }
 
 static Tensor toreal(const Tensor& t, c10::optional<bool> b=c10::nullopt);
@@ -202,12 +202,21 @@ static bool checkint(const TensorOptions& o,Tensormode m) {
 
 static bool checksparse(const TensorOptions& o,Tensormode m=Tensormode::undefined);
 static bool checksparse(const TensorOptions& o,Tensormode m) {
- if(o.layout()==torch::kSparse) {
+ if(o.layout()==torch::kSparse || m==Tensormode::sparse) {
+  TORCH_CHECK(!o.has_layout() || o.layout()==torch::kSparse, "tensor: sparse mode incompatible with layout set to ",optlayout(o.layout()));
   TORCH_CHECK(!o.pinned_memory(), "sparse tensors cannot have pinned memory");
   TORCH_CHECK(!(o.has_memory_format() && (o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast ||
                                           o.memory_format_opt().value()==torch::MemoryFormat::ChannelsLast3d)),
               "sparse tensors cannot use memory formats with channels as last dimension");
-  TORCH_CHECK(m==Tensormode::undefined || m==Tensormode::empty, modesym(m), ": not implemented for sparse tensors");
+  switch(m) {
+   case Tensormode::undefined:
+   case Tensormode::complex:
+   case Tensormode::empty:
+   case Tensormode::sparse:
+   case Tensormode::zeros:
+    break;
+   default: TORCH_ERROR(modesym(m), ": not implemented for sparse tensors");
+  }
   return true;
  } else {
   return false;
@@ -222,6 +231,8 @@ static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
  //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
  if(checksparse(o))
    return t.to_sparse().to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
+ else if(t.is_sparse() && o.has_layout() && o.layout()==torch::kStrided)
+   return to(t.to_dense(),o);
  else if(o.pinned_memory())
   return t.to(o.requires_grad(false),a,b).pin_memory().set_requires_grad(o.requires_grad());
  else
@@ -646,12 +657,16 @@ static void tensoropt(K x,Tensormode m,Tensor &r) {
    }
    break;
   case Tensormode::sparse:
-   if(x->n==2)
-    r=kput(x,1).to_sparse().to(o);
-   else if(x->n==3)
-    r=torch::sparse_coo_tensor(kput(x,1),kput(x,2),o);
-   else if(x->n==4 && xsize(x,3,s))
-    r=torch::sparse_coo_tensor(kput(x,1),kput(x,2),s,o);
+   // as of version 1.8.1, sparse_coo_tensor seems to ignore tensor options if indices & values supplied
+   // there is a check if explicit strided setting and gradient required throws nyi, requiring workaround below
+   // https://github.com/pytorch/pytorch/issues/55453
+   checksparse(o,m);
+   if(nx==2 && xsize(x,1,s))
+    r=torch::sparse_coo_tensor(s,o);
+   else if(nx==3)
+    r=to(torch::sparse_coo_tensor(kput(x,1),kput(x,2),o.requires_grad(false)), o);
+   else if(nx==4 && xsize(x,3,s))
+    r=to(torch::sparse_coo_tensor(kput(x,1),kput(x,2),s,o.requires_grad(false)), o);
    break;
   default: break;
  }
@@ -991,8 +1006,8 @@ static J storlong(const Storage& s,Attr a) {
 J tensorlong(const Tensor& t,Attr a) {
  switch(a) {
   case Attr::dim:       return t.dim();
-  case Attr::itemsize:  return t.is_sparse() ? tensorlong(t.values(),a) : t.dtype().itemsize();
-  case Attr::numel:     return t.numel();
+  case Attr::itemsize:  return t.is_sparse() ? tensorlong(t._values(),a) : t.dtype().itemsize();
+  case Attr::numel:     return t.is_sparse() ? t._values().numel()       : t.numel();
   case Attr::offset:    return t.is_sparse() ? nj : t.storage_offset();
   case Attr::ref:       return t.use_count();
   case Attr::weakref:   return t.weak_use_count();

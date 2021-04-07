@@ -3,6 +3,29 @@
 namespace nn=torch::nn;
 
 
+KAPI coo(K x) {
+ auto o=torch::dtype(torch::kDouble).device(torch::kCUDA);
+ auto t1=torch::sparse_coo_tensor({2,3}, o);
+ std::cerr << t1 << "\n";
+
+ auto i=torch::tensor({{1},{1}});
+ auto v=torch::tensor({1});
+ auto t2=torch::sparse_coo_tensor(i,v,o);
+ std::cerr << t2 << "\n";
+
+ return (K)0;
+}
+
+KAPI sdim(K x,K y) {
+ KTRY
+  Tensor *t=xten(x);
+  TORCH_CHECK(t, "tensor for 1st arg");
+  TORCH_CHECK(y->t==-KJ, "long dim for 2nd arg");
+  //return kten(torch::native::dense_to_sparse(*t,y->j));
+  return kten(t->to_sparse(y->j));
+ KCATCH("test dense_to_sparse");
+}
+
 KAPI optparse(K x) {
  KTRY
   TensorOptions o;
