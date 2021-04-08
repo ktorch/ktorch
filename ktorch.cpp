@@ -1751,6 +1751,7 @@ KAPI  coalesced(K x) {return attr(x, -KB, Attr::coalesced);}
 KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
 KAPI     pinned(K x) {return attr(x, -KB, Attr::pinned);}
+KAPI     sparse(K x) {return attr(x, -KB, Attr::sparse);}
 
 KAPI       size(K x) {return attr(x,  KJ, Attr::size);}
 KAPI     stride(K x) {return attr(x,  KJ, Attr::stride);}
@@ -1910,6 +1911,7 @@ KAPI fns(K x){
  fn(x, "contiguous",  KFN(contiguous),  1);
  fn(x, "leaf",        KFN(leaf),        1);
  fn(x, "pinned",      KFN(pinned),      1);
+ fn(x, "sparse",      KFN(sparse),      1);
  fn(x, "size",        KFN(size),        1);
  fn(x, "stride",      KFN(stride),      1);
  fn(x, "str",         KFN(str),         1);

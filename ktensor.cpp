@@ -872,13 +872,12 @@ KAPI dict(K x) {
 // kreal - handle api calls to extract real & imaginary parts of tensor
 // real,imag - return real & imaginary parts of tensor as tensor or k value
 // isreal - return boolean with 1's where value is real
-// cget - return complex tensor as k value, permute dims to return real/imag on 1st dim
 // --------------------------------------------------------------------------------------
 static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
  KTRY
-  bool b=true; Tensor *t=xten(x);
-  if(!t) b=false, t=xten(x,0);  // enlisted tensor, return as k array
-  TORCH_CHECK(t && t->is_complex() && x->n==1, nm, ": expects a complex tensor (enlist to return k value), given ",kname(x));
+  bool b=false; Tensor *t=xten(x);
+  if(!t) b=true, t=xten(x,0);  // enlisted tensor, return as k array
+  TORCH_CHECK(t && t->is_complex() && x->n==1, nm, ": expects a complex tensor (enlist to return tensor ptr), given ",kname(x));
   // as of version 1.8.1, complex sparse tensors must  be made sparse real -> dense -> back to complex
   return kresult(b,f(t->is_sparse() ? torch::view_as_complex(sparsereal(*t).to_dense()) : *t));
  KCATCH(nm);
@@ -887,6 +886,34 @@ static K kreal(K x,Tensor(f)(const Tensor&),const char* nm) {
 KAPI   real(K x) {return kreal(x, torch::real,   "real");}
 KAPI   imag(K x) {return kreal(x, torch::imag,   "imag");}
 KAPI isreal(K x) {return kreal(x, torch::isreal, "isreal");}
+
+// --------------------------------------------------------------------------------------
+//  sparse tensors
+// --------------------------------------------------------------------------------------
+// getsparse - handle api calls to extract indices & values from sparse tensor
+// coalesce - colaesce a sparse tensor
+// --------------------------------------------------------------------------------------
+static K getsparse(K x,bool i,const char* nm) {
+ KTRY
+  bool b=false; Tensor *t=xten(x);
+  if(!t) b=true, t=xten(x,0);  // enlisted tensor, return as k array
+  TORCH_CHECK(t && t->is_sparse() && x->n==1, nm, ": expects a sparse tensor (enlist to return tensor ptr), given ",kname(x));
+  return kresult(b, i ? t->_indices() : t->_values());
+ KCATCH(nm);
+}
+
+KAPI indices(K x) {return getsparse(x, true,  "indices");}
+KAPI  values(K x) {return getsparse(x, false, "values");}
+
+KAPI coalesce(K x) {
+ KTRY
+  Tensor *t=xten(x);
+  TORCH_CHECK(t && t->is_sparse(), "coalesce: expecting sparse tensor, given ",kname(x));
+  if(!t->is_coalesced())
+   ((Kten*)xtag(x))->t=t->coalesce();
+  return (K)0;
+ KCATCH("coalesce");
+}
 
 // ----------------------------------------------------------------------------------------------
 // kcat1 - check for tensor(s) at first level of a general list, e.g. cat(a;b)
@@ -1040,6 +1067,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
   case Attr::pinned:     return t.is_sparse() ? false : t.is_pinned();
+  case Attr::sparse:     return t.is_sparse();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1728,6 +1756,9 @@ void tensorfn(K x) {
  fn(x, "real",         KFN(real),          1);
  fn(x, "imag",         KFN(imag),          1);
  fn(x, "isreal",       KFN(isreal),        1);
+ fn(x, "indices",      KFN(indices),       1);
+ fn(x, "values",       KFN(values),        1);
+ fn(x, "coalesce",     KFN(coalesce),      1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "permute",      KFN(permute),       1);
  fn(x, "stack",        KFN(stack),         1);
