@@ -538,10 +538,56 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
-.. function:: tensor(mode;start;end;steps;out-tensor) -> ptr
+.. function:: tensor(mode;start;end;steps;base;out-tensor) -> ptr
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
+::
+
+   q)t:tensor(`linspace;0;9;10)
+   q)tensor t
+   0 1 2 3 4 5 6 7 8 9e
+
+   q)free t
+   q)t:tensor(`logspace;1;2;10)
+   q)tensor t
+   10 12.9155 16.68101 21.54435 27.82559 35.93814 46.41589 59.94843 77.42637 100e
+
+   q)tensor(`logspace;1;2;10;2.0;t)
+   q)tensor t
+   2 2.16012 2.333058 2.519842 2.72158 2.939469 3.174802 3.428976 3.703499 4e
+   q)2 xlog tensor t
+   1 1.111111 1.222222 1.333333 1.444444 1.555556 1.666667 1.777778 1.888889 2
+
 Identity matrix
 ^^^^^^^^^^^^^^^
+Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highlight=eye#torch.eye>`_ in PyTorch returns a 2-dimensional tensor with ones on the diagonal and zeros elsewhere.
 
+.. function:: tensor(mode;n) -> ptr
+.. function:: tensor(mode;n;m) -> ptr
+.. function:: tensor(mode;n;options) -> ptr
+.. function:: tensor(mode;n;m;options) -> ptr
+   :param long n: number of rows in the matrix.
+   :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated matrix.
+
+.. function:: tensor(mode;n;out-tensor) -> ptr
+.. function:: tensor(mode;n;m;out-tensor) -> ptr
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to rows or rows and columns given and attributes of the output tensor.
+
+::
+
+   q)t:tensor(`eye;3)
+   q)tensor t
+   1 0 0
+   0 1 0
+   0 0 1
+
+   q)free t
+   q)t:tensor(`eye;3;5;`bool`cuda)
+   q)tensor t
+   10000b
+   01000b
+   00100b
