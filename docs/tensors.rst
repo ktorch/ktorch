@@ -241,6 +241,7 @@ Tensor creation modes
 In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the PyTorch function/methods listed here.
 
 - `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers
+   (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range?`_)
 - `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor with uninitialized values
 - `eye <https://pytorch.org/docs/stable/torch.html#torch.eye>`_: returns an identity matrix
 - `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_: returns a tensor filled with a single value
@@ -521,12 +522,47 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 
 Evenly spaced tensors
 ^^^^^^^^^^^^^^^^^^^^^
+Creation modes `arange <https://pytorch.org/docs/stable/generated/torch.arange.html>`_
+(and the deprecated `range <https://pytorch.org/docs/stable/generated/torch.range.html>`_)
+return a 1-dimensional tensor of size (end-start)/step size, with start defaulting to zero and step size to 1.
+
+.. function:: tensor(mode;end) -> ptr
+.. function:: tensor(mode;start;end) -> ptr
+.. function:: tensor(mode;start;end;step) -> ptr
+.. function:: tensor(mode;start;end;step;options) -> ptr
+   :param sym mode: ```arange`` or ```range``.
+   :param long start: starting value for the set of points, default is 0 for mode=```arange``, must be given for ```range``.
+   :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode=```range`` returns points including end.
+   :param long step: step size or gap between each pair of adjacent points, default is 1.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+.. function:: tensor(mode;start;end;step;options) -> ptr
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
+
+::
+
+   q)tensor a:tensor(`arange;5)
+   0 1 2 3 4
+
+   q)tensor r:tensor(`range;0;5)
+   0 1 2 3 4 5e
+
+   q)t:tensor(`arange;0;10;2)
+   q)tensor t
+   0 2 4 6 8
+
+   q)free t
+   q)tensor t:tensor(`arange;.1;.8;.1)
+   0.1 0.2 0.3 0.4 0.5 0.6 0.7e
+
 Creation modes 
 `linspace <https://pytorch.org/docs/stable/generated/torch.linspace.html>`_ and
 `logspace <https://pytorch.org/docs/stable/generated/torch.logspace.html>`_
 create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of ``(end - start)/(steps-1)``.
 
-.. function:: tensor(mode;start;end;steps) -> ptr
+yy.. function:: tensor(mode;start;end;steps) -> ptr
 .. function:: tensor(mode;start;end;steps;base) -> ptr
 .. function:: tensor(mode;start;end;steps;options) -> ptr
 .. function:: tensor(mode;start;end;steps;base;options) -> ptr
@@ -567,6 +603,7 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
 .. function:: tensor(mode;n;m) -> ptr
 .. function:: tensor(mode;n;options) -> ptr
 .. function:: tensor(mode;n;m;options) -> ptr
+   :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
    :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
