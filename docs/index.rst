@@ -14,6 +14,13 @@ k api to pytorch
    types
    pointers
    devices
+
+Tensors
+-------
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
    tensors
    complex
    sparse
