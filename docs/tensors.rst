@@ -217,7 +217,7 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
    :param ptr tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
-   :parm  bool flag: an optional flag for complex tensors only, true to return real & imaginary parts along first dimension, false along last dimension.
+   :param  bool flag: an optional flag for complex tensors only, true to return real & imaginary parts along first dimension, false along last dimension.
    :param long dim: an optional dimension for the subsequent index.
    :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..
 
@@ -489,9 +489,58 @@ The function call can also use a final argument of a previously allocated tensor
 
 Random permutations
 ^^^^^^^^^^^^^^^^^^^
+Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.randperm.html#torch.randperm>`_ of integers from 0 to n-1 given n.
+
+.. function:: tensor(mode;n) -> ptr
+.. function:: tensor(mode;n;options) -> ptr
+   :param sym mode: ```randperm``.
+   :param long n: return random permutation of integers from 0-n-1 given n.
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+.. function:: tensor(mode;n;out-tensor) -> ptr
+   :param sym mode: ```randperm``.
+   :param long n: return random permutation of integers from 0-n-1 given n.
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
+
+::
+
+   q)t:tensor(`randperm;10)
+   q)tensor t
+   1 2 5 8 7 9 4 3 6 0
+
+   q)free t
+   q)t:tensor(`randperm;10;`pinned`double)   / pinned memory, double data type
+   q)tensor t
+   6 0 9 4 1 3 5 2 8 7f
+
+   q)tensor(`randperm;5;t)                   / use t as output tensor
+   q)tensor t
+   2 3 1 4 0f
 
 Evenly spaced tensors
 ^^^^^^^^^^^^^^^^^^^^^
+Creation modes 
+`linspace <https://pytorch.org/docs/stable/generated/torch.linspace.html>`_ and
+`logspace <https://pytorch.org/docs/stable/generated/torch.logspace.html>`_
+create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of ``(end - start)/(steps-1)``.
+
+.. function:: tensor(mode;start;end;steps) -> ptr
+.. function:: tensor(mode;start;end;steps;base) -> ptr
+.. function:: tensor(mode;start;end;steps;options) -> ptr
+.. function:: tensor(mode;start;end;steps;base;options) -> ptr
+   :param sym mode: ```linspace`` or ```logspace``.
+   :param long start: starting value for the set of points.
+   :param long end: ending value for the set of points.
+   :param long steps: size of the created tensor running from ``start`` to ``end``.
+   :param double base: optional base of the log function, default=``10.0``, only for mode=```logspace``
+   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+.. function:: tensor(mode;start;end;steps;out-tensor) -> ptr
+   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :return: null return, resets values according to size given and attributes of the output tensor.
 
 Identity matrix
 ^^^^^^^^^^^^^^^
