@@ -455,7 +455,6 @@ An alternate form where an input tensor is supplied to provide the size of the c
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;high;size;out-tensor) -> ptr
-
 .. function:: tensor(mode;low;high;size;out-tensor) -> ptr
 
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
@@ -499,6 +498,8 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
+The function call can also use a final argument of a previously allocated tensor as an output tensor:
+
 .. function:: tensor(mode;n;out-tensor) -> ptr
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
@@ -538,7 +539,10 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
+The function call can also use a final argument of a previously allocated tensor as an output tensor:
+
 .. function:: tensor(mode;start;end;step;options) -> ptr
+
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
@@ -565,7 +569,6 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
 
 .. function:: tensor(mode;start;end;steps) -> ptr
 .. function:: tensor(mode;start;end;steps;base) -> ptr
-.. function:: tensor(mode;start;end;steps;options) -> ptr
 .. function:: tensor(mode;start;end;steps;base;options) -> ptr
 
    :param sym mode: ```linspace`` or ```logspace``.
@@ -575,6 +578,8 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
    :param double base: optional base of the log function, default=``10.0``, only for mode=```logspace``
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;steps;base;out-tensor) -> ptr
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
@@ -603,13 +608,14 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
 
 .. function:: tensor(mode;n) -> ptr
 .. function:: tensor(mode;n;m) -> ptr
-.. function:: tensor(mode;n;options) -> ptr
 .. function:: tensor(mode;n;m;options) -> ptr
    :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
    :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated matrix.
+
+The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;n;out-tensor) -> ptr
 .. function:: tensor(mode;n;m;out-tensor) -> ptr
