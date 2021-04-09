@@ -55,7 +55,7 @@ The ``options`` function will display the defaults usually in effect if no optio
    memory  | contiguous
 
    q)t:tensor 1 2 3
-   q)options t:tensor 1 2 3
+   q)options t
    device  | cpu
    dtype   | long
    layout  | strided
@@ -136,33 +136,41 @@ The tensor's existing attributes will be used but its values will be replaced.
    | Read k value and store in previously created tensor
 
    :param scalar,list,array value: the k value to populate the tensor.
-   :param api-pointer out-tensor: previously allocated tensor which will contain the new values.
+   :param ptr out-tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor which will contain the new values.
+   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
    :return: (null)
 
 ::
 
-   q)4#info r:tensor()  / initialize empty tensor, retrieve attributes
+   q)options r:tensor()   / initialize empty tensor, retrieve attributes
    device  | cpu
    dtype   | float
    layout  | strided
    gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
+
 
    q)tensor(1 2 3;r)
 
    q)tensor r
    1 2 3e
 
-   q)free r  / free tensor r, redefine on gpu as 4-byte int
-   q)4#info r:tensor((); `cuda`int)
+   q)free r                  / free tensor r, redefine on gpu as 4-byte int
+   q)r:tensor((); `cuda`int)
+   q)options r
    device  | cuda:0
    dtype   | int
    layout  | strided
    gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
 
    q)tensor(1 2 3 4;r)
 
    q)tensor r
    1 2 3 4i
+
    q)device r
    `cuda:0
 
@@ -209,11 +217,30 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
 
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
+   :param ptr tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
+   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor.
+   :parm  bool flag: an optional flag for complex tensors only, true to return real & imaginary parts along first dimension, false along last dimension.
+   :param long dim: an optional dimension for the subsequent index.
+   :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..
+
+::
+
+   q)t:tensor 2 3 4#til 24
+
+   q)tensor(t;1)
+   12 13 14 15
+   16 17 18 19
+   20 21 22 23
+
+   q)tensor(t;-1;3)   / pytorch uses -1 for last dimension, -2 for second to last, ..
+   3  7  11
+   15 19 23
+
 
 Tensor creation modes
 *********************
 
-In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the pytorch function/method.
+In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the PyTorch function/methods listed here.
 
 - `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers
 - `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor with uninitialized values
@@ -229,7 +256,7 @@ In addition to supplying k values to initialise tensors, the following methods c
 - `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_: returns a tensor filled with zeros
 
 
-Tensors are created using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
+Tensors are created in the k interface using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
 
 ::
 
