@@ -380,7 +380,6 @@ Return a tensor filled with random numbers from a uniform distribution on ``[0, 
 Parameters and function calls are as above for mode of ```zeros``, ```ones`` and ```empty``.
 
 .. function:: tensor(mode;size) -> ptr
-
 .. function:: tensor(mode;size;options) -> ptr
 
    | Create a tensor given mode, size  and optional attribute(s).
@@ -393,7 +392,6 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 
 .. function:: tensor(mode;in-tensor) -> ptr
-
 .. function:: tensor(mode;in-tensor;options) -> ptr
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
@@ -427,9 +425,7 @@ Create a tensor filled with random integers between given range: `randint <https
 Called by specifying low, high and size, or high and size (low defaults to zero), as well as other combinations with input and output tensors.
 
 .. function:: tensor(mode;high;size) -> ptr
-
 .. function:: tensor(mode;low;high;size) -> ptr
-
 .. function:: tensor(mode;low;high;size;options) -> ptr
 
    | Create a tensor given mode, range and size, along with optional tensor attributes.
@@ -444,9 +440,7 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
 An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
 
 .. function:: tensor(mode;in-tensor;high) -> ptr
-
 .. function:: tensor(mode;in-tensor;low;high) -> ptr
-
 .. function:: tensor(mode;in-tensor;low;high;options) -> ptr
 
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
@@ -493,6 +487,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 
 .. function:: tensor(mode;n) -> ptr
 .. function:: tensor(mode;n;options) -> ptr
+
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
@@ -501,6 +496,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;n;out-tensor) -> ptr
+
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
@@ -582,6 +578,7 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;steps;base;out-tensor) -> ptr
+
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
@@ -609,6 +606,7 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
 .. function:: tensor(mode;n) -> ptr
 .. function:: tensor(mode;n;m) -> ptr
 .. function:: tensor(mode;n;m;options) -> ptr
+
    :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
    :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
@@ -619,6 +617,7 @@ The function call can also use a final argument of a previously allocated tensor
 
 .. function:: tensor(mode;n;out-tensor) -> ptr
 .. function:: tensor(mode;n;m;out-tensor) -> ptr
+
    :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to rows or rows and columns given and attributes of the output tensor.
 
