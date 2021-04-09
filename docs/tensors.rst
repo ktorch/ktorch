@@ -530,6 +530,7 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 .. function:: tensor(mode;start;end) -> ptr
 .. function:: tensor(mode;start;end;step) -> ptr
 .. function:: tensor(mode;start;end;step;options) -> ptr
+
    :param sym mode: ```arange`` or ```range``.
    :param long start: starting value for the set of points, default is 0 for mode=```arange``, must be given for ```range``.
    :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode=```range`` returns points including end.
@@ -562,7 +563,7 @@ Creation modes
 `logspace <https://pytorch.org/docs/stable/generated/torch.logspace.html>`_
 create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of ``(end - start)/(steps-1)``.
 
-yy.. function:: tensor(mode;start;end;steps) -> ptr
+.. function:: tensor(mode;start;end;steps) -> ptr
 .. function:: tensor(mode;start;end;steps;base) -> ptr
 .. function:: tensor(mode;start;end;steps;options) -> ptr
 .. function:: tensor(mode;start;end;steps;base;options) -> ptr
