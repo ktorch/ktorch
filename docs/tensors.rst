@@ -137,7 +137,6 @@ The tensor's existing attributes will be used but its values will be replaced.
 
    :param scalar,list,array value: the k value to populate the tensor.
    :param ptr out-tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor which will contain the new values.
-   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor which will contain the new values.
    :return: (null)
 
 ::
@@ -218,7 +217,6 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
    :param ptr tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
-   :param :ref:`api-pointer <pointers>` out-tensor: previously allocated tensor.
    :parm  bool flag: an optional flag for complex tensors only, true to return real & imaginary parts along first dimension, false along last dimension.
    :param long dim: an optional dimension for the subsequent index.
    :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..
