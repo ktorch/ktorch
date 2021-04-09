@@ -532,8 +532,8 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 .. function:: tensor(mode;start;end;step;options) -> ptr
 
    :param sym mode: ```arange`` or ```range``.
-   :param long start: starting value for the set of points, default is 0 for mode=```arange``, must be given for ```range``.
-   :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode=```range`` returns points including end.
+   :param long start: starting value for the set of points, default is 0 for mode of ```arange``, must be given for ```range``.
+   :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode of ```range`` returns points including end.
    :param long step: step size or gap between each pair of adjacent points, default is 1.
    :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
@@ -561,12 +561,13 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 Creation modes 
 `linspace <https://pytorch.org/docs/stable/generated/torch.linspace.html>`_ and
 `logspace <https://pytorch.org/docs/stable/generated/torch.logspace.html>`_
-create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of ``(end - start)/(steps-1)``.
+create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of (end - start)/(steps-1).
 
 .. function:: tensor(mode;start;end;steps) -> ptr
 .. function:: tensor(mode;start;end;steps;base) -> ptr
 .. function:: tensor(mode;start;end;steps;options) -> ptr
 .. function:: tensor(mode;start;end;steps;base;options) -> ptr
+
    :param sym mode: ```linspace`` or ```logspace``.
    :param long start: starting value for the set of points.
    :param long end: ending value for the set of points.
