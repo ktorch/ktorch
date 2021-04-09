@@ -6,7 +6,7 @@ k api to pytorch
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Overview:
 
    overview
    build
@@ -15,11 +15,9 @@ k api to pytorch
    pointers
    devices
 
-Tensors
--------
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Tensors:
 
    tensors
    complex
