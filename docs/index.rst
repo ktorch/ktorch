@@ -23,7 +23,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    pointers
    devices
 
-More on Tensors..  
+   |
 
 .. toctree::
    :maxdepth: 1
@@ -35,6 +35,7 @@ More on Tensors..
    vectors
    dictionaries
 
+   |
 
 .. toctree::
    :maxdepth: 1
