@@ -26,7 +26,7 @@ There are additional settings to determine if memory is `pinned <https://pytorch
 In the k interface, these attributes are represented as symbols:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``  (:ref:`see: devices <devices>`)
-- **dtype:** ```bool``, ```byte``, ```char``, ```short``, ```int``, ```long``, ```half``, ```float``, ```double``, ```cfloat``, ```cdouble`` (:ref:`see: types <types>`)
+- **dtype:** one of ```bool`byte`char`short`int`long`half`float`double`cfloat`cdouble`` (:ref:`see: types <types>`)
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
 - **pin:** either ```pinned`` or ```unpinned``
