@@ -34,7 +34,7 @@ In the k interface, these attributes are represented as symbols:
 
 The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
-.. function:: options[] -> dict
+.. function:: options() -> dict
 
 .. function:: options(tensor) -> dict
 
@@ -80,7 +80,7 @@ Creating from a k value
 
 The api function ``tensor`` is used to create tensors from k values and retrieve the values back into a k session. The k value can be a scalar, simple list or higher dimension array.  The k value must have the same data type throughout and the same size at each dimension.
 
-.. function:: tensor ptr -> value
+.. function:: tensor(ptr) -> value
 
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
@@ -131,7 +131,7 @@ Using an output tensor
 Instead of specifying creation options as the final argument in the ``tensor`` call, a previously allocated tensor can be used.
 The tensor's existing attributes will be used but its values will be replaced.
 
-.. function:: tensor(value; out-tensor) -> null
+.. function:: tensor(value;out-tensor) -> null
 
    | Read k value and store in previously created tensor
 
@@ -241,7 +241,7 @@ Tensor creation modes
 In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the PyTorch function/methods listed here.
 
 - `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers
-   (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range?`_)
+   (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range>`_)
 - `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor with uninitialized values
 - `eye <https://pytorch.org/docs/stable/torch.html#torch.eye>`_: returns an identity matrix
 - `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_: returns a tensor filled with a single value
