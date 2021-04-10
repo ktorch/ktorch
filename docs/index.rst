@@ -23,6 +23,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    pointers
    devices
 
+
 .. toctree::
    :maxdepth: 1
    :caption: Tensors
@@ -32,6 +33,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    sparse
    vectors
    dictionaries
+
 
 .. toctree::
    :maxdepth: 1
