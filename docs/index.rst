@@ -6,8 +6,9 @@
 k api to pytorch
 ==================================
 
-PyTorch, a deep learning framework written in python,  also has a c++ library, libtorch, which is delivered as a single zip file
-containing all the necessary Nvidia libraries and routines to build and train neural networks, along with basic linear algebra routines.
+`PyTorch <https://pytorch.org/>`_, a deep learning framework written in python,  also has a c++ library, `libtorch <https://pytorch.org/cppdocs/>`_,
+which is delivered as a single zip file containing all the necessary Nvidia libraries and routines to build and train neural networks,
+along with basic linear algebra routines.
 
 This interface links k to the c++ routines, but attempts to follow the line of the python interface, which also drives the design of the c++ library.
 
