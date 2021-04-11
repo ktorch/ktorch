@@ -35,15 +35,16 @@ In the k interface, these attributes are represented as symbols:
 The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: options() -> dict
-.. function:: options(tensor) -> dict
+.. function:: options(ptr) -> dict
 
    | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
 
+The ``dtype`` function will get/set the default data type or return the data type of a previously allocated tensor.
 .. function:: dtype() -> sym
 .. function:: dtype(sym) -> null
 .. function:: dtype(ptr) -> sym
 
-   | with empty arg, ``dtype`` returns the default data type, with sym, it sets the default data type and with a tensor ptr, returns the tensor's datatype.
+   | With an empty argument, ``dtype`` returns the default data type, with a sym data type, it sets the default data type and with a tensor :ref:`pointer <pointers>`, the function returns the tensor's datatype.
    
 .. note::
    Sparse tensors, complex tensors, pinned memory and the newer memory formats are less widely used and still a work in progress in PyTorch.
@@ -227,7 +228,7 @@ Retrieving tensor values
 ^^^^^^^^^^^^^^^^^^^^^^^^
 The ``tensor`` function can also be used to retrieve values from a previously created tensor into a k array.
 
-.. function:: tensor ptr -> value
+.. function:: tensor(ptr) -> value
 .. function:: tensor(ptr;ind) -> value
 .. function:: tensor(ptr;dim;ind) -> value
 .. function:: tensor(ptr;flag;dim;ind) -> value
@@ -235,7 +236,7 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
    | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
 
    :param ptr tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
-   :param  bool flag: an optional flag for complex tensors only, true to return real & imaginary parts along first dimension, false along last dimension.
+   :param  bool flag: an optional flag for :ref:`complex tensors <complex>` only, true to return real & imaginary parts along first dimension, false along last dimension.
    :param long dim: an optional dimension for the subsequent index.
    :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..
 
@@ -258,8 +259,7 @@ Tensor creation modes
 
 In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the PyTorch function/methods listed here.
 
-- `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers
-   (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range>`_)
+- `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range>`_)
 - `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor with uninitialized values
 - `eye <https://pytorch.org/docs/stable/torch.html#torch.eye>`_: returns an identity matrix
 - `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_: returns a tensor filled with a single value
