@@ -668,7 +668,7 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
    :param numeric real: real part of the complex tensor as a k value.
    :param numeric imag: imaginary part of the complex tensor as a k value (same size as the real part).
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
 
 ::
 
@@ -692,6 +692,39 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
    1 -1
    2 2 
    3 0 
+
+An alternate form of the above function call uses a single k value to create the complex tensor, with real and imaginary values across the first or last dimension of the given array.
+
+.. function:: tensor(mode;value) -> ptr
+.. function:: tensor(mode;value;flag) -> ptr
+.. function:: tensor(mode;value;options) -> ptr
+.. function:: tensor(mode;value;flag;options) -> ptr
+
+   :param sym mode: ```complex``.
+   :param numeric value: real part of the complex tensor as a k value.
+   :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the session global value for ```complexfirst`` will be used.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
+   :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
+
+   ::
+   q)tensor t:tensor(`complex; 1 2 3,'0; 0b)
+   1 2 3
+   0 0 0
+
+   q)free t
+   q)tensor t:tensor(`complex; flip 1 2 3,'0)
+   1 2 3
+   0 0 0
+
+   q)tensor(t;0b)
+   1 0
+   2 0
+   3 0
+
+   q)tensor(`complex; 1 2 3,'0)
+   'complex: single input array must have a first dimension of size 2 (real;imaginary), given size of [3, 2]
+     [0]  tensor(`complex; 1 2 3,'0)
+          ^
 
 Sparse tensor
 ^^^^^^^^^^^^^
