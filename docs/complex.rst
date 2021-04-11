@@ -15,13 +15,14 @@ Complex tensors
 
 
 In a k session, complex tensors are created and retrieved using the same :doc:`tensor <tensors>` function.
+also :func:`tensor`
 Creating a tensor directly from a k value requires adding the complex data type, ```cfloat`` or ```cdouble``, as part of the tensor options:
 
 .. function:: tensor(value;options) -> ptr
 
    | Create a tensor from k value.
 
-   :param scalar,list,array value: the k value to populate the real part of the complextensor.
+   :param scalar,list,array value: the k value to populate the real part of the complex tensor.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`. Must include data type of ```cfloat`` or ```cdouble`` amongst the supplied options.
    :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor
 
