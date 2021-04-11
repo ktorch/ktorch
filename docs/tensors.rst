@@ -35,11 +35,16 @@ In the k interface, these attributes are represented as symbols:
 The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: options() -> dict
-
 .. function:: options(tensor) -> dict
 
    | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
 
+.. function:: dtype() -> sym
+.. function:: dtype(sym) -> null
+.. function:: dtype(ptr) -> sym
+
+   | with empty arg, ``dtype`` returns the default data type, with sym, it sets the default data type and with a tensor ptr, returns the tensor's datatype.
+   
 .. note::
    Sparse tensors, complex tensors, pinned memory and the newer memory formats are less widely used and still a work in progress in PyTorch.
    Most options settings involve data type, device and gradient.
@@ -63,15 +68,28 @@ The ``options`` function will display the defaults usually in effect if no optio
    pin     | unpinned
    memory  | contiguous
 
+   q)dtype t       / query data type of t
+   `long
+
+   q)dtype`double  / reset default data type from float -> double
    q)free t
-   q)options t:tensor(1 2 3;`double`cuda`grad)
-   device  | cuda:0
+   q)t:tensor()    / create an empty tensor with default data type
+   q)dtype t
+   `double
+
+   q)options()
+   device  | cpu
    dtype   | double
+   ..
+
+   q)free t
+   q)options t:tensor(1 2 3;`half`cuda`grad)   / create a tensor on gpu with half-precision
+   device  | cuda:0
+   dtype   | half
    layout  | strided
    gradient| grad
    pin     | unpinned
    memory  | contiguous
-
 
 .. index:: tensor; creating from a k value
 
