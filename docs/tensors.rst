@@ -32,6 +32,7 @@ In the k interface, these attributes are represented as symbols:
 - **pin:** either ```pinned`` or ```unpinned``
 - **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d``
 
+These symbols can be specified in any order to set the properties of a tensor, e.g. ```int`` or ```cuda`float`grad `` or ```sparse`long``.
 The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: options() -> dict
@@ -109,7 +110,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
    | Create a tensor from k value.
 
    :param scalar,list,array value: the k value to populate the tensor.  If no options given, the :ref:`data type <types>` for the tensor will be mapped from the data type of the k value.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`````long`````grad``
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 Examples
@@ -300,7 +301,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param long size: scalar/list specifiying size of array
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
@@ -314,7 +315,7 @@ similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 Alternate form using an output tensor instead of options that control data type, device, etc.
@@ -356,7 +357,7 @@ Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.
    :param sym mode: set to ```full`` 
    :param long size: scalar/list specifiying size of array
    :param scalar value: scalar fill value, real or double k type. Also possible to specify non floating point scalar, but options must include required tensor data type.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor
 
 Alternate form using an input tensor for size:
@@ -405,7 +406,7 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
    :param sym mode: one of ```rand`` or ```randn``.
    :param long size: scalar/list specifiying size of array.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
@@ -417,7 +418,7 @@ Alternate form using an input tensor to supply size, i.e. size will be derived f
 
    :param sym mode: ```rand`` or ```randn``.
    :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 Alternate form using an output tensor instead of options that control data type, device, etc.
@@ -453,7 +454,7 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
    :param long low: lowest intger to be drawn from the distribution, set to zero if not given.
    :param long high: one above the highest intger to be drawn from the distribution.
    :param long size: scalar/list specifiying size of array.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
@@ -509,7 +510,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
@@ -551,7 +552,7 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
    :param long start: starting value for the set of points, default is 0 for mode of ```arange``, must be given for ```range``.
    :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode of ```range`` returns points including end.
    :param long step: step size or gap between each pair of adjacent points, default is 1.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
@@ -591,7 +592,7 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
    :param long end: ending value for the set of points.
    :param long steps: size of the created tensor running from ``start`` to ``end``.
    :param double base: optional base of the log function, default=``10.0``, only for mode=```logspace``
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
@@ -629,7 +630,7 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
    :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
    :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
-   :param sym options: one or more symbols for device, data type, layout, gradients, e.g. ```cuda`` or ```cuda:0`` ```long`` ```grad``.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated matrix.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
@@ -680,9 +681,12 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
    pin     | unpinned
    memory  | contiguous
 
-   q)tensor(t;1b)  / retrieve complex tensor as (real;imag), the default behaviour if no flag given
+   q)tensor(t;1b)  / retrieve complex tensor as (real;imag)
    1  2 3
    -1 2 0
+
+   q)tensor[t]~tensor(t;1b) /default behaviour is flag set true
+   1b
 
    q)tensor(t;0b)  / retrieve as real,'imag
    1 -1
