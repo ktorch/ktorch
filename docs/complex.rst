@@ -14,8 +14,10 @@ Complex tensors
    tensor([3.-2.j, 4.+7.j])
 
 
-In a k session, complex tensors are created and retrieved using the same :doc:`tensor <tensors>` function.
-also :func:`tensor`
+Creating from a k value
+***********************
+
+In a k session, complex tensors are created and retrieved using the same :func:`tensor` function used to create real-valued tensors.
 Creating a tensor directly from a k value requires adding the complex data type, ```cfloat`` or ```cdouble``, as part of the tensor options:
 
 .. function:: tensor(value;options) -> ptr
@@ -44,10 +46,28 @@ Creating a tensor directly from a k value requires adding the complex data type,
    q)imag t        / return imaginary values only
    0 0 0e
 
+Tensor creation modes
+*********************
 
-- `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_:
-- `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_:
-- `isreal <https://pytorch.org/docs/stable/generated/torch.isreal.html>`_:
+Most of the creation modes
+
+
+Complex information
+*******************
+
+After a complex tensor is created, there are some information functions that allow retrieval of parts of the complex tensor.
+
+- `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the real part.
+- `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the imaginary part.
+- `isreal <https://pytorch.org/docs/stable/generated/torch.isreal.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns true where the imaginary part is zero.
+
+.. function:: real(ptr) -> value
+.. function:: real(enlisted-ptr) -> ptr
+.. function:: imag(ptr) -> value
+.. function:: imag(enlisted-ptr) -> ptr
+.. function:: isreal(ptr) -> value
+.. function:: isreal(enlisted-ptr) -> ptr
+
 
 - `abs <https://pytorch.org/docs/stable/generated/torch.abs.html>`_:
 - `angle <https://pytorch.org/docs/stable/generated/torch.angle.html>`_:
