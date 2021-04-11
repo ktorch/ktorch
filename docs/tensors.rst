@@ -271,6 +271,7 @@ In addition to supplying k values to initialise tensors, the following methods c
 - `randn <https://pytorch.org/docs/stable/torch.html#torch.randn>`_: returns a tensor with values drawn from a unit normal distribution
 - `randperm <https://pytorch.org/docs/stable/torch.html#torch.randperm>`_: returns a tensor with a random permutation of integers in some interval
 - `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_: returns a tensor filled with zeros
+- `complex <https://pytorch.org/docs/stable/generated/torch.complex.html>`_: creates a complex tensor from real and imaginary values
 
 
 Tensors are created in the k interface using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
@@ -653,3 +654,40 @@ The function call can also use a final argument of a previously allocated tensor
    10000b
    01000b
    00100b
+
+Complex tensor
+^^^^^^^^^^^^^^
+
+A tensor of complex numbers can be created by supplying the real and imaginary parts, along with optional attributes. See :ref:`section on complex tensors <complex>` for more details.
+
+.. function:: tensor(mode;real;imag) -> ptr
+.. function:: tensor(mode;real;imag;options) -> ptr
+
+   :param sym mode: ```complex``.
+   :param numeric real: real part of the complex tensor as a k value.
+   :param numeric imag: imaginary part of the complex tensor as a k value (same size as the real part).
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
+   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+
+::
+
+   q)t:tensor(`complex;1 2 3;-1 2 0;`cdouble`cuda)
+   q)options t
+   device  | cpu
+   dtype   | cdouble
+   layout  | strided
+   gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
+
+   q)tensor(t;1b)  / retrieve complex tensor as (real;imag), the default behaviour if no flag given
+   1  2 3
+   -1 2 0
+
+   q)tensor(t;0b)  / retrieve as real,'imag
+   1 -1
+   2 2 
+   3 0 
+
+Sparse tensor
+^^^^^^^^^^^^^
