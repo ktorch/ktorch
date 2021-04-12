@@ -552,6 +552,10 @@ The function call can also use a final argument of a previously allocated tensor
    q)tensor t
    2 3 1 4 0f
 
+.. index:: arange, range
+
+.. _tensor-range:
+
 Evenly spaced tensors
 ^^^^^^^^^^^^^^^^^^^^^
 Creation modes `arange <https://pytorch.org/docs/stable/generated/torch.arange.html>`_
@@ -592,6 +596,10 @@ The function call can also use a final argument of a previously allocated tensor
    q)free t
    q)tensor t:tensor(`arange;.1;.8;.1)
    0.1 0.2 0.3 0.4 0.5 0.6 0.7e
+
+.. index:: linspace, logspace
+
+.. _tensor-even-spaced:
 
 Creation modes 
 `linspace <https://pytorch.org/docs/stable/generated/torch.linspace.html>`_ and
@@ -634,6 +642,10 @@ The function call can also use a final argument of a previously allocated tensor
    q)2 xlog tensor t
    1 1.111111 1.222222 1.333333 1.444444 1.555556 1.666667 1.777778 1.888889 2
 
+.. index:: eye
+
+.. _tensor-identity:
+
 Identity matrix
 ^^^^^^^^^^^^^^^
 Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highlight=eye#torch.eye>`_ in PyTorch returns a 2-dimensional tensor with ones on the diagonal and zeros elsewhere.
@@ -670,6 +682,10 @@ The function call can also use a final argument of a previously allocated tensor
    10000b
    01000b
    00100b
+
+.. index:: complex
+
+.. _tensor-complex:
 
 Complex tensor
 ^^^^^^^^^^^^^^

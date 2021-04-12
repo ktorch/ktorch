@@ -52,10 +52,40 @@ Tensor creation modes
 Most of the :ref:`creation modes <tensor-modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
 Usually only the real part of the tensor is defined, with the imaginary part set to zero.
 This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`, along with :ref:`full <tensor-full>`, 
-:ref:`randint <tensor-randint>`,
+:ref:`linspace <tensor-even-spaced>`,
+:ref:`logspace <tensor-even-spaced>` and
+:ref:`eye <tensor-identity>`.
+
+::
+
+   q)t:tensor(`full;7;2.5;`cfloat)
+   q)tensor t
+   2.5 2.5 2.5 2.5 2.5 2.5 2.5
+   0   0   0   0   0   0   0  
+
+   q)use[t]tensor(`ones;2 3;`cfloat)
+
+   q)tensor(t;0)
+   1 1 1
+   0 0 0
+
+   q)real t
+   1 1 1
+   1 1 1
+
+   q)imag t
+   0 0 0
+   0 0 0
+
+   q)use[t]tensor(`linspace;0;9;10;`cfloat)
+   q)tensor t
+   0 1 2 3 4 5 6 7 8 9
+   0 0 0 0 0 0 0 0 0 0
+
 Exceptions are creation modes 
-:ref:`rand <tensor-random>`,
-:ref:`randn <tensor-random>`,
+:ref:`empty <tensor-empty>`,
+:ref:`rand <tensor-random>` and
+:ref:`randn <tensor-random>`, which can define non-zero imaginary parts in the created complex tensor.
 
 ::
 
@@ -71,6 +101,18 @@ Exceptions are creation modes
    q)use[t]tensor(`randn;5;`cdouble); tensor t  / standard normal
    0.2019709 -0.6007159 -0.1383445 0.3822946 -0.3757848
    -0.465213 -0.335503  1.170153   -1.166904 0.6392463 
+
+Creation modes
+:ref:`arange <tensor-range>`,
+:ref:`randperm <tensor-randperm>` and 
+:ref:`randint <tensor-randint>` don't allow complex types.
+
+::
+
+   q)tensor(`arange; 10; `cfloat)
+   '"arange_cpu" not implemented for 'ComplexFloat'
+     [0]  tensor(`arange; 10; `cfloat)
+          ^
 
 Complex information
 *******************
@@ -105,6 +147,8 @@ The k interface implements these functions to return either k values or new tens
 
    q)tensor i
    -1 0 2e
+
+The ``isreal`` function returns a boolean k value or a pointer to an allocated boolean tensor:
 
 .. function:: isreal(ptr) -> value
 .. function:: isreal(enlisted-ptr) -> ptr
