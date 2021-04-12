@@ -49,13 +49,15 @@ Creating a tensor directly from a k value requires adding the complex data type,
 Tensor creation modes
 *********************
 
-Most of the `creation modes <https://ktorch.readthedocs.io/en/latest/tensors.html#tensor-creation-modes>`_ will create also complex tensors if data type is set to ```cfloat`` or ```cdouble``, as part of the tensor options. 
+Most of the :ref:`creation modes <tensor--modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
 Usually only the real part of the tensor is defined, with the imaginary part set to zero.
+This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`
 Exceptions are creation modes 
 
 ::
 
-   q)tensor t:tensor(`empty;5;`cdouble)  / create uninitialized tensor, real & imaginary parts may be any value
+   / create uninitialized tensor, real & imaginary parts may be any value
+   q)tensor t:tensor(`empty;5;`cdouble)
    1.736005e-310 2.48021e-321  4.056773e-320 1.743432e-310 2.48021e-321 
    4.044421e-320 1.740885e-310 2.48021e-321  4.070607e-320 1.751071e-310
 
@@ -70,22 +72,56 @@ Exceptions are creation modes
 Complex information
 *******************
 
-After a complex tensor is created, there are some information functions that allow retrieval of the real and imaginary parts:
+After a complex tensor is created, there are some PyTorch information functions that allow retrieval of the real and imaginary parts:
 
 - `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the real part.
 - `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the imaginary part.
 - `isreal <https://pytorch.org/docs/stable/generated/torch.isreal.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns true where the imaginary part is zero.
 
+The k interface implements these functions to return either k values or new tensors:
+
 .. function:: real(ptr) -> value
+.. function:: imag(ptr) -> value
 .. function:: real(enlisted-ptr) -> ptr
+.. function:: imag(enlisted-ptr) -> ptr
 
    :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor
-   :return: for a ptr, returns a k value containing the real parts of the allocated tensor. If the ptr is enlisted, returns a :ref:`ptr <pointers> to a tensor with the real values.
+   :return: Given a ptr, returns a k array containing the real or imaginary parts of the allocated tensor. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a tensor with the real or imaginary values.
 
-.. function:: imag(ptr) -> value
-.. function:: imag(enlisted-ptr) -> ptr
+::
+
+   q)t:tensor(`complex;1 2 3;-1 0 2)
+
+   q)real t
+   1 2 3e
+
+   q)i:imag enlist t
+
+   q)dtype i
+   `float
+
+   q)tensor i
+   -1 0 2e
+
 .. function:: isreal(ptr) -> value
 .. function:: isreal(enlisted-ptr) -> ptr
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor
+   :return: Given a ptr, returns a k boolean array with 1's where the imaginary part of the complex tensor is zero. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a tensor with the boolean values.
+
+::
+
+   q)t:tensor(`complex;1 2 3;-1 0 2)
+   q)isreal t
+   010b
+
+   q)b:isreal enlist t
+
+   q)dtype b
+   `bool
+
+   q)tensor b
+   010b
 
 
 - `abs <https://pytorch.org/docs/stable/generated/torch.abs.html>`_:
