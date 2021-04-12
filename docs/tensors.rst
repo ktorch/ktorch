@@ -287,7 +287,7 @@ Tensors are created in the k interface using the above methods by supplying a mo
 
 .. index:: zeros, ones, empty
 
-.. _tensors-by-size:
+.. _tensor-by-size:
 
 Creating by size: zeros, ones, empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -347,6 +347,8 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: full
 
+.. _tensor-full:
+
 Tensor with single value
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -395,6 +397,8 @@ Alternate form using an output tensor instead of options that control data type,
 
 .. index:: rand, randn
 
+.. _tensor-random:
+
 Random tensors
 ^^^^^^^^^^^^^^
 
@@ -441,6 +445,10 @@ Alternate form using an output tensor instead of options that control data type,
    q)free t
    q)(avg;dev)@\:tensor t:tensor(`randn;10000000;`double)
    -0.0002174295 0.9999617
+
+.. index::  randint
+
+.. _tensor-randint:
 
 Random integers
 ^^^^^^^^^^^^^^^
@@ -503,6 +511,10 @@ The function call can also use a final argument of a previously allocated tensor
    49.48276
    q)size t
    ,1000000
+
+.. index:: randperm
+
+.. _tensor-randperm:
 
 Random permutations
 ^^^^^^^^^^^^^^^^^^^

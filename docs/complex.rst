@@ -49,10 +49,13 @@ Creating a tensor directly from a k value requires adding the complex data type,
 Tensor creation modes
 *********************
 
-Most of the :ref:`creation modes <tensor--modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
+Most of the :ref:`creation modes <tensor-modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
 Usually only the real part of the tensor is defined, with the imaginary part set to zero.
-This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`
+This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`, along with :ref:`full <tensor-full>`, 
+:ref:`randint <tensor-randint>`,
 Exceptions are creation modes 
+:ref:`rand <tensor-random>`,
+:ref:`randn <tensor-random>`,
 
 ::
 
