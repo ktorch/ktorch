@@ -81,8 +81,8 @@ After a complex tensor is created, there are some PyTorch information functions 
 The k interface implements these functions to return either k values or new tensors:
 
 .. function:: real(ptr) -> value
-.. function:: imag(ptr) -> value
 .. function:: real(enlisted-ptr) -> ptr
+.. function:: imag(ptr) -> value
 .. function:: imag(enlisted-ptr) -> ptr
 
    :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor

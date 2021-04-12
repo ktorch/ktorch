@@ -254,7 +254,7 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
    3  7  11
    15 19 23
 
-.. _tensor-modes
+.. _tensor-modes:
 
 Tensor creation modes
 *********************
@@ -287,7 +287,7 @@ Tensors are created in the k interface using the above methods by supplying a mo
 
 .. index:: zeros, ones, empty
 
-.. _tensors-by-size
+.. _tensors-by-size:
 
 Creating by size: zeros, ones, empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
