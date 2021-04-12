@@ -48,8 +48,19 @@ Creating a tensor directly from a k value requires adding the complex data type,
 
 Tensor creation modes
 *********************
+The :ref:`complex <tensor-complex>` creaton mode allows the user to create a complex tensor from the k session by specifying the real and imaginary parts.
 
-Most of the :ref:`creation modes <tensor-modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
+::
+
+   q)t:tensor(`complex; 1 2 3; -1 0 2)
+   q)dtype t
+   `cfloat
+
+   q)tensor t
+   1  2 3
+   -1 0 2
+
+Most of the other :ref:`creation modes <tensor-modes>`  will also create complex tensors if data type is set to ```cfloat`` or ```cdouble`` as part of the tensor options. 
 Usually only the real part of the tensor is defined, with the imaginary part set to zero.
 This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`, along with :ref:`full <tensor-full>`, 
 :ref:`linspace <tensor-even-spaced>`,
@@ -102,11 +113,7 @@ Exceptions are creation modes
    0.2019709 -0.6007159 -0.1383445 0.3822946 -0.3757848
    -0.465213 -0.335503  1.170153   -1.166904 0.6392463 
 
-Creation modes
-:ref:`arange <tensor-range>`,
-:ref:`randint <tensor-randint>` and
-:ref:`randperm <tensor-randperm>`
- don't allow complex types.
+Creation modes :ref:`arange <tensor-range>`, :ref:`randint <tensor-randint>` and :ref:`randperm <tensor-randperm>` don't allow complex types.
 
 ::
 
@@ -171,7 +178,7 @@ The ``isreal`` function returns a boolean k value or a pointer to an allocated b
    q)tensor b
    010b
 
-
-- `abs <https://pytorch.org/docs/stable/generated/torch.abs.html>`_:
-- `angle <https://pytorch.org/docs/stable/generated/torch.angle.html>`_:
-- `sgn <https://pytorch.org/docs/stable/generated/torch.sgn.html>`_:
+..
+   - `abs <https://pytorch.org/docs/stable/generated/torch.abs.html>`_:
+   - `angle <https://pytorch.org/docs/stable/generated/torch.angle.html>`_:
+   - `sgn <https://pytorch.org/docs/stable/generated/torch.sgn.html>`_:
