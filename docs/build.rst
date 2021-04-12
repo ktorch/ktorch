@@ -1,4 +1,4 @@
 .. _build:
 
-Buiiding ktorch
+Building ktorch
 ===============
