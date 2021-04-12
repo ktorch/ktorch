@@ -262,7 +262,7 @@ Tensor creation modes
 In addition to supplying k values to initialise tensors, the following methods create tensors following a particular distribution, sequence, etc. The k interface function accepts arguments somewhat similar to the PyTorch function/methods listed here.
 
 - `arange <https://pytorch.org/docs/stable/torch.html#torch.arange>`_: returns a tensor with a sequence of integers (replaces deprecated function: `range <https://pytorch.org/docs/stable/generated/torch.range.html?highlight=range#torch.range>`_)
-- `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor with uninitialized values
+- `empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_: returns a tensor of given size with uninitialized values
 - `eye <https://pytorch.org/docs/stable/torch.html#torch.eye>`_: returns an identity matrix
 - `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_: returns a tensor filled with a single value
 - `linspace <https://pytorch.org/docs/stable/torch.html#torch.linspace>`_: returns a tensor with values linearly spaced in some interval

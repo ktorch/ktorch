@@ -83,7 +83,7 @@ This is true for :ref:`zeros <tensor-by-size>` and :ref:`ones <tensor-by-size>`,
    0 0 0 0 0 0 0 0 0 0
 
 Exceptions are creation modes 
-:ref:`empty <tensor-empty>`,
+:ref:`empty <tensor-by-size>`,
 :ref:`rand <tensor-random>` and
 :ref:`randn <tensor-random>`, which can define non-zero imaginary parts in the created complex tensor.
 
@@ -104,8 +104,9 @@ Exceptions are creation modes
 
 Creation modes
 :ref:`arange <tensor-range>`,
-:ref:`randperm <tensor-randperm>` and 
-:ref:`randint <tensor-randint>` don't allow complex types.
+:ref:`randint <tensor-randint>` and
+:ref:`randperm <tensor-randperm>`
+ don't allow complex types.
 
 ::
 
@@ -114,8 +115,8 @@ Creation modes
      [0]  tensor(`arange; 10; `cfloat)
           ^
 
-Complex information
-*******************
+Real & imaginary parts
+**********************
 
 After a complex tensor is created, there are some PyTorch information functions that allow retrieval of the real and imaginary parts:
 
