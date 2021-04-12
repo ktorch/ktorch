@@ -49,13 +49,28 @@ Creating a tensor directly from a k value requires adding the complex data type,
 Tensor creation modes
 *********************
 
-Most of the creation modes
+Most of the `creation modes <https://ktorch.readthedocs.io/en/latest/tensors.html#tensor-creation-modes>`_ will create also complex tensors if data type is set to ```cfloat`` or ```cdouble``, as part of the tensor options. 
+Usually only the real part of the tensor is defined, with the imaginary part set to zero.
+Exceptions are creation modes 
 
+::
+
+   q)tensor t:tensor(`empty;5;`cdouble)  / create uninitialized tensor, real & imaginary parts may be any value
+   1.736005e-310 2.48021e-321  4.056773e-320 1.743432e-310 2.48021e-321 
+   4.044421e-320 1.740885e-310 2.48021e-321  4.070607e-320 1.751071e-310
+
+   q)use[t]tensor(`rand;5;`cdouble); tensor t   / uniform random 
+   0.1500104 0.3352091 0.2414377  0.4360392 0.291383
+   0.5904075 0.1125289 0.01854667 0.2212064 0.355647
+
+   q)use[t]tensor(`randn;5;`cdouble); tensor t  / standard normal
+   0.2019709 -0.6007159 -0.1383445 0.3822946 -0.3757848
+   -0.465213 -0.335503  1.170153   -1.166904 0.6392463 
 
 Complex information
 *******************
 
-After a complex tensor is created, there are some information functions that allow retrieval of parts of the complex tensor.
+After a complex tensor is created, there are some information functions that allow retrieval of the real and imaginary parts:
 
 - `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the real part.
 - `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the imaginary part.
@@ -63,6 +78,10 @@ After a complex tensor is created, there are some information functions that all
 
 .. function:: real(ptr) -> value
 .. function:: real(enlisted-ptr) -> ptr
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor
+   :return: for a ptr, returns a k value containing the real parts of the allocated tensor. If the ptr is enlisted, returns a :ref:`ptr <pointers> to a tensor with the real values.
+
 .. function:: imag(ptr) -> value
 .. function:: imag(enlisted-ptr) -> ptr
 .. function:: isreal(ptr) -> value

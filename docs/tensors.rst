@@ -702,11 +702,12 @@ An alternate form of the above function call uses a single k value to create the
 
    :param sym mode: ```complex``.
    :param numeric value: real part of the complex tensor as a k value.
-   :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the session global value for ```complexfirst`` will be used.
+   :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the overall session setting for ```complexfirst`` will be used.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
 
    ::
+
    q)tensor t:tensor(`complex; 1 2 3,'0; 0b)
    1 2 3
    0 0 0
