@@ -6,10 +6,10 @@ Given a successful build of the ``ktorch.so`` interface library, it's possible t
 .. function:: config() -> strings
 .. function:: config(::) -> (null)
 
-	| Returns a list of strings containing the configuration output, or with null argument (as opposed to an empty list), prints configuration to stderr
+	| Returns a list of strings containing the configuration output, or with null argument (as opposed to an empty list), prints the configuration to stderr
 
 
-On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as follows vor PyTorch version 1.8.1:
+On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as follows for PyTorch version 1.8.1:
 
 ::
 
@@ -52,6 +52,10 @@ On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as f
 	   MKL_NUM_THREADS : [not set]
    ATen parallel backend: OpenMP
 
+.. _settings:
+
+.. index::  settings; k session settings
+
 Settings
 ********
 
@@ -62,6 +66,38 @@ After reviewing the basic configuration that went into the build of ``libtorch``
 .. function:: setting(sym;bool) -> null
 .. function:: setting(sym;long) -> null
 
+	| Calling the function with null or an empty list returns a dictionary of setting names and values. Specifying a single symbol returns the current setting. Specifying a symbol and boolean or long scalar will reset the session setting if changes are possible for that setting.
+
+::
+
+   q)setting()
+   mkl               | 1b
+   openmp            | 1b
+   threads           | 12
+   cuda              | 1b
+   magma             | 1b
+   cudnn             | 1b
+   cudnndeterministic| 0b
+   cudnnversion      | 8005
+   cudadevices       | 2
+   benchmark         | 0b
+   deterministic     | 0b
+   stackframe        | 0b
+   alloptions        | 1b
+   complexfirst      | 1b
+
+   q)setting `threads
+   12
+
+   q)setting `threads,6
+   q)setting `threads
+   6
+
+   q)setting `cuda,0b
+   'setting: cannot set flag for cuda
+     [0]  setting `cuda,0b
+          ^
+
 
 Threads
 ^^^^^^^
@@ -71,6 +107,14 @@ Benchmark mode
 
 Deterministic mode
 ^^^^^^^^^^^^^^^^^^
+Setting the random seed can help in creating reproducible results, but some algorithms have random elements that are difficult to reproduce exactly.
+See PyTorch notes on `reproducibility <https://pytorch.org/docs/stable/notes/randomness.html>`_.
+
+This flag indicates whether PyTorch operations must use “deterministic” algorithms. That is, algorithms which, given the same input, and when run on the same software and hardware, always produce the same output. When set on, operations will use deterministic algorithms when available, and if only non-deterministic algorithms are available they will throw an error.
+
+::
+
+
 
 
 Stack frame

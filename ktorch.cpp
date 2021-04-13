@@ -1570,19 +1570,20 @@ static Setting cset(S s) {
 
 static K getsetting(Setting s) {
  switch(s) {
-  case Setting::mkl:           return kb(torch::hasMKL());
-  case Setting::openmp:        return kb(torch::hasOpenMP());
-  case Setting::threads:       return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
-  case Setting::cuda:          return kb(torch::cuda::is_available());
-  case Setting::magma:         return kb(torch::hasMAGMA());
-  case Setting::cudnn:         return kb(torch::cuda::cudnn_is_available());
-  case Setting::cudnnversion:  return kj(torch::cuda::cudnn_is_available() ? at::detail::getCUDAHooks().versionCuDNN() : nj);
-  case Setting::cudadevices:   return kj(env().cuda);
-  case Setting::benchmark:     return kb(torch::globalContext().benchmarkCuDNN());
-  case Setting::deterministic: return kb(torch::globalContext().deterministicCuDNN());
-  case Setting::stackframe:    return kb(env().frame);
-  case Setting::alloptions:    return kb(env().alloptions);
-  case Setting::complexfirst:  return kb(env().complexfirst);
+  case Setting::mkl:                return kb(torch::hasMKL());
+  case Setting::openmp:             return kb(torch::hasOpenMP());
+  case Setting::threads:            return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
+  case Setting::cuda:               return kb(torch::cuda::is_available());
+  case Setting::magma:              return kb(torch::hasMAGMA());
+  case Setting::cudnn:              return kb(torch::cuda::cudnn_is_available());
+  case Setting::cudnnversion:       return kj(torch::cuda::cudnn_is_available() ? at::detail::getCUDAHooks().versionCuDNN() : nj);
+  case Setting::cudadevices:        return kj(env().cuda);
+  case Setting::benchmark:          return kb(torch::globalContext().benchmarkCuDNN());
+  case Setting::deterministic:      return kb(torch::globalContext().deterministicAlgorithms());
+  case Setting::cudnndeterministic: return kb(torch::globalContext().deterministicCuDNN());
+  case Setting::stackframe:         return kb(env().frame);
+  case Setting::alloptions:         return kb(env().alloptions);
+  case Setting::complexfirst:       return kb(env().complexfirst);
   default: TORCH_ERROR("unrecognized setting: ",(I)s);
  }
 }
@@ -1598,11 +1599,12 @@ static K getsettings() {
 
 static void setflag(S s,Setting c,bool b) {
  switch(c) {
-  case Setting::benchmark:     torch::globalContext().setBenchmarkCuDNN(b); break;
-  case Setting::deterministic: torch::globalContext().setDeterministicCuDNN(b); break;
-  case Setting::stackframe:    env().frame=b; break;
-  case Setting::alloptions:    env().alloptions=b; break;
-  case Setting::complexfirst:  env().complexfirst=b; break;
+  case Setting::benchmark:          torch::globalContext().setBenchmarkCuDNN(b); break;
+  case Setting::deterministic:      torch::globalContext().setDeterministicAlgorithms(b); break;
+  case Setting::cudnndeterministic: torch::globalContext().setDeterministicCuDNN(b); break;
+  case Setting::stackframe:         env().frame=b; break;
+  case Setting::alloptions:         env().alloptions=b; break;
+  case Setting::complexfirst:       env().complexfirst=b; break;
   default: TORCH_ERROR("setting: cannot set flag for ",s); break;
  }
 }
