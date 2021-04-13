@@ -54,3 +54,10 @@ On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as f
 
 Settings
 ********
+
+After reviewing the basic configuration that went into the build of ``libtorch``, it is also possible to query and set various flags that enable/disable certain features in the k interface.  See PyTorch `backends <https://pytorch.org/docs/stable/backends.html>`_  and `threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html#build-options>`_ for more information.
+
+.. function:: setting() -> dictionary
+.. function:: setting(sym) -> value
+.. function:: setting(sym;bool) -> (null)
+.. function:: setting(sym;long) -> (null)

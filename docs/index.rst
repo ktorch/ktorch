@@ -18,7 +18,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
 
    overview
    build
-   configuration
+   config
    start
    types
    pointers
