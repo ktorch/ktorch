@@ -1555,45 +1555,78 @@ K optmap(const TensorOptions &o) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// ksetting - list/change configuration settings
+// cset - map between k symbol and eunumeration for configuration settings
+// getsetting - return k scalar for given configuration setting
+// getsettings - return k dictionary for all settings
+// setflag - set boolean configuration setttings, e.g. stackframe on/off
+// setting - main k interface to show or change configuration settings
 // config - print or return strings of pytorch config (CUDA capability, build options, etc.)
 // ---------------------------------------------------------------------------------------------
-KAPI ksetting(K x) {
+static Setting cset(S s) {
+ for(const auto& c:env().cset)
+  if(s==std::get<0>(c)) return std::get<1>(c);
+ TORCH_ERROR("unrecognized configuration setting: ",s);
+}
+
+static K getsetting(Setting s) {
+ switch(s) {
+  case Setting::mkl:           return kb(torch::hasMKL());
+  case Setting::openmp:        return kb(torch::hasOpenMP());
+  case Setting::threads:       return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
+  case Setting::cuda:          return kb(torch::cuda::is_available());
+  case Setting::magma:         return kb(torch::hasMAGMA());
+  case Setting::cudnn:         return kb(torch::cuda::cudnn_is_available());
+  case Setting::cudnnversion:  return kj(torch::cuda::cudnn_is_available() ? at::detail::getCUDAHooks().versionCuDNN() : nj);
+  case Setting::cudadevices:   return kj(env().cuda);
+  case Setting::benchmark:     return kb(torch::globalContext().benchmarkCuDNN());
+  case Setting::deterministic: return kb(torch::globalContext().deterministicCuDNN());
+  case Setting::stackframe:    return kb(env().frame);
+  case Setting::alloptions:    return kb(env().alloptions);
+  case Setting::complexfirst:  return kb(env().complexfirst);
+  default: TORCH_ERROR("unrecognized setting: ",(I)s);
+ }
+}
+
+static K getsettings() {
+ J i=0; const auto& c=env().cset;  K k=ktn(KS,c.size()),v=ktn(0,c.size());
+ for(auto a:c) {
+  kS(k)[i]=std::get<0>(a);
+  kK(v)[i++]=getsetting(std::get<1>(a));
+ }
+ return xD(k,v);
+}
+
+static void setflag(S s,Setting c,bool b) {
+ switch(c) {
+  case Setting::benchmark:     torch::globalContext().setBenchmarkCuDNN(b); break;
+  case Setting::deterministic: torch::globalContext().setDeterministicCuDNN(b); break;
+  case Setting::stackframe:    env().frame=b; break;
+  case Setting::alloptions:    env().alloptions=b; break;
+  case Setting::complexfirst:  env().complexfirst=b; break;
+  default: TORCH_ERROR("setting: cannot set flag for ",s); break;
+ }
+}
+
+KAPI setting(K x) {
  KTRY
-  auto &e=env(); auto &c=at::globalContext(); bool b,o=torch::hasOpenMP(); J n; S s;
+  S s;
   if(xempty(x)) {
-   K r=xD(ktn(KS,0),ktn(0,0)),*s=&kK(r)[0],*v=&kK(r)[1];
-   js(s,cs("mkl"));            jk(v,kb(torch::hasMKL()));
-   js(s,cs("openmp"));         jk(v,kb(o));
-   js(s,cs("threads"));        jk(v,kj(o ? torch::get_num_threads() : 1));
-   js(s,cs("cuda"));           jk(v,kb(torch::cuda::is_available()));
-   js(s,cs("magma"));          jk(v,kb(torch::hasMAGMA()));
-   js(s,cs("cudnn"));          jk(v,kb(torch::cuda::cudnn_is_available()));
-   js(s,cs("cudnnversion"));   jk(v,kj(torch::cuda::cudnn_is_available()
-                                    ? at::detail::getCUDAHooks().versionCuDNN() : nj));
-   js(s,cs("cudadevices"));    jk(v,kj(e.cuda));
-   js(s,cs("benchmark"));      jk(v,kb(c.benchmarkCuDNN()));
-   js(s,cs("deterministic"));  jk(v,kb(c.deterministicCuDNN()));
-   js(s,cs("stackframe"));     jk(v,kb(e.frame));
-   js(s,cs("alloptions"));     jk(v,kb(e.alloptions));
-   js(s,cs("complexfirst"));   jk(v,kb(e.complexfirst));
-   return r;
-  } else if (xsym(x,0,s) && xbool(x,1,b) && x->n==2) {
-   if(s==cs("benchmark"))           c.setBenchmarkCuDNN(b);
-   else if(s==cs("deterministic"))  c.setDeterministicCuDNN(b);
-   else if(s==cs("stackframe"))     e.frame=b;
-   else if(s==cs("alloptions"))     e.alloptions=b;
-   else if(s==cs("complexfirst"))   e.complexfirst=b;
-   else                             TORCH_ERROR("unable to change setting: ",s);
-   return(K)0;
-  } else if (xsym(x,0,s) && s==cs("threads") && xlong(x,1,n) && x->n==2) {
-   if(!o) TORCH_ERROR("unable to set number of threads, OpenMP not available");
-   torch::set_num_threads(n);
-   return(K)0;
+   return getsettings();
+  } else if(xsym(x,s)) {
+   return getsetting(cset(s));
+  } else if(xsym(x,0,s) && x->n==2) {
+   bool b; J n; Setting c=cset(s);
+   if(xbool(x,1,b))
+    setflag(s,c,b);
+   else if(c==Setting::threads && xlong(x,1,n))
+    torch::set_num_threads(n);
+   else
+    TORCH_ERROR("unable to change setting: ",s," with value ",kstring(x,1));
+   return (K)0;
   } else {
-   return KERR("unrecognized arg(s) -- use empty arg to query, use (sym;bool) to set one of `benchmark`deterministic`stackframe`alloptions or (`threads;n) for threads");
+   TORCH_ERROR("setting: unrecognized arg(s), expecting empty arg or sym, (sym;bool) or (sym;long)");
   }
- KCATCH("unable to query/change torch settings");
+ KCATCH("setting");
 }
 
 KAPI config(K x) {
@@ -1882,7 +1915,7 @@ KAPI fns(K x){
  fn(x, "forward",     KFN(forward),     1);
  fn(x, "zerograd",    KFN(zerograd),    1);
  fn(x, "backward",    KFN(kbackward),   1);
- fn(x, "setting",     KFN(ksetting),    1);
+ fn(x, "setting",     KFN(setting),     1);
  fn(x, "config",      KFN(config),      1);
  fn(x, "cudadevice",  KFN(cudadevice),  1);
  fn(x, "cudadevices", KFN(cudadevices), 1);
