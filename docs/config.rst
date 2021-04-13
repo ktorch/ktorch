@@ -98,9 +98,41 @@ After reviewing the basic configuration that went into the build of ``libtorch``
      [0]  setting `cuda,0b
           ^
 
+MKL
+^^^
+
+The read-only setting ```mkl`` indicates if the PyTorch libraries for the cpu were build with support from Intel's Math Kernel Library.
+See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#build-options>`_ for more detail.
+
+OpenMP
+^^^^^^
+
+The read-only setting ```openmp`` indicates if the Pytorch libraries were build with OpenMP support, which handles cpu threading and shared memory.
+See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#build-options>`_ for more detail.
 
 Threads
 ^^^^^^^
+
+The ```threads`` setting is used to get and set the number of threads used for parallelizing CPU operations.
+
+::
+
+   q)setting `threads
+   12
+
+   q)setting `threads,6
+
+   q)setting`threads
+   6
+
+CUDA
+^^^^
+
+MAGMA
+^^^^^
+
+CuDNN
+^^^^^
 
 Benchmark mode
 ^^^^^^^^^^^^^^
@@ -190,7 +222,8 @@ By default, setting ```alloptions`` is turned on to return all options for a par
    out | 16
    size| 4
 
-   q)exec options from module(m;1b)   / overide session setting by explicitly requesting all options
+   / overide session setting by explicitly requesting all options
+   q)exec options from module(m;1b)
    in     | 8
    out    | 16
    size   | 4
@@ -203,3 +236,31 @@ By default, setting ```alloptions`` is turned on to return all options for a par
 
 Complex dimension
 ^^^^^^^^^^^^^^^^^
+
+When complex tensors are returned as k values, the real and imaginary parts can be separated along the first or the last dimension.
+The flag for using the first dimension can be specified explicitly when creating or retrieving a complex tensor,
+but when the flag is omitted, the default setting is specified with the symbol ```complexfirst``.
+
+::
+
+   q)setting `complexfirst
+   1b
+
+   q)t:tensor(`complex;1 2 3;-1 0 2)
+   q)tensor t
+   1  2 3
+   -1 0 2
+
+   q)tensor(t;0b)
+   1 -1
+   2 0 
+   3 2 
+
+   q)setting `complexfirst,0b
+ 
+   q)tensor t
+   1 -1
+   2 0 
+   3 2 
+
+
