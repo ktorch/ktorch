@@ -63,6 +63,16 @@ After reviewing the basic configuration that went into the build of ``libtorch``
 .. function:: setting(sym;long) -> null
 
 
+Threads
+^^^^^^^
+
+Benchmark mode
+^^^^^^^^^^^^^^
+
+Deterministic mode
+^^^^^^^^^^^^^^^^^^
+
+
 Stack frame
 ^^^^^^^^^^^
 Setting ```stackframe`` true will cause the k interface, on error, to issue a message that contains information on the stack frames that can sometimes help locate where in the source code the error originated. 
