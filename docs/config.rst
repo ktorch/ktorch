@@ -78,11 +78,11 @@ After reviewing the basic configuration that went into the build of ``libtorch``
    cuda              | 1b
    magma             | 1b
    cudnn             | 1b
-   cudnndeterministic| 0b
    cudnnversion      | 8005
    cudadevices       | 2
    benchmark         | 0b
    deterministic     | 0b
+   cudnndeterministic| 0b
    stackframe        | 0b
    alloptions        | 1b
    complexfirst      | 1b
@@ -114,10 +114,9 @@ See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_
 Threads
 ^^^^^^^
 
-The ```threads`` setting is used to get and set the number of threads used for parallelizing CPU operations and ```interopthreads`` contorls the number of threads used across operations.
+The ```threads`` setting is used to get and set the number of threads used for parallelizing CPU operations and ```interopthreads`` controls the number of threads used across operations.
 PyTorch has `more detail on threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html>`_
-and 
-`tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#tuning-the-number-of-threads>`_.
+and `tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#tuning-the-number-of-threads>`_.
 
 ::
 
@@ -154,11 +153,17 @@ and
 CUDA
 ^^^^
 
+The read-only setting ```cuda`` indicates if CUDA is avalable to the k session. The PyTorch libraries in ``libtorch`` that were used to build the ``ktorch.so`` library must have included CUDA support and the current machine has working CUDA drivers and devices.  The ```cudadevices`` setting returns the number of GPU's that are available to the session.
+
 MAGMA
 ^^^^^
 
+`MAGMA <https://developer.nvidia.com/magma>`_ is a set of linear algebra routines for Nvidia GPUs that is included the PyTorch libraries for most recent builds -- the setting ```magma`` indicates if the k interface has magma capabilities.
+
+
 CuDNN
 ^^^^^
+`CuDNN <https://developer.nvidia.com/cudnn>`_ is a GPU library of routines for neural networks that should be included in the PyTorch libraries that were build with CUDA support.  The flag ```cudnn`` indicates that the routines are available and ```cudnnversion`` returns the version as a long integer, e.g. 8005 for version ``8.0.5``.
 
 Benchmark mode
 ^^^^^^^^^^^^^^

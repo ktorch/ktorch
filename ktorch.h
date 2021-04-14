@@ -863,11 +863,11 @@ typedef struct {
  std::make_tuple(cs("cuda"),               Setting::cuda),
  std::make_tuple(cs("magma"),              Setting::magma),
  std::make_tuple(cs("cudnn"),              Setting::cudnn),
- std::make_tuple(cs("cudnndeterministic"), Setting::deterministic),
  std::make_tuple(cs("cudnnversion"),       Setting::cudnnversion),
  std::make_tuple(cs("cudadevices"),        Setting::cudadevices),
  std::make_tuple(cs("benchmark"),          Setting::benchmark),
  std::make_tuple(cs("deterministic"),      Setting::deterministic),
+ std::make_tuple(cs("cudnndeterministic"), Setting::deterministic),
  std::make_tuple(cs("stackframe"),         Setting::stackframe),
  std::make_tuple(cs("alloptions"),         Setting::alloptions),
  std::make_tuple(cs("complexfirst"),       Setting::complexfirst)
