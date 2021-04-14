@@ -189,17 +189,50 @@ Deterministic mode
 Setting the random seed can help in creating reproducible results, but some algorithms have random elements that are difficult to reproduce exactly.
 See PyTorch notes on `reproducibility <https://pytorch.org/docs/stable/notes/randomness.html>`_.
 
-There are two flags, ```deterministic`` and ```cudnndeterministic``, both turned of by default, that indicate whether PyTorch operations must use “deterministic” algorithms. That is, algorithms which, given the same input, and when run on the same software and hardware, always produce the same output.
+There are two flags, ```deterministic`` and ```cudnndeterministic``, both turned off by default, that indicate whether PyTorch operations must use “deterministic” algorithms. That is, algorithms which, given the same input, and when run on the same software and hardware, always produce the same output.
 
-When the ```deterministic`` flag is turned on, operations will use deterministic algorithms when available, and if only non-deterministic algorithms are available they will throw an error. See PyTorch for the `list of algorithms <https://pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html>`_ that will throw errors if invoked with deterministic algorithms required.
+When the ```deterministic`` flag is turned on, operations will use deterministic algorithms when available, and if only non-deterministic algorithms are available they will throw an error. See PyTorch for the `list of algorithms <https://pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html>`_ that will throw errors if invoked with deterministic flag(s) turned on.
 
 With CUDA :ref:`Benchmark mode` turned off, CUDA routines will select the same algorithm at each run rather than testing a set and picking the one with the best benchmark.  But this chosen algorithm may not be deterministic unless either ```deterministic`` or ```cudnndeterministic`` is set true.
-Either flag on causes CUDA to select a deterministic algorithm.
+Either flag on causes CUDA to select a deterministic algorithm if possible.
 If only ```cudnndeterministic`` is set true, then only the CUDA algorithm selection is affected.
 
 ::
 
+   q)`deterministic`cudnndeterministic # setting()
+   deterministic     | 0
+   cudnndeterministic| 0
 
+   / bincount is example of CUDA algorithm with no deterministic implementation
+   q)t:tensor(0 1 2 3 3 1 1 2;`cuda)
+   q)distinct[tensor t]!tensor n:bincount t
+   0| 1
+   1| 3
+   2| 2
+   3| 2
+
+   q)setting`deterministic,1b
+   [W Context.cpp:70] Warning: torch.use_deterministic_algorithms is in beta, and its design and functionality may change in the future. (function operator())
+
+   q)free n
+   q)distinct[tensor t]!tensor n:bincount t
+   '_bincount_cuda does not have a deterministic implementation, but you set 'torch.use_deterministic_algorithms(True)'. You can turn off determinism just for this operation if that's acceptable for your application. You can also file an issue at https://github.com/pytorch/pytorch/issues to help us prioritize adding deterministic support for this operation.
+     [0]  distinct[tensor t]!tensor n:bincount t
+                                      ^
+
+   / unset deterministic, turn on only the cudnn flag
+   q)setting`deterministic,0b
+   q)setting`cudnndeterministic,1b
+
+   q)`deterministic`cudnndeterministic # setting()
+   deterministic     | 0
+   cudnndeterministic| 1
+
+   q)distinct[tensor t]!tensor n:bincount t
+   0| 1
+   1| 3
+   2| 2
+   3| 2
 
 
 Stack frame
