@@ -198,23 +198,23 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- addbias,      addzero,   affine,   align,        alloptions, alpha,              amsgrad,     
- batchfirst,   benchmark, beta,     beta1,        beta2,      bi,                 bias,        
- blank,        ceiling,   centered, changetol,    channels,   classes,            cols,        
- complexfirst, countpad,  cuda,     cudadevices,  cudnn,      cudnndeterministic, cudnnversion,
- dampening,    decay,     decoder,  decoderlayer, detach,     deterministic,      dilate,      
- dim,          divisor,   dlayers,  dropout,      dtype,      elayers,            encoder,     
- encoderlayer, end,       eps,      eval,         fn,         freeze,             full,        
- gradtol,      groups,    heads,    hidden,       history,    ignore,             in,          
- in1,          in2,       ind,      indices,      init,       inplace,            iter,        
- k,            kdim,      keepdim,  kvbias,       kvzeros,    lambda,             lastoffset,  
- layernorm,    layers,    log,      lower,        lr,         lrdecay,            magma,       
- margin,       max,       maxnorm,  min,          mkl,        mode,               momentum,    
- nesterov,     norm,      openmp,   out,          outpad,     outsize,            p,           
- pad,          padindex,  padmode,  ratio,        reduce,     rescale,            rows,        
- scale,        search,    shape,    size,         slope,      sparse,             stackframe,  
- start,        stride,    swap,     threads,      threshold,  track,              train,       
- transpose,    upper,     value,    vdim,         weight,     zeroinf                          
+ addbias,      addzero,   affine,   align,        alloptions, alpha,              amsgrad,       
+ batchfirst,   benchmark, beta,     beta1,        beta2,      bi,                 bias,          
+ blank,        ceiling,   centered, changetol,    channels,   classes,            cols,          
+ complexfirst, countpad,  cuda,     cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
+ dampening,    decay,     decoder,  decoderlayer, detach,     deterministic,      dilate,        
+ dim,          divisor,   dlayers,  dropout,      dtype,      elayers,            encoder,       
+ encoderlayer, end,       eps,      eval,         fn,         freeze,             full,          
+ gradtol,      groups,    heads,    hidden,       history,    ignore,             in,            
+ in1,          in2,       ind,      indices,      init,       inplace,            interopthreads,
+ iter,         k,         kdim,     keepdim,      kvbias,     kvzeros,            lambda,        
+ lastoffset,   layernorm, layers,   log,          lower,      lr,                 lrdecay,       
+ magma,        margin,    max,      maxnorm,      min,        mkl,                mode,          
+ momentum,     nesterov,  norm,     openmp,       out,        outpad,             outsize,       
+ p,            pad,       padindex, padmode,      ratio,      reduce,             rescale,       
+ rows,         scale,     search,   shape,        size,       slope,              sparse,        
+ stackframe,   start,     stride,   swap,         threads,    threshold,          track,         
+ train,        transpose, upper,    value,        vdim,       weight,             zeroinf        
 };
 
 enum class State:char {
@@ -855,10 +855,11 @@ typedef struct {
   std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d")
  }};
 
- std::array<std::tuple<S,Setting>,14> cset = {{            // configuration settings
+ std::array<std::tuple<S,Setting>,15> cset = {{            // configuration settings
  std::make_tuple(cs("mkl"),                Setting::mkl),
  std::make_tuple(cs("openmp"),             Setting::openmp),
  std::make_tuple(cs("threads"),            Setting::threads),
+ std::make_tuple(cs("interopthreads"),     Setting::interopthreads),
  std::make_tuple(cs("cuda"),               Setting::cuda),
  std::make_tuple(cs("magma"),              Setting::magma),
  std::make_tuple(cs("cudnn"),              Setting::cudnn),

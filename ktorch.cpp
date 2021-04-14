@@ -1559,6 +1559,7 @@ K optmap(const TensorOptions &o) {
 // getsetting - return k scalar for given configuration setting
 // getsettings - return k dictionary for all settings
 // setflag - set boolean configuration setttings, e.g. stackframe on/off
+// setlong - set long integer values, threads & inter-op threads
 // setting - main k interface to show or change configuration settings
 // config - print or return strings of pytorch config (CUDA capability, build options, etc.)
 // ---------------------------------------------------------------------------------------------
@@ -1573,6 +1574,7 @@ static K getsetting(Setting s) {
   case Setting::mkl:                return kb(torch::hasMKL());
   case Setting::openmp:             return kb(torch::hasOpenMP());
   case Setting::threads:            return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
+  case Setting::interopthreads:     return kj(torch::hasOpenMP() ? torch::get_num_interop_threads() : 1);
   case Setting::cuda:               return kb(torch::cuda::is_available());
   case Setting::magma:              return kb(torch::hasMAGMA());
   case Setting::cudnn:              return kb(torch::cuda::cudnn_is_available());
@@ -1609,6 +1611,15 @@ static void setflag(S s,Setting c,bool b) {
  }
 }
 
+static void setlong(S s,Setting c,J n) {
+ TORCH_CHECK(torch::hasOpenMP(), "cannot set threads, no OpenMP capability detected");
+ switch(c) {
+  case Setting::threads:        torch::set_num_threads(n); break;
+  case Setting::interopthreads: torch::set_num_interop_threads(n); break;
+  default: TORCH_ERROR("setting: cannot set value for ",s); break;
+ }
+}
+
 KAPI setting(K x) {
  KTRY
   S s;
@@ -1620,8 +1631,8 @@ KAPI setting(K x) {
    bool b; J n; Setting c=cset(s);
    if(xbool(x,1,b))
     setflag(s,c,b);
-   else if(c==Setting::threads && xlong(x,1,n))
-    torch::set_num_threads(n);
+   else if(xlong(x,1,n))
+    setlong(s,c,n);
    else
     TORCH_ERROR("unable to change setting: ",s," with value ",kstring(x,1));
    return (K)0;

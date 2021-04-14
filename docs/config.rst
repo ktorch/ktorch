@@ -74,6 +74,7 @@ After reviewing the basic configuration that went into the build of ``libtorch``
    mkl               | 1b
    openmp            | 1b
    threads           | 12
+   interopthreads    | 6
    cuda              | 1b
    magma             | 1b
    cudnn             | 1b
@@ -113,17 +114,42 @@ See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_
 Threads
 ^^^^^^^
 
-The ```threads`` setting is used to get and set the number of threads used for parallelizing CPU operations.
+The ```threads`` setting is used to get and set the number of threads used for parallelizing CPU operations and ```interopthreads`` contorls the number of threads used across operations.
+PyTorch has `more detail on threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html>`_
+and 
+`tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#tuning-the-number-of-threads>`_.
 
 ::
 
-   q)setting `threads
-   12
+   / l64 12(16)core 64037MB 
 
-   q)setting `threads,6
+   q)x:tensor(`randn;1024 1024)  / random test matrices
+   q)y:tensor(`randn;1024 1024)
+   q)z:tensor()                  / empty output tensor
 
-   q)setting`threads
-   6
+   q)mm(x;y;z)                   /  x * y -> z
+   q)size z
+   1024 1024
+
+   q)setting`threads,1
+   q)\ts:100 mm(x;y;z)
+   1603 1120
+
+   q)setting`threads,2   / 2 threads nearly cuts the time in half
+   q)\ts:100 mm(x;y;z)
+   815 1120
+
+   q)setting`threads,4   / 4 threads still cuts the time proportionally
+   q)\ts:100 mm(x;y;z)
+   451 1120
+
+   q)setting`threads,6   / 6 threads, not quite proportional..
+   q)\ts:100 mm(x;y;z)
+   342 1120
+
+   q)setting`threads,8   / by 8 threads, the overhead is coming in
+   q)\ts:100 mm(x;y;z)
+   437 1120
 
 CUDA
 ^^^^
