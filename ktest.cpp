@@ -3,6 +3,19 @@
 namespace nn=torch::nn;
 
 
+KAPI tf32(K x) {
+ KTRY
+ TORCH_CHECK(x->t==-KB,"need boolean scalar");
+  std::cerr << " cuBLAS: " << torch::globalContext().allowTF32CuBLAS() << "\n";
+  std::cerr << " cuDNN:  " << torch::globalContext().allowTF32CuDNN() << "\n";
+  torch::globalContext().setAllowTF32CuBLAS(x->g);
+  torch::globalContext().setAllowTF32CuDNN(x->g);
+  std::cerr << " cuBLAS: " << torch::globalContext().allowTF32CuBLAS() << "\n";
+  std::cerr << " cuDNN:  " << torch::globalContext().allowTF32CuDNN() << "\n";
+  return (K)0;
+ KCATCH("tf32");
+}
+
 KAPI coo(K x) {
  auto o=torch::dtype(torch::kDouble).device(torch::kCUDA);
  auto t1=torch::sparse_coo_tensor({2,3}, o);

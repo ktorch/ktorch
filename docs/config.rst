@@ -142,18 +142,18 @@ and `tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_thr
    q)\ts:100 mm(x;y;z)
    451 1120
 
-   q)setting`threads,6   / 6 threads, not quite proportional..
+   q)setting`threads,6   / 6 threads, improvement, but not quite proportional..
    q)\ts:100 mm(x;y;z)
    342 1120
 
-   q)setting`threads,8   / by 8 threads, the overhead is coming in
+   q)setting`threads,8   / 8 threads, overhead has begun to take its toll
    q)\ts:100 mm(x;y;z)
    437 1120
 
 CUDA
 ^^^^
 
-The read-only setting ```cuda`` indicates if CUDA is avalable to the k session. The PyTorch libraries in ``libtorch`` that were used to build the ``ktorch.so`` library must have included CUDA support and the current machine has working CUDA drivers and devices.  The ```cudadevices`` setting returns the number of GPU's that are available to the session.
+The read-only setting ```cuda`` indicates if CUDA is avalable to the k session. The PyTorch libraries in ``libtorch`` that were used to build the ``ktorch.so`` library must have included CUDA support and the current machine needs working CUDA drivers and devices.  The ```cudadevices`` setting returns the number of GPU's that are available to the session.
 
 MAGMA
 ^^^^^
@@ -167,13 +167,35 @@ CuDNN
 
 Benchmark mode
 ^^^^^^^^^^^^^^
+The ```benchmark`` setting indicates if CuDNN will benchmark multiple convolution algorithms and select the fastest for the available GPU hardware and problem size.  Benchmark mode is off by default, but turning it on often leads to faster training times.  If the model  being trained has variable problem sizes, variable inputs or layers that are not always activated, this may trigger too much benchmarking and slower training times.
+
+::
+
+   q)setting`benchmark
+   0b
+
+   q)device[]   / returns default CUDA device if any available, else `cpu
+   `cuda
+
+   q)cudadevices()  / list of available CUDA devices
+   `cuda`cuda:0`cuda:1
+
+   q)setting`benchmark
+   1b
+
 
 Deterministic mode
 ^^^^^^^^^^^^^^^^^^
 Setting the random seed can help in creating reproducible results, but some algorithms have random elements that are difficult to reproduce exactly.
 See PyTorch notes on `reproducibility <https://pytorch.org/docs/stable/notes/randomness.html>`_.
 
-This flag indicates whether PyTorch operations must use “deterministic” algorithms. That is, algorithms which, given the same input, and when run on the same software and hardware, always produce the same output. When set on, operations will use deterministic algorithms when available, and if only non-deterministic algorithms are available they will throw an error.
+There are two flags, ```deterministic`` and ```cudnndeterministic``, both turned of by default, that indicate whether PyTorch operations must use “deterministic” algorithms. That is, algorithms which, given the same input, and when run on the same software and hardware, always produce the same output.
+
+When the ```deterministic`` flag is turned on, operations will use deterministic algorithms when available, and if only non-deterministic algorithms are available they will throw an error. See PyTorch for the `list of algorithms <https://pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html>`_ that will throw errors if invoked with deterministic algorithms required.
+
+With CUDA :ref:`Benchmark mode` turned off, CUDA routines will select the same algorithm at each run rather than testing a set and picking the one with the best benchmark.  But this chosen algorithm may not be deterministic unless either ```deterministic`` or ```cudnndeterministic`` is set true.
+Either flag on causes CUDA to select a deterministic algorithm.
+If only ```cudnndeterministic`` is set true, then only the CUDA algorithm selection is affected.
 
 ::
 
