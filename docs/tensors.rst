@@ -744,7 +744,8 @@ An alternate form of the above function call uses a single k value to create the
 
    q)x:(1 2 3; -1 0 2)
 
-   q)t:tensor(`complex; x)   / default setting is real & imaginary across 1st dim
+   q)t:tensor(`complex; x)   / default setting: real and imaginary across 1st dim
+
    q)tensor t                / retrieval also uses default setting
    1  2 3
    -1 0 2
@@ -755,6 +756,7 @@ An alternate form of the above function call uses a single k value to create the
    3 2 
 
    q)use[t]tensor(`complex; x; 0b)
+
    'complex: single input array must have a last dimension of size 2 (real,'imaginary), given size of [2, 3]
      [0]  use[t]tensor(`complex; x; 0b)
                 ^
