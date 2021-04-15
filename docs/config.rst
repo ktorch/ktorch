@@ -99,17 +99,23 @@ After reviewing the basic configuration that went into the build of ``libtorch``
      [0]  setting `cuda,0b
           ^
 
+.. index::  settings; MKL
+
 MKL
 ^^^
 
-The read-only setting ```mkl`` indicates if the PyTorch libraries for the cpu were build with support from Intel's Math Kernel Library.
+The read-only setting ```mkl`` indicates if the PyTorch libraries for were built with support from Intel's Math Kernel Library.
 See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#build-options>`_ for more detail.
+
+.. index::  settings; OpenMP
 
 OpenMP
 ^^^^^^
 
-The read-only setting ```openmp`` indicates if the Pytorch libraries were build with OpenMP support, which handles cpu threading and shared memory.
+The read-only setting ```openmp`` indicates if the Pytorch libraries were built with OpenMP support, which handles cpu threading and shared memory.
 See PyTorch `build options <https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html?highlight=threads#build-options>`_ for more detail.
+
+.. index::  settings; CPU threads
 
 Threads
 ^^^^^^^
@@ -150,6 +156,8 @@ and `tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_thr
    q)\ts:100 mm(x;y;z)
    437 1120
 
+.. index::  settings; CUDA
+
 CUDA
 ^^^^
 
@@ -163,7 +171,7 @@ MAGMA
 
 CuDNN
 ^^^^^
-`CuDNN <https://developer.nvidia.com/cudnn>`_ is a GPU library of routines for neural networks that should be included in the PyTorch libraries that were build with CUDA support.  The flag ```cudnn`` indicates that the routines are available and ```cudnnversion`` returns the version as a long integer, e.g. 8005 for version ``8.0.5``.
+`CuDNN <https://developer.nvidia.com/cudnn>`_ is a GPU library of routines for neural networks that should be included in the PyTorch libraries that were built with CUDA support.  The flag ```cudnn`` indicates that the routines are available and ```cudnnversion`` returns the version as a long integer, e.g. 8005 for version ``8.0.5``.
 
 Benchmark mode
 ^^^^^^^^^^^^^^
