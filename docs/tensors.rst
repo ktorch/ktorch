@@ -739,24 +739,27 @@ An alternate form of the above function call uses a single k value to create the
 
    ::
 
-   q)tensor t:tensor(`complex; 1 2 3,'0; 0b)
-   1 2 3
-   0 0 0
+   q)setting`complexfirst
+   1b
 
-   q)free t
-   q)tensor t:tensor(`complex; flip 1 2 3,'0)
-   1 2 3
-   0 0 0
+   q)x:(1 2 3; -1 0 2)
 
-   q)tensor(t;0b)
-   1 0
-   2 0
-   3 0
+   q)t:tensor(`complex; x)   / default setting is real & imaginary across 1st dim
+   q)tensor t                / retrieval also uses default setting
+   1  2 3
+   -1 0 2
 
-   q)tensor(`complex; 1 2 3,'0)
-   complex: single input array must have a first dimension of size 2 (real;imaginary), given size of [3, 2]
-     [0]  tensor(`complex; 1 2 3,'0)
-          ^
+   q)tensor(t;0b)           / retrieve and arrange across last dimension
+   1 -1
+   2 0 
+   3 2 
+
+   q)use[t]tensor(`complex; x; 0b)
+   'complex: single input array must have a last dimension of size 2 (real,'imaginary), given size of [2, 3]
+     [0]  use[t]tensor(`complex; x; 0b)
+                ^
+   q)use[t]tensor(`complex;flip x; 0b)
+
 
 Sparse tensor
 ^^^^^^^^^^^^^
