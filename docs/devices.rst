@@ -21,7 +21,7 @@ From a k session, the following functions deal with CPU and CUDA devices:
 .. index:: cudadevice
 
 Device
-******
+^^^^^^
 
 .. function:: device() -> sym
 
@@ -59,7 +59,7 @@ Device
 .. index:: cudadevice
 
 Default CUDA device
-*******************
+^^^^^^^^^^^^^^^^^^^
 .. function:: cudadevice() -> sym
 
    | For an empty or null argument, returns the specific CUDA device that is used when the generic symbol ```cuda`` is specified.
@@ -88,7 +88,7 @@ Default CUDA device
 .. index:: cudadevices, CUDA
 
 Available CUDA devices
-**********************
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: cudadevices() -> syms
 .. function:: cudadevice(::) -> long
@@ -104,7 +104,7 @@ Available CUDA devices
    `cuda`cuda:0`cuda:1
 
 Moving to device
-****************
+^^^^^^^^^^^^^^^^
 
 Once a PyTorch object is established on a device, it can be moved with the :func:`to`.
 The typical case is to create a tensor or module on a device, then move to a CUDA device via ```to``.
