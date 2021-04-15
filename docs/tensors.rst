@@ -733,7 +733,7 @@ An alternate form of the above function call uses a single k value to create the
 
    :param sym mode: ```complex``.
    :param numeric value: real & imaginary part of the complex tensor as a k value.
-   :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the overall session setting for :ref:`complexfirst` will be used.
+   :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the overall session flag for :ref:`complex first dimension <complex-first` will be used.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
 

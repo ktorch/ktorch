@@ -342,7 +342,7 @@ By default, setting ```alloptions`` is turned on to return all options for a par
    bias   | 1b
    padmode| `zeros
 
-.. _complexfirst:
+.. _complex-first:
 
 .. index::  settings; complexfirst
 
