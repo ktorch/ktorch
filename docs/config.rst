@@ -163,15 +163,23 @@ CUDA
 
 The read-only setting ```cuda`` indicates if CUDA is avalable to the k session. The PyTorch libraries in ``libtorch`` that were used to build the ``ktorch.so`` library must have included CUDA support and the current machine needs working CUDA drivers and devices.  The ```cudadevices`` setting returns the number of GPU's that are available to the session.
 
+.. index::  settings; MAGMA
+
 MAGMA
 ^^^^^
 
 `MAGMA <https://developer.nvidia.com/magma>`_ is a set of linear algebra routines for Nvidia GPUs that is included the PyTorch libraries for most recent builds -- the setting ```magma`` indicates if the k interface has magma capabilities.
 
 
+.. index::  settings; CuDNN
+
 CuDNN
 ^^^^^
 `CuDNN <https://developer.nvidia.com/cudnn>`_ is a GPU library of routines for neural networks that should be included in the PyTorch libraries that were built with CUDA support.  The flag ```cudnn`` indicates that the routines are available and ```cudnnversion`` returns the version as a long integer, e.g. 8005 for version ``8.0.5``.
+
+.. _benchmark:
+
+.. index::  settings; benchmark mode
 
 Benchmark mode
 ^^^^^^^^^^^^^^
@@ -191,6 +199,8 @@ The ```benchmark`` setting indicates if CuDNN will benchmark multiple convolutio
    q)setting`benchmark
    1b
 
+
+.. index::  settings; deterministic mode
 
 Deterministic mode
 ^^^^^^^^^^^^^^^^^^
@@ -243,6 +253,8 @@ If only ```cudnndeterministic`` is set true, then only the CUDA algorithm select
    3| 2
 
 
+.. index::  settings; stack frame
+
 Stack frame
 ^^^^^^^^^^^
 Setting ```stackframe`` true will cause the k interface, on error, to issue a message that contains information on the stack frames that can sometimes help locate where in the source code the error originated. 
@@ -274,6 +286,8 @@ Setting ```stackframe`` true will cause the k interface, on error, to issue a me
 
      [0]  forward(m;1 2)
           ^
+
+.. index::  settings; all options
 
 Show all options
 ^^^^^^^^^^^^^^^^
@@ -327,6 +341,10 @@ By default, setting ```alloptions`` is turned on to return all options for a par
    groups | 1
    bias   | 1b
    padmode| `zeros
+
+.. _complexfirst:
+
+.. index::  settings; complexfirst
 
 Complex dimension
 ^^^^^^^^^^^^^^^^^
