@@ -95,7 +95,7 @@ Available CUDA devices
 
    | For any empty list, the function returns a list of symbols of available CUDA devices, both specific and generic. For null argument, returns the number of CUDA devices.
 
-   ::
+::
 
    q)cudadevices[]     / on host with 2 GPU's
    2
@@ -106,7 +106,7 @@ Available CUDA devices
 Moving to device
 ****************
 
-Once a PyTorch object is established on a device, it can be moved with the :function:`to`.
+Once a PyTorch object is established on a device, it can be moved with the :func:`to`.
 The typical case is to create a tensor or module on a device, then move to a CUDA device via ```to``.
 
 
