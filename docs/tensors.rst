@@ -737,7 +737,7 @@ An alternate form of the above function call uses a single k value to create the
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
 
-   ::
+::
 
    q)setting`complexfirst
    1b
@@ -756,7 +756,6 @@ An alternate form of the above function call uses a single k value to create the
    3 2 
 
    q)use[t]tensor(`complex; x; 0b)
-
    'complex: single input array must have a last dimension of size 2 (real,'imaginary), given size of [2, 3]
      [0]  use[t]tensor(`complex; x; 0b)
                 ^
