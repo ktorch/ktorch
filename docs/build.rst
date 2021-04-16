@@ -39,11 +39,11 @@ Or download zip file:
 Source files
 ************
 
-- LICENSE
-- `Makefile <https://github.com/ktorch/ktorch/blob/master/LICENSE>`_
+- `LICENSE <https://github.com/ktorch/ktorch/blob/master/LICENSE>`_ - MIT license
+- `Makefile <https://github.com/ktorch/ktorch/blob/master/Makefile>`_
 - `README.md <https://github.com/ktorch/ktorch/blob/master/README.md>`_
 - `docs/ <https://github.com/ktorch/ktorch/tree/master/docs>`_ - 
-- `k.h <https://github.com/ktorch/ktorch/blob/master/k.h>`_
+- `k.h <https://github.com/ktorch/ktorch/blob/master/k.h>`_ - from Kx Systems `here <https://github.com/KxSystems/kdb/blob/master/c/c/k.h>`_.
 - `kloss.cpp <https://github.com/ktorch/ktorch/blob/master/kloss.cpp>`_ - code relating to loss functions
 - `kloss.h <https://github.com/ktorch/ktorch/blob/master/kloss.h>`_ - redefine binary cross entropy loss functions
 - `kmath.cpp <https://github.com/ktorch/ktorch/blob/master/kmath.cpp>`_ - PyTorch math routines
@@ -54,6 +54,11 @@ Source files
 - `ktensor.cpp <https://github.com/ktorch/ktorch/blob/master/ktensor.cpp>`_ - code for operating on tensors
 - `ktest.cpp <https://github.com/ktorch/ktorch/blob/master/ktest.cpp>`_ - contains temporary tests, samples, etc. -- nothing essential to the interface library
 - `ktorch.cpp <https://github.com/ktorch/ktorch/blob/master/ktorch.cpp>`_ - contains the code used by the rest of system dealing with tensors, modules, optimizers, etc.
-- `ktorch.h <https://github.com/ktorch/ktorch/blob/master/ktorch.h>`_ - main header file, which includes PyTorch headers
+- `ktorch.h <https://github.com/ktorch/ktorch/blob/master/ktorch.h>`_ - main header file, which, in turn includes headers from PyTorch.
 - `private.h <https://github.com/ktorch/ktorch/blob/master/private.h>`_
-- `stb_image_write.h <https://github.com/ktorch/ktorch/blob/master/stb_image_write.h>`_
+- `stb_image_write.h <https://github.com/ktorch/ktorch/blob/master/stb_image_write.h>`_ - minimal code to write .png files, from `here <https://github.com/nothings/stb/blob/master/stb_image_write.h>`_.
+
+
+https://github.com/KxSystems/kdb/blob/master/c/c/k.h
+https://github.com/nothings/stb/blob/master/stb_image_write.h
+
