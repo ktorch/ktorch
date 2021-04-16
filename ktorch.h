@@ -679,13 +679,6 @@ typedef struct {
   std::make_tuple(cs("channel3d"),  torch::MemoryFormat::ChannelsLast3d)
  }};
 
-/*
- std::array<std::tuple<S,bool>,2> async = {{
-  std::make_tuple(cs("async"),   true),          
-  std::make_tuple(cs("sync"),   false)
- }};
-*/
-
  std::array<std::tuple<S,Class>,7> kclass = {{         //higher level object names
   std::make_tuple(cs("tensor"),    Class::tensor),          
   std::make_tuple(cs("vector"),    Class::vector),

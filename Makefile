@@ -1,5 +1,6 @@
 CXX := clang++
 TORCH := $(HOME)/libtorch
+ABI := 0
 OS := $(shell uname)
 CPPFLAGS := -isystem $(TORCH)/include -isystem $(TORCH)/include/torch/csrc/api/include 
 CXXFLAGS := -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3
@@ -7,7 +8,7 @@ LDFLAGS := -shared -L$(TORCH)/lib
 LDLIBS := -l torch -Wl,-rpath $(TORCH)/lib
 
 ifeq ($(OS),Linux)
- CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
+ CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=$(ABI)
 endif
 ifeq ($(OS),Darwin)
  LDFLAGS := -undefined dynamic_lookup $(LDFLAGS)
