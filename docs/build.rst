@@ -15,7 +15,7 @@ Get the code via git clone:
    > git clone https://github.com/ktorch/ktorch.git
    Cloning into 'ktorch'...
 
-Or download zip file:
+Or download the zip file:
 
 ::
 
@@ -30,6 +30,20 @@ Or download zip file:
      inflating: ktorch-master/Makefile  
      ..
 
+Makefile
+********
+
+The `makefile <https://github.com/ktorch/ktorch/blob/master/Makefile>`_ can be changed to suit preferences.
+Most likely, there are 3 main settings that may need to be changed in the file or specified on the command line.
+
+CXX
+^^^
+
+TORCH
+^^^^^
+
+ABI
+^^^
 
 Source files
 ************
@@ -53,8 +67,3 @@ Source files
 - `private.h <https://github.com/ktorch/ktorch/blob/master/private.h>`_ - macros to gain access to private class elements, from `here <https://github.com/martong/access_private/blob/master/include/access_private.hpp>`_.
 - `stb_image_write.h <https://github.com/ktorch/ktorch/blob/master/stb_image_write.h>`_ - minimal code to write .png files, from `here <https://github.com/nothings/stb/blob/master/stb_image_write.h>`_.
 
-..
-
-   https://github.com/KxSystems/kdb/blob/master/c/c/k.h
-   https://github.com/nothings/stb/blob/master/stb_image_write.h
-   https://github.com/martong/access_private/blob/master/include/access_private.hpp
