@@ -39,11 +39,56 @@ Most likely, there are 3 main settings that may need to be changed in the file o
 CXX
 ^^^
 
+The c++ compiler defaults to ``clang++``. To run with GCC:
+
+::
+
+make CXX=g++
+
 TORCH
 ^^^^^
 
+TORCH has the location of the libraries for PyTorch. Default is set to ~/libtorch.
+
+::
+
+   make TORCH=/customdir/libtorch
+
+It may also be possible to point the make to the libraries installed for the python installation of PyTorch.
+
+
+::
+
+   # find the dir for pytorch 1.8.1 in mini conda
+   find ~/miniconda3  -name libtorch.so
+   /home/t/miniconda3/pkgs/pytorch-1.8.0-py3.8_cuda11.1_cudnn8.0.5_0/lib/python3.8/site-packages/torch/lib/libtorch.so
+   /home/t/miniconda3/pkgs/pytorch-1.8.1-py3.8_cuda11.1_cudnn8.0.5_0/lib/python3.8/site-packages/torch/lib/libtorch.so
+   /home/t/miniconda3/lib/python3.8/site-packages/torch/lib/libtorch.so
+
+   make TORCH=/home/t/miniconda3/lib/python3.8/site-packages/torch
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   ..
+   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -shared -L/home/t/miniconda3/lib/python3.8/site-packages/torch/lib -l torch -Wl,-rpath /home/t/miniconda3/lib/python3.8/site-packages/torch/lib
+
 ABI
 ^^^
+
+..
+   time make
+
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kmath.o kmath.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o knn.o knn.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kloss.o kloss.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kopt.o kopt.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kmodel.o kmodel.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktest.o ktest.cpp
+   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -shared -L/home/t/libtorch/lib -l torch -Wl,-rpath /home/t/libtorch/lib
+
+   real	1m36.740s
+   user	1m34.677s
+   sys	0m1.898s
 
 Source files
 ************

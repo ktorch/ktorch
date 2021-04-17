@@ -55,7 +55,7 @@ static K razelist(K x) {
 // -----------------------------------------------------------------------------------------
 static Tensor cpermute(const Tensor& x) {
  std::vector<int64_t> d;
- for(size_t i=0; i<x.dim(); ++i) d.push_back(i-1);
+ for(int64_t i=0; i<x.dim(); ++i) d.push_back(i-1);
  return x.permute(d);
 }
 
@@ -1135,13 +1135,13 @@ KAPI options(K x) {
    return optmap(*t);
   } else if(auto* v=xvec(x)) {
    K k=optkey(); K y=ktn(0,k->n);
-   for(size_t i=0; i<k->n; ++i) 
+   for(J i=0; i<k->n; ++i) 
     kK(y)[i]=ktn(KS,v->size());
    for(size_t i=0; i<v->size(); ++i)
     optval(v->at(i),y,i);
    return xT(xD(k,y));
   } else if(auto* d=xtensordict(x)) {
-   K c=optkey(); K k=ktn(KS,d->size()),y=ktn(0,c->n); size_t i;
+   K c=optkey(); K k=ktn(KS,d->size()),y=ktn(0,c->n); J i;
    for(i=0; i<y->n; ++i) kK(y)[i]=ktn(KS,d->size());
    i=0;
    for(const auto& a:*d) {

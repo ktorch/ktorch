@@ -81,16 +81,16 @@ Tensor perm1(const Tensor& x) {
 
 Tensor perm2(const Tensor& x) {
  std::vector<int64_t> d;
- for(size_t i=0; i<x.dim(); ++i) d.push_back(i-1);
+ for(int64_t i=0; i<x.dim(); ++i) d.push_back(i-1);
  return x.permute(d);
 }
 
 Tensor cpermute(const Tensor& t,bool b) {
  auto d=t.dim(); std::vector<int64_t> i;
  if(b) {
-  for(size_t j=0; j<d; ++j) i.push_back(j-1);
+  for(int64_t j=0; j<d; ++j) i.push_back(j-1);
  } else {
-  for(size_t j=0; j<d-1; ++j) i.push_back(j+1);
+  for(int64_t j=0; j<d-1; ++j) i.push_back(j+1);
   if(d) i.push_back(0);
  }
  return t.permute(i);

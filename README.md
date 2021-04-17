@@ -1,6 +1,6 @@
 # ktorch
 k api to pytorch 
-([notes here](https://ktorch.readthedocs.io/en/latest/))
+([notes](https://ktorch.readthedocs.io/en/latest/))
 
 [k.h](https://github.com/KxSystems/kdb/blob/master/c/c/k.h) is from Kx Systems.  
 [stb_image_write.h](https://github.com/nothings/stb/blob/master/stb_image_write.h) from Sean Barrett's minimal single file header repository.  
