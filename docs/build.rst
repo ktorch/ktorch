@@ -20,7 +20,6 @@ Or download zip file:
 ::
 
    > wget https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
-   --2021-04-16 11:35:25--  https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
    ..
    Saving to: ‘master.zip’
 
@@ -30,10 +29,6 @@ Or download zip file:
      inflating: ktorch-master/LICENSE   
      inflating: ktorch-master/Makefile  
      ..
-     inflating: ktorch-master/ktorch.cpp  
-     inflating: ktorch-master/ktorch.h  
-     inflating: ktorch-master/private.h  
-     inflating: ktorch-master/stb_image_write.h  
 
 
 Source files
@@ -60,6 +55,6 @@ Source files
 
 ..
 
-https://github.com/KxSystems/kdb/blob/master/c/c/k.h
-https://github.com/nothings/stb/blob/master/stb_image_write.h
-https://github.com/martong/access_private/blob/master/include/access_private.hpp
+   https://github.com/KxSystems/kdb/blob/master/c/c/k.h
+   https://github.com/nothings/stb/blob/master/stb_image_write.h
+   https://github.com/martong/access_private/blob/master/include/access_private.hpp
