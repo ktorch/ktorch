@@ -34,7 +34,7 @@ Makefile
 ********
 
 The `makefile <https://github.com/ktorch/ktorch/blob/master/Makefile>`_ can be changed to suit preferences.
-Most likely, there are 3 main settings that may need to be changed in the file or specified on the command line.
+Most likely, there are 3 main settings that may need to be changed in the file itself or specified on the command line.
 
 CXX
 ^^^
@@ -59,21 +59,27 @@ It may also be possible to point the make to the libraries installed for the pyt
 
 ::
 
-   # find the dir for pytorch 1.8.1 in mini conda
-   find ~/miniconda3  -name libtorch.so
-   /home/t/miniconda3/pkgs/pytorch-1.8.0-py3.8_cuda11.1_cudnn8.0.5_0/lib/python3.8/site-packages/torch/lib/libtorch.so
-   /home/t/miniconda3/pkgs/pytorch-1.8.1-py3.8_cuda11.1_cudnn8.0.5_0/lib/python3.8/site-packages/torch/lib/libtorch.so
+   # find the dir for pytorch 1.8.1 libraries in mini conda
+   find ~/miniconda3/lib  -name libtorch.so 
    /home/t/miniconda3/lib/python3.8/site-packages/torch/lib/libtorch.so
 
+   cd ~/ktorch
+
    make TORCH=/home/t/miniconda3/lib/python3.8/site-packages/torch
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 \
+           -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include \
+           -isystem /home/t/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include \
+           -c -o ktorch.o ktorch.cpp
    ..
-   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -shared -L/home/t/miniconda3/lib/python3.8/site-packages/torch/lib -l torch -Wl,-rpath /home/t/miniconda3/lib/python3.8/site-packages/torch/lib
+   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o \
+           -shared -L/home/t/miniconda3/lib/python3.8/site-packages/torch/lib -l torch   \
+            -Wl,-rpath /home/t/miniconda3/lib/python3.8/site-packages/torch/lib
 
 ABI
 ^^^
 
-..
+::
+
    time make
 
    clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
@@ -112,3 +118,51 @@ Source files
 - `private.h <https://github.com/ktorch/ktorch/blob/master/private.h>`_ - macros to gain access to private class elements, from `here <https://github.com/martong/access_private/blob/master/include/access_private.hpp>`_.
 - `stb_image_write.h <https://github.com/ktorch/ktorch/blob/master/stb_image_write.h>`_ - minimal code to write .png files, from `here <https://github.com/nothings/stb/blob/master/stb_image_write.h>`_.
 
+Sample builds
+*************
+
+macOS, CPU only
+^^^^^^^^^^^^^^^
+
+Linux, CUDA 11.1
+^^^^^^^^^^^^^^^^
+
+Linked libraries
+****************
+
+
+::
+
+   > ldd ktorch.so
+	linux-vdso.so.1 (0x00007ffd8952d000)
+	libtorch.so => /home/t/libtorch/lib/libtorch.so (0x00007efdbd422000)
+	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007efdbd099000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007efdbccfb000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007efdbcae3000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007efdbc6f2000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007efdbdca7000)
+	libtorch_cuda.so => /home/t/libtorch/lib/libtorch_cuda.so (0x00007efdae8db000)
+	libtorch_cuda_cu.so => /home/t/libtorch/lib/libtorch_cuda_cu.so (0x00007efd5bcb6000)
+	libtorch_cpu.so => /home/t/libtorch/lib/libtorch_cpu.so (0x00007efd49843000)
+	libtorch_cuda_cpp.so => /home/t/libtorch/lib/libtorch_cuda_cpp.so (0x00007efcd49ea000)
+	librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x00007efcd47e2000)
+	libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007efcd45de000)
+	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007efcd43bf000)
+	libcudart-6d56b25a.so.11.0 => /home/t/libtorch/lib/libcudart-6d56b25a.so.11.0 (0x00007efcd4136000)
+	libc10_cuda.so => /home/t/libtorch/lib/libc10_cuda.so (0x00007efcd3f06000)
+	libnvToolsExt-24de1d56.so.1 => /home/t/libtorch/lib/libnvToolsExt-24de1d56.so.1 (0x00007efcd3cfc000)
+	libc10.so => /home/t/libtorch/lib/libc10.so (0x00007efcd3a65000)
+	libgomp-7c85b1e2.so.1 => /home/t/libtorch/lib/libgomp-7c85b1e2.so.1 (0x00007efcd383b000)
+
+
+Defining api functions in k
+***************************
+
+::
+
+   q)(`ktorch 2:`fns,1)[]
+   dv         | code
+   tree       | code
+   addref     | code
+   free       | code
+   ..
