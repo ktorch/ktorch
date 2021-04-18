@@ -12,7 +12,7 @@ The zip file is large, around 2 gigabytes for versions which include libraries f
 Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU version.
 
 .. figure:: linux-cuda11.1.png
-   :scale 75 %
+   :scale: 75 %
    :alt: libtorch.zip files for linux and CUDA 11.1
 
    libtorch.zip files for linux, version 1.8.1 and CUDA 11.1
