@@ -264,6 +264,28 @@ Linked libraries
 	libc10.so => /home/t/libtorch/lib/libc10.so (0x00007efcd3a65000)
 	libgomp-7c85b1e2.so.1 => /home/t/libtorch/lib/libgomp-7c85b1e2.so.1 (0x00007efcd383b000)
 
+If the location of the ``libtorch/lib`` is moved or in a different place on the deployment machine,
+then the LD_LIBRARY_PATH can be used to point to a new location for the PyTorch shared libraries.
+
+::
+
+   > cd ~
+   > mv libtorch libtorch.moved               # location differs from original build
+   > ldd ktorch/ktorch.so                     # torch libraries not found
+   	linux-vdso.so.1 (0x00007ffc2c8a0000)
+   	libtorch.so => not found
+   	..
+
+   > export LD_LIBRARY_PATH=~/libtorch.moved/lib  # point to lib/ subdir of new location
+
+   > ldd ktorch/ktorch.so
+   	linux-vdso.so.1 (0x00007ffebd194000)
+   	libtorch.so => /home/t/libtorch.moved/lib/libtorch.so (0x00007f657dc75000)
+        ..
+
+Location of ktorch.so
+*********************
+
 
 Defining api functions in k
 ***************************
