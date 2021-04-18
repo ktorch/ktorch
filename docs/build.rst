@@ -6,13 +6,13 @@ Building ktorch
 The ktorch library has been built on Linux and MacOS; it has not been tested on Windows.
 (Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
-The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
+The first step is to `download the relevant zip file from PyTorch here <https://pytorch.org/get-started/locally/>`_.
 The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 150 megabytes for CPU-only.
 Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU version.
 
 .. figure:: linux-cuda11.1.png
-   :scale: 75 %
+   :scale: 40 %
    :alt: libtorch.zip files for linux and CUDA 11.1
 
    libtorch.zip files for linux, version 1.8.1 and CUDA 11.1
@@ -28,13 +28,11 @@ Get the code via git clone:
    > git clone https://github.com/ktorch/ktorch.git
    Cloning into 'ktorch'...
 
-Or download the zip file:
+Or download as a zip file:
 
 ::
 
-   > wget https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
-   ..
-   Saving to: ‘master.zip’
+   > wget --quiet https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
 
    > unzip master.zip
    Archive:  master.zip
