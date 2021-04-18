@@ -871,7 +871,7 @@ KAPI  Hamming(K x) {return kwindow(x, 3, "hamming");}
 // fftargs - return true if additional optional args given with input tensor/array
 // -------------------------------------------------------------------------------
 static c10::optional<std::string> fftnorm(K x) {
- static std::array<S,3> s={cs("forward"),cs("backward"),cs("ortho")};
+ static std::array<S,3> s={{cs("forward"),cs("backward"),cs("ortho")}};
  if(nullsym(x)) {
   return c10::nullopt;
  } else {

@@ -7,6 +7,8 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch here <https://pytorch.org/get-started/locally/>`_.
+The k interface requires the latest version of PyTorch, labeled ``Stable(1.8.1)``.
+
 The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 150 megabytes for CPU-only.
 Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU version.
@@ -14,9 +16,6 @@ Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU ve
 .. figure:: linux-cuda11.1.png
    :scale: 40 %
    :alt: libtorch.zip files for linux and CUDA 11.1
-
-   libtorch.zip files for linux, version 1.8.1 and CUDA 11.1
-
 
 Once the zip file is downloaded and unzipped, the next step is to download the ktorch source code.
 
@@ -67,7 +66,7 @@ TORCH has the location of the libraries for PyTorch. Default is set to ~/libtorc
 
    make TORCH=/customdir/libtorch
 
-It may also be possible to point the make to the libraries already installed the python version of PyTorch.
+It may also be possible to point the make to the libraries already installed with the python version of PyTorch.
 
 
 ::
@@ -105,7 +104,7 @@ For example, for Linux, version 1.8.1, with support for CUDA 11.1, the zip files
    Download here (cxx11 ABI):
    https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.8.1%2Bcu111.zip
 
-In the earliest versions, PyTorch only offered the older ABI version of the zip file so users could maintain compatibility with older third-party libraries compiled under the old ABI, but now offer the choice of old or new versions.
+In the their earlier versions, PyTorch only offered the older ABI with their zip file so users could maintain compatibility with older third-party libraries compiled under the old ABI, but now PyTorch offers the choice of old or new versions.
 By default, the Makefile builds code with ``-D_GLIBCXX_USE_CXX11_ABI=0`` for the older API.
 The Makefile variable ``ABI`` is set to 0, but can be overwritten with the command-line call ``ABI=1`` if the newer ABI zip file is used.
 
@@ -152,8 +151,43 @@ Source files
 Sample builds
 *************
 
-macOS, CPU only
+MacOS, CPU only
 ^^^^^^^^^^^^^^^
+
+First step, get the CPU-only version of libtorch 1.8.1 for MacOS:
+
+::
+
+   > cd ~
+   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.8.1.zip
+
+   > ls -lh libtorch-macos-1.8.1.zip 
+   -rw-r--r--@ 1 t  staff   146M Mar 25 10:44 libtorch-macos-1.8.1.zip
+
+   > rm -rf ~/libtorch  # erase any previous version
+
+   > unzip libtorch-macos-1.8.1.zip 
+   Archive:  libtorch-macos-1.8.1.zip
+      creating: libtorch/
+      creating: libtorch/bin/
+     inflating: libtorch/build-hash     
+      creating: libtorch/include/
+   ..
+
+   > ls libtorch
+   bin/		build-hash	build-version	include/	lib/		share/
+
+Next, clone the ktorch repository:
+
+::
+
+   > rm -rf ~/ktorch # remove any previous dir named ktorch
+   > git clone https://github.com/ktorch/ktorch.git
+   Cloning into 'ktorch'...
+
+Build using make:
+
+
 
 Linux, CUDA 11.1
 ^^^^^^^^^^^^^^^^
