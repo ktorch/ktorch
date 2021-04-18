@@ -187,6 +187,51 @@ Next, clone the ktorch repository:
 
 Build using make:
 
+::
+
+   > cd ktorch
+
+   > time make CXX=g++
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o kmath.o kmath.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o knn.o knn.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o kloss.o kloss.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o kopt.o kopt.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o kmodel.o kmodel.cpp
+   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -isystem /Users/t/libtorch/include -isystem /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktest.o ktest.cpp
+   g++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -undefined dynamic_lookup -shared -L/Users/t/libtorch/lib -l torch -Wl,-rpath /Users/t/libtorch/lib
+
+   real	1m27.129s
+   user	1m24.470s
+   sys	0m2.395s
+
+Check if the ktorch.so library can be loaded from within a k session:
+
+::
+
+   > q
+   KDB+ 4.0 2020.05.04 Copyright (C) 1993-2020 Kx Systems
+   m64/ 8(16)core 32768MB
+
+   q).nn:(`ktorch 2:`fns,1)[]   / define interface functions in .nn
+
+   q).nn.setting[]
+   mkl               | 1b     /MKL is available
+   openmp            | 0b     /no OpenMP detected -- will need to install OpenMP/clang 
+   threads           | 1
+   interopthreads    | 1
+   cuda              | 0b     /no GPU libraries
+   magma             | 0b
+   cudnn             | 0b
+   cudnnversion      | 0N
+   cudadevices       | 0
+   benchmark         | 0b
+   deterministic     | 0b
+   cudnndeterministic| 0b
+   stackframe        | 0b
+   alloptions        | 1b
+   complexfirst      | 1b
 
 
 Linux, CUDA 11.1
