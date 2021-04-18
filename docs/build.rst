@@ -4,14 +4,19 @@ Building ktorch
 ===============
 
 The ktorch library has been built on Linux and MacOS; it has not been tested on Windows.
+(Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
-Building PyTorch from source gets increasingly harder away from the Linux platform;
-Building PyTorch code on MacOS for cpu-only is straightforward,
-but building versions that work with Nvidia GPU's is more complicated.
-Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.
-
-Using the PyTorch
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
+The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
+The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 150 megabytes for CPU-only.
+Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU version.
+
+.. figure:: linux-cuda11.1.png
+   :scale 75 %
+   :alt: libtorch.zip files for linux and CUDA 11.1
+
+   libtorch.zip files for linux, version 1.8.1 and CUDA 11.1
+
 
 Once the zip file is downloaded and unzipped, the next step is to download the ktorch source code.
 
