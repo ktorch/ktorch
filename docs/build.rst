@@ -221,7 +221,7 @@ Check if the ktorch.so library can be loaded from within a k session:
    openmp            | 0b     /no OpenMP detected -- will need to install OpenMP/clang 
    threads           | 1
    interopthreads    | 1
-   cuda              | 0b     /no GPU libraries
+   cuda              | 0b     /no GPU libraries with CPU-only libtorch
    magma             | 0b
    cudnn             | 0b
    cudnnversion      | 0N
