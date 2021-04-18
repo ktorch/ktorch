@@ -3,6 +3,14 @@
 Building ktorch
 ===============
 
+The ktorch library has been built on Linux and MacOS; it has not been tested on Windows.
+
+Building PyTorch from source gets increasingly harder away from the Linux platform;
+Building PyTorch code on MacOS for cpu-only is straightforward,
+but building versions that work with Nvidia GPU's is more complicated.
+Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.
+
+Using the PyTorch
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
 
 Once the zip file is downloaded and unzipped, the next step is to download the ktorch source code.
@@ -30,11 +38,13 @@ Or download the zip file:
      inflating: ktorch-master/Makefile  
      ..
 
+.. index:: Makefile
+
 Makefile
 ********
 
 The `makefile <https://github.com/ktorch/ktorch/blob/master/Makefile>`_ can be changed to suit preferences.
-Most likely, there are 3 main settings that may need to be changed in the file itself or specified on the command line.
+There are 3 main variables, CXX, TORCH and ABI, that may need to be changed in the file itself or specified on the command line.
 
 CXX
 ^^^
@@ -54,7 +64,7 @@ TORCH has the location of the libraries for PyTorch. Default is set to ~/libtorc
 
    make TORCH=/customdir/libtorch
 
-It may also be possible to point the make to the libraries installed for the python installation of PyTorch.
+It may also be possible to point the make to the libraries already installed the python version of PyTorch.
 
 
 ::
@@ -77,6 +87,24 @@ It may also be possible to point the make to the libraries installed for the pyt
 
 ABI
 ^^^
+
+In Linux, there's a choice of ABI (application binary interface). Changes in the C++11 standard created
+`a newer ABI <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>`_.  The supplied libtorch zip files from PyTorch come in two versions,
+one for the ABI prior to the changes for the C++11 standard, and one with the new ABI.
+
+For example, for Linux, version 1.8.1, with support for CUDA 11.1, the zip files are listed as:
+
+::
+
+   Download here (Pre-cxx11 ABI):
+   https://download.pytorch.org/libtorch/cu111/libtorch-shared-with-deps-1.8.1%2Bcu111.zip
+
+   Download here (cxx11 ABI):
+   https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.8.1%2Bcu111.zip
+
+In the earliest versions, PyTorch only offered the older ABI version of the zip file so users could maintain compatibility with older third-party libraries compiled under the old ABI, but now offer the choice of old or new versions.
+By default, the Makefile builds code with ``-D_GLIBCXX_USE_CXX11_ABI=0`` for the older API.
+The Makefile variable ``ABI`` is set to 0, but can be overwritten with the command-line call ``ABI=1`` if the newer ABI zip file is used.
 
 ::
 
