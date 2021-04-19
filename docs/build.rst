@@ -240,8 +240,13 @@ Linux, CUDA 11.1
 Linked libraries
 ****************
 
+During the link stage of the build, the path of the PyTorch libraries are added via ``-rpath`` so that the same libraries can be located at runtime.
 
 ::
+
+   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o \
+           -shared -L/home/t/libtorch/lib -l torch \
+           -Wl,-rpath /home/t/libtorch/lib
 
    > ldd ktorch.so
 	linux-vdso.so.1 (0x00007ffd8952d000)
@@ -264,8 +269,8 @@ Linked libraries
 	libc10.so => /home/t/libtorch/lib/libc10.so (0x00007efcd3a65000)
 	libgomp-7c85b1e2.so.1 => /home/t/libtorch/lib/libgomp-7c85b1e2.so.1 (0x00007efcd383b000)
 
-If the location of the ``libtorch/lib`` is moved or in a different place on the deployment machine,
-then the LD_LIBRARY_PATH can be used to point to a new location for the PyTorch shared libraries.
+If the location of the ``libtorch/lib`` subdirectory is changed or in a different place on the deployment machine,
+then the environment variable LD_LIBRARY_PATH can be used to point to a new location for the PyTorch shared libraries.
 
 ::
 
@@ -286,9 +291,47 @@ then the LD_LIBRARY_PATH can be used to point to a new location for the PyTorch 
 Location of ktorch.so
 *********************
 
+In the examples in this documentation, the k api functions in the shared library are loaded via ``2:`` without any path.
+
+::
+
+   q)(`ktorch 2:`options,1)[]  / show default options
+   device  | cpu
+   dtype   | float
+   layout  | strided
+   gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
+
+This will work if the ``ktorch.so`` file is placed in, for 64-bit linux, ``~/q/l64`` or ``${QHOME}/l64`` or a symbolic link is placee there to the build location.
+
+::
+
+   > ls -l ~/q/l64/ktorch.so
+   lrwxrwxrwx 1 t t 24 Dec  2 14:07 /home/t/q/l64/ktorch.so -> /home/t/ktorch/ktorch.so*
+
+An alternative is to use the full path directly or via some agreed upon environment variable.
+
+::
+
+   > cd /tmp
+   > q
+   q)(`:/home/t/ktorch/ktorch 2:`options,1)[]
+   device  | cpu
+   dtype   | float
+   ..
+
+   q)`KTORCH setenv "/home/t/ktorch/ktorch"
+   q)((`$getenv`KTORCH)2:`options,1)[]
+   device  | cpu
+   dtype   | float
+   ..
+
 
 Defining api functions in k
 ***************************
+
+The api function ``fns``, when called with an empty or dummy argument, returns a dictionary of function name and code.
 
 ::
 
@@ -298,3 +341,21 @@ Defining api functions in k
    addref     | code
    free       | code
    ..
+
+The result of this function can be assigned to a to a namespace:
+
+::
+
+   q).nn:(`ktorch 2:`fns,1)[]
+   q)t:.nn.tensor 1 2 3
+   q).nn.tensor t
+   1 2 3
+
+or defined in the root namespace:
+
+::
+
+   q){key[x]set'x}(`:/home/t/ktorch/ktorch 2:`fns,1)[];
+   q)t:tensor 1 2 3
+   q)tensor t
+   1 2 3
