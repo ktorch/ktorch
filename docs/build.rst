@@ -16,6 +16,7 @@ Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU ve
 .. figure:: linux-cuda11.1.png
    :scale: 40 %
    :alt: libtorch.zip files for linux and CUDA 11.1
+   :ref: `<https://pytorch.org/get-started/locally/>`_
 
 Once the zip file is downloaded and unzipped, the next step is to download the ktorch source code.
 
