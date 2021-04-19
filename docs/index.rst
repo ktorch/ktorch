@@ -15,6 +15,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
 .. toctree::
    :glob:
    :maxdepth: 1
+   :caption: Overview
 
    overview
    build
@@ -28,6 +29,7 @@ Tensors
 -------
 .. toctree::
    :maxdepth: 1
+   :caption: Tensors
 
    tensors
    complex
@@ -41,6 +43,7 @@ Modules
 -------
 .. toctree::
    :maxdepth: 1
+   :caption: Modules
 
    modules
 
