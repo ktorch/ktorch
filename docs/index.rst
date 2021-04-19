@@ -24,9 +24,11 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    pointers
    devices
 
+Tensors
+^^^^^^^
+
 .. toctree::
    :maxdepth: 1
-   :caption: Tensors
 
    tensors
    complex
@@ -35,6 +37,9 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    dictionaries
    info
    math
+
+Modules
+^^^^^^^
 
 .. toctree::
    :maxdepth: 1
