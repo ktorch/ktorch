@@ -414,7 +414,7 @@ or defined in the root namespace:
 
 ::
 
-   q){key[x]set'x}(`:/home/t/ktorch/ktorch 2:`fns,1)[];
+   q){key[x]set'x}(`ktorch 2:`fns,1)[];
    q)t:tensor 1 2 3
    q)tensor t
    1 2 3
