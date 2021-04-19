@@ -219,6 +219,83 @@ Check if the ktorch.so library can be loaded from within a k session:
 Linux, CUDA 11.1
 ^^^^^^^^^^^^^^^^
 
+Build in ``/tmp``, using the libtorch zip file for linux, version 1.8.1, CUDA 11.1 with new c++ ABI.
+
+::
+
+   > cd /tmp
+   > wget --quiet https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.8.1%2Bcu111.zip
+
+   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip 
+   -rw-rw-r-- 1 t t 2.0G Mar 25 10:46 libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip
+
+   > unzip libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip 
+   Archive:  libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip
+      creating: libtorch/
+      creating: libtorch/lib/
+     inflating: libtorch/lib/libasmjit.a  
+     inflating: libtorch/lib/libbenchmark.a  
+     inflating: libtorch/lib/libbenchmark_main.a  
+     inflating: libtorch/lib/libc10_cuda.so  
+     ..
+
+Get the ktorch repository as a zip file:
+
+::
+
+   > wget --quiet https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
+
+   > unzip master.zip
+   Archive:  master.zip
+   6fb9929f31d1c20984c9b196672f356bcae21178
+      creating: ktorch-master/
+     inflating: ktorch-master/LICENSE   
+     inflating: ktorch-master/Makefile  
+     ..
+
+Build, with the ABI flag set on and the TORCH location pointing to the ``/tmp/torchlib`` directory:
+
+::
+
+   > cd ktorch-master
+
+   > time make ABI=1 TORCH=/tmp/libtorch
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o kmath.o kmath.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o knn.o knn.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o kloss.o kloss.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o kopt.o kopt.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o kmodel.o kmodel.cpp
+   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -isystem /tmp/libtorch/include -isystem /tmp/libtorch/include/torch/csrc/api/include   -c -o ktest.o ktest.cpp
+   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -shared -L/tmp/libtorch/lib -l torch -Wl,-rpath /tmp/libtorch/lib
+
+   real	1m32.577s
+   user	1m30.606s
+   sys	0m1.804s
+
+
+Load in a k session, check matrix multiply on GPU:
+
+::
+
+   > pwd
+   /tmp/ktorch-master
+
+   > mv ktorch.so ktorchABI1.so
+
+   > q
+
+   q){key[x]set'x}(`ktorchABI1 2:`fns,1)[];
+
+   q)a:tensor(`randn;4096 1024;`cuda`double)
+   q)b:tensor(`randn;1024 4096;`cuda`double)
+   q)r:mm(a;b)
+
+   q)(avg;max)@\:abs raze over tensor[r]-tensor[a]$tensor b
+   1.847767e-14 3.836931e-13
+
+
 Linked libraries
 ****************
 
