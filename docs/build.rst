@@ -108,24 +108,6 @@ In the their earlier versions, PyTorch only offered the older ABI with their zip
 By default, the Makefile builds code with ``-D_GLIBCXX_USE_CXX11_ABI=0`` for the older API.
 The Makefile variable ``ABI`` is set to 0, but can be overwritten with the command-line call ``ABI=1`` if the newer ABI zip file is used.
 
-::
-
-   time make
-
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kmath.o kmath.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o knn.o knn.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kloss.o kloss.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kopt.o kopt.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o kmodel.o kmodel.cpp
-   clang++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=0 -isystem /home/t/libtorch/include -isystem /home/t/libtorch/include/torch/csrc/api/include   -c -o ktest.o ktest.cpp
-   clang++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o -shared -L/home/t/libtorch/lib -l torch -Wl,-rpath /home/t/libtorch/lib
-
-   real	1m36.740s
-   user	1m34.677s
-   sys	0m1.898s
-
 Source files
 ************
 
@@ -303,7 +285,7 @@ In the examples in this documentation, the k api functions in the shared library
    pin     | unpinned
    memory  | contiguous
 
-This will work if the ``ktorch.so`` file is placed in, for 64-bit linux, ``~/q/l64`` or ``${QHOME}/l64`` or a symbolic link is placee there to the build location.
+This will work if the ``ktorch.so`` file is placed in, for 64-bit linux, ``~/q/l64`` or ``${QHOME}/l64`` or a symbolic link is placed there to the build location.
 
 ::
 

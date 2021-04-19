@@ -34,6 +34,8 @@ Tensors
    sparse
    vectors
    dictionaries
+   info
+   math
 
 Modules
 -------
