@@ -110,5 +110,88 @@ Once a PyTorch object is established on a device, it can be moved with the :func
 The typical case is to create a tensor or module on a device, then move to a CUDA device via ```to``.
 
 
-.. function:: to(ptr;options) -> syms
+.. function:: to(ptr;options) -> (null)
+.. function:: to(ptr;async-flag;options) -> (null)
 
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor, vector, dictionary or module.
+   :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
+   :return: null return, given pointer now points to new data type, memory, device, etc. unless options given match object's current properties.
+
+An alternate form uses an example tensor instead of specified options to define the target device and data type. An example tensor is only allowed when the input object is also a tensor.
+
+.. function:: copyto(ptr;example-tensor) -> (null)
+.. function:: copyto(ptr;async-flag;example-tensor) -> (null)
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
+   :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
+   :param ptr example-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
+   :return: null return, given pointer now points to a tensor with same device and data type as given example tensor.
+
+::
+
+   q)a:options t:tensor 1 2 3    / create tensor of longs on cpu
+   q)ptr t                       / get internal PyTorch shared pointer to tensor
+   60520816
+
+   q)to(t;`cuda`double`grad)     / convert to CUDA tensor on default GPU, type double
+   q)ptr t                       / new interal pointer, k interface handle is the same
+   1814122272
+
+   q)(a;options t)               / compare options to verify the change
+   device dtype  layout  gradient pin      memory    
+   --------------------------------------------------
+   cpu    long   strided nograd   unpinned contiguous
+   cuda:0 double strided grad     unpinned contiguous
+
+   q)to(t;`cuda`double`grad)     / call to() again
+   q)ptr t                       / no change to internal ptr because no change to tensor attributes
+   1814122272
+
+   q)e:tensor()  / empty tensor
+   q)to(e;t)     / use t as an example tensor
+
+   q)options e
+   device  | cuda:0     / device changed
+   dtype   | double     / data type changed
+   layout  | strided
+   gradient| nograd     / gradient attribute unchanged (only device & dtype from example tensor)
+   pin     | unpinned
+   memory  | contiguous
+
+
+Copy to device
+^^^^^^^^^^^^^^
+
+For tensors only, :func:`copyto` will make a copy of the current tensor with new datatype and/or new device and other given charasteristics.
+(this is somewhat equivalent to `PyTorch tensor.to() method <https://pytorch.org/docs/stable/tensors.html#torch.Tensor.to>`_ with ``copy=True``.)
+
+.. function:: copyto(ptr;options) -> (null)
+.. function:: copyto(ptr;async-flag;options) -> (null)
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
+   :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
+   :return: An :ref:`api-pointer <pointers>` to the new tensor.
+
+An alternate form uses an example tensor instead of specified options to define the target device and data type.
+
+.. function:: copyto(ptr;example-tensor) -> (null)
+.. function:: copyto(ptr;async-flag;example-tensor) -> (null)
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
+   :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
+   :param ptr example-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
+   :return: An :ref:`api-pointer <pointers>` to the new tensor.
+
+::
+
+   q)t:tensor 1 2 3 4#til 24
+
+   q)r:copyto(t; `cuda`float`channel2d`grad)
+
+   q)options each(t;r)
+   device dtype layout  gradient pin      memory    
+   -------------------------------------------------
+   cpu    long  strided nograd   unpinned contiguous
+   cuda:0 float strided grad     unpinned channel2d 

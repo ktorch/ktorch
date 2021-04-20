@@ -1334,28 +1334,31 @@ KAPI kstate(K x) {
  KCATCH("state")
 }
 
-KAPI To(K x) {
+static K to(K x,bool b,const char *s) {
  KTRY
-  bool a=false,b=false; Ktag *g; Tensor t; TensorOptions o;
-  if((g=xtag(x,0)) && (xopt(x,1,o) || xten(x,1,t)) &&
-     (x->n==2 || (xbool(x,2,a) && (x->n==3 || (x->n==4 && xbool(x,3,b)))))) {
-   TORCH_CHECK(b ? g->a == Class::tensor : true,
-               "4th arg, copy flag, can not be set true for ",mapclass(g->a));
-   if(t.defined())
-    o=o.device(t.device()).dtype(t.dtype());
-   switch(g->a) {
-    case Class::tensor: return to((Kten*)g,o,a,b);
-    case Class::dict:   return to((Kdict*)g,o,a);
-    case Class::vector: return to((Kvec*)g,o,a);
-    case Class::module:
-    case Class::loss:   return to((Kmodule*)g,o,a);
-    default: TORCH_ERROR("to: not implemented for ",mapclass(g->a));
-   }
+  Ktag *g=xtag(x,0); bool a=false; TensorOptions o;
+  TORCH_CHECK(g, s, ": expects 1st arg of tensor, vector, dictionary or module, along with option(s) for device, data type");
+  TORCH_CHECK(x->n==2 || (x->n==3 && xbool(x,1,a)), s, ": expects 2-3 args, (",mapclass(g->a),";options) or (",mapclass(g->a),";async-flag;options)");
+  if(auto *t=xten(x,x->n-1)) {
+   TORCH_CHECK(g->a==Class::tensor, s, ": only allows an example tensor arg for converting tensors, given ",mapclass(g->a));
+   o=o.device(t->device()).dtype(t->dtype());  // copy device & data type from example tensor
   } else {
-   TORCH_ERROR("to: unrecognized arg(s)");
+   TORCH_CHECK(xopt(x,x->n-1,o), s,": final argument not recognizable as options, e.g. device, data type, etc.");
   }
- KCATCH("to");
+  TORCH_CHECK(!b || g->a==Class::tensor, s, ": expects tensor as first arg, given ",mapclass(g->a));
+  switch(g->a) {
+   case Class::tensor: return to((Kten*)g,o,a,b);
+   case Class::dict:   return to((Kdict*)g,o,a);
+   case Class::vector: return to((Kvec*)g,o,a);
+   case Class::module:
+   case Class::loss:   return to((Kmodule*)g,o,a);
+   default: TORCH_ERROR(s, ": not implemented for ",mapclass(g->a));
+  }
+ KCATCH("to/copyto");
 }
+
+KAPI     To(K x) {return to(x, false, "to");}
+KAPI copyto(K x) {return to(x, true,  "copyto");}
 
 static K kinfo(K x,bool b,const char* e) {
  KTRY
@@ -1922,6 +1925,7 @@ KAPI fns(K x){
  fn(x, "elements",    KFN(elements),    1);
  fn(x, "tcount",      KFN(tcount),      1);
  fn(x, "to",          KFN(To),          1);
+ fn(x, "copyto",      KFN(copyto),      1);
  fn(x, "info",        KFN(info1),       1);
  fn(x, "detail",      KFN(info2),       1);
  fn(x, "state",       KFN(kstate),      1);
