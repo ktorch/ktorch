@@ -103,12 +103,16 @@ Available CUDA devices
    q)cudadevices()
    `cuda`cuda:0`cuda:1
 
+.. index:: to; tensor, module
+
 Moving to device
 ^^^^^^^^^^^^^^^^
 
-Once a PyTorch object is established on a device, it can be moved with the :func:`to`.
-The typical case is to create a tensor or module on a device, then move to a CUDA device via ```to``.
-
+Once a PyTorch object is established on a device, it can be moved with :func:`to`.
+The typical case is to create a tensor or module on the host, then move to a CUDA device.
+This k interface function is designed to behave somewhat like 
+`PyTorch's tensor.to <https://pytorch.org/docs/stable/tensors.html#torch.Tensor.to>`_ and
+`module.to <https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=module#torch.nn.Module.to>`_  methods.
 
 .. function:: to(ptr;options) -> (null)
 .. function:: to(ptr;async-flag;options) -> (null)
@@ -116,7 +120,7 @@ The typical case is to create a tensor or module on a device, then move to a CUD
    :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor, vector, dictionary or module.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: null return, given pointer now points to new data type, memory, device, etc. unless options given match object's current properties.
+   :return: null return, given pointer now has specified data type, memory, device, etc.
 
 An alternate form uses an example tensor instead of specified options to define the target device and data type. An example tensor is only allowed when the input object is also a tensor.
 
@@ -125,8 +129,8 @@ An alternate form uses an example tensor instead of specified options to define 
 
    :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
-   :param ptr example-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
-   :return: null return, given pointer now points to a tensor with same device and data type as given example tensor.
+   :param ptr example-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used.
+   :return: null return, given pointer now has same device and data type as given example tensor.
 
 ::
 
@@ -135,7 +139,7 @@ An alternate form uses an example tensor instead of specified options to define 
    60520816
 
    q)to(t;`cuda`double`grad)     / convert to CUDA tensor on default GPU, type double
-   q)ptr t                       / new interal pointer, k interface handle is the same
+   q)ptr t                       / new interal pointer, k interface ptr is unchanged
    1814122272
 
    q)(a;options t)               / compare options to verify the change
@@ -145,7 +149,7 @@ An alternate form uses an example tensor instead of specified options to define 
    cuda:0 double strided grad     unpinned contiguous
 
    q)to(t;`cuda`double`grad)     / call to() again
-   q)ptr t                       / no change to internal ptr because no change to tensor attributes
+   q)ptr t                       / same internal ptr -- tensor attributes unchanged
    1814122272
 
    q)e:tensor()  / empty tensor
@@ -155,16 +159,18 @@ An alternate form uses an example tensor instead of specified options to define 
    device  | cuda:0     / device changed
    dtype   | double     / data type changed
    layout  | strided
-   gradient| nograd     / gradient attribute unchanged (only device & dtype from example tensor)
+   gradient| nograd     / gradient unset (only device & dtype from example tensor)
    pin     | unpinned
    memory  | contiguous
 
 
+.. index:: copyto; tensor
+
 Copy to device
 ^^^^^^^^^^^^^^
 
-For tensors only, :func:`copyto` will make a copy of the current tensor with new datatype and/or new device and other given charasteristics.
-(this is somewhat equivalent to `PyTorch tensor.to() method <https://pytorch.org/docs/stable/tensors.html#torch.Tensor.to>`_ with ``copy=True``.)
+For tensors only, :func:`copyto` will make a copy of the current tensor with new datatype and/or new device and other given charasteristics
+(this is somewhat equivalent to `PyTorch's tensor.to method <https://pytorch.org/docs/stable/tensors.html#torch.Tensor.to>`_ with ``copy=True``).
 
 .. function:: copyto(ptr;options) -> (null)
 .. function:: copyto(ptr;async-flag;options) -> (null)
