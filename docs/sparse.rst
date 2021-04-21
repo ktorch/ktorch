@@ -39,8 +39,8 @@ Creating a tensor directly from a k value requires adding the ```sparse`` option
    q)values t
    12 4 -99
 
-Tensor creation modes
-*********************
+Sparse creation mode
+********************
 The :ref:`sparse <tensor-sparse>` creaton mode allows the user to create a sparse tensor from the k session by specifying indices and values.
 
 ::
@@ -61,7 +61,27 @@ The :ref:`sparse <tensor-sparse>` creaton mode allows the user to create a spars
    12 -99 4f
 
 
-A few of the other :ref:`creation modes <tensor-modes>`  will also create sparse tensors if layout is set to ```sparse`` as part of the tensor options.
+Sparse functions
+****************
 
-::
+
+indices
+^^^^^^^
+
+
+values
+^^^^^^
+
+
+nnz
+^^^
+
+sparsedim and densedim
+^^^^^^^^^^^^^^^^^^^^^^
+
+coalesce and coalesced
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+
 

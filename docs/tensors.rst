@@ -276,6 +276,7 @@ In addition to supplying k values to initialise tensors, the following methods c
 - `randperm <https://pytorch.org/docs/stable/torch.html#torch.randperm>`_: returns a tensor with a random permutation of integers in some interval
 - `zeros <https://pytorch.org/docs/stable/torch.html#torch.zeros>`_: returns a tensor filled with zeros
 - `complex <https://pytorch.org/docs/stable/generated/torch.complex.html>`_: creates a complex tensor from real and imaginary values
+- `sparse <https://pytorch.org/docs/stable/generated/torch.sparse_coo_tensor.html>`_: creates a sparse tensor from indices and values
 
 
 Tensors are created in the k interface using the above methods by supplying a mode symbol as the first argument to the same ``tensor`` api function.
@@ -764,6 +765,10 @@ An alternate form of the above function call uses a single k value to create the
 
    q)use[t]tensor(`complex;flip x; 0b)
 
+
+.. index:: sparse
+
+.. _tensor-sparse:
 
 Sparse tensor
 ^^^^^^^^^^^^^
