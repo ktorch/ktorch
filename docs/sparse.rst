@@ -67,6 +67,7 @@ Sparse functions
 
 indices
 ^^^^^^^
+The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimensional matrix: one row per sparse dimension and one column for each sparse value.
 
 .. function:: indices(ptr) -> value
 .. function:: indices(enlisted-ptr) -> ptr
@@ -83,8 +84,34 @@ values
 .. function:: values(enlisted-ptr) -> ptr
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
-   :return: Given a ptr, returns a k list containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a 1-dimensional tensor with the values.
+   :return: Given a ptr, returns a k array containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the values.
 
+::
+
+   q)show i:1 2#0 2  / indices of rows w'non-zero values
+   0 2
+
+   q)show v:0 10+\:til 5  / rows with non-zero values
+   0  1  2  3  4 
+   10 11 12 13 14
+
+   q)t:tensor(`sparse; i; v; 4 5)
+
+   q)tensor t
+   0  1  2  3  4 
+   0  0  0  0  0 
+   10 11 12 13 14
+   0  0  0  0  0 
+
+   q)sparsedim t   / only 1st dimension is sparse
+   1
+
+   q)densedim t   /2nd dimension is dense
+   1
+
+   q)values t
+   0  1  2  3  4 
+   10 11 12 13 14
 
 nnz
 ^^^
