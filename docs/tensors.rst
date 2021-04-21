@@ -40,7 +40,8 @@ The :func:`options` function will display the defaults usually in effect if no a
 
    | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
 
-The ``dtype`` function will get/set the default data type or return the data type of a previously allocated tensor.
+The :func:`dtype` function will get/set the default data type or return the data type of a previously allocated tensor.
+
 .. function:: dtype() -> sym
 .. function:: dtype(sym) -> null
 .. function:: dtype(ptr) -> sym
@@ -74,6 +75,7 @@ The ``dtype`` function will get/set the default data type or return the data typ
    `long
 
    q)dtype`double  / reset default data type from float -> double
+
    q)free t
    q)t:tensor()    / create an empty tensor with default data type
    q)dtype t
