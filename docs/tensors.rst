@@ -692,7 +692,7 @@ The function call can also use a final argument of a previously allocated tensor
 Complex tensor
 ^^^^^^^^^^^^^^
 
-A tensor of complex numbers can be created by supplying the real and imaginary parts, along with optional attributes. See :ref:`section on complex tensors <complex>` for more details.
+A tensor of complex numbers can be created by supplying the real and imaginary parts, along with optional attributes. See :ref:`section on complex tensors <complex>` for other methods and details on complex tensors.  The tensor creation method below is meant to match PyTorch's `torch.complex <https://pytorch.org/docs/stable/generated/torch.complex.html>`_ function.
 
 .. function:: tensor(mode;real;imag) -> ptr
 .. function:: tensor(mode;real;imag;options) -> ptr
@@ -761,8 +761,21 @@ An alternate form of the above function call uses a single k value to create the
    'complex: single input array must have a last dimension of size 2 (real,'imaginary), given size of [2, 3]
      [0]  use[t]tensor(`complex; x; 0b)
                 ^
+
    q)use[t]tensor(`complex;flip x; 0b)
 
 
 Sparse tensor
 ^^^^^^^^^^^^^
+
+A sparse tensor can be created by specifying indices and values similar to the PyTorch function `torch.sparse_coo_tensor() <https://pytorch.org/docs/stable/generated/torch.sparse_coo_tensor.html>`_.
+
+.. function:: tensor(mode;ind;val) -> ptr
+.. function:: tensor(mode;ind;val;options) -> ptr
+
+   :param sym mode: ```sparse``.
+   :param long ind: real part of the complex tensor as a k value.
+   :param numeric val: list or scalar k value corresponding to the given indices.
+   :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
+   :return: An :ref:`api-pointer <pointers>` to the allocated sparse tensor.
+
