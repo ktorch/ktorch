@@ -45,6 +45,15 @@ Modules
    :maxdepth: 1
 
    modules
+   loss
+
+Training
+^^^^^^^^
+
+.. toctree::
+   :maxdepth: 1
+
+   opt 
 
 Index
 =====
