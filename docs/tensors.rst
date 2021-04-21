@@ -46,7 +46,7 @@ The :func:`dtype` function will get/set the default data type or return the data
 .. function:: dtype(sym) -> null
 .. function:: dtype(ptr) -> sym
 
-   | With an empty argument, :func:`dtype` returns the default data type, with a sym data type, it sets the default data type and with a tensor :ref:`pointer <pointers>`, the function returns the tensor's datatype.
+   | With an empty argument, :func:`dtype` returns the default data type, with a sym data type, it sets the default data type and with a tensor :ref:`pointer <ptr>`, the function returns the tensor's datatype.
    
 .. note::
    Sparse tensors, complex tensors, pinned memory and the newer memory formats are less widely used and still a work in progress in PyTorch.
@@ -104,7 +104,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
 .. function:: tensor(ptr) -> value
 
-   | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
+   | Return a k value from an :ref:`api-pointer <ptr>` to a previously allocated tensor
 
 .. function:: tensor(value) -> ptr
 .. function:: tensor(value;options) -> ptr
@@ -113,7 +113,7 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    :param scalar,list,array value: the k value to populate the tensor.  If no options given, the :ref:`data type <types>` for the tensor will be mapped from the data type of the k value.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor
 
 Examples
 ^^^^^^^^
@@ -158,7 +158,7 @@ The tensor's existing attributes will be used but its values will be replaced.
    | Read k value and store in previously created tensor
 
    :param scalar,list,array value: the k value to populate the tensor.
-   :param ptr out-tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor which will contain the new values.
+   :param ptr out-tensor: a previously allocated :ref:`api-pointer <ptr>` to a tensor which will contain the new values.
    :return: (null)
 
 ::
@@ -236,9 +236,9 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
 .. function:: tensor(ptr;dim;ind) -> value
 .. function:: tensor(ptr;flag;dim;ind) -> value
 
-   | Return a k value from an :ref:`api-pointer <pointers>` to a previously allocated tensor
+   | Return a k value from an :ref:`api-pointer <ptr>` to a previously allocated tensor
 
-   :param ptr tensor: a previously allocated :ref:`api-pointer <pointers>` to a tensor.
+   :param ptr tensor: a previously allocated :ref:`api-pointer <ptr>` to a tensor.
    :param  bool flag: an optional flag for :ref:`complex tensors <complex>` only, true to return real & imaginary parts along first dimension, false along last dimension.
    :param long dim: an optional dimension for the subsequent index.
    :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..
@@ -308,7 +308,7 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
    :param long size: scalar/list specifiying size of array
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor
 
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.
@@ -320,9 +320,9 @@ similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``
-   :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :param ptr in-tensor: an :ref:`api-pointer <ptr>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 Alternate form using an output tensor instead of options that control data type, device, etc.
 
@@ -330,7 +330,7 @@ Alternate form using an output tensor instead of options that control data type,
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``.
    :param long size: scalar/list specifiying size of array.
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -366,7 +366,7 @@ Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.
    :param long size: scalar/list specifiying size of array
    :param scalar value: scalar fill value, real or double k type. Also possible to specify non floating point scalar, but options must include required tensor data type.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor
 
 Alternate form using an input tensor for size:
 
@@ -417,7 +417,7 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
    :param sym mode: one of ```rand`` or ```randn``.
    :param long size: scalar/list specifiying size of array.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 
@@ -427,9 +427,9 @@ Alternate form using an input tensor to supply size, i.e. size will be derived f
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
    :param sym mode: ```rand`` or ```randn``.
-   :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :param ptr in-tensor: an :ref:`api-pointer <ptr>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 Alternate form using an output tensor instead of options that control data type, device, etc.
 
@@ -437,7 +437,7 @@ Alternate form using an output tensor instead of options that control data type,
 
    :param sym mode: one of ```rand`` or ```randn``.
    :param long size: scalar/list specifiying size of array.
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -469,7 +469,7 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
    :param long high: one above the highest intger to be drawn from the distribution.
    :param long size: scalar/list specifiying size of array.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
 
@@ -477,15 +477,15 @@ An alternate form where an input tensor is supplied to provide the size of the c
 .. function:: tensor(mode;in-tensor;low;high) -> ptr
 .. function:: tensor(mode;in-tensor;low;high;options) -> ptr
 
-   :param ptr in-tensor: an :ref:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :param ptr in-tensor: an :ref:`api-pointer <ptr>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;high;size;out-tensor) -> ptr
 .. function:: tensor(mode;low;high;size;out-tensor) -> ptr
 
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -529,7 +529,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
@@ -537,7 +537,7 @@ The function call can also use a final argument of a previously allocated tensor
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -575,13 +575,13 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
    :param long end: ending value for the set of points, mode=```arange`` returns points up to but not including ``end``, mode of ```range`` returns points including end.
    :param long step: step size or gap between each pair of adjacent points, default is 1.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;step;options) -> ptr
 
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -619,13 +619,13 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
    :param long steps: size of the created tensor running from ``start`` to ``end``.
    :param double base: optional base of the log function, default=``10.0``, only for mode=```logspace``
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;steps;base;out-tensor) -> ptr
 
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
 
 ::
@@ -661,14 +661,14 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
    :param long n: number of rows in the matrix.
    :param long m: optional number of columns in the matrix, default is number of rows equal to columns.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated matrix.
+   :return: An :ref:`api-pointer <ptr>` to the allocated matrix.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;n;out-tensor) -> ptr
 .. function:: tensor(mode;n;m;out-tensor) -> ptr
 
-   :param ptr out-tensor: an :ref:`api-pointer <pointers>` to a previously allocated output tensor.
+   :param ptr out-tensor: an :ref:`api-pointer <ptr>` to a previously allocated output tensor.
    :return: null return, resets values according to rows or rows and columns given and attributes of the output tensor.
 
 ::
@@ -702,7 +702,7 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
    :param numeric real: real part of the complex tensor as a k value.
    :param numeric imag: imaginary part of the complex tensor as a k value (same size as the real part).
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated complex tensor.
 
 ::
 
@@ -738,7 +738,7 @@ An alternate form of the above function call uses a single k value to create the
    :param numeric value: real & imaginary part of the complex tensor as a k value.
    :param bool flag: a flag set true to indicate real and imaginary values are across the first dimension, else last dimension.  If no flag given, the overall session flag for :ref:`complex first dimension <complex-first>` will be used.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated complex tensor.
 
 ::
 
@@ -787,7 +787,7 @@ A sparse tensor can be created by supplying indices and values, along with optio
    :param numeric val: scalar of list of k values corresponding to the given indices.
    :param long size: scalar or list indicating the full size of the tensor; will be inferred as minimum size to hold all non-zero indices.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <pointers>` to the allocated sparse tensor.
+   :return: An :ref:`api-pointer <ptr>` to the allocated sparse tensor.
 
 ::
 

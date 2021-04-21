@@ -26,7 +26,7 @@ Creating a tensor directly from a k value requires adding the complex data type,
 
    :param scalar,list,array value: the k value to populate the real part of the complex tensor.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`. Must include data type of ```cfloat`` or ```cdouble`` amongst the supplied options.
-   :return: An :ref:`api-pointer <pointers>` to the allocated complex tensor
+   :return: An :ref:`api-pointer <ptr>` to the allocated complex tensor
 
 ::
 
@@ -127,9 +127,9 @@ Real & imaginary parts
 
 After a complex tensor is created, there are some PyTorch information functions that allow retrieval of the real and imaginary parts:
 
-- `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the real part.
-- `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns the imaginary part.
-- `isreal <https://pytorch.org/docs/stable/generated/torch.isreal.html>`_: given an :ref:`api-pointer <pointers>` to a complex tensor, returns true where the imaginary part is zero.
+- `real <https://pytorch.org/docs/stable/generated/torch.real.html>`_: given an :ref:`api-pointer <ptr>` to a complex tensor, returns the real part.
+- `imag <https://pytorch.org/docs/stable/generated/torch.imag.html>`_: given an :ref:`api-pointer <ptr>` to a complex tensor, returns the imaginary part.
+- `isreal <https://pytorch.org/docs/stable/generated/torch.isreal.html>`_: given an :ref:`api-pointer <ptr>` to a complex tensor, returns true where the imaginary part is zero.
 
 The k interface implements these functions to return either k values or new tensors:
 
@@ -138,8 +138,8 @@ The k interface implements these functions to return either k values or new tens
 .. function:: imag(ptr) -> value
 .. function:: imag(enlisted-ptr) -> ptr
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor
-   :return: Given a ptr, returns a k array containing the real or imaginary parts of the allocated tensor. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a tensor with the real or imaginary values.
+   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a complex tensor
+   :return: Given a ptr, returns a k array containing the real or imaginary parts of the allocated tensor. If the ptr is enlisted, returns a new :ref:`ptr <ptr>` to a tensor with the real or imaginary values.
 
 ::
 
@@ -161,8 +161,8 @@ The ``isreal`` function returns a boolean k value or a pointer to an allocated b
 .. function:: isreal(ptr) -> value
 .. function:: isreal(enlisted-ptr) -> ptr
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a complex tensor
-   :return: Given a ptr, returns a k boolean array with 1's where the imaginary part of the complex tensor is zero. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a tensor with the boolean values.
+   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a complex tensor
+   :return: Given a ptr, returns a k boolean array with 1's where the imaginary part of the complex tensor is zero. If the ptr is enlisted, returns a new :ref:`ptr <ptr>` to a tensor with the boolean values.
 
 ::
 

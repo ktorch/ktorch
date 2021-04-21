@@ -21,7 +21,7 @@ This interface links k to the c++ routines, but attempts to follow the line of t
    config
    start
    types
-   pointers
+   ptr
    devices
 
 Tensors
