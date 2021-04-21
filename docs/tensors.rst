@@ -238,7 +238,7 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
 
    | Return a k value from an :doc:`api-pointer <pointers>` to a previously allocated tensor
 
-   :param ptr tensor: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param  bool flag: an optional flag for :ref:`complex tensors <complex>` only, true to return real & imaginary parts along first dimension, false along last dimension.
    :param long dim: an optional dimension for the subsequent index.
    :param long ind: an optional index to retrieve tensor[ind] if no preceding dimension, else tensor[;;ind] if dim=2, etc..

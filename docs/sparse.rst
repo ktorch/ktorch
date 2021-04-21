@@ -17,7 +17,7 @@ Creating a tensor directly from a k value requires adding the ```sparse`` option
 
    :param scalar,list,array value: the k values for the sparse tensor; only non-zero values will be included.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`. Must include layout of ```sparse`` among the supplied options.
-   :return: An :ref:`api-pointer <ptr>` to the allocated sparse tensor
+   :return: An :doc:`api-pointer <pointers>` to the allocated sparse tensor
 
 ::
 
@@ -71,8 +71,8 @@ indices
 .. function:: indices(ptr) -> value
 .. function:: indices(enlisted-ptr) -> ptr
 
-   :param ptr :ref:`api-pointer <ptr>`: a previously allocated :ref:`api-pointer <ptr>` to a sparse tensor
-   :return: Given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :ref:`ptr <ptr>` to a tensor with the indices.
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
+   :return: Given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the indices.
 
 
 
@@ -82,8 +82,8 @@ values
 .. function:: values(ptr) -> list
 .. function:: values(enlisted-ptr) -> ptr
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a sparse tensor
-   :return: Given a ptr, returns a k list containing non-zero values of the tensor. If the ptr is enlisted, returns a new :ref:`ptr <ptr>` to a 1-dimensional tensor with the values.
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
+   :return: Given a ptr, returns a k list containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a 1-dimensional tensor with the values.
 
 
 nnz
@@ -91,7 +91,7 @@ nnz
 
 .. function:: nnz(ptr) -> n
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a sparse tensor
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :return: Given a ptr, returns long integer scalar with the count of non-zero values.
 
 sparsedim and densedim

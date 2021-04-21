@@ -29,7 +29,7 @@ Device
 
 .. function:: device(ptr) -> sym
 
-   :param ptr obj: a previously allocated :ref:`api-pointer <ptr>` to a PyTorch object, e.g. a tensor, module, etc.
+   :param ptr obj: a previously allocated :doc:`api-pointer <pointers>` to a PyTorch object, e.g. a tensor, module, etc.
    :return: sym indicating the specific device where object's memory resides.
 
 ::
@@ -117,7 +117,7 @@ This k interface function is designed to behave somewhat like
 .. function:: to(ptr;options) -> (null)
 .. function:: to(ptr;async-flag;options) -> (null)
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a tensor, vector, dictionary or module.
+   :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, vector, dictionary or module.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: null return, given pointer now has specified data type, memory, device, etc.
@@ -127,9 +127,9 @@ An alternate form uses an example tensor instead of specified options to define 
 .. function:: copyto(ptr;example-tensor) -> (null)
 .. function:: copyto(ptr;async-flag;example-tensor) -> (null)
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a tensor.
+   :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
-   :param ptr example-tensor: an :ref:`api-pointer <ptr>` to a previously allocated tensor whose device and datatype will be used.
+   :param ptr example-tensor: an :doc:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used.
    :return: null return, given pointer now has same device and data type as given example tensor.
 
 ::
@@ -175,20 +175,20 @@ For tensors only, :func:`copyto` will make a copy of the current tensor with new
 .. function:: copyto(ptr;options) -> (null)
 .. function:: copyto(ptr;async-flag;options) -> (null)
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a tensor.
+   :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
-   :return: An :ref:`api-pointer <ptr>` to the new tensor.
+   :return: An :doc:`api-pointer <pointers>` to the new tensor.
 
 An alternate form uses an example tensor instead of specified options to define the target device and data type.
 
 .. function:: copyto(ptr;example-tensor) -> (null)
 .. function:: copyto(ptr;async-flag;example-tensor) -> (null)
 
-   :param ptr ptr: a previously allocated :ref:`api-pointer <ptr>` to a tensor.
+   :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param bool async-flag: asynchronous flag, default is false. If true, will attempt to perform host to CUDA device transfer without blocking.
-   :param ptr example-tensor: an :ref:`api-pointer <ptr>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
-   :return: An :ref:`api-pointer <ptr>` to the new tensor.
+   :param ptr example-tensor: an :doc:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
+   :return: An :doc:`api-pointer <pointers>` to the new tensor.
 
 ::
 
