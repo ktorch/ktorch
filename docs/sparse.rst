@@ -3,13 +3,13 @@
 Sparse tensors
 ==============
 
-PyTorch `documentation on sparse tensors <<https://pytorch.org/docs/stable/sparse.html>`_ describes the implementation as "in beta" and subject to change.  
+PyTorch `documentation on sparse tensors <https://pytorch.org/docs/stable/sparse.html>`_ describes the implementation as "in beta" and subject to change.  
 
 Creating from a k value
 ***********************
 
 In a k session, sparse tensors are created and retrieved using the same :func:`tensor` function used to create dense tensors.
-Creating a tensor directly from a k value requires adding ```sparse`` option for layout.
+Creating a tensor directly from a k value requires adding the ```sparse`` option for layout.
 
 .. function:: tensor(value;options) -> ptr
 
