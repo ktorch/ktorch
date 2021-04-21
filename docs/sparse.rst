@@ -68,13 +68,31 @@ Sparse functions
 indices
 ^^^^^^^
 
+.. function:: indices(ptr) -> value
+.. function:: indices(enlisted-ptr) -> ptr
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a sparse tensor
+   :return: Given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a tensor with the indices.
+
+
 
 values
 ^^^^^^
 
+.. function:: values(ptr) -> list
+.. function:: values(enlisted-ptr) -> ptr
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a sparse tensor
+   :return: Given a ptr, returns a k list containing non-zero values of the tensor. If the ptr is enlisted, returns a new :ref:`ptr <pointers>` to a 1-dimensional tensor with the values.
+
 
 nnz
 ^^^
+
+.. function:: nnz(ptr) -> n
+
+   :param ptr ptr: a previously allocated :ref:`api-pointer <pointers>` to a sparse tensor
+   :return: Given a ptr, returns long integer scalar with the count of non-zero values.
 
 sparsedim and densedim
 ^^^^^^^^^^^^^^^^^^^^^^
