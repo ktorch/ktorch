@@ -768,14 +768,56 @@ An alternate form of the above function call uses a single k value to create the
 Sparse tensor
 ^^^^^^^^^^^^^
 
-A sparse tensor can be created by specifying indices and values similar to the PyTorch function `torch.sparse_coo_tensor() <https://pytorch.org/docs/stable/generated/torch.sparse_coo_tensor.html>`_.
+A sparse tensor can be created by supplying indices and values, along with optional attributes. See :ref:`section on sparse tensors <sparse>` for other methods and details on sparse tensors.  The tensor creation method below is meant to match PyTorch's `torch.sparse_coo_tensor <https://pytorch.org/docs/stable/generated/torch.sparse_coo_tensor.html>`_ function.
 
 .. function:: tensor(mode;ind;val) -> ptr
 .. function:: tensor(mode;ind;val;options) -> ptr
+.. function:: tensor(mode;ind;val;size) -> ptr
+.. function:: tensor(mode;ind;val;size;options) -> ptr
 
    :param sym mode: ```sparse``.
-   :param long ind: real part of the complex tensor as a k value.
-   :param numeric val: list or scalar k value corresponding to the given indices.
+
+   :param sym mode: ```sparse``.
+   :param long ind: 2-d array of indices, each row corresponds to sparse dimension, each column for the non-zero values.
+   :param numeric val: scalar of list of k values corresponding to the given indices.
+   :param long size: scalar or list indicating the full size of the tensor; will be inferred as minimum size to hold all non-zero indices.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <Setting properties>`.
    :return: An :ref:`api-pointer <pointers>` to the allocated sparse tensor.
+
+::
+
+   q)show 0 -1 1 rotate'(v:1 2 3),\:0 0  / sparse matrix with values along diagonal
+   1 0 0
+   0 2 0
+   0 0 3
+
+   q)show i:flip 3 3 vs/:0 4 8
+   0 1 2
+   0 1 2
+
+   q)s:tensor(`sparse; i; v; `double)
+
+   q)tensor s
+   1 0 0
+   0 2 0
+   0 0 3
+
+   q)size s
+   3 3
+
+   q)indices s
+   0 1 2
+   0 1 2
+
+   q)values s
+   1 2 3f
+
+   q)use[s]tensor(`sparse; i; v; 3 5; `double)  / size beyond given indices
+   q)size s
+   3 5
+
+   q)tensor s
+   1 0 0 0 0
+   0 2 0 0 0
+   0 0 3 0 0
 
