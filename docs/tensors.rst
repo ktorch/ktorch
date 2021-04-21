@@ -32,8 +32,8 @@ In the k interface, these attributes are represented as symbols:
 - **pin:** either ```pinned`` or ```unpinned``
 - **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d``
 
-These symbols can be specified in any order to set the properties of a tensor, e.g. ```int`` or ```cuda`float`grad `` or ```sparse`long``.
-The ``options`` function will display the defaults usually in effect if no options are given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
+These symbols can be specified in any order to set the properties of a tensor, e.g. ```int`` or ```cuda`float`grad``.
+The :func:`options` function will display the defaults usually in effect if no argument given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: options() -> dict
 .. function:: options(ptr) -> dict

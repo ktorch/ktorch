@@ -103,7 +103,7 @@ Available CUDA devices
    q)cudadevices()
    `cuda`cuda:0`cuda:1
 
-.. index:: to; tensor, module
+.. index:: to; tensor and module
 
 Moving to device
 ^^^^^^^^^^^^^^^^
