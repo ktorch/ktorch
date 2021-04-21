@@ -46,7 +46,7 @@ The :func:`dtype` function will get/set the default data type or return the data
 .. function:: dtype(sym) -> null
 .. function:: dtype(ptr) -> sym
 
-   | With an empty argument, :func:`dtype` returns the default data type, with a sym data type, it sets the default data type and with a tensor :ref:`pointer <ptr>`, the function returns the tensor's datatype.
+   | With an empty argument, :func:`dtype` returns the default data type, with a sym data type, it sets the default data type and with a tensor :doc:`pointer <ptr>`, the function returns the tensor's datatype.
    
 .. note::
    Sparse tensors, complex tensors, pinned memory and the newer memory formats are less widely used and still a work in progress in PyTorch.
