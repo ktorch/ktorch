@@ -887,12 +887,14 @@ KAPI   real(K x) {return kreal(x, torch::real,   "real");}
 KAPI   imag(K x) {return kreal(x, torch::imag,   "imag");}
 KAPI isreal(K x) {return kreal(x, torch::isreal, "isreal");}
 
-// --------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 //  sparse tensors
-// --------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 // getsparse - handle api calls to extract indices & values from sparse tensor
 // coalesce - colaesce a sparse tensor
-// --------------------------------------------------------------------------------------
+// dense - return dense tensor given sparse tensor
+// sparse - return sparse tensor given array, tensor, (array/tensor;dim), (array/tensor;mask)
+// ------------------------------------------------------------------------------------------
 static K getsparse(K x,bool i,const char* nm) {
  KTRY
   bool b=false; Tensor *t=xten(x);
@@ -913,6 +915,35 @@ KAPI coalesce(K x) {
    ((Kten*)xtag(x))->t=t->coalesce();
   return (K)0;
  KCATCH("coalesce");
+}
+
+KAPI dense(K x) {
+ KTRY
+  Tensor *t=xten(x);
+  TORCH_CHECK(t && t->is_sparse(), "dense: expecting sparse tensor, given ",kname(x));
+  return kten(t->to_dense());
+ KCATCH("dense");
+}
+
+KAPI sparse(K x) {
+ KTRY
+  J d; Tensor *t;
+  if((t=xten(x))) {
+   return kten(t->to_sparse());
+  } else if (x->n==2) {
+   t=xten(x,0);
+   if(xlong(x,1,d)) {
+    return kten((t ? *t : kput(x,0)).to_sparse(d));
+   } else {
+    Tensor *i=xten(x,1);
+    TORCH_CHECK(i, "sparse: expecting 2nd arg to be sparse dimension(long), or sparse tensor, given ",kname(x,1));
+    TORCH_CHECK(i->is_sparse(), "sparse: 2nd arg is not a sparse tensor, unable to use its indices");
+    return kten((t ? *t : kput(x,0)).sparse_mask(*i));
+   }
+  } else {
+   return kten(kput(x).to_sparse());
+  }
+ KCATCH("sparse");
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -1067,7 +1098,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::gradflag:   return t.requires_grad();
   case Attr::leaf:       return t.is_leaf();
   case Attr::pinned:     return t.is_sparse() ? false : t.is_pinned();
-  case Attr::sparse:     return t.is_sparse();
+  case Attr::sparseflag: return t.is_sparse();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1759,6 +1790,8 @@ void tensorfn(K x) {
  fn(x, "indices",      KFN(indices),       1);
  fn(x, "values",       KFN(values),        1);
  fn(x, "coalesce",     KFN(coalesce),      1);
+ fn(x, "dense",        KFN(dense),         1);
+ fn(x, "sparse",       KFN(sparse),        1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "permute",      KFN(permute),       1);
  fn(x, "stack",        KFN(stack),         1);

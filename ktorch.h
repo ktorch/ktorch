@@ -226,7 +226,7 @@ enum class Attr:char {
  bytes,  densedim, dim, elements,  itemsize, nnz, numel,      // long scalars
  offset, ptr,      ref, sparsedim, tcount,   weakref,
  device, dtype, gradfn, gradient, layout, memory, result,     // symbol
- coalesced, contiguous, gradflag, leaf, pinned, sparse,       // boolean
+ coalesced, contiguous, gradflag, leaf, pinned, sparseflag,   // boolean
  size, stride,                                                // long list
  data, storage                                                // other: list,dict,..
 };
@@ -1057,7 +1057,7 @@ typedef struct {
   std::make_tuple(cs("ref"),         Attr::ref),
   std::make_tuple(cs("result"),      Attr::result),
   std::make_tuple(cs("size"),        Attr::size),
-  std::make_tuple(cs("sparse"),      Attr::sparse),
+  std::make_tuple(cs("sparseflag"),  Attr::sparseflag),
   std::make_tuple(cs("sparsedim"),   Attr::sparsedim),
   std::make_tuple(cs("storage"),     Attr::storage),
   std::make_tuple(cs("stride"),      Attr::stride),

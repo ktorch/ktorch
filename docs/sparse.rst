@@ -75,6 +75,23 @@ The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimens
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :return: Given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the indices.
 
+::
+
+   q)t:tensor(2 4#0 0 0 1 0 0 3 0;`sparse`double)
+
+   q)tensor t
+   0 0 0 1
+   0 0 3 0
+
+   q)indices t
+   0 1
+   3 2
+
+   q)values t
+   1 3f
+
+   q)nnz t
+   2
 
 
 values
@@ -112,6 +129,9 @@ values
    q)values t
    0  1  2  3  4 
    10 11 12 13 14
+
+   q)nnz t
+   2            / 2 rows have non-zero values
 
 nnz
 ^^^
