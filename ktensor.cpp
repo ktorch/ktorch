@@ -894,6 +894,7 @@ KAPI isreal(K x) {return kreal(x, torch::isreal, "isreal");}
 // coalesce - colaesce a sparse tensor
 // dense - return dense tensor given sparse tensor
 // sparse - return sparse tensor given array, tensor, (array/tensor;dim), (array/tensor;mask)
+// sparseindex - return non-zero indices of input as matrix/tensor, allow sparse dimension
 // ------------------------------------------------------------------------------------------
 static K getsparse(K x,bool i,const char* nm) {
  KTRY
@@ -944,6 +945,20 @@ KAPI sparse(K x) {
    return kten(kput(x).to_sparse());
   }
  KCATCH("sparse");
+}
+
+KAPI sparseindex(K x) {
+ KTRY
+  int64_t d; Tensor *t;
+  if((t=xten(x))) {
+   return kten(t->nonzero().t());
+  } else if(x->n==2 && xint64(x,1,d)) {
+   t=xten(x,0);
+   return kresult(t,std::get<0>(torch::unique_consecutive((t ? *t : kput(x,0)).nonzero().index_select(1,torch::arange(d)),false,false,0)).t());
+  } else {
+   return kget(kput(x).nonzero().t());
+  }
+ KCATCH("sparseindex");
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -1792,6 +1807,7 @@ void tensorfn(K x) {
  fn(x, "coalesce",     KFN(coalesce),      1);
  fn(x, "dense",        KFN(dense),         1);
  fn(x, "sparse",       KFN(sparse),        1);
+ fn(x, "sparseindex",  KFN(sparseindex),   1);
  fn(x, "cat",          KFN(cat),           1);
  fn(x, "permute",      KFN(permute),       1);
  fn(x, "stack",        KFN(stack),         1);
