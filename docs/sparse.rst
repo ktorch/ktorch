@@ -298,9 +298,10 @@ densedim
 coalesce
 ^^^^^^^^
 
-PyTorch sparse tensor format permits uncoalesced sparse tensors, where there may be duplicate indices; in this case, the interpretation is that the value at that index is the sum of all duplicate value entries. 
+PyTorch sparse tensor format permits uncoalesced sparse tensors, where there may be duplicate indices; in this case, the interpretation is that the value at that index is the sum of all corresponding values. The tensor can maintain the duplicates -- most operations work identically on coalesced or uncoalesced sparse tensors. But if the duplicate indices need to be removed, the :func:`coalesce` will perform the operation, as well as sort the indices.
 
-.. function:: coalesced(ptr) -> null
+.. function:: coalesce(ptr) -> null
+
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor.
    :returns: coalesces the sparse tensor in place, creating a new tensor where the indices are unique and the values for duplicate indices are summed. Returns (null)
 
