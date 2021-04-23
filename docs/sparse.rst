@@ -95,14 +95,14 @@ There's also a separate :func:`sparse` function to create a sparse tensor from k
 
    q)b:sparse(x;1)   / 1 sparse dimension and 1 dense dimension
 
-   q)indices b       / indices of rows w'non-zero values
+   q)indices b       / rows with non-zero values
    1 3
 
    q)values b
    0 9 0
    3 0 0
 
-There's an additional form of the :func:`sparse` which is more in line with PyTorch's `tensor.sparse_mask method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.sparse_mask>`_.
+There's an additional form of the :func:`sparse` which is more in line with PyTorch's `tensor.sparse_mask(mask) method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.sparse_mask>`_.
 
 
 .. function:: sparse(input;sparse-tensor) -> ptr
@@ -137,6 +137,38 @@ There's an additional form of the :func:`sparse` which is more in line with PyTo
    q)values[t]~.[x;]'[flip indices s]
    1b
 
+sparseindex
+^^^^^^^^^^^
+This function derives the indices of a the non-zero values in the input array/tensor, with one row per sparse dimension and one column per non-zero value.
+
+.. function:: sparseindex(input) -> ptr
+.. function:: sparseindex(input;sparsedim) -> ptr
+
+   :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
+   :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
+   :return: if input is a k value, returns a k matrix of indices with as many rows as sparse dimensions; if input is a tensor, an :doc:`api-pointer <pointers>` to a new sparse tensor with the indices is returned.
+
+::
+
+   q)show x:./[5 3#0.0;(1 1;3 0);:;9 3.0]
+   0 0 0
+   0 9 0
+   0 0 0
+   3 0 0
+   0 0 0
+
+   q)sparseindex x
+   1 3
+   1 0
+
+   q)sparseindex(x;1)
+   1 3
+
+   q)t:tensor x
+   q)i:sparseindex(t;1)
+   q)tensor i
+   1 3
+
 indices
 ^^^^^^^
 The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimensional matrix: one row per sparse dimension and one column for each sparse value.
@@ -164,7 +196,6 @@ The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimens
 
    q)nnz t
    2
-
 
 values
 ^^^^^^
@@ -213,11 +244,17 @@ nnz
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :return: Given a ptr, returns long integer scalar with the count of non-zero values.
 
-sparsedim and densedim
-^^^^^^^^^^^^^^^^^^^^^^
+sparsedim
+^^^^^^^^^
 
-coalesce and coalesced
-^^^^^^^^^^^^^^^^^^^^^^
+densedim
+^^^^^^^^
+
+coalesce
+^^^^^^^^
+
+coalesced
+^^^^^^^^^
 
 
 
