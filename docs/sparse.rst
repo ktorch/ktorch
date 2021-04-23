@@ -298,39 +298,37 @@ densedim
 coalesce
 ^^^^^^^^
 
-PyTorch sparse tensor format permits uncoalesced sparse tensors, where there may be duplicate indices; in this case, the interpretation is that the value at that index is the sum of all corresponding values. The tensor can maintain the duplicates -- most operations work identically on coalesced or uncoalesced sparse tensors. But if the duplicate indices need to be removed, the :func:`coalesce` will perform the operation, as well as sort the indices.
+PyTorch sparse tensor format permits uncoalesced sparse tensors, where there may be duplicate indices; in this case, the interpretation is that the value at that index is the sum of all values with the same index.
+The tensor can maintain the duplicates -- most operations work identically on coalesced or uncoalesced sparse tensors. But if the duplicate indices need to be removed, the :func:`coalesce` function will perform the operation, as well as sort the indices.
 
 .. function:: coalesce(ptr) -> null
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor.
-   :returns: coalesces the sparse tensor in place, creating a new tensor where the indices are unique and the values for duplicate indices are summed. Returns (null)
+   :returns: coalesces the sparse tensor in place, creating a new tensor where the indices are unique and the values for duplicate indices are summed. Returns null, upon completion, the tensor pointer refers to a coalesced sparse tensor.
 
 ::
 
-   q)t:tensor(`sparse; 1 3#1 2 1; 9 5 -11; 10)
-
-   q)tensor t
-   0 -2 5 0 0 0 0 0 0 0
-
-   q)coalesced t
-   0b
+   q)t:tensor(`sparse; 1 3#2 1 1; 9 5 -11; 10)
 
    q)indices t
-   1 2 1
+   2 1 1
 
    q)values t
    9 5 -11
 
+   q)tensor t
+   0 -6 9 0 0 0 0 0 0 0
+
    q)coalesce t
 
-   q)values t
-   -2 5
+   q)tensor t
+   0 -6 9 0 0 0 0 0 0 0
 
    q)indices t
    1 2
 
-   q)coalesced t
-   1b
+   q)values t
+   -6 9
 
 coalesced
 ^^^^^^^^^
