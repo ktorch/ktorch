@@ -928,19 +928,19 @@ KAPI dense(K x) {
 
 KAPI sparse(K x) {
  KTRY
-  J d; Tensor *t;
-  if((t=xten(x))) {
+  int64_t d; Tensor *i=nullptr,*t=xten(x);
+  if(t) {
    return kten(t->to_sparse());
-  } else if (x->n==2) {
+  } else if (!x->t && x->n==2 && (xint64(x,1,d) || ((i=xten(x,1))))) {
    t=xten(x,0);
-   if(xlong(x,1,d)) {
-    return kten((t ? *t : kput(x,0)).to_sparse(d));
-   } else {
-    Tensor *i=xten(x,1);
-    TORCH_CHECK(i, "sparse: expecting 2nd arg to be sparse dimension(long), or sparse tensor, given ",kname(x,1));
+   if(i) {
     TORCH_CHECK(i->is_sparse(), "sparse: 2nd arg is not a sparse tensor, unable to use its indices");
     return kten((t ? *t : kput(x,0)).sparse_mask(*i));
+   } else {
+    return kten((t ? *t : kput(x,0)).to_sparse(d));
    }
+  } else if(xmixed(x,2)) {
+    TORCH_ERROR("sparse: unrecognized arg(s), expecting input, (input;sparsedim) or (input;sparse tensor)");
   } else {
    return kten(kput(x).to_sparse());
   }

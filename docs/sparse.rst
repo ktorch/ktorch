@@ -62,17 +62,19 @@ The :ref:`sparse <tensor-sparse>` creaton mode of the same :func:`tensor` functi
    12 -99 4f
 
 
-sparse
-******
+Sparse functions
+****************
 
-There's also a separate :func:`sparse` function to create a sparse tensor from k arrays or existing dense tensors, with an option of specifying the number of sparse dimensions.
+sparse
+^^^^^^
+There's also a separate :func:`sparse` function to create a sparse tensor from k arrays or existing dense tensors, with an option of specifying the number of sparse dimensions. This is somewhat the same as PyTorch's `tensor.to_sparse() method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.to_sparse>`_.
 
 .. function:: sparse(input) -> ptr
 .. function:: sparse(input;sparsedim) -> ptr
 
    :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
    :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
-   :return: An :doc:`api-pointer <pointers>` to the allocated sparse tensor
+   :return: An :doc:`api-pointer <pointers>` to a new sparse tensor
 
 ::
 
@@ -100,6 +102,40 @@ There's also a separate :func:`sparse` function to create a sparse tensor from k
    0 9 0
    3 0 0
 
+There's an additional form of the :func:`sparse` which is more in line with PyTorch's `tensor.sparse_mask method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.sparse_mask>`_.
+
+
+.. function:: sparse(input;sparse-tensor) -> ptr
+
+   :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
+   :param ptr sparse-tensor: an :doc:`api-pointer <pointers>` to an existing sparse tensor
+   :return: an :doc:`api-pointer <pointers>` to a new sparse tensor created by using values in given input at indices supplied by the sparse tensor argument.
+
+::
+
+   q)s:sparse(0 9.0 0; 0 0 -1.0; 5.5 0 0)
+   q)values s
+   9 -1 5.5
+   q)indices s       /indices will be used to create new tensor
+   0 1 2
+   1 2 0
+
+   q)show x:3 3#til 9
+   0 1 2
+   3 4 5
+   6 7 8
+
+   q)t:sparse(x;s)
+
+   q)indices t       /same indices as given in sparse tensor
+   0 1 2
+   1 2 0
+
+   q)values t        /but values from dense input
+   1 5 6
+
+   q)values[t]~.[x;]'[flip indices s]
+   1b
 
 indices
 ^^^^^^^
