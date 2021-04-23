@@ -146,7 +146,7 @@ This function derives the indices of a the non-zero values in the input array/te
 
    :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
    :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
-   :return: if input is a k value, returns a k matrix of indices with as many rows as sparse dimensions; if input is a tensor, an :doc:`api-pointer <pointers>` to a new sparse tensor with the indices is returned.
+   :return: if input is a k value, returns a k matrix of indices with as many rows as sparse dimensions, one column per non-zero value; if input is a tensor,  returns an :doc:`api-pointer <pointers>` to a tensor of indices.
 
 ::
 
@@ -165,7 +165,7 @@ This function derives the indices of a the non-zero values in the input array/te
    1 3
 
    q)t:tensor x
-   q)i:sparseindex(t;1)
+   q)i:sparseindex(t;1) /input is tensor, so tensor is output
    q)tensor i
    1 3
 
@@ -177,7 +177,7 @@ The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimens
 .. function:: indices(enlisted-ptr) -> ptr
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
-   :return: Given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the indices.
+   :return: given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the indices.
 
 ::
 
@@ -204,7 +204,7 @@ values
 .. function:: values(enlisted-ptr) -> ptr
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
-   :return: Given a ptr, returns a k array containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the values.
+   :return: given a ptr, returns a k array containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the values.
 
 ::
 
@@ -236,26 +236,107 @@ values
    q)nnz t
    2            / 2 rows have non-zero values
 
+
+dense
+^^^^^
+
+The k api function :func:`dense` is similar to the Pytorch `tensor.to_dense() method <https://pytorch.org/docs/stable/sparse.html?highlight=dense#torch.Tensor.to_dense>`_.
+
+.. function:: dense(ptr) -> sparse-ptr
+
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
+   :returns an `api-pointer <pointers>` to a new dense tensor constructed from the sparse input.
+
 nnz
 ^^^
 
 .. function:: nnz(ptr) -> n
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
-   :return: Given a ptr, returns long integer scalar with the count of non-zero values.
+   :return: returns long integer scalar with the number of non-zero values; this count is over the sparse dimensions.
+
+::
+
+   q)show x:./[4 3#0.0;(1 1;1 2;2 2);:;9 3 2.0]
+   0 0 0
+   0 9 3
+   0 0 2
+   0 0 0
+
+   q)nnz t:sparse x
+   3
+
+   q)values t
+   9 3 2f
+
+   q)use[t]sparse(x;1)  / 1 sparse dim, 1 dense dim
+   q)nnz t              / count across sparse dim
+   2                    / 2 rows
+
+   q)values t
+   0 9 3
+   0 0 2
+
 
 sparsedim
 ^^^^^^^^^
 
+.. function:: sparsedim(ptr) -> dim
+
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
+   :return: returns long integer scalar with the number of sparse dimensions (zero for dense tensors).
+
 densedim
 ^^^^^^^^
+
+.. function:: densedim(ptr) -> dim
+
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
+   :return: returns long integer scalar with the number of dense dimensions.
+
 
 coalesce
 ^^^^^^^^
 
+PyTorch sparse tensor format permits uncoalesced sparse tensors, where there may be duplicate indices; in this case, the interpretation is that the value at that index is the sum of all duplicate value entries. 
+
+.. function:: coalesced(ptr) -> null
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor.
+   :returns: coalesces the sparse tensor in place, creating a new tensor where the indices are unique and the values for duplicate indices are summed. Returns (null)
+
+::
+
+   q)t:tensor(`sparse; 1 3#1 2 1; 9 5 -11; 10)
+
+   q)tensor t
+   0 -2 5 0 0 0 0 0 0 0
+
+   q)coalesced t
+   0b
+
+   q)indices t
+   1 2 1
+
+   q)values t
+   9 5 -11
+
+   q)coalesce t
+
+   q)values t
+   -2 5
+
+   q)indices t
+   1 2
+
+   q)coalesced t
+   1b
+
 coalesced
 ^^^^^^^^^
 
+.. function:: coalesced(ptr) -> bool
 
+   :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
+   :return: returns true if dense tensor or if the sparse tensor was created from dense input, else false for those sparse tensors created with indices and values and for which :func:`coalesce` has not been run.
 
 
