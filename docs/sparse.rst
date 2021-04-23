@@ -41,7 +41,8 @@ Creating a tensor directly from a k value requires adding the ```sparse`` option
 
 Sparse creation mode
 ********************
-The :ref:`sparse <tensor-sparse>` creaton mode allows the user to create a sparse tensor from the k session by specifying indices and values.
+
+The :ref:`sparse <tensor-sparse>` creaton mode of the same :func:`tensor` function allows the user to create a sparse tensor from the k session by specifying indices and values.
 
 ::
 
@@ -61,8 +62,43 @@ The :ref:`sparse <tensor-sparse>` creaton mode allows the user to create a spars
    12 -99 4f
 
 
-Sparse functions
-****************
+sparse
+******
+
+There's also a separate :func:`sparse` function to create a sparse tensor from k arrays or existing dense tensors, with an option of specifying the number of sparse dimensions.
+
+.. function:: sparse(input) -> ptr
+.. function:: sparse(input;sparsedim) -> ptr
+
+   :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
+   :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
+   :return: An :doc:`api-pointer <pointers>` to the allocated sparse tensor
+
+::
+
+   q)show x:./[5 3#0.0;(1 1;3 0);:;9 3.0]
+   0 0 0
+   0 9 0
+   0 0 0
+   3 0 0
+   0 0 0
+
+   q)a:sparse x
+
+   q)indices a
+   1 3
+   1 0
+   q)values a
+   9 3f
+
+   q)b:sparse(x;1)   / 1 sparse dimension and 1 dense dimension
+
+   q)indices b       / indices of rows w'non-zero values
+   1 3
+
+   q)values b
+   0 9 0
+   3 0 0
 
 
 indices
