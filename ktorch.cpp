@@ -1307,7 +1307,7 @@ static K objcount(K x,Attr a) {
  KCATCH("object counts");
 }
 
-KAPI    bytes(K x) {return objcount(x, Attr::bytes);}     // bytes allocated
+KAPI Objbytes(K x) {return objcount(x, Attr::bytes);}     // bytes allocated
 KAPI elements(K x) {return objcount(x, Attr::elements);}  // number of elements (bytes/element size)
 KAPI   tcount(K x) {return objcount(x, Attr::tcount);}    // number of tensors in object
 
@@ -1751,6 +1751,8 @@ KAPI   densedim(K x) {return attr(x, -KJ, Attr::densedim);}
 KAPI  sparsedim(K x) {return attr(x, -KJ, Attr::sparsedim);}
 KAPI        nnz(K x) {return attr(x, -KJ, Attr::nnz);}
 KAPI      numel(K x) {return attr(x, -KJ, Attr::numel);}
+KAPI   itemsize(K x) {return attr(x, -KJ, Attr::itemsize);}
+KAPI      bytes(K x) {return attr(x, -KJ, Attr::bytes);}
 KAPI     offset(K x) {return attr(x, -KJ, Attr::offset);}
 KAPI        ref(K x) {return attr(x, -KJ, Attr::ref);}
 KAPI    weakref(K x) {return attr(x, -KJ, Attr::weakref);}
@@ -1921,7 +1923,7 @@ KAPI fns(K x){
  fn(x, "free",        KFN(Kfree),       1);
  fn(x, "use",         KFN(use),         2);
  fn(x, "obj",         KFN(kobj),        1);
- fn(x, "bytes",       KFN(bytes),       1);
+ fn(x, "objbytes",    KFN(Objbytes),    1);
  fn(x, "elements",    KFN(elements),    1);
  fn(x, "tcount",      KFN(tcount),      1);
  fn(x, "to",          KFN(To),          1);
@@ -1943,6 +1945,8 @@ KAPI fns(K x){
  fn(x, "sparsedim",   KFN(sparsedim),   1);
  fn(x, "nnz",         KFN(nnz),         1);
  fn(x, "numel",       KFN(numel),       1);
+ fn(x, "itemsize",    KFN(itemsize),    1);
+ fn(x, "bytes",       KFN(bytes),       1);
  fn(x, "offset",      KFN(offset),      1);
  fn(x, "ptr",         KFN(ptr),         1);
  fn(x, "ref",         KFN(ref),         1);

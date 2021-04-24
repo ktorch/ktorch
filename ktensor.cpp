@@ -1081,6 +1081,7 @@ J tensorlong(const Tensor& t,Attr a) {
   case Attr::dim:       return t.dim();
   case Attr::itemsize:  return t.is_sparse() ? tensorlong(t._values(),a) : t.dtype().itemsize();
   case Attr::numel:     return t.is_sparse() ? t._values().numel()       : t.numel();
+  case Attr::bytes:     return objbytes(t);
   case Attr::offset:    return t.is_sparse() ? nj : t.storage_offset();
   case Attr::ref:       return t.use_count();
   case Attr::weakref:   return t.weak_use_count();
