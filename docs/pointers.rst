@@ -18,7 +18,7 @@ The k interface returns a pointer to allocated values (tensor, module, optimizer
 
 The api maintains a map of pointers that can be viewed via ``obj`` and released via ``free``.
 
-.. function:: free []
+.. function:: free ()
 .. function:: free ptr
 
    | Release allocated object stored in given pointer, or all allocated objects if empty arg ``[]``.
@@ -42,3 +42,11 @@ The api maintains a map of pointers that can be viewed via ``obj`` and released 
    'stale pointer
    [0]  tensor t
        ^
+
+ref
+^^^
+
+.. addref_:
+
+addref
+^^^^^^
