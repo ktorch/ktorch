@@ -21,9 +21,10 @@ Creating a vector
 
 .. function:: vector(input1;input2;..) -> ptr
 
-   | Given k arrays and/or :doc:`tensor pointers <pointers>`, creates and returns a pointer to a newly created vector.
+   | Given k arrays and/or :doc:`tensor pointers <pointers>`, creates and returns a pointer to a newly created vector of tensors.
 
 .. note:
+
    When tensor pointers are included in the arguments to :func:`vector`, the tensors are freed and the newly created vector manages their memory from that point on.
 
 ::
