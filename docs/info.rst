@@ -45,6 +45,7 @@ Tensor options
 
 Tensor options are defined by symbols in the k interface.
 The functions below take a tensor, vector or dictionary pointer and return symbol(s).
+Some of the functions also accept a null or empty arg, and return a system default data type, CUDA device, etc.
 
 options
 ^^^^^^^
@@ -54,6 +55,31 @@ options
 
     | For empty or null arg, returns a dictionary of default attributes for tensor creation. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns a dictionary or list of dictionaries of the attribute values for the tensor(s).
 
+::
+
+   q)options()             /show default options
+   device  | cpu
+   dtype   | float
+   layout  | strided
+   gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
+
+   q)options t:tensor()    /verify empty tensor arg uses defaults
+   device  | cpu
+   dtype   | float
+   layout  | strided
+   gradient| nograd
+   pin     | unpinned
+   memory  | contiguous
+
+   q)options d:dict `a`b`c!("char"; tensor(010b;`cuda`sparse); tensor(2 3 4h;`cpu`pinned))
+    | device dtype layout  gradient pin      memory    
+   -| -------------------------------------------------
+   a| cpu    char  strided nograd   unpinned contiguous
+   b| cuda:0 bool  sparse  nograd   unpinned contiguous
+   c| cpu    short strided nograd   pinned   contiguous
+
 device
 ^^^^^^
 
@@ -62,7 +88,25 @@ device
 dtype
 ^^^^^
 
+.. function:: dtype() -> sym
 .. function:: dtype(ptr) -> sym
+
+   | For a null or empty arg, returns the default data type, e.g. ```float``. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the data type(s).
+
+::
+
+   q)dtype[]
+   `float
+
+   q)dtype e:tensor()
+   `float
+
+   q)dtype f:tensor 1 2 3.0
+   `double
+
+   q)dtype v:vector(e;f)
+   `float`double
+
 
 layout
 ^^^^^^

@@ -37,6 +37,8 @@ All but `half` have a direct mapping to a k data type: `half` values are mapped 
    `float  0 1e      
    `double 0 1f      
 
+.. _dtype:
+
 dtype function
 **************
 
