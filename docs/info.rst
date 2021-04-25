@@ -49,10 +49,10 @@ The functions below take a tensor, vector or dictionary pointer and return symbo
 options
 ^^^^^^^
 
+.. function:: options() -> dict
 .. function:: options(ptr) -> dict
 
-    :param tensor ptr: an `api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
-    :return: dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
+    | For empty or null arg, returns a dictionary of default attributes for tensor creation. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns a dictionary or list of dictionaries of the attribute values for the tensor(s).
 
 device
 ^^^^^^
