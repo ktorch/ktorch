@@ -44,17 +44,15 @@ The q interface function: ``dtype`` can be used to query or set the default data
 
 .. function:: dtype() -> sym
 
-   :return: given empty or null arg, returns the default data type.
+   | Given an empty or null arg, returns the default data type as a symbol.
 
 .. function:: dtype(sym) -> null
 
-   :param sym: the default data type for the k session, defined initially as ```float``, usually a floating point data type.
-   :return: (null)
+   | Given a symbol, sets default data type for the k session, defined initially as ```float``. This is usually a floating point data type. Returns null.
 
 .. function:: dtype(ptr) -> sym
 
-   :param tensor ptr: an `api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
-   :return: sym(s) representing the data type(s) of the allocated tensor, vector or dictionary of tensors.
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) representing the data type(s) of the allocated tensor, vector or dictionary of tensors.
 
 ::
 
