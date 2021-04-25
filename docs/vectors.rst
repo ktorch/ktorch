@@ -38,7 +38,7 @@ Creating a vector
    4 5
    6 7 8f
 
-   q)tensor a      /new vector manages the tensor's memory
+   q)tensor a      /new vector manages the tensor memory
    'stale pointer
      [0]  tensor a
           ^
@@ -60,10 +60,62 @@ Retrieving vector values
 .. function:: vector(ptr;ind) -> val
 .. function:: vector(ptr;ind;val) -> (null)
 
-   :param ptr:
-   :param long ind:
-   :param ptr/array val:
+   :param vector ptr: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
+   :param long ind: long index or set of indices.
+   :return: array(s) for each index given.
+
+::
+
+   q)v:vector(1 2;3 4 5i;6 7e)
+
+   q)dtype v
+   `long`int`float
+
+   q)vector(v;1)
+   3 4 5i
+
+   q)vector(v;1 0)
+   3 4 5i
+   1 2
+
+
+Setting vector values
+*********************
+
+.. function:: vector(ptr;ind;val) -> (null)
+
+   :param vector ptr: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
+   :param long ind: a long index or set of indices into the vector of tensors.
+   :param ptr/array val: a corresponding value or set of values/tensors to assign to the vector replaceing existing values.
    :return: (null)
+
+::
+
+   q)v:vector(1 2;3 4 5i;6 7e)
+
+   q)vector v
+   1 2
+   3 4 5i
+   6 7e
+
+   q)vector(v; 1; "new tensor")
+   q)vector(v; 2 0; (011b; 1 2 3h))
+
+   q)vector v
+   1 2 3h
+   "new tensor"
+   011b
+
+   q)t:tensor 95 96 97.0
+   q)vector(v;1;t) /v[1] replaced with tensor t
+
+   q)vector(v;1)
+   95 96 97f
+
+   q)tensor t  /tensor memory managed by vector
+   'stale pointer
+     [0]  tensor t
+          ^
 
 Retrieving tensor pointers
 **************************
