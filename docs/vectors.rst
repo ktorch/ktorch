@@ -23,7 +23,7 @@ Creating a vector
 
    | Given k arrays and/or :doc:`tensor pointers <pointers>`, creates and returns a pointer to a newly created vector of tensors.
 
-.. note:
+.. note::
 
    When tensor pointers are included in the arguments to :func:`vector`, the tensors are freed and the newly created vector manages their memory from that point on.
 
@@ -58,7 +58,6 @@ Retrieving vector values
 
 .. function:: vector(ptr) -> val
 .. function:: vector(ptr;ind) -> val
-.. function:: vector(ptr;ind;val) -> (null)
 
    :param vector ptr: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
    :param long ind: long index or set of indices.
@@ -86,7 +85,7 @@ Setting vector values
 
    :param vector ptr: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
    :param long ind: a long index or set of indices into the vector of tensors.
-   :param ptr/array val: a corresponding value or set of values/tensors to assign to the vector replaceing existing values.
+   :param ptr/array val: a corresponding value or set of values/tensors to assign to the vector replacing existing values.
    :return: (null)
 
 ::
