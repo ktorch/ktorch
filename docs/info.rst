@@ -85,13 +85,15 @@ device
 
 .. function:: device(ptr) -> sym
 
+   |Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :ref:`section on devices types <device>` for more on querying for a capable CUDA device.
+
 dtype
 ^^^^^
 
 .. function:: dtype() -> sym
 .. function:: dtype(ptr) -> sym
 
-   | For a null or empty arg, returns the default data type, e.g. ```float``. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the data type(s).
+   | For a null or empty arg, returns the default data type, e.g. ```float``. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the data type(s). See also the :ref:`section on data types <dtype>` for more on setting default data type.
 
 ::
 

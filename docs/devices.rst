@@ -18,7 +18,9 @@ From a k session, the following functions deal with CPU and CUDA devices:
 - ``to`` - move previously allocated object to a different device.
 
 
-.. index:: cudadevice
+.. _dtype:
+
+.. index:: device
 
 Device
 ^^^^^^
