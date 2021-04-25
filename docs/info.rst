@@ -83,9 +83,22 @@ options
 device
 ^^^^^^
 
+.. function:: device() -> sym
 .. function:: device(ptr) -> sym
 
-   |Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :ref:`section on devices types <device>` for more on querying for a capable CUDA device.
+   | For a null or empty arg, returns default CUDA device if any GPU's available, else ```cpu``.  Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :ref:`section on devices types <device>` for more on querying for a CUDA device.
+
+   q)device() /on machine with CUDA device(s)
+   `cuda
+
+   q)device t:tensor()  /use cpu if no device specified
+   `cpu
+
+   q)device d:dict`a`b`c!( tensor(1 2 3;`cuda); tensor(4 5;`cuda:1); 6 7 8.0)
+   a| cuda:0
+   b| cuda:1
+   c| cpu
+
 
 dtype
 ^^^^^
