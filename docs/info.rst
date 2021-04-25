@@ -49,6 +49,11 @@ The functions below take a tensor, vector or dictionary pointer and return symbo
 options
 ^^^^^^^
 
+.. function:: options(ptr) -> dict
+
+    :param tensor ptr: an `api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
+    :return: dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
+
 device
 ^^^^^^
 
@@ -92,7 +97,7 @@ memory
 gradfn
 ^^^^^^
 
-The :func:`gradfn` is not strictly an option that is set, but it is the result of a chain of calculations performed on a set of tensors where any input requires gradients.
+The :func:`gradfn` is not an option that is set directly, but it is the result of a chain of calculations performed on a set of tensors where any input requires gradients. The result is a symbol of the function used for back propagation, with a version number, the count of any in-place operations.
 
 .. function:: gradfn(ptr) -> sym
 
