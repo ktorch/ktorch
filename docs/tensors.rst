@@ -27,10 +27,10 @@ In the k interface, these attributes are represented as symbols:
 
 - **device:** ```cpu`` or ```cuda``, which accepts an optional device index, e.g. ```cuda:0``  (:ref:`see: devices <devices>`)
 - **dtype:** one of ```bool`byte`char`short`int`long`half`float`double`cfloat`cdouble`` (:ref:`see: types <types>`)
-- **layout:** ```strided`` or ```sparse`` (`see: Pytorch layout <https://pytorch.org/docs/stable/tensor_attributes.html#torch-layout>`_)
+- **layout:** ```strided`` or ```sparse`` (`see: PyTorch layout <https://pytorch.org/docs/stable/tensor_attributes.html#torch-layout>`_)
 - **grad:** either ```grad``, if gradients need to be computed for the tensor, or ```nograd``, the default setting.
 - **pin:** either ```pinned`` or ```unpinned`` (`see: page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html#use-pinned-memory-buffers>`_)
-- **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d`` (new feature, `see: channels last format <https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html>`_)
+- **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d`` (`see: channels last format <https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html>`_)
 
 These symbols can be specified in any order to set the properties of a tensor, e.g. ```int`` or ```cuda`float`grad``.
 The :func:`options` function will display the defaults usually in effect if no argument given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.

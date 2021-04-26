@@ -218,12 +218,22 @@ gradflag
 
 .. function:: gradflag(ptr) -> bool
 
+   | Returns true/false if the requires gradient property was turned on/off via symbol: ```grad``/```nograd``.
+
+::
+
+   q)d:dict `a`b!(tensor(1 2 3.0;`grad); 4 5 6.0)
+
+   q)gradflag d
+   a| 1
+   b| 0
+
 leaf
 ^^^^
 
 .. function:: leaf(ptr) -> bool
 
-   | All tensors that don't require gradients are leaf tensors by convention.  For tensors requiring grad, they will be leaf tensors if they were created by the user instead of as the result of an operation.  Only leaf tensors will have their gradients populated during a call to :func:`backward`.
+   | All tensors that don't require gradients are leaf tensors by convention.  For tensors requiring gradients, they will be leaf tensors if they were created by the user instead of as the result of an operation.  Only leaf tensors will have their gradients populated during a call to :func:`backward`.
 
 ::
 
