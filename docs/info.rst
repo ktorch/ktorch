@@ -185,6 +185,34 @@ coalesced
 
 .. function:: coalesced(ptr) -> bool
 
+   | Returns true if sparse tensor is known to have no duplicate entries. Dense tensors have coalesced set true by definition. See :ref:`sparse tensors <coalesce>` for more detail.
+
+::
+
+   q)s:tensor(`sparse; 1 3#4 0 0; 9 10 -20; 10)
+   q)tensor s
+   -10 0 0 0 9 0 0 0 0 0
+
+   q)indices s
+   4 0 0
+
+   q)values s
+   9 10 -20
+
+   q)coalesced s
+   0b
+
+   q)coalesce s
+   q)indices s   /indices are now sorted and unique
+   0 4
+
+   q)values s    /values summed for same index
+   -10 9
+
+   q)coalesced s
+   1b
+
+
 gradflag
 ^^^^^^^^
 
@@ -194,6 +222,26 @@ leaf
 ^^^^
 
 .. function:: leaf(ptr) -> bool
+
+   | All tensors that don't require gradients are leaf tensors by convention.  For tensors requiring grad, they will be leaf tensors if they were created by the user instead of as the result of an operation.  Only leaf tensors will have their gradients populated during a call to :func:`backward`.
+
+::
+
+   q)z:mean y:mul(x;x:tensor(1 2 3.0; `grad))
+   q)`x`y`z!leaf each(x;y;z)
+   x| 1
+   y| 0
+   z| 0
+
+   q)`x`y`z!gradfn each(x;y;z)
+   x| 
+   y| MulBackward0
+   z| MeanBackward0
+
+   q)backward z
+   q)grad x
+   0.6666667 1.333333 2
+
 
 pinned
 ^^^^^^
@@ -209,6 +257,13 @@ pinned
    1b
 
    q)to(t;1b;`cuda) /set async flag true when copying to gpu
+
+   q)device t
+   `cuda:0
+
+   q)pinned t /only cpu memory can be pinned
+   0b
+
 
 sparseflag
 ^^^^^^^^^^

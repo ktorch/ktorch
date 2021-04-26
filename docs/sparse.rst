@@ -294,6 +294,7 @@ densedim
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
    :return: returns long integer scalar with the number of dense dimensions.
 
+.. _coalesce:
 
 coalesce
 ^^^^^^^^
