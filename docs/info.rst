@@ -88,6 +88,8 @@ device
 
    | For a null or empty arg, returns default CUDA device if any GPU's available, else ```cpu``.  Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :ref:`section on devices types <device>` for more on querying for a CUDA device.
 
+::
+
    q)device() /on machine with CUDA device(s)
    `cuda
 
@@ -176,21 +178,45 @@ Tensor flags
 contiguous
 ^^^^^^^^^^
 
+.. function:: contiguous(ptr) -> bool
+
 coalesced
 ^^^^^^^^^
+
+.. function:: coalesced(ptr) -> bool
 
 gradflag
 ^^^^^^^^
 
+.. function:: gradflag(ptr) -> bool
+
 leaf
 ^^^^
+
+.. function:: leaf(ptr) -> bool
 
 pinned
 ^^^^^^
 
+.. function:: pinned(ptr) -> bool
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true if for tensor(s) with :ref:`page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html?highlight=pinned%20memory#use-pinned-memory-buffers>`_. Allows for quicker cpu-to-gpu transfers.
+
+::
+
+   q)t:tensor(1 2 3e;`pinned)
+   q)pinned t
+   1b
+
+   q)to(t;1b;`cuda) /set async flag true when copying to gpu
+
 sparseflag
 ^^^^^^^^^^
 
+.. function:: sparseflag(ptr) -> bool
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true if for sparse tensor(s). See also the :ref:`section on sparse tensors <sparse>` for more detail.
+   
 
 Utilities
 *********

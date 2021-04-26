@@ -25,7 +25,7 @@ Creating a vector
 
 .. note::
 
-   When tensor pointers are included in the arguments to :func:`vector`, the tensors are freed and the newly created vector manages their memory from that point on.
+   When tensor pointers are included in the arguments to :func:`vector`, the tensor's memory is managed by the vector and the previous handle to the tensor is no longer valid without a reference increment (:ref:`see addref <addref>`).
 
 ::
 
