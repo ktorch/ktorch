@@ -29,7 +29,7 @@ In the k interface, these attributes are represented as symbols:
 - **dtype:** one of ```bool`byte`char`short`int`long`half`float`double`cfloat`cdouble`` (:ref:`see: types <types>`)
 - **layout:** ```strided`` or ```sparse``
 - **grad:** either ```grad`` or ```nograd``
-- **pin:** either ```pinned`` or ```unpinned``
+- **pin:** either ```pinned`` or ```unpinned`` (`see page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html?highlight=pinned%20memory>`_)
 - **memory:** either ```preserve``, ```contiguous``, ```channel2d`` or ```channel3d``
 
 These symbols can be specified in any order to set the properties of a tensor, e.g. ```int`` or ```cuda`float`grad``.

@@ -200,7 +200,7 @@ pinned
 
 .. function:: pinned(ptr) -> bool
 
-   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true if for tensor(s) with :ref:`page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html?highlight=pinned%20memory#use-pinned-memory-buffers>`_. Allows for quicker cpu-to-gpu transfers.
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true if for tensor(s) with `page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html?highlight=pinned%20memory>`_. Allows for quicker cpu-to-gpu transfers.
 
 ::
 
