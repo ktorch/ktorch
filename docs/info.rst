@@ -177,8 +177,19 @@ Tensor flags
 
 contiguous
 ^^^^^^^^^^
+Up until version 1.5, contiguous meant the tensor is contiguous in memory in C order. Then, with the introduction of the new `memory format <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=memory%20format#torch-memory-format>`_ attribute, the definition of contiguous became more complicated and is now defined as *contiguous in memory in the order specified by memory format*.
+More notes on the new memory format `here <https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html>`_.
 
 .. function:: contiguous(ptr) -> bool
+
+   | Returns true if the tensor is contiguous in memory in C order.
+
+.. function:: contiguous(ptr;memory-format) -> bool
+
+   :param ptr:
+   :param sym memory-format:
+   :return: true if tensor(s) contiguous in memory in the order specified by the supplied memory format.
+
 
 coalesced
 ^^^^^^^^^
@@ -218,7 +229,7 @@ gradflag
 
 .. function:: gradflag(ptr) -> bool
 
-   | Returns true/false if the requires gradient property was turned on/off via symbol: ```grad``/```nograd``.
+   | Returns true/false if the tensor's requires gradient property was turned on/off via symbol: ```grad``/```nograd``.
 
 ::
 
