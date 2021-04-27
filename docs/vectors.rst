@@ -19,7 +19,7 @@ Vectors are created, retrieved and modified using the same :func:`vector` interf
 Creating a vector
 *****************
 
-.. function:: vector(input1;input2;..) -> ptr
+.. function:: vector(input1;input2;..) -> vector pointer
 
    | Given k arrays and/or :doc:`tensor pointers <pointers>`, creates and returns a pointer to a newly created vector of tensors.
 
@@ -119,5 +119,37 @@ Setting vector values
 Retrieving tensor pointers
 **************************
 
-.. function:: tensor(vec) -> ptrs
-.. function:: tensor(vec;ind) -> ptr(s)
+To retrieve individual tensor pointer(s) from a vector, the same :func:`tensor` function can extract pointers from a given vector and optional indices.
+
+.. function:: tensor(vec) -> tensor pointers
+.. function:: tensor(vec;ind) -> tensor pointer(s)
+
+   :param vector-pointer vec: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
+   :param long ind: an optional long index or list of indices into the vector
+   :return: return tensor pointer(s) for each tensor in the vector or corresponding to supplied index or list of indices
+
+::
+
+   q)v:vector(1 2 3.0; 4 5i; 6 7 8e)
+   q)t:tensor(v;1)
+
+   q)tensor t
+   4 5i
+
+   q)r:tensor(v;1 2)
+
+   q)r       / list of pointers
+   56554656
+   56554448
+
+   q)tensor each r
+   4 5i
+   6 7 8e
+
+   q)dtpe each r
+'dtpe
+  [0]  dtpe each r
+       ^
+q)dtype each r
+`int`float
+
