@@ -7,6 +7,21 @@ Tensor size
 size
 ^^^^
 
+.. function:: size(ptr) -> long list(s)
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the sizes at each dimension of the tensor(s).
+
+::
+
+   q)a:tensor 3 4#5
+   q)size a
+   3 4
+
+   q)d:dict `a`b!(a;3 4 5#0.0)
+   q)size d
+   a| 3 4
+   b| 3 4 5
+
 stride
 ^^^^^^
 
