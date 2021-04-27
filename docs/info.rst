@@ -158,8 +158,8 @@ options
 device
 ^^^^^^
 
-.. function:: device() -> sym
-.. function:: device(ptr) -> sym
+.. function:: device() -> sym(s)
+.. function:: device(ptr) -> sym(s)
 
    | For a null or empty arg, returns default CUDA device if any GPU's available, else ```cpu``.  Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :ref:`section on devices types <device>` for more on querying for a CUDA device.
 
@@ -180,8 +180,8 @@ device
 dtype
 ^^^^^
 
-.. function:: dtype() -> sym
-.. function:: dtype(ptr) -> sym
+.. function:: dtype() -> sym(s)
+.. function:: dtype(ptr) -> sym(s)
 
    | For a null or empty arg, returns the default data type, e.g. ```float``. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the data type(s). See also the :ref:`section on data types <dtype>` for more on setting default data type.
 
@@ -203,7 +203,7 @@ dtype
 layout
 ^^^^^^
 
-.. function:: layout(ptr) -> sym
+.. function:: layout(ptr) -> sym(s)
 
 ::
 
@@ -214,7 +214,7 @@ layout
 gradient
 ^^^^^^^^
 
-.. function:: gradient(ptr) -> sym
+.. function:: gradient(ptr) -> sym(s)
 
 ::
 
@@ -228,14 +228,14 @@ gradient
 memory
 ^^^^^^
 
-.. function:: memory(ptr) -> sym
+.. function:: memory(ptr) -> sym(s)
 
 gradfn
 ^^^^^^
 
 The :func:`gradfn` is not an option that is set directly, but it is the result of a chain of calculations performed on a set of tensors where any input requires gradients. The result is a symbol of the function used for back propagation, with a version number, the count of any in-place operations.
 
-.. function:: gradfn(ptr) -> sym
+.. function:: gradfn(ptr) -> sym(s)
 
 ::
 
@@ -255,11 +255,11 @@ contiguous
 Up until version PyTorch version 1.5, contiguous meant the tensor is contiguous in memory in C order. Then, with the introduction of the new `memory format <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=memory%20format#torch-memory-format>`_ attribute, the definition of contiguous became more complicated and is now defined as *contiguous in memory in the order specified by memory format*.
 More notes on the new memory format `here <https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html>`_.
 
-.. function:: contiguous(ptr) -> bool
+.. function:: contiguous(ptr) -> bool(s)
 
    | Returns true if the tensor is contiguous in memory in C order.
 
-.. function:: contiguous(ptr;memory-format) -> bool
+.. function:: contiguous(ptr;memory-format) -> bool(s)
 
    :param api-pointer ptr: an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
    :param sym memory-format: a symbol indicating memory format, e.g. `contiguous or `channel2d
@@ -269,7 +269,7 @@ More notes on the new memory format `here <https://pytorch.org/tutorials/interme
 coalesced
 ^^^^^^^^^
 
-.. function:: coalesced(ptr) -> bool
+.. function:: coalesced(ptr) -> bool(s)
 
    | Returns true if sparse tensor is known to have no duplicate entries. Dense tensors have coalesced set true by definition. See :ref:`sparse tensors <coalesce>` for more detail.
 
@@ -302,7 +302,7 @@ coalesced
 gradflag
 ^^^^^^^^
 
-.. function:: gradflag(ptr) -> bool
+.. function:: gradflag(ptr) -> bool(s)
 
    | Returns true/false if the tensor's requires gradient property was turned on/off via symbol: ```grad``/```nograd``.
 
@@ -317,7 +317,7 @@ gradflag
 leaf
 ^^^^
 
-.. function:: leaf(ptr) -> bool
+.. function:: leaf(ptr) -> bool(s)
 
    | All tensors that don't require gradients are leaf tensors by convention.  For tensors requiring gradients, they will be leaf tensors if they were created by the user instead of as the result of an operation.  Only leaf tensors will have their gradients populated during a call to :func:`backward`.
 
@@ -342,7 +342,7 @@ leaf
 pinned
 ^^^^^^
 
-.. function:: pinned(ptr) -> bool
+.. function:: pinned(ptr) -> bool(s)
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true for tensor(s) with `page-locked memory <https://pytorch.org/docs/stable/notes/cuda.html?highlight=pinned%20memory>`_. Allows for quicker cpu-to-gpu transfers.
 
@@ -364,7 +364,7 @@ pinned
 sparseflag
 ^^^^^^^^^^
 
-.. function:: sparseflag(ptr) -> bool
+.. function:: sparseflag(ptr) -> bool(s)
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns boolean(s) set true for sparse tensor(s). See also the :ref:`section on sparse tensors <sparse>` for more detail.
    

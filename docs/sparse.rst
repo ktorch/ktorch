@@ -11,7 +11,7 @@ Creating from a k value
 In a k session, sparse tensors are created and retrieved using the same :func:`tensor` function used to create dense tensors.
 Creating a tensor directly from a k value requires adding the ```sparse`` option for layout.
 
-.. function:: tensor(value;options) -> ptr
+.. function:: tensor(value;options) -> tensor pointer
 
    | Create a tensor from k value.
 
@@ -69,8 +69,8 @@ sparse
 ^^^^^^
 There's also a separate :func:`sparse` function to create a sparse tensor from k arrays or existing dense tensors, with an option of specifying the number of sparse dimensions. This is somewhat the same as PyTorch's `tensor.to_sparse() method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.to_sparse>`_.
 
-.. function:: sparse(input) -> ptr
-.. function:: sparse(input;sparsedim) -> ptr
+.. function:: sparse(input) -> tensor pointer
+.. function:: sparse(input;sparsedim) -> tensor pointer
 
    :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
    :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
@@ -105,7 +105,7 @@ There's also a separate :func:`sparse` function to create a sparse tensor from k
 There's an additional form of the :func:`sparse` which is more in line with PyTorch's `tensor.sparse_mask(mask) method <https://pytorch.org/docs/stable/sparse.html#torch.Tensor.sparse_mask>`_.
 
 
-.. function:: sparse(input;sparse-tensor) -> ptr
+.. function:: sparse(input;sparse-tensor) -> tensor pointer
 
    :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
    :param ptr sparse-tensor: an :doc:`api-pointer <pointers>` to an existing sparse tensor
@@ -141,8 +141,8 @@ sparseindex
 ^^^^^^^^^^^
 This function derives the indices of a the non-zero values in the input array/tensor, with one row per sparse dimension and one column per non-zero value.
 
-.. function:: sparseindex(input) -> ptr
-.. function:: sparseindex(input;sparsedim) -> ptr
+.. function:: sparseindex(input) -> tensor pointer
+.. function:: sparseindex(input;sparsedim) -> tensor pointer
 
    :param input: k value or an :doc:`api-pointer <pointers>` to an existing dense tensor.
    :param long sparsedim: an optional number of sparse dimensions, must be less than or equal to total numer of dimensions.
@@ -174,7 +174,7 @@ indices
 The indices of a sparse tensor are returned as a matrix or pointer to a 2-dimensional matrix: one row per sparse dimension and one column for each sparse value.
 
 .. function:: indices(ptr) -> value
-.. function:: indices(enlisted-ptr) -> ptr
+.. function:: indices(enlisted-ptr) -> tensor pointer
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :return: given a ptr, returns a k matrix containing indices of the non-zero values. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the indices.
@@ -201,7 +201,7 @@ values
 ^^^^^^
 
 .. function:: values(ptr) -> list
-.. function:: values(enlisted-ptr) -> ptr
+.. function:: values(enlisted-ptr) -> tensor pointer
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :return: given a ptr, returns a k array containing non-zero values of the tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the values.
@@ -242,7 +242,7 @@ dense
 
 The k api function :func:`dense` is similar to the Pytorch `tensor.to_dense() method <https://pytorch.org/docs/stable/sparse.html?highlight=dense#torch.Tensor.to_dense>`_.
 
-.. function:: dense(ptr) -> sparse-ptr
+.. function:: dense(ptr) -> sparse-tensor pointer
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a sparse tensor
    :returns an `api-pointer <pointers>` to a new dense tensor constructed from the sparse input.

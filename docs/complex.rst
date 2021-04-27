@@ -20,7 +20,7 @@ Creating from a k value
 In a k session, complex tensors are created and retrieved using the same :func:`tensor` function used to create real-valued tensors.
 Creating a tensor directly from a k value requires adding the complex data type, ```cfloat`` or ```cdouble``, as part of the tensor options:
 
-.. function:: tensor(value;options) -> ptr
+.. function:: tensor(value;options) -> tensor pointer
 
    | Create a tensor from k value.
 
@@ -134,9 +134,9 @@ After a complex tensor is created, there are some PyTorch information functions 
 The k interface implements these functions to return either k values or new tensors:
 
 .. function:: real(ptr) -> value
-.. function:: real(enlisted-ptr) -> ptr
+.. function:: real(enlisted-ptr) -> tensor pointer
 .. function:: imag(ptr) -> value
-.. function:: imag(enlisted-ptr) -> ptr
+.. function:: imag(enlisted-ptr) -> tensor pointer
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a complex tensor
    :return: Given a ptr, returns a k array containing the real or imaginary parts of the allocated tensor. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the real or imaginary values.
@@ -159,7 +159,7 @@ The k interface implements these functions to return either k values or new tens
 The ``isreal`` function returns a boolean k value or a pointer to an allocated boolean tensor:
 
 .. function:: isreal(ptr) -> value
-.. function:: isreal(enlisted-ptr) -> ptr
+.. function:: isreal(enlisted-ptr) -> tensor pointer
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a complex tensor
    :return: Given a ptr, returns a k boolean array with 1's where the imaginary part of the complex tensor is zero. If the ptr is enlisted, returns a new :doc:`api-pointer <pointers>` to a tensor with the boolean values.

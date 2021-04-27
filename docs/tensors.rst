@@ -106,8 +106,8 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
 
    | Return a k value from an :doc:`api-pointer <pointers>` to a previously allocated tensor
 
-.. function:: tensor(value) -> ptr
-.. function:: tensor(value;options) -> ptr
+.. function:: tensor(value) -> tensor pointer
+.. function:: tensor(value;options) -> tensor pointer
 
    | Create a tensor from k value.
 
@@ -299,9 +299,9 @@ Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#tor
 `ones <https://pytorch.org/docs/stable/torch.html#torch.ones>`_,
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
-.. function:: tensor(mode;size) -> ptr
+.. function:: tensor(mode;size) -> tensor pointer
 
-.. function:: tensor(mode;size;options) -> ptr
+.. function:: tensor(mode;size;options) -> tensor pointer
 
    | Create a tensor given mode, size  and optional attribute(s).
 
@@ -313,9 +313,9 @@ and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empt
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.
 
-.. function:: tensor(mode;in-tensor) -> ptr
+.. function:: tensor(mode;in-tensor) -> tensor pointer
 
-.. function:: tensor(mode;in-tensor;options) -> ptr
+.. function:: tensor(mode;in-tensor;options) -> tensor pointer
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
@@ -357,8 +357,8 @@ Tensor with single value
 
 Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.html#torch.full>`_.
 
-.. function:: tensor(mode;size;value) -> ptr
-.. function:: tensor(mode;size;value;options) -> ptr
+.. function:: tensor(mode;size;value) -> tensor pointer
+.. function:: tensor(mode;size;value;options) -> tensor pointer
 
    | Create a tensor given mode = ```full``, size, fill value  and optional attribute(s).
 
@@ -370,8 +370,8 @@ Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.
 
 Alternate form using an input tensor for size:
 
-.. function:: tensor(mode;in-tensor;value) -> ptr
-.. function:: tensor(mode;in-tensor;value;options) -> ptr
+.. function:: tensor(mode;in-tensor;value) -> tensor pointer
+.. function:: tensor(mode;in-tensor;value;options) -> tensor pointer
 
    | Create a tensor given mode of ```full`` and input tensor whose size will be used to create new tensor, along with fill value and optional tensor attribute(s). Similar to PyTorch creation function `torch.full_like <https://pytorch.org/docs/stable/torch.html#torch.full_like>`_.
 
@@ -409,8 +409,8 @@ Return a tensor filled with random numbers from a uniform distribution on ``[0, 
 
 Parameters and function calls are as above for mode of ```zeros``, ```ones`` and ```empty``.
 
-.. function:: tensor(mode;size) -> ptr
-.. function:: tensor(mode;size;options) -> ptr
+.. function:: tensor(mode;size) -> tensor pointer
+.. function:: tensor(mode;size;options) -> tensor pointer
 
    | Create a tensor given mode, size  and optional attribute(s).
 
@@ -421,8 +421,8 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 
-.. function:: tensor(mode;in-tensor) -> ptr
-.. function:: tensor(mode;in-tensor;options) -> ptr
+.. function:: tensor(mode;in-tensor) -> tensor pointer
+.. function:: tensor(mode;in-tensor;options) -> tensor pointer
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
@@ -458,9 +458,9 @@ Random integers
 Create a tensor filled with random integers between given range: `randint <https://pytorch.org/docs/stable/torch.html#torch.randint>`_.
 Called by specifying low, high and size, or high and size (low defaults to zero), as well as other combinations with input and output tensors.
 
-.. function:: tensor(mode;high;size) -> ptr
-.. function:: tensor(mode;low;high;size) -> ptr
-.. function:: tensor(mode;low;high;size;options) -> ptr
+.. function:: tensor(mode;high;size) -> tensor pointer
+.. function:: tensor(mode;low;high;size) -> tensor pointer
+.. function:: tensor(mode;low;high;size;options) -> tensor pointer
 
    | Create a tensor given mode, range and size, along with optional tensor attributes.
 
@@ -473,17 +473,17 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
 
 An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
 
-.. function:: tensor(mode;in-tensor;high) -> ptr
-.. function:: tensor(mode;in-tensor;low;high) -> ptr
-.. function:: tensor(mode;in-tensor;low;high;options) -> ptr
+.. function:: tensor(mode;in-tensor;high) -> tensor pointer
+.. function:: tensor(mode;in-tensor;low;high) -> tensor pointer
+.. function:: tensor(mode;in-tensor;low;high;options) -> tensor pointer
 
    :param ptr in-tensor: an :doc:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :return: An :doc:`api-pointer <pointers>` to the allocated tensor.
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
-.. function:: tensor(mode;high;size;out-tensor) -> ptr
-.. function:: tensor(mode;low;high;size;out-tensor) -> ptr
+.. function:: tensor(mode;high;size;out-tensor) -> tensor pointer
+.. function:: tensor(mode;low;high;size;out-tensor) -> tensor pointer
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -523,8 +523,8 @@ Random permutations
 ^^^^^^^^^^^^^^^^^^^
 Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.randperm.html#torch.randperm>`_ of integers from 0 to n-1 given n.
 
-.. function:: tensor(mode;n) -> ptr
-.. function:: tensor(mode;n;options) -> ptr
+.. function:: tensor(mode;n) -> tensor pointer
+.. function:: tensor(mode;n;options) -> tensor pointer
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
@@ -533,7 +533,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
-.. function:: tensor(mode;n;out-tensor) -> ptr
+.. function:: tensor(mode;n;out-tensor) -> tensor pointer
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
@@ -565,10 +565,10 @@ Creation modes `arange <https://pytorch.org/docs/stable/generated/torch.arange.h
 (and the deprecated `range <https://pytorch.org/docs/stable/generated/torch.range.html>`_)
 return a 1-dimensional tensor of size (end-start)/step size, with start defaulting to zero and step size to 1.
 
-.. function:: tensor(mode;end) -> ptr
-.. function:: tensor(mode;start;end) -> ptr
-.. function:: tensor(mode;start;end;step) -> ptr
-.. function:: tensor(mode;start;end;step;options) -> ptr
+.. function:: tensor(mode;end) -> tensor pointer
+.. function:: tensor(mode;start;end) -> tensor pointer
+.. function:: tensor(mode;start;end;step) -> tensor pointer
+.. function:: tensor(mode;start;end;step;options) -> tensor pointer
 
    :param sym mode: ```arange`` or ```range``.
    :param long start: starting value for the set of points, default is 0 for mode of ```arange``, must be given for ```range``.
@@ -579,7 +579,7 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
-.. function:: tensor(mode;start;end;step;options) -> ptr
+.. function:: tensor(mode;start;end;step;options) -> tensor pointer
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -609,9 +609,9 @@ Creation modes
 `logspace <https://pytorch.org/docs/stable/generated/torch.logspace.html>`_
 create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive with linear step size or log scale of (end - start)/(steps-1).
 
-.. function:: tensor(mode;start;end;steps) -> ptr
-.. function:: tensor(mode;start;end;steps;base) -> ptr
-.. function:: tensor(mode;start;end;steps;base;options) -> ptr
+.. function:: tensor(mode;start;end;steps) -> tensor pointer
+.. function:: tensor(mode;start;end;steps;base) -> tensor pointer
+.. function:: tensor(mode;start;end;steps;base;options) -> tensor pointer
 
    :param sym mode: ```linspace`` or ```logspace``.
    :param long start: starting value for the set of points.
@@ -623,7 +623,7 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
-.. function:: tensor(mode;start;end;steps;base;out-tensor) -> ptr
+.. function:: tensor(mode;start;end;steps;base;out-tensor) -> tensor pointer
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -653,9 +653,9 @@ Identity matrix
 ^^^^^^^^^^^^^^^
 Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highlight=eye#torch.eye>`_ in PyTorch returns a 2-dimensional tensor with ones on the diagonal and zeros elsewhere.
 
-.. function:: tensor(mode;n) -> ptr
-.. function:: tensor(mode;n;m) -> ptr
-.. function:: tensor(mode;n;m;options) -> ptr
+.. function:: tensor(mode;n) -> tensor pointer
+.. function:: tensor(mode;n;m) -> tensor pointer
+.. function:: tensor(mode;n;m;options) -> tensor pointer
 
    :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
@@ -665,8 +665,8 @@ Function `eye <https://pytorch.org/docs/stable/generated/torch.eye.html?highligh
 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
-.. function:: tensor(mode;n;out-tensor) -> ptr
-.. function:: tensor(mode;n;m;out-tensor) -> ptr
+.. function:: tensor(mode;n;out-tensor) -> tensor pointer
+.. function:: tensor(mode;n;m;out-tensor) -> tensor pointer
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to rows or rows and columns given and attributes of the output tensor.
@@ -695,8 +695,8 @@ Complex tensor
 
 A tensor of complex numbers can be created by supplying the real and imaginary parts, along with optional attributes. See :ref:`section on complex tensors <complex>` for other methods and details on complex tensors.  The tensor creation method below is meant to match PyTorch's `torch.complex <https://pytorch.org/docs/stable/generated/torch.complex.html>`_ function.
 
-.. function:: tensor(mode;real;imag) -> ptr
-.. function:: tensor(mode;real;imag;options) -> ptr
+.. function:: tensor(mode;real;imag) -> tensor pointer
+.. function:: tensor(mode;real;imag;options) -> tensor pointer
 
    :param sym mode: ```complex``.
    :param numeric real: real part of the complex tensor as a k value.
@@ -729,10 +729,10 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
 
 An alternate form of the above function call uses a single k value to create the complex tensor, with real and imaginary values across the first or last dimension of the given array.
 
-.. function:: tensor(mode;value) -> ptr
-.. function:: tensor(mode;value;flag) -> ptr
-.. function:: tensor(mode;value;options) -> ptr
-.. function:: tensor(mode;value;flag;options) -> ptr
+.. function:: tensor(mode;value) -> tensor pointer
+.. function:: tensor(mode;value;flag) -> tensor pointer
+.. function:: tensor(mode;value;options) -> tensor pointer
+.. function:: tensor(mode;value;flag;options) -> tensor pointer
 
    :param sym mode: ```complex``.
    :param numeric value: real & imaginary part of the complex tensor as a k value.
@@ -775,10 +775,10 @@ Sparse tensor
 
 A sparse tensor can be created by supplying indices and values, along with optional attributes. See :ref:`section on sparse tensors <sparse>` for other methods and details on sparse tensors.  The tensor creation method below is meant to match PyTorch's `torch.sparse_coo_tensor <https://pytorch.org/docs/stable/generated/torch.sparse_coo_tensor.html>`_ function.
 
-.. function:: tensor(mode;ind;val) -> ptr
-.. function:: tensor(mode;ind;val;options) -> ptr
-.. function:: tensor(mode;ind;val;size) -> ptr
-.. function:: tensor(mode;ind;val;size;options) -> ptr
+.. function:: tensor(mode;ind;val) -> tensor pointer
+.. function:: tensor(mode;ind;val;options) -> tensor pointer
+.. function:: tensor(mode;ind;val;size) -> tensor pointer
+.. function:: tensor(mode;ind;val;size;options) -> tensor pointer
 
    :param sym mode: ```sparse``.
 
