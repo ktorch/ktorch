@@ -15,7 +15,7 @@ dim
 
 .. function:: dim(ptr) -> long
 
-   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the dimension(s) of the tensor(s).  See also :ref:`sparsedim`_ and :ref:`densedim`_ for dimensions of sparse tensors.
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the dimension(s) of the tensor(s).  See also :ref:`sparsedim` and :ref:`densedim` for dimensions of sparse tensors.
 
 ::
 
@@ -50,7 +50,12 @@ itemsize
 bytes
 ^^^^^
 
+.. function:: bytes(ptr) -> long
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the bytes allocated in the tensor's underlying storage.
+
 (see also objbytes in pointers)
+
 
 
 Pointer information
