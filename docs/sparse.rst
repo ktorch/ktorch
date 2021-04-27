@@ -278,6 +278,8 @@ nnz
    0 0 2
 
 
+.. _sparsedim:
+
 sparsedim
 ^^^^^^^^^
 
@@ -286,6 +288,27 @@ sparsedim
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
    :return: returns long integer scalar with the number of sparse dimensions (zero for dense tensors).
 
+::
+
+   q)show x:4 3#(7#0),8
+   0 0 0
+   0 0 0
+   0 8 0
+   0 0 0
+
+   q)s:sparse x
+   q)sparsedim s
+   2
+
+   q)use[s]sparse(x; 1) /1 sparse, 1 dense dimension
+   q)sparsedim s
+   1
+
+   q)densedim s
+   1
+
+.. _densedim:
+
 densedim
 ^^^^^^^^
 
@@ -293,6 +316,27 @@ densedim
 
    :param ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, sparse or dense.
    :return: returns long integer scalar with the number of dense dimensions.
+
+::
+
+   q)s:tensor(`sparse; 1 2#3 1; 2 3#til 6; 5 3) /indices & values of hybrid sparse
+
+   q)tensor s
+   0 0 0
+   3 4 5
+   0 0 0
+   0 1 2
+   0 0 0
+
+   q)values s
+   0 1 2
+   3 4 5
+
+   q)sparsedim s
+   1
+
+   q)densedim s
+   1
 
 .. _coalesce:
 

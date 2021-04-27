@@ -13,10 +13,39 @@ stride
 dim
 ^^^
 
-(see also sparsedim and densedim)
+.. function:: dim(ptr) -> long
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the dimension(s) of the tensor(s).  See also :ref:`sparsedim`_ and :ref:`densedim`_ for dimensions of sparse tensors.
+
+::
+
+   q)t:tensor()
+   q)dim t
+   1
+
+   q)use[t]tensor 1b
+   q)dim t
+   0
+
+   q)use[t]tensor 3 4 5#til 60
+   q)dim t
+   3
+
 
 itemsize
 ^^^^^^^^
+
+.. function:: itemsize(ptr) -> long
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the element size(s) of the tensor(s).
+
+::
+
+   q)d:dict `a`b`c!(2 3 4.0; 1e; "string")
+   q)itemsize d
+   a| 8
+   b| 4
+   c| 1
 
 bytes
 ^^^^^
@@ -371,9 +400,9 @@ detail
 str
 ^^^
 
-.. function: str(ptr) -> string
+.. function:: str(ptr) -> string
 
-   | returns the PyTorch c++ string representation of the object with embedded newlines.
+   | returns the PyTorch C++ string representation of the object with embedded newlines.
 
 ::
 
