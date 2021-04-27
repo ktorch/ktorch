@@ -177,7 +177,7 @@ Tensor flags
 
 contiguous
 ^^^^^^^^^^
-Up until version 1.5, contiguous meant the tensor is contiguous in memory in C order. Then, with the introduction of the new `memory format <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=memory%20format#torch-memory-format>`_ attribute, the definition of contiguous became more complicated and is now defined as *contiguous in memory in the order specified by memory format*.
+Up until version PyTorch version 1.5, contiguous meant the tensor is contiguous in memory in C order. Then, with the introduction of the new `memory format <https://pytorch.org/docs/stable/tensor_attributes.html?highlight=memory%20format#torch-memory-format>`_ attribute, the definition of contiguous became more complicated and is now defined as *contiguous in memory in the order specified by memory format*.
 More notes on the new memory format `here <https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html>`_.
 
 .. function:: contiguous(ptr) -> bool
@@ -186,8 +186,8 @@ More notes on the new memory format `here <https://pytorch.org/tutorials/interme
 
 .. function:: contiguous(ptr;memory-format) -> bool
 
-   :param ptr:
-   :param sym memory-format:
+   :param api-pointer ptr: an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
+   :param sym memory-format: a symbol indicating memory format, e.g. `contiguous or `channel2d
    :return: true if tensor(s) contiguous in memory in the order specified by the supplied memory format.
 
 
@@ -300,6 +300,95 @@ Utilities
 info
 ^^^^
 
+.. function:: info(ptr) -> dictionary
+
+   | Given a tensor pointer, returns a dictionary of attributes of the tensor.
+
+::
+
+   q)t:tensor(`randn;2 3;`cfloat)
+   q)info t
+   device    | `cpu
+   dtype     | `cfloat
+   layout    | `strided
+   gradient  | `nograd
+   pin       | `unpinned
+   memory    | `contiguous
+   leaf      | 1b
+   gradfn    | `
+   dim       | 2
+   sparsedim | 0
+   size      | 2 3
+   stride    | 3 1
+   numel     | 6
+   itemsize  | 8
+   contiguous| 1b
+   coalesced | 1b
+   offset    | 0
+   ptr       | 53851424
+   ref       | 1
+
 
 detail
 ^^^^^^
+
+.. function:: detail(ptr) -> dictionary
+
+   | Given a tensor pointer, returns a dictionary of attributes of the tensor as well as a separate dictionary describing the underlying storage, a contiguous one-dimensional array of bytes containing the tensor data. If the tensor is sparse, :func:`detail` returns a list with the detail for both the indices and values.
+
+::
+
+   q)s:tensor(0 0 1 0 2 0 0;`sparse)
+
+   q)detail s
+          | device dtype layout  gradient pin      memory     leaf gradfn dim sp..
+   -------| --------------------------------------------------------------------..
+   indices| cpu    long  strided nograd   unpinned contiguous 1           2   0 ..
+   values | cpu    long  strided nograd   unpinned contiguous 1           1   0 ..
+
+   q)first detail s
+   device    | `cpu
+   dtype     | `long
+   layout    | `strided
+   gradient  | `nograd
+   pin       | `unpinned
+   memory    | `contiguous
+   leaf      | 1b
+   gradfn    | `
+   dim       | 2
+   sparsedim | 0
+   size      | 1 2
+   stride    | 1 1
+   numel     | 2
+   itemsize  | 8
+   contiguous| 1b
+   coalesced | 1b
+   offset    | 0
+   ptr       | 53851424
+   ref       | 1
+   storage   | `size`itemsize`ref`ptr`data!(2;8;2;53855680;2 4)
+
+str
+^^^
+
+.. function: str(ptr) -> string
+
+   | returns the PyTorch c++ string representation of the object with embedded newlines.
+
+::
+
+   q)t:tensor(`randn;2 3)
+
+   q)-2 str t;
+    0.1526  0.5672  0.0854
+    1.4224  1.6250 -1.2955
+   [ CPUFloatType{2,3} ]
+
+   q)to(t;`cuda`double)
+
+   q)-2 str t;
+    0.1526  0.5672  0.0854
+    1.4224  1.6250 -1.2955
+   [ CUDADoubleType{2,3} ]
+
+

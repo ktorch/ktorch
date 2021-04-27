@@ -1462,7 +1462,12 @@ static K defaultdevice() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// optsym - given tensor options, return underlying device,data type,layout & grad/nograd as sym
+// optdev - map given device to corresponding symbol, e.g. DeviceType::CPU -> `cpu
+// optdtype - map given data type to corresponding symbol, e.g. torch::kLong -> `long
+// optlayout - map layout to corresponding symbol, e.g. torch::kSparse -> `sparse
+// optgrad - map requires gradient flag to `grad or `nograd
+// optpin - map pinned memory true/false to `pinned or `unpinned
+// optmemory - map memory format to symbol, e.g. torch::MemoryFormat::ChannelsLast -> `channel2d
 // optmap - given tensor options, return dictionary of attribute -> setting
 // optkey - symbol keys/cols for tensor option dictionary or table
 // optval - symbol vector/lists of option values
@@ -1498,6 +1503,11 @@ S& optmemory(const c10::optional<torch::MemoryFormat>& m) {
  if(!m) return optmemory(torch::MemoryFormat::Contiguous);
  for(auto& a:env().memory) if(m==std::get<1>(a)) return std::get<0>(a);
  TORCH_ERROR("unrecognized memory format");
+}
+
+torch::MemoryFormat optmemory(S s) {
+ for(auto& a:env().memory) if(s==std::get<0>(a)) return std::get<1>(a);
+ TORCH_ERROR("unrecognized memory format: ",s);
 }
 
 K optkey() {

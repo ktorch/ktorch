@@ -470,6 +470,7 @@ S& optdtype(const TypeMeta&);
 S& optdtype(ScalarType);
 S& optlayout(const torch::Layout&);
 S& optmemory(const c10::optional<torch::MemoryFormat>&);
+torch::MemoryFormat optmemory(S);
 S& optgrad(const bool&);
 S& optpin(const bool&);
 K optkey();

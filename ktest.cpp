@@ -3,6 +3,23 @@
 namespace nn=torch::nn;
 
 
+KAPI contig(K x) {
+ KTRY
+  Attr a=Attr::contiguous; K y=nullptr;
+  Ktag *g=xtag(x);
+  if(!g) {
+   g=xtag(x,0);
+   TORCH_CHECK(!g || x->n==2, mapattr(a),": expecting up to 2 args, given ",x->n);
+   y=kK(x)[1];
+  }
+  TORCH_CHECK(g, mapattr(a),": expecting object, e.g. tensor, vector, module");
+  TORCH_CHECK(g->a==Class::tensor,": not a tensor");
+  TORCH_CHECK(!y || y->t==-KS, mapattr(a),": additional arg not a symbol");
+  const Tensor& t=((Kten*)g)->t;
+  return kb(y ? t.is_contiguous(optmemory(y->s)) : t.is_contiguous());
+ KCATCH("contiguous");
+}
+
 KAPI tf32(K x) {
  KTRY
  TORCH_CHECK(x->t==-KB,"need boolean scalar");
