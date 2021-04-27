@@ -25,10 +25,36 @@ size
 stride
 ^^^^^^
 
+Stride is the jump necessary to go from one element to the next one across each dimension.
+
+.. function:: stride(ptr) -> long list(s)
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the strides at each dimension of the tensor(s).
+
+::
+
+   q)a:tensor 3 4#5
+   q)size a
+   3 4
+   q)stride a
+   4 1
+
+   q)b:transpose a
+   q)size b
+   4 3
+   q)stride b
+   1 4
+
+   q)d:dict `a`b`c!(a;b;3 4 5#0.0)
+   q)stride d
+   a| 4 1
+   b| 1 4
+   c| 20 5 1
+
 dim
 ^^^
 
-.. function:: dim(ptr) -> long
+.. function:: dim(ptr) -> long(s)
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the dimension(s) of the tensor(s).  See also :ref:`sparsedim` and :ref:`densedim` for dimensions of sparse tensors.
 
@@ -50,7 +76,7 @@ dim
 itemsize
 ^^^^^^^^
 
-.. function:: itemsize(ptr) -> long
+.. function:: itemsize(ptr) -> long(s)
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the element size(s) of the tensor(s).
 
@@ -65,7 +91,7 @@ itemsize
 bytes
 ^^^^^
 
-.. function:: bytes(ptr) -> long
+.. function:: bytes(ptr) -> long(s)
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the bytes allocated in the tensor's underlying storage.
 
@@ -99,8 +125,8 @@ Some of the functions also accept a null or empty arg, and return a system defau
 options
 ^^^^^^^
 
-.. function:: options() -> dict
-.. function:: options(ptr) -> dict
+.. function:: options() -> dictionary of symbols
+.. function:: options(ptr) -> dictionary of symbols
 
     | For empty or null arg, returns a dictionary of default attributes for tensor creation. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns a dictionary or list of dictionaries of the attribute values for the tensor(s).
 
