@@ -119,7 +119,7 @@ Setting vector values
 Retrieving tensor pointers
 **************************
 
-To retrieve individual tensor pointer(s) from a vector, the same :func:`tensor` function can extract pointers from a given vector and optional indices.
+Use the:func:`tensor` function to extract pointers from a given vector and optional indices.
 
 .. function:: tensor(vec) -> tensor pointers
 .. function:: tensor(vec;ind) -> tensor pointer(s)
@@ -146,10 +146,6 @@ To retrieve individual tensor pointer(s) from a vector, the same :func:`tensor` 
    4 5i
    6 7 8e
 
-   q)dtpe each r
-'dtpe
-  [0]  dtpe each r
-       ^
-q)dtype each r
-`int`float
+   q)dtype each r
+   `int`float
 
