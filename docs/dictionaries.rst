@@ -27,8 +27,8 @@ An alternate form accepts symbol keys and values as separate arguments:
 
 .. function:: dict(keys;values) -> dictionary pointer
 
-   :param sym keys:
-   :param array/tensor values:
+   :param sym keys: symbol keys to name the input values/tensors.
+   :param array/tensor values: k arrays/tensor pointers laigned with the keys.
    :return: an :doc:`api-pointer <pointers>` to a dictionary of tensors.
 
 .. note::

@@ -1141,7 +1141,7 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
 // vattr - handle vector/dictionary values or other iterable to extract attributes -> k list
 // vectorattr - handle tensor vector attribute queries according to k datatype returned
 // dictattr - handle tensor dictionary queries, return dictionary of attribute values
-// options - return dictionary/table of tensor/vector attributes
+// options - return dictionary/table of tensor/vector/dictionary attributes
 // ----------------------------------------------------------------------------------------------
 template<typename V> static K vattr(const V &v,Ktype k,Attr a) {
  size_t i=0; K x=ktn(k<0 ? abs(k) : 0, v.size());
