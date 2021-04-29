@@ -33,7 +33,7 @@ An alternate form accepts symbol keys and values as separate arguments:
 
 .. note::
 
-   When tensor pointers are included in the arguments to :func:`dict`, the tensor's memory is managed by the dictionary and the previous handle to the tensor is no longer valid without a reference increment (:ref:`see addref <addref>`).
+   When tensor pointers are included in the arguments to :func:`dict`, the tensor's memory is managed by the dictionary and the previous handle to the tensor is no longer valid without a reference increment (see :ref:`addref <addref>`).
 
 ::
 

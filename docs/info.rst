@@ -105,15 +105,165 @@ Pointer information
 ptr
 ^^^
 
+.. function:: ptr(api-pointer) -> long (s)
+
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns long representation(s) of the raw ptr(s) to tensor(s), managed by PyTorch via a smart pointer which maintains reference count and manages their memory.
+
+::
+
+   q)a:tensor 1 2 3
+   q)b:addref a
+
+   q)class each (a;b)
+   `tensor`tensor
+
+   q)(a;b)           / different api handles -> same tensor
+   40292432
+   40292096
+
+   q)ptr each(a;b)   / underlying tensor matches
+   39965072 39965072
+
+   q)same(a;b)
+   1b
+
+sptr
+^^^^
+
+.. function:: sptr(api-pointer) -> long (s)
+
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns long representation(s) of the raw ptr(s) to tensor's underlying storage. Different tensors can share the same underlying memory.
+
+::
+
+   q)a:tensor til 12
+   q)b:reshape(a;3 4)  / new tensor, same underlying storage
+
+   q)ptr each(a;b)
+   40292928 39965072   / different raw tensor pointers
+
+   q)sptr each(a;b)
+   40296576 40296576   / same raw storage pointers
+
+   q)same(a;b)    / not the same tensor
+   0b
+
+   q)alias(a;b)   / shares the same underlying storage
+   1b
+
 ref
 ^^^
+
+.. function:: ref(api-pointer) -> long(s)
+
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns the count of references to the tensor(s).
+
+::
+
+   q)a:tensor 1 2 3
+   q)b:addref a
+
+   q)ref a
+   2
+
+   q)same(a;b)
+   1b
+
+   q)free b
+   q)ref a
+   1
+
+sref
+^^^^
+
+.. function:: sref(api-pointer) -> long(s)
+
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns the count of references to the underlying storage of the tensor(s).
+
+::
+
+   q)a:tensor til 12
+   q)ref a  
+   1         /single reference to tensor
+   q)sref a
+   1         /and its underlying storage
+
+   q)b:reshape(a;3 4)  / reshape into new matrix
+   q)ref b
+   1
+   q)ref a
+   2
+
+   q)sref a  / two references to same underlying storage
+   2
+
+   q)sptr[a]~sptr b
+   1b
+
 
 weakref
 ^^^^^^^
 
-storage
-^^^^^^^
+.. function:: weakref(api-pointer) -> count of non-owning refrences to same tensor
 
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns the count of weak references (non-owning references) to the tensors. Less likely to be used in the k interface which maintains owning references in the k session.
+
+
+same
+^^^^
+
+.. function:: same(tensor1;tensor2) -> bool
+
+   | Given two :doc:`api-pointers<pointers>` to tensors, returns true if both api handles point to the same tensor.
+
+::
+   q)a:tensor 1 2 3
+   q)b:addref a
+
+   q)ptr'[(a;b)]
+   40292928 40292928
+
+   q)same(a;b)
+   1b
+
+alias
+^^^^^
+
+.. function:: alias(tensor1;tensor2) -> bool
+
+   | Given two :doc:`api-pointers<pointers>` to tensors, returns true if both api handles point to the same underlying storage.
+
+::
+
+   q)a:tensor(1 2 3.0; `grad)
+   q)b:detach a                / copy of a without gradient tracking
+
+   q)gradient each(a;b)
+   `grad`nograd
+
+   q)same(a;b)
+   0b              /different tensors
+
+   q)alias(a;b)
+   1b              /same underlying storage
+
+offset
+^^^^^^
+
+.. function:: offset(api-pointer) -> long(s)
+
+   | Given an :doc:`api-pointer<pointers>` to a tensor, vector or dictionary of tensors, returns the offset into the underlying storage of the tensor(s).
+
+::
+
+   q)a:tensor(3 4#til 12)
+   q)b:narrow(a;0;1;2)    /narrow tensor to two final rows
+
+   q)alias(a;b)
+   1b
+
+   q)offset each(a;b)
+   0 4  / narrowed tensor starts 4 elements in
 
 Tensor options
 **************

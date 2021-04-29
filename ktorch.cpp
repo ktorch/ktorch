@@ -1765,9 +1765,10 @@ KAPI   itemsize(K x) {return attr(x, -KJ, Attr::itemsize);}
 KAPI      bytes(K x) {return attr(x, -KJ, Attr::bytes);}
 KAPI     offset(K x) {return attr(x, -KJ, Attr::offset);}
 KAPI        ref(K x) {return attr(x, -KJ, Attr::ref);}
+KAPI       sref(K x) {return attr(x, -KJ, Attr::sref);}
 KAPI    weakref(K x) {return attr(x, -KJ, Attr::weakref);}
 KAPI        ptr(K x) {return attr(x, -KJ, Attr::ptr);}
-KAPI    storage(K x) {return attr(x, -KJ, Attr::storage);}
+KAPI       sptr(K x) {return attr(x, -KJ, Attr::sptr);}
 
 KAPI kclass(K x) {
  KTRY
@@ -1959,9 +1960,10 @@ KAPI fns(K x){
  fn(x, "bytes",       KFN(bytes),       1);
  fn(x, "offset",      KFN(offset),      1);
  fn(x, "ptr",         KFN(ptr),         1);
+ fn(x, "sptr",        KFN(sptr),        1);
  fn(x, "ref",         KFN(ref),         1);
+ fn(x, "sref",        KFN(sref),        1);
  fn(x, "result",      KFN(result),      1);
- fn(x, "storage",     KFN(storage),     1);
  fn(x, "weakref",     KFN(weakref),     1);
  fn(x, "class",       KFN(kclass),      1);
  fn(x, "device",      KFN(device),      1);

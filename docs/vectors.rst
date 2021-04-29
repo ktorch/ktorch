@@ -25,7 +25,7 @@ Creating a vector
 
 .. note::
 
-   When tensor pointers are included in the arguments to :func:`vector`, the tensor's memory is managed by the vector and the previous handle to the tensor is no longer valid without a reference increment (:ref:`see addref <addref>`).
+   When tensor pointers are included in the arguments to :func:`vector`, the tensor's memory is managed by the vector and the previous handle to the tensor is no longer valid without a reference increment (see :ref:`addref <addref>`).
 
 ::
 
@@ -119,7 +119,7 @@ Setting vector values
 Retrieving tensor pointers
 **************************
 
-Use the:func:`tensor` function to extract pointers from a given vector and optional indices.
+Use the :func:`tensor` function to extract pointers from a given vector and optional indices.
 
 .. function:: tensor(vec) -> tensor pointers
 .. function:: tensor(vec;ind) -> tensor pointer(s)

@@ -224,7 +224,7 @@ enum class State:char {
 enum class Attr:char {
  undefined = 0,
  bytes,  densedim, dim, elements,  itemsize, nnz, numel,      // long scalars
- offset, ptr,      ref, sparsedim, tcount,   weakref,
+ offset, ptr, ref, sparsedim, sptr, sref, tcount, weakref,
  device, dtype, gradfn, gradient, layout, memory, result,     // symbol
  coalesced, contiguous, gradflag, leaf, pinned, sparseflag,   // boolean
  size, stride,                                                // long list
@@ -1033,7 +1033,7 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,30> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,32> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("bytes"),       Attr::bytes),
   std::make_tuple(cs("coalesced"),   Attr::coalesced),
   std::make_tuple(cs("contiguous"),  Attr::contiguous),
@@ -1060,6 +1060,8 @@ typedef struct {
   std::make_tuple(cs("size"),        Attr::size),
   std::make_tuple(cs("sparseflag"),  Attr::sparseflag),
   std::make_tuple(cs("sparsedim"),   Attr::sparsedim),
+  std::make_tuple(cs("sptr"),        Attr::sptr),
+  std::make_tuple(cs("sref"),        Attr::sref),
   std::make_tuple(cs("storage"),     Attr::storage),
   std::make_tuple(cs("stride"),      Attr::stride),
   std::make_tuple(cs("tcount"),      Attr::tcount),

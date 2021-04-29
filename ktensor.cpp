@@ -1084,11 +1084,12 @@ J tensorlong(const Tensor& t,Attr a) {
   case Attr::bytes:     return objbytes(t);
   case Attr::offset:    return t.is_sparse() ? nj : t.storage_offset();
   case Attr::ref:       return t.use_count();
+  case Attr::sref:      return t.storage().use_count();
   case Attr::weakref:   return t.weak_use_count();
   case Attr::ptr:       return (intptr_t)t.unsafeGetTensorImpl();
+  case Attr::sptr:      return t.is_sparse() ? nj : (intptr_t)t.storage().data();
   case Attr::densedim:  return t.is_sparse() ? t.dense_dim()  : t.dim();
   case Attr::sparsedim: return t.is_sparse() ? t.sparse_dim() : 0;
-  case Attr::storage:   return t.is_sparse() ? nj : (intptr_t)t.storage().data();
   case Attr::nnz:       return t.is_sparse() ? t._nnz() : t.count_nonzero().item().toLong();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
