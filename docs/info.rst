@@ -88,6 +88,56 @@ itemsize
    b| 4
    c| 1
 
+numel
+^^^^^
+
+.. function:: numel(ptr) -> long(s)
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the number of elements in the tensor(s). This count may be less than the full number of elements of the tensor's underlying storage for certain tensor views.
+
+::
+
+   q)a:tensor til 10
+   q)b:narrow(a;0;5;5)   / new tensor, narrowed to last 5 elements
+
+   q)alias(a;b)
+   1b                    / same underlying storage
+
+   q)d:dict `a`b!(a;b)
+
+   q)numel d             / elements in the tensor
+   a| 10
+   b| 5
+
+   q)elements d          / full size in storage
+   a| 10
+   b| 10
+
+elements
+^^^^^^^^
+
+.. function:: elements(ptr) -> long(s)
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the full number of elements in the tensor's underlying storage.
+
+::
+
+   q)a:tensor til 10
+   q)b:narrow(a;0;5;5)   / new tensor, narrowed to last 5 elements
+
+   q)alias(a;b)
+   1b                    / same underlying storage
+
+   q)d:dict `a`b!(a;b)
+
+   q)numel d             / elements in the tensor
+   a| 10
+   b| 5
+
+   q)elements d          / full size in storage
+   a| 10
+   b| 10
+
 bytes
 ^^^^^
 
@@ -97,6 +147,20 @@ bytes
 
 (see also objbytes in pointers)
 
+tensorcount
+^^^^^^^^^^^
+
+.. function:: tensorcount(ptr) -> long
+
+   | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the number of tensors contained.
+
+   q)t:tensor 1 2 3.0
+   q)tensorcount t
+   1
+
+   q)v:vector(t; 001b; 4 5 6)
+   q)tensorcount v
+   3
 
 
 Pointer information
