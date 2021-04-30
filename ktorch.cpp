@@ -1854,10 +1854,26 @@ KAPI dtype(K x) {
 }
 
 KAPI  coalesced(K x) {return attr(x, -KB, Attr::coalesced);}
-KAPI contiguous(K x) {return attr(x, -KB, Attr::contiguous);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
 KAPI     pinned(K x) {return attr(x, -KB, Attr::pinned);}
 KAPI sparseflag(K x) {return attr(x, -KB, Attr::sparseflag);}
+
+KAPI contiguous(K x) {
+ KTRY
+  S s;
+  if(xtag(x,0) && xsym(x,1,s) && x->n==2) {
+   switch(optmemory(s)) {
+    case torch::MemoryFormat::Preserve:
+    case torch::MemoryFormat::Contiguous:     return attr(kK(x)[0], -KB, Attr::contiguous);
+    case torch::MemoryFormat::ChannelsLast:   return attr(kK(x)[0], -KB, Attr::contiguous2d);
+    case torch::MemoryFormat::ChannelsLast3d: return attr(kK(x)[0], -KB, Attr::contiguous3d);
+    default: TORCH_ERROR("contiguous: unrecognized memory format, ", s);
+   }
+  } else {
+   return attr(x, -KB, Attr::contiguous);
+  }
+ KCATCH("contiguous");
+}
 
 KAPI       size(K x) {return attr(x,  KJ, Attr::size);}
 KAPI     stride(K x) {return attr(x,  KJ, Attr::stride);}

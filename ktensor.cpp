@@ -1111,12 +1111,14 @@ S tensorsym(const Tensor& t,Attr a) {
 
 static bool tensorflag(const Tensor &t,Attr a) {
  switch(a) {
-  case Attr::coalesced:  return t.is_sparse() ? t.is_coalesced() : true;
-  case Attr::contiguous: return t.is_sparse() ? false : t.is_contiguous();
-  case Attr::gradflag:   return t.requires_grad();
-  case Attr::leaf:       return t.is_leaf();
-  case Attr::pinned:     return t.is_sparse() ? false : t.is_pinned();
-  case Attr::sparseflag: return t.is_sparse();
+  case Attr::coalesced:    return t.is_sparse() ? t.is_coalesced() : true;
+  case Attr::contiguous:   return t.is_sparse() ? false : t.is_contiguous();
+  case Attr::contiguous2d: return t.is_sparse() ? false : t.is_contiguous(torch::MemoryFormat::ChannelsLast);
+  case Attr::contiguous3d: return t.is_sparse() ? false : t.is_contiguous(torch::MemoryFormat::ChannelsLast3d);
+  case Attr::gradflag:     return t.requires_grad();
+  case Attr::leaf:         return t.is_leaf();
+  case Attr::pinned:       return t.is_sparse() ? false : t.is_pinned();
+  case Attr::sparseflag:   return t.is_sparse();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }

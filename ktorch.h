@@ -226,7 +226,8 @@ enum class Attr:char {
  bytes,  densedim, dim, elements,  itemsize, nnz, numel, offset, // long scalars
  ptr, ref, sparsedim, sptr, sref, tensorcount, weakref,
  device, dtype, gradfn, gradient, layout, memory, result,        // symbol
- coalesced, contiguous, gradflag, leaf, pinned, sparseflag,      // boolean
+ coalesced, contiguous, contiguous2d, contiguous3d, gradflag,    // boolean
+ leaf, pinned, sparseflag,
  size, stride,                                                   // long list
  data, storage                                                   // other: list,dict,..
 };
@@ -1035,39 +1036,41 @@ typedef struct {
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,32> attr = {{            //attributes: map symbol -> enum
-  std::make_tuple(cs("bytes"),       Attr::bytes),
-  std::make_tuple(cs("coalesced"),   Attr::coalesced),
-  std::make_tuple(cs("contiguous"),  Attr::contiguous),
-  std::make_tuple(cs("data"),        Attr::data),
-  std::make_tuple(cs("device"),      Attr::device),
-  std::make_tuple(cs("densedim"),    Attr::densedim),
-  std::make_tuple(cs("dim"),         Attr::dim),
-  std::make_tuple(cs("dtype"),       Attr::dtype),
-  std::make_tuple(cs("elements"),    Attr::elements),
-  std::make_tuple(cs("gradflag"),    Attr::gradflag),
-  std::make_tuple(cs("gradfn"),      Attr::gradfn),
-  std::make_tuple(cs("gradient"),    Attr::gradient),
-  std::make_tuple(cs("itemsize"),    Attr::itemsize),
-  std::make_tuple(cs("layout"),      Attr::layout),
-  std::make_tuple(cs("leaf"),        Attr::leaf),
-  std::make_tuple(cs("memory"),      Attr::memory),
-  std::make_tuple(cs("nnz"),         Attr::nnz),
-  std::make_tuple(cs("numel"),       Attr::numel),
-  std::make_tuple(cs("offset"),      Attr::offset),
-  std::make_tuple(cs("pin"),         Attr::pinned),
-  std::make_tuple(cs("ptr"),         Attr::ptr),
-  std::make_tuple(cs("ref"),         Attr::ref),
-  std::make_tuple(cs("result"),      Attr::result),
-  std::make_tuple(cs("size"),        Attr::size),
-  std::make_tuple(cs("sparseflag"),  Attr::sparseflag),
-  std::make_tuple(cs("sparsedim"),   Attr::sparsedim),
-  std::make_tuple(cs("sptr"),        Attr::sptr),
-  std::make_tuple(cs("sref"),        Attr::sref),
-  std::make_tuple(cs("storage"),     Attr::storage),
-  std::make_tuple(cs("stride"),      Attr::stride),
-  std::make_tuple(cs("tensorcount"), Attr::tensorcount),
-  std::make_tuple(cs("weakref"),     Attr::weakref)
+ std::array<std::tuple<S,Attr>,34> attr = {{            //attributes: map symbol -> enum
+  std::make_tuple(cs("bytes"),        Attr::bytes),
+  std::make_tuple(cs("coalesced"),    Attr::coalesced),
+  std::make_tuple(cs("contiguous"),   Attr::contiguous),
+  std::make_tuple(cs("contiguous2d"), Attr::contiguous2d),
+  std::make_tuple(cs("contiguous3d"), Attr::contiguous3d),
+  std::make_tuple(cs("data"),         Attr::data),
+  std::make_tuple(cs("device"),       Attr::device),
+  std::make_tuple(cs("densedim"),     Attr::densedim),
+  std::make_tuple(cs("dim"),          Attr::dim),
+  std::make_tuple(cs("dtype"),        Attr::dtype),
+  std::make_tuple(cs("elements"),     Attr::elements),
+  std::make_tuple(cs("gradflag"),     Attr::gradflag),
+  std::make_tuple(cs("gradfn"),       Attr::gradfn),
+  std::make_tuple(cs("gradient"),     Attr::gradient),
+  std::make_tuple(cs("itemsize"),     Attr::itemsize),
+  std::make_tuple(cs("layout"),       Attr::layout),
+  std::make_tuple(cs("leaf"),         Attr::leaf),
+  std::make_tuple(cs("memory"),       Attr::memory),
+  std::make_tuple(cs("nnz"),          Attr::nnz),
+  std::make_tuple(cs("numel"),        Attr::numel),
+  std::make_tuple(cs("offset"),       Attr::offset),
+  std::make_tuple(cs("pin"),          Attr::pinned),
+  std::make_tuple(cs("ptr"),          Attr::ptr),
+  std::make_tuple(cs("ref"),          Attr::ref),
+  std::make_tuple(cs("result"),       Attr::result),
+  std::make_tuple(cs("size"),         Attr::size),
+  std::make_tuple(cs("sparseflag"),   Attr::sparseflag),
+  std::make_tuple(cs("sparsedim"),    Attr::sparsedim),
+  std::make_tuple(cs("sptr"),         Attr::sptr),
+  std::make_tuple(cs("sref"),         Attr::sref),
+  std::make_tuple(cs("storage"),      Attr::storage),
+  std::make_tuple(cs("stride"),       Attr::stride),
+  std::make_tuple(cs("tensorcount"),  Attr::tensorcount),
+  std::make_tuple(cs("weakref"),      Attr::weakref)
  }};
 
  std::array<std::tuple<S,bool,bool>,4> backsym = {{     //map sym to booleans for retain_graph & create_graph

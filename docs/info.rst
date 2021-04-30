@@ -145,7 +145,28 @@ bytes
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the bytes allocated in the tensor's underlying storage.
 
-(see also objbytes in pointers)
+::
+
+   q)a:tensor til 10
+   q)b:narrow(a;0;5;5)   / new tensor, narrowed to last 5 elements
+
+   q)alias(a;b)
+   1b                    / same underlying storage
+
+   q)d:dict `a`b!(a;b)
+
+   q)numel d             / elements in the tensor
+   a| 10
+   b| 5
+
+   q)numel[d]*itemsize d  / elements * bytes per element
+   a| 80
+   b| 40
+
+   q)bytes d              / size of storage
+   a| 80
+   b| 80
+
 
 tensorcount
 ^^^^^^^^^^^
@@ -153,6 +174,8 @@ tensorcount
 .. function:: tensorcount(ptr) -> long
 
    | Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns the number of tensors contained.
+
+::
 
    q)t:tensor 1 2 3.0
    q)tensorcount t
@@ -477,8 +500,31 @@ More notes on the new memory format `here <https://pytorch.org/tutorials/interme
 .. function:: contiguous(ptr;memory-format) -> bool(s)
 
    :param api-pointer ptr: an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
-   :param sym memory-format: a symbol indicating memory format, e.g. `contiguous or `channel2d
+   :param sym memory-format: optional symbol indicating memory format, e.g. `contiguous or `channel2d
    :return: true if tensor(s) contiguous in memory in the order specified by the supplied memory format.
+
+::
+
+   q)a:tensor 2 3#til 6
+   q)contiguous a
+   1b
+
+   q)b:transpose a
+   q)tensor b
+   0 3
+   1 4
+   2 5
+
+   q)contiguous b
+   0b
+
+   q)t:tensor(2 3 4 5#til 120;`channel2d)
+
+   q)contiguous t
+   0b
+
+   q)contiguous(t;`channel2d)
+   1b
 
 
 coalesced
