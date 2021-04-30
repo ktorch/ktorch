@@ -34,6 +34,8 @@ using SGDParamState     = torch::optim::SGDParamState;
 // kopt - given optimizer type & shared pointer to newly created optimizer, return k ptr
 // omap - map to/from optimizer symbol/enumeration
 // oset - optimizer settings, map sym <-> enum
+// oten - return 1 if tensor defined else 0 (used to count number of tensors in buffers)
+//        also count tensors in vector or deque for lbfgs
 // osize - optimizer size, i.e. number of parameters defined 
 //        (defined in pytorch, but marked with "obsolete" warning)
 // --------------------------------------------------------------------------------------
@@ -62,11 +64,14 @@ static S oset(Setting e) {
  TORCH_ERROR("unrecognized optimizer setting: ",(I)e);
 }
 
-static size_t osize(const Optimizer& o) {
+static J oten(const int64_t& t) {return 0;}
+static J oten(const Tensor& t)  {return t.defined() ? 1 : 0;}
+static J oten(const TensorDeque& v) {return v.size();}
+static J oten(const c10::optional<TensorVector>& v) {return v ? v.value().size() : 0;}
+
+size_t osize(const Optimizer& o) {
   size_t n=0; for(const auto& g:o.param_groups()) n+=g.params().size(); return n;
 }
-
-static size_t osize(const Optptr& o) {return osize(*o);}
 
 // --------------------------------------------------------------------------------------
 // code  - check args for symbol, else error w'optimizer & setting name
@@ -150,7 +155,8 @@ static void adaput(K x,const Device& d,const std::string& k,Optimizer& o) {
  o.state()[k]=std::move(s);
 }
 
-static K adagrad(bool a,const AdagradOptions& o) { //return all or non-default options as k dictionary
+static K adagrad(bool a,const AdagradOptions& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); AdagradOptions d;
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
  if(a || d.lr_decay()     != o.lr_decay())     OPTSET(x, lrdecay, kf(o.lr_decay()));
@@ -161,8 +167,14 @@ static K adagrad(bool a,const AdagradOptions& o) { //return all or non-default o
  return x;
 }
 
-static J adasize(bool b,const AdagradParamState& s) { //return count of elements/bytes in parm buffers
- return b ? objnum(s.step()) + objnum(s.sum()) : objbytes(s.step()) + objbytes(s.sum());
+static J adasize(Attr a,const AdagradParamState& s) {
+ //count of tensors/elements/bytes in parm buffers
+ switch(a) {
+  case Attr::tensorcount: return     oten(s.step()) +     oten(s.sum());
+  case Attr::elements:    return   objnum(s.step()) +   objnum(s.sum());
+  case Attr::bytes:       return objbytes(s.step()) + objbytes(s.sum());
+  default: TORCH_ERROR("adagrad: unexpected attribute for counting buffer sizes");
+ }
 }
 
 static K adaget(const AdagradParamState& s) {
@@ -205,7 +217,8 @@ template<typename S>static void adamput(K x,const Device& d,const std::string& k
  o.state()[k]=std::move(s);
 }
 
-template<typename O> static K adam(bool a,const Optimizer& o) { //return all or non-default options as k dictionary
+template<typename O> static K adam(bool a,const Optimizer& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); O d; const auto& v=static_cast<const O&>(o.defaults());
  if(a || d.lr()           != v.lr())                       OPTSET(x, lr,      kf(v.lr()));
  if(a || std::get<0>(d.betas()) != std::get<0>(v.betas())) OPTSET(x, beta1,   kf(std::get<0>(v.betas())));
@@ -216,7 +229,8 @@ template<typename O> static K adam(bool a,const Optimizer& o) { //return all or 
  return x;
 }
 
-template<typename O> static K adam(bool a,const O& o) { //return all or non-default options as k dictionary
+template<typename O> static K adam(bool a,const O& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); const O d; 
  if(a || d.lr()           != o.lr())                       OPTSET(x, lr,      kf(o.lr()));
  if(a || std::get<0>(d.betas()) != std::get<0>(o.betas())) OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
@@ -227,10 +241,14 @@ template<typename O> static K adam(bool a,const O& o) { //return all or non-defa
  return x;
 }
 
-template<typename S> static J adamsize(bool b,const S& s) {
- return
-  b ?   objnum(s.step()) +   objnum(s.exp_avg()) +   objnum(s.exp_avg_sq()) +   objnum(s.max_exp_avg_sq())
-    : objbytes(s.step()) + objbytes(s.exp_avg()) + objbytes(s.exp_avg_sq()) + objbytes(s.max_exp_avg_sq());
+template<typename S> static J adamsize(Attr a,const S& s) {
+ //count of tensors/elements/bytes in parm buffers
+ switch(a) {
+  case Attr::tensorcount: return     oten(s.step()) +     oten(s.exp_avg()) +     oten(s.exp_avg_sq()) +     oten(s.max_exp_avg_sq());
+  case Attr::elements:    return   objnum(s.step()) +   objnum(s.exp_avg()) +   objnum(s.exp_avg_sq()) +   objnum(s.max_exp_avg_sq());
+  case Attr::bytes:       return objbytes(s.step()) + objbytes(s.exp_avg()) + objbytes(s.exp_avg_sq()) + objbytes(s.max_exp_avg_sq());
+  default: TORCH_ERROR("adam/adamw: unexpected attribute for counting buffer sizes");
+ }
 }
 
 template<typename S> static K adamget(const S& s) { //template for adam/adamw
@@ -285,7 +303,8 @@ static void lbput(K x,const Device& d,const std::string& k,Optimizer& o) {
  o.state()[k]=std::move(s);
 }
 
-static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default options as k dictionary
+static K lbfgs(bool a,const LBFGSOptions& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); LBFGSOptions d;
  if(a || d.lr()               != o.lr())               OPTSET(x, lr,        kf(o.lr()));
  if(a || d.max_iter()         != o.max_iter())         OPTSET(x, iter,      kj(o.max_iter()));
@@ -297,16 +316,29 @@ static K lbfgs(bool a,const LBFGSOptions& o) { //return all or non-default optio
  return x;
 }
 
-static J lbfgssize(bool b,const LBFGSParamState& s) {
- return
-  b ?   objnum(s.func_evals()) +   objnum(s.n_iter())   +   objnum(s.t()) + objnum(s.prev_loss()) +    // scalars
-        objnum(s.d())          +   objnum(s.H_diag())   +   objnum(s.prev_flat_grad()) +               // tensors
-        objnum(s.old_dirs())   +   objnum(s.old_stps()) +   objnum(s.ro()) +                           // deques
-        objnum(s.al())                                                              // optional vector of tensors
-    : objbytes(s.func_evals()) + objbytes(s.n_iter())   + objbytes(s.t()) + objbytes(s.prev_loss()) +  // scalars
-      objbytes(s.d())          + objbytes(s.H_diag())   + objbytes(s.prev_flat_grad()) +               // tensors
-      objbytes(s.old_dirs())   + objbytes(s.old_stps()) + objbytes(s.ro()) +                           // deques
-      objbytes(s.al());                                                             // optional vector of tensors
+static J lbsize(Attr a,const LBFGSParamState& s) {
+ //count of tensors/elements/bytes in parm buffers
+ switch(a) {
+  case Attr::tensorcount:
+   return
+    oten(s.func_evals()) +   oten(s.n_iter())   +   oten(s.t()) + oten(s.prev_loss()) +    // scalars
+    oten(s.d())          +   oten(s.H_diag())   +   oten(s.prev_flat_grad()) +             // tensors
+    oten(s.old_dirs())   +   oten(s.old_stps()) +   oten(s.ro()) +                         // deques
+    oten(s.al());                                                       // optional vector of tensors
+  case Attr::elements:
+   return
+    objnum(s.func_evals()) +   objnum(s.n_iter())   +   objnum(s.t()) + objnum(s.prev_loss()) +    // scalars
+    objnum(s.d())          +   objnum(s.H_diag())   +   objnum(s.prev_flat_grad()) +               // tensors
+    objnum(s.old_dirs())   +   objnum(s.old_stps()) +   objnum(s.ro()) +                           // deques
+    objnum(s.al());                                                             // optional vector of tensors
+  case Attr::bytes:
+   return 
+    objbytes(s.func_evals()) + objbytes(s.n_iter())   + objbytes(s.t()) + objbytes(s.prev_loss()) +  // scalars
+    objbytes(s.d())          + objbytes(s.H_diag())   + objbytes(s.prev_flat_grad()) +               // tensors
+    objbytes(s.old_dirs())   + objbytes(s.old_stps()) + objbytes(s.ro()) +                           // deques
+    objbytes(s.al());                                                             // optional vector of tensors
+  default: TORCH_ERROR("lbfgs: unexpected attribute for counting buffer sizes");
+ }
 }
 
 static K lbget(const LBFGSParamState& s) {
@@ -359,7 +391,8 @@ static void rmsput(K x,const Device& d,const std::string& k,Optimizer& o) {
  o.state()[k]=std::move(s);
 }
 
-static K rmsprop(bool a,const RMSpropOptions& o) { //return all or non-default options as k dictionary
+static K rmsprop(bool a,const RMSpropOptions& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); RMSpropOptions d;
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,       kf(o.lr()));
  if(a || d.alpha()        != o.alpha())        OPTSET(x, alpha,    kf(o.alpha()));
@@ -370,10 +403,14 @@ static K rmsprop(bool a,const RMSpropOptions& o) { //return all or non-default o
  return x;
 }
 
-static J rmssize(bool b,const RMSpropParamState& s) {
- return
-  b ?   objnum(s.step()) +  objnum(s.square_avg()) +   objnum(s.momentum_buffer()) +   objnum(s.grad_avg())
-    : objbytes(s.step()) +objbytes(s.square_avg()) + objbytes(s.momentum_buffer()) + objbytes(s.grad_avg());
+static J rmssize(Attr a,const RMSpropParamState& s) {
+ //count of tensors/elements/bytes in parm buffers
+ switch(a) {
+  case Attr::tensorcount: return   oten(s.step())   +    oten(s.square_avg())  +     oten(s.momentum_buffer()) +     oten(s.grad_avg());
+  case Attr::elements:    return objnum(s.step())   +  objnum(s.square_avg())  +   objnum(s.momentum_buffer()) +   objnum(s.grad_avg());
+  case Attr::bytes:       return objbytes(s.step()) + objbytes(s.square_avg()) + objbytes(s.momentum_buffer()) + objbytes(s.grad_avg());
+  default: TORCH_ERROR("rmsprop: unexpected attribute for counting buffer sizes");
+ }
 }
 
 static K rmsget(const RMSpropParamState& s) {
@@ -413,7 +450,8 @@ static void sgdput(K x,const Device& d,const std::string& k,Optimizer& o) {
  o.state()[k]=std::move(s);
 }
 
-static K sgd(bool a,const SGDOptions& o) { //return all or non-default options as k dictionary
+static K sgd(bool a,const SGDOptions& o) {
+ //return all or non-default options as k dictionary
  K x=xD(ktn(KS,0),ktn(0,0)); SGDOptions d(LR);
  if(a || d.lr()           != o.lr())           OPTSET(x, lr,        kf(o.lr()));
  if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum,  kf(o.momentum()));
@@ -423,8 +461,14 @@ static K sgd(bool a,const SGDOptions& o) { //return all or non-default options a
  return x;
 }
 
-static J sgdsize(bool b, const SGDParamState& s) {
- return b ? objnum(s.momentum_buffer()) : objbytes(s.momentum_buffer());
+static J sgdsize(Attr a, const SGDParamState& s) {
+ //count of tensors/elements/bytes in parm buffers
+ switch(a) {
+  case Attr::tensorcount: return     oten(s.momentum_buffer());
+  case Attr::elements:    return   objnum(s.momentum_buffer());
+  case Attr::bytes:       return objbytes(s.momentum_buffer());
+  default: TORCH_ERROR("sgd: unexpected attribute for counting buffer sizes");
+ }
 }
 
 static K sgdget(const SGDParamState& s) {
@@ -433,10 +477,10 @@ static K sgdget(const SGDParamState& s) {
  return x;
 }
 
-// -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
 // optdict - return a list of dictionaries, one per group of optimizer settings
-// buffersize - number of elements or bytes of optimizer buffers for each parameter
-// -------------------------------------------------------------------------------
+// buffersize - count tensors, elements or bytes of optimizer buffers for each parameter
+// -------------------------------------------------------------------------------------
 static K optdict(bool a,Cast c,const Optimizer& o) {
  size_t i=0,n=o.param_groups().size(); K x,r=ktn(0,n);
  for(const auto&g:o.param_groups()) {
@@ -454,22 +498,22 @@ static K optdict(bool a,Cast c,const Optimizer& o) {
  return r;
 }
 
-static J buffersize(bool b,Cast c,const ParamState& p) {
+static J buffersize(Attr a,Cast c,const ParamState& p) {
  switch(c) {
-  case Cast::adagrad: return   adasize(b, static_cast<const AdagradParamState&>(p));
-  case Cast::adam:    return  adamsize(b, static_cast<const AdamParamState&>(p));
-  case Cast::adamw:   return  adamsize(b, static_cast<const AdamWParamState&>(p));
-  case Cast::lbfgs:   return lbfgssize(b, static_cast<const LBFGSParamState&>(p));
-  case Cast::rmsprop: return   rmssize(b, static_cast<const RMSpropParamState&>(p));
-  case Cast::sgd:     return   sgdsize(b, static_cast<const SGDParamState&>(p));
+  case Cast::adagrad: return   adasize(a, static_cast<const AdagradParamState&>(p));
+  case Cast::adam:    return  adamsize(a, static_cast<const AdamParamState&>(p));
+  case Cast::adamw:   return  adamsize(a, static_cast<const AdamWParamState&>(p));
+  case Cast::lbfgs:   return    lbsize(a, static_cast<const LBFGSParamState&>(p));
+  case Cast::rmsprop: return   rmssize(a, static_cast<const RMSpropParamState&>(p));
+  case Cast::sgd:     return   sgdsize(a, static_cast<const SGDParamState&>(p));
   default: TORCH_ERROR("unrecognized optimizer: ",(I)c,", unable to retrieve parameter state");
  }
 }
 
-J buffersize(bool b,Cast c,const Optimizer& o) {
+J buffersize(Attr a,Cast c,const Optimizer& o) {
  J n=0;
  for(const auto& p:o.state())
-  n+=buffersize(b,c,*p.second);
+  n+=buffersize(a,c,*p.second);
  return n;
 }
 
@@ -1065,17 +1109,8 @@ KAPI lr(K x) {
 }
 
 // ---------------------------------------------------------------------------------------
-// optattr - return attribute of given optimizer
+// opthelp - return options for individual optimizer or table of all optimizer options
 // ---------------------------------------------------------------------------------------
-K optattr(const Optptr& o,Ktype k,Attr a) {
- switch(a) {
-  case Attr::ptr:  return kj((intptr_t)o.get());
-  case Attr::ref:  return kj(o.use_count());
-  case Attr::size: return kj(osize(o));
-  default: TORCH_ERROR(mapattr(a),": not implemented for optimizers");
- }
-}
-
 K opthelp(Cast c) {
  switch(c) {
   case Cast::adagrad: return adagrad(true,AdagradOptions());

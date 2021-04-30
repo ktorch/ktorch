@@ -1206,15 +1206,31 @@ static S objdevice(Ktag *x) {
  }
 }
 
-static K objsize(Ktag *x) {
+static J objsize(const Moduleptr& m,bool b) {
+ return m->parameters().size() + (b ? m->buffers().size() : 0);
+}
+
+static J objsize(Cast c,const Optimizer& o,bool b) {
+ return b ? buffersize(Attr::tensorcount, c, o) : osize(o);
+}
+
+static J objsize(Kmodel *m,bool b) {
+ if(b) // count all tensors & buffers in module,loss & optimizer
+  return objsize(m->m,b) + objsize(m->l,b) + osize(*m->o);
+ else
+  return objsize(m->m,b);  // just count parameters in module
+}
+ 
+static K objsize(Ktag *x,bool b=false);
+static K objsize(Ktag *x,bool b) {
  switch(x->a) {
   case Class::tensor:    return tensorsize(((Kten*)x)->t, Attr::size);
   case Class::vector:    return kj(((Kvec*)x)->v.size());
   case Class::dict:      return kj(((Kdict*)x)->d.size());
   case Class::module:
-  case Class::loss:      return kj(((Kmodule*)x)->m->parameters().size());
-  case Class::optimizer: return optattr(((Kopt*)x)->o, KJ, Attr::size);
-  case Class::model:     return kj(((Kmodel*)x)->m->parameters().size());
+  case Class::loss:      return kj(objsize(((Kmodule*)x)->m,b));
+  case Class::optimizer: return kj(objsize(x->c, (*((Kopt*)x)->o),b));
+  case Class::model:     return kj(objsize((Kmodel*)x,b));
   default: return ktn(0,0);
  }
 }
@@ -1226,9 +1242,9 @@ J objnum(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objnum(t); retur
 J objnum(const c10::optional<TensorVector>& v) {return v ? objnum(*v) : 0;}
 J objnum(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objnum(t); return n;}
 J objnum(const Module& m) {return objnum(m.parameters()) + objnum(m.buffers());}
-static J objnum(Cast c,const Optimizer& o) {return buffersize(true,c,o);}
+J objnum(Cast c,const Optimizer& o) {return buffersize(Attr::elements,c,o);}
 static J objnum(Kopt* x) {return objnum(x->c,*x->o);}
-static J objnum(Kmodel *x) {return objnum(*x->m) + objnum(x->oc,*x->o);}
+static J objnum(Kmodel *x) {return objnum(*x->m) + objnum(*x->l) + objnum(x->oc,*x->o);}
 
 static J objnum(Ktag *x) {
  switch(x->a) {
@@ -1251,9 +1267,9 @@ J objbytes(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objbytes(t); r
 J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
 J objbytes(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const Module &m) {return objbytes(m.parameters()) + objbytes(m.buffers());}
-static J objbytes(Cast c,const Optimizer& o) {return buffersize(false,c,o);}
+J objbytes(Cast c,const Optimizer& o) {return buffersize(Attr::bytes,c,o);}
 static J objbytes(Kopt* x) {return objbytes(x->c,*x->o);}
-static J objbytes(Kmodel *x) {return objbytes(*x->m) + objbytes(x->oc,*x->o);}
+static J objbytes(Kmodel *x) {return objbytes(*x->m) + objbytes(*x->l) + objbytes(x->oc,*x->o);}
 
 static J objbytes(Ktag *x) {
  switch(x->a) {
@@ -1294,22 +1310,22 @@ KAPI kobj(K x) {
  KCATCH("obj");
 }
 
-static K objcount(K x,Attr a) {
+KAPI tensorcount(K x) {
  KTRY
   auto *g=xtag(x);
-  TORCH_CHECK(g,mapattr(a),": not implemented for kname(x)");
-  switch(a) {
-   case Attr::bytes:    return kj(objbytes(g));
-   case Attr::elements: return kj(objnum(g));
-   case Attr::tcount:   return g->a==Class::tensor ? kj(1) : objsize(g);
-   default: TORCH_ERROR("object attribute: ",mapattr(a)," not implemented");
+  TORCH_CHECK(g, "tensorcount: not implemented for kname(x)");
+  switch(g->a) {
+   case Class::tensor:    return kj(1);
+   case Class::vector: 
+   case Class::dict:
+   case Class::module:
+   case Class::loss:     
+   case Class::optimizer:
+   case Class::model:     return objsize(g,true);
+   default: TORCH_ERROR("tensorcount: not implemented for ",mapclass(g->a));
   }
- KCATCH("object counts");
+ KCATCH("tensorcount");
 }
-
-KAPI Objbytes(K x) {return objcount(x, Attr::bytes);}     // bytes allocated
-KAPI elements(K x) {return objcount(x, Attr::elements);}  // number of elements (bytes/element size)
-KAPI   tcount(K x) {return objcount(x, Attr::tcount);}    // number of tensors in object
 
 // -----------------------------------------------------------------------------------------
 // kstate - retrieve module/loss/optimizer state: options, internal buffers & parameters
@@ -1719,8 +1735,10 @@ KAPI kseed(K x) {
 
 // -----------------------------------------------------------------------------------------
 // query object attributes, e.g. tensor/vector and other object attributes
+// -----------------------------------------------------------------------------------------
 // mresult - return symbol indicating module result type, e.g. `tensor`tuple
-// mattr - handle a limited set of module attributes
+// moduleattr - handle a limited set of module attributes
+// modelattr - handle a limited set of model attributes
 // attr - attempt to get attribute of given object (more attributes implemented for tensors)
 // -----------------------------------------------------------------------------------------
 S mresult(Result r) {
@@ -1730,13 +1748,37 @@ S mresult(Result r) {
  return nullsym();
 }
 
-static K mattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
+static K moduleattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
-  case Attr::ref:     return kj(p.use_count());
-  case Attr::ptr:     return kj((intptr_t)p.get());
-  case Attr::device:  return ks(objdevice(*p, optdev(Device(torch::kCPU))));
-  case Attr::result:  return ks(mresult(r));
+  case Attr::ref:      return kj(p.use_count());
+  case Attr::ptr:      return kj((intptr_t)p.get());
+  case Attr::device:   return ks(objdevice(*p, optdev(Device(torch::kCPU))));
+  case Attr::size:     return kj(p->parameters().size());
+  case Attr::bytes:    return kj(objbytes(*p));
+  case Attr::elements: return kj(objnum(*p));
+  case Attr::result:   return ks(mresult(r));
   default: TORCH_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
+ }
+}
+
+static K optattr(Cast c,const Optptr& o,Ktype k,Attr a) {
+ switch(a) {
+  case Attr::ptr:      return kj((intptr_t)o.get());
+  case Attr::ref:      return kj(o.use_count());
+  case Attr::size:     return kj(osize(*o));
+  case Attr::bytes:    return kj(objbytes(c,*o));
+  case Attr::elements: return kj(objnum(c,*o));
+  default: TORCH_ERROR(mapattr(a),": not implemented for optimizers");
+ }
+}
+
+static K modelattr(Kmodel *m,Ktype k,Attr a) {
+ switch(a) {
+  case Attr::size:     return kj(m->m->parameters().size());
+  case Attr::bytes:    return kj(objbytes(m));
+  case Attr::elements: return kj(objnum(m));
+  case Attr::result:   return ks(mresult(m->r));
+  default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(m->a));
  }
 }
 
@@ -1749,8 +1791,9 @@ K attr(K x,Ktype k,Attr a) {
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
    case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
    case Class::module:
-   case Class::loss:      return mattr(g->a,g->r,((Kmodule*)g)->m,k,a);
-   case Class::optimizer: return optattr(((Kopt*)g)->o,k,a);
+   case Class::loss:      return moduleattr(g->a,g->r,((Kmodule*)g)->m,k,a);
+   case Class::optimizer: return optattr(g->c, ((Kopt*)g)->o, k, a);
+   case Class::model:     return modelattr((Kmodel*)g, k, a);
    default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));
   }
  KCATCH("attr");
@@ -1761,6 +1804,7 @@ KAPI   densedim(K x) {return attr(x, -KJ, Attr::densedim);}
 KAPI  sparsedim(K x) {return attr(x, -KJ, Attr::sparsedim);}
 KAPI        nnz(K x) {return attr(x, -KJ, Attr::nnz);}
 KAPI      numel(K x) {return attr(x, -KJ, Attr::numel);}
+KAPI   elements(K x) {return attr(x, -KJ, Attr::elements);}
 KAPI   itemsize(K x) {return attr(x, -KJ, Attr::itemsize);}
 KAPI      bytes(K x) {return attr(x, -KJ, Attr::bytes);}
 KAPI     offset(K x) {return attr(x, -KJ, Attr::offset);}
@@ -1934,9 +1978,7 @@ KAPI fns(K x){
  fn(x, "free",        KFN(Kfree),       1);
  fn(x, "use",         KFN(use),         2);
  fn(x, "obj",         KFN(kobj),        1);
- fn(x, "objbytes",    KFN(Objbytes),    1);
- fn(x, "elements",    KFN(elements),    1);
- fn(x, "tcount",      KFN(tcount),      1);
+ fn(x, "tensorcount", KFN(tensorcount), 1);
  fn(x, "to",          KFN(To),          1);
  fn(x, "copyto",      KFN(copyto),      1);
  fn(x, "info",        KFN(info1),       1);
@@ -1956,6 +1998,7 @@ KAPI fns(K x){
  fn(x, "sparsedim",   KFN(sparsedim),   1);
  fn(x, "nnz",         KFN(nnz),         1);
  fn(x, "numel",       KFN(numel),       1);
+ fn(x, "elements",    KFN(elements),    1);
  fn(x, "itemsize",    KFN(itemsize),    1);
  fn(x, "bytes",       KFN(bytes),       1);
  fn(x, "offset",      KFN(offset),      1);

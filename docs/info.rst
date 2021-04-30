@@ -217,6 +217,7 @@ same
    | Given two :doc:`api-pointers<pointers>` to tensors, returns true if both api handles point to the same tensor.
 
 ::
+
    q)a:tensor 1 2 3
    q)b:addref a
 

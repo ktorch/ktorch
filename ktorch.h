@@ -223,12 +223,12 @@ enum class State:char {
 
 enum class Attr:char {
  undefined = 0,
- bytes,  densedim, dim, elements,  itemsize, nnz, numel,      // long scalars
- offset, ptr, ref, sparsedim, sptr, sref, tcount, weakref,
- device, dtype, gradfn, gradient, layout, memory, result,     // symbol
- coalesced, contiguous, gradflag, leaf, pinned, sparseflag,   // boolean
- size, stride,                                                // long list
- data, storage                                                // other: list,dict,..
+ bytes,  densedim, dim, elements,  itemsize, nnz, numel, offset, // long scalars
+ ptr, ref, sparsedim, sptr, sref, tensorcount, weakref,
+ device, dtype, gradfn, gradient, layout, memory, result,        // symbol
+ coalesced, contiguous, gradflag, leaf, pinned, sparseflag,      // boolean
+ size, stride,                                                   // long list
+ data, storage                                                   // other: list,dict,..
 };
  
 enum class Metric: char {
@@ -505,6 +505,7 @@ J objnum(const TensorVector&);
 J objnum(const c10::optional<TensorVector>&);
 J objnum(const TensorDeque&);
 J objnum(const Module&);
+J objnum(Cast,const Optimizer&);
 J objbytes(int64_t);
 J objbytes(double);
 J objbytes(const Tensor&);
@@ -512,6 +513,7 @@ J objbytes(const TensorVector&);
 J objbytes(const c10::optional<TensorVector>&);
 J objbytes(const TensorDeque&);
 J objbytes(const Module&);
+J objbytes(Cast,const Optimizer&);
 
 bool kfree(K);
 bool kfree(K,J);
@@ -606,11 +608,11 @@ K losshelp(Cast);
 void lossfn(K);
 
 // optimization functions:
-J buffersize(bool,Cast,const Optimizer&);
+size_t osize(const Optimizer&);
+J buffersize(Attr,Cast,const Optimizer&);
 K kopt(Cast,const Optptr&,const Moduleptr&);
 K optstate(bool,bool,Kopt *);
 K optstate(bool,bool,Kmodel *);
-K optattr(const Optptr&,Ktype,Attr);
 K opthelp(Cast);
 void optstep(Cast,Optptr&);
 void optstep(Kopt*);
@@ -1064,7 +1066,7 @@ typedef struct {
   std::make_tuple(cs("sref"),        Attr::sref),
   std::make_tuple(cs("storage"),     Attr::storage),
   std::make_tuple(cs("stride"),      Attr::stride),
-  std::make_tuple(cs("tcount"),      Attr::tcount),
+  std::make_tuple(cs("tensorcount"), Attr::tensorcount),
   std::make_tuple(cs("weakref"),     Attr::weakref)
  }};
 
