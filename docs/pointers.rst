@@ -3,7 +3,7 @@
 Pointers
 ========
 
-The k interface returns a pointer to allocated values (tensor, module, optimizer, loss function or model) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
+The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:docL`model`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
 
 ::
 
@@ -16,18 +16,25 @@ The k interface returns a pointer to allocated values (tensor, module, optimizer
    ,49017184
 
 
-The api maintains a map of pointers that can be viewed via ``obj`` and released via ``free``.
+The api maintains a map of pointers that can be viewed via :func:`obj` and released via :func:`free`.
 
-.. function:: free ()
-.. function:: free ptr
+obj
+^^^
 
-   | Release allocated object stored in given pointer, or all allocated objects if empty arg ``[]``.
+.. function:: obj() -> table of allocated objects
 
-.. function:: table:obj[]
+   | Return a table of allocated objects with basic information, class, device, bytes allocated, etc.
 
-   | Return a table of allocated objects with brief descriptions.
+free
+^^^^
 
-.. code-block:: k
+.. function:: free() -> null
+.. function:: free(ptr) -> null
+
+   | Release allocated object stored in given pointer, or all allocated objects if empty or null argument.
+
+
+::
 
    q)t:tensor 1 2 3e
 
@@ -50,3 +57,21 @@ ref
 
 addref
 ^^^^^^
+
+class
+^^^^^
+
+ptr
+^^^
+
+size
+^^^^
+
+bytes
+^^^^^
+
+elements
+^^^^^^^^
+
+use
+^^^

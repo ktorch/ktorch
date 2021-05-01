@@ -36,6 +36,7 @@ Tensors
    vectors
    dictionaries
    info
+   tensorop
    math
 
 Modules
@@ -55,6 +56,11 @@ Training
 
    opt 
 
+.. toctree::
+   :maxdepth: 1
+
+   model
+ 
 Index
 =====
 
