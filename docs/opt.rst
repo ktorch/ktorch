@@ -1,21 +1,4 @@
-Tensor operations
-=================
+Optimizers
+==========
 
 
-reshape
-^^^^^^^
-
-resize
-^^^^^^
-
-restore
-^^^^^^^
-
-view
-^^^^
-
-narrow
-^^^^^^
-
-transpose
-^^^^^^^^^

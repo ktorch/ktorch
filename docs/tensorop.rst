@@ -2,14 +2,14 @@ Tensor operations
 =================
 
 
+Views
+*****
+
 reshape
 ^^^^^^^
 
 resize
 ^^^^^^
-
-restore
-^^^^^^^
 
 view
 ^^^^
@@ -17,5 +17,14 @@ view
 narrow
 ^^^^^^
 
+restore
+^^^^^^^
+
 transpose
 ^^^^^^^^^
+
+Indexing
+********
+
+Reset values
+************

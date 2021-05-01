@@ -15,6 +15,31 @@ The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :
    q)0N!t;
    ,49017184
 
+.. note::
+   Pointers maintain this property -- a scalar embedded in a general list -- if used in a list via ``(;)``, but otherwise lose this distinguishing characteristic  after most applying most operators.
+
+For example:
+
+::
+
+   q)a:tensor 1 2 3
+   q)v:vector(4 5;6 7 8)
+
+   q)class each (a;v) / making a list preserves pointers
+   `tensor`vector
+
+   q)class each a,v   / joining makes a different type of list
+   'class: need allocated torch object, e.g. tensor, module, given long scalar
+     [0]  class each a,v
+                ^
+   q)0N!(a;v);
+   (,48128768;,48129232)
+
+   q)0N!a,v;
+   (48128768;48129232)
+
+   q)0N!0+a,v;
+   48128768 48129232
 
 The api maintains a map of pointers that can be viewed via :func:`obj` and released via :func:`free`.
 
