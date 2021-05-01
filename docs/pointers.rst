@@ -3,7 +3,7 @@
 Pointers
 ========
 
-The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:doc:`model`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
+The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:doc:`model <model>`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
 
 ::
 
@@ -177,5 +177,35 @@ addref
 use
 ^^^
 
+.. function:: use[ptr](tensor expression) -> null
+
 str
 ^^^
+
+.. function:: str(ptr) -> string with embedded newlines
+
+   | Only implemented for tensors and modules, returns the PyTorch C++ string representation of the object allocated.
+
+::
+
+   q)t:tensor(`randn;2 3;`cuda)
+
+   q)-2 str t;
+   -0.8294  1.0210  0.4638
+   -0.6257 -0.8949 -0.0671
+   [ CUDAFloatType{2,3} ]
+
+
+   q)show q:((0;`sequential); (1; (`linear;64;10)); (1;`relu))
+   0 `sequential    
+   1 (`linear;64;10)
+   1 `relu          
+
+   q)q:module q
+
+   q)-2 str q;
+   torch::nn::Sequential(
+     (0): torch::nn::Linear(in_features=64, out_features=10, bias=true)
+     (1): torch::nn::ReLU()
+   )
+
