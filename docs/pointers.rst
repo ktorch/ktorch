@@ -41,6 +41,9 @@ For example:
    q)0N!0+a,v;
    48128768 48129232
 
+Managing pointers
+*****************
+
 The api maintains a map of pointers that can be viewed via :func:`obj` and released via :func:`free`.
 
 obj
@@ -57,16 +60,18 @@ obj
    q)d:dict `a`b!(0101b; 3 4#til 12)
 
    q)q:module ((0;`sequential); (1; (`linear;64;10)))
+   q)to(q;`cuda)  /move module to default gpu
    q)o:opt(`adam; q)
 
    q)obj[]
-   ptr      class     device dtype  size elements bytes
-   ----------------------------------------------------
-   70619344 optimizer cpu           2    0        0    
-   70616336 module    cpu           2    650      2600 
-   70620704 dict      cpu           2    16       100  
-   70628272 vector    cpu           2    5        28   
-   70627552 tensor    cpu    double ,3   3        24   
+   q)ptr        class     device dtype  size elements bytes
+   ------------------------------------------------------
+   1796447984 optimizer cuda:0        2    0        0    
+   43618592   module    cuda:0        2    650      2600 
+   43611488   dict      cpu           2    16       100  
+   43346784   tensor    cpu    double ,3   3        24   
+   43611232   vector    cpu           2    5        28   
+
 
 free
 ^^^^
@@ -79,27 +84,33 @@ free
 
 ::
 
-   q)t:tensor 1 2 3e
+   q)a:tensor 1 2 3
+   q)v:vector(4 5;6 7 8)
 
    q)obj[]
-   ptr      obj    device dtype size elements bytes
+   ptr      class  device dtype size elements bytes
    ------------------------------------------------
-   49017184 tensor cpu    float 3    3        12   
+   71083104 vector cpu          2    5        40   
+   70818656 tensor cpu    long  ,3   3        24   
 
-   q)free t
+   q)free v
+   q)obj[]
+   ptr      class  device dtype size elements bytes
+   ------------------------------------------------
+   70818656 tensor cpu    long  3    3        24   
 
-   q)tensor t
+   q)class v
    'stale pointer
-   [0]  tensor t
-       ^
+     [0]  class v
+          ^
 
-ref
-^^^
+   q)free[]
+   q)obj[]
+   ptr class device dtype size elements bytes
+   ------------------------------------------
 
-.. addref_:
-
-addref
-^^^^^^
+Pointer information
+*******************
 
 ptr
 ^^^
@@ -116,5 +127,19 @@ bytes
 elements
 ^^^^^^^^
 
+Pointer utilities
+*****************
+
+ref
+^^^
+
+.. addref_:
+
+addref
+^^^^^^
+
 use
+^^^
+
+str
 ^^^
