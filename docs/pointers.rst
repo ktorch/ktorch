@@ -3,7 +3,7 @@
 Pointers
 ========
 
-The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:doc:`model <model>`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
+The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or :doc:`model <model>`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
 
 ::
 
@@ -169,15 +169,95 @@ Pointer utilities
 ref
 ^^^
 
+.. function:: ref(ptr) -> count of references
+
+   | Given an api-pointer, returns the number of references to the underlying PyTorch object
+
+On the example below, a linear module is created and then an optimizer is initialized to optimize that module's parameters.
+The reference count is 2 until the optimizer is free'd, bring the reference count back down to 1.
+
+::
+
+   q)m:module enlist(`linear;512;10)
+   q)o:opt(`adam; m)
+
+   q)ref m
+   2
+
+   q)free o
+   q)ref m
+   1
+
+
 .. addref_:
 
 addref
 ^^^^^^
 
+.. function:: addref(ptr) -> new ptr pointing to same object
+
+   | Adds a new handle to the k interface pointing to the same PyTorch object (tensor, module, etc.)
+
+Below is an example of adding a reference to tensor ``b`` so that when the vector is created,
+a separate pointer to the tensor is maintained.  (tensor ``a`` is no longer valid, the vector is managing the tensor's memory)
+
+::
+
+   q)a:tensor 0101b
+   q)b:tensor til 9
+   q)v:vector(a; addref b)
+
+   q)ref a
+   'stale pointer
+     [0]  ref a
+          ^
+   q)ref b
+   2
+
+   q)free v
+
+   q)ref b
+   1
+
+q)
+
 use
 ^^^
 
-.. function:: use[ptr](tensor expression) -> null
+.. function:: use[ptr;tensor expression]
+
+   | reuse api-pointer to point to a different underlying PyTorch object without explicitly freeing the original object.
+
+   :param tensor-pointer ptr: a pointer to a previously allocated tensor.
+   :param tensor-expression: a new expression that returns a new tensor.
+   :return: the previous api container frees the first tensor pointer and now contains the new tensor pointer. Returns null.
+
+::
+
+   q)free() / free all objects
+   q)a:tensor 1 2 3
+   q)b:tensor 010101b
+   q)use[a]b
+
+   q)tensor a
+   010101b
+
+   q)tensor b
+   'stale pointer
+     [0]  tensor b
+          ^
+   q)seed 123
+   q)use[a]tensor(`rand;2 3)
+
+   q)tensor a
+   0.2961119 0.5165623  0.2516707
+   0.6885568 0.07397246 0.866522 
+
+   q)obj[]  / verify only one tensor allocated
+   ptr      class  device dtype size elements bytes
+   ------------------------------------------------
+   61701984 tensor cpu    float 2 3  6        24   
+
 
 str
 ^^^
