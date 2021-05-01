@@ -3,20 +3,23 @@
 Pointers
 ========
 
-The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:doc``model`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
+The k interface returns a pointer to allocated values (:doc:`tensor<tensors>`, :doc:`module<modules>`, :doc:`optimizer <opt>` or `:doc:`model`) that can then be used in subsequent function calls. Pointers are 1-element general lists with a scalar long value to distinguish these values from long scalars and lists created normally in a k session.
 
 ::
 
-   q)t:tensor 1 2 3e
+   q)t:tensor 1 2 3
 
    q)type t
    0h
 
+   q)type each t
+   ,-7h
+
    q)0N!t;
-   ,49017184
+   ,68610912
 
 .. note::
-   Pointers maintain this property -- a scalar embedded in a general list -- if used in a list via ``(;)``, but otherwise lose this distinguishing characteristic  after most applying most operators.
+   Pointers maintain this property -- a scalar embedded in a general list -- if used in a list via ``(;)``, but otherwise lose this distinguishing characteristic after most applying most operators.
 
 For example:
 
@@ -76,6 +79,8 @@ obj
 free
 ^^^^
 
+Pointers to PyTorch objects that are created via the k interface must be explicitly free'd. If a pointer is assigned in a function as a local variable, it must be returned or free'd within the function to avoid memory leaks.
+
 .. function:: free() -> null
 .. function:: free(ptr) -> null
 
@@ -109,6 +114,31 @@ free
    ptr class device dtype size elements bytes
    ------------------------------------------
 
+In this example, a 4-byte float with 100,000,000 elements is created repeatedly without freeing memory on the gpu:
+
+::
+
+   q)\ts:100 r:{t:tensor(`randn; x;`cuda); r:mean tensor t; r} 100000000
+   'CUDA out of memory. Tried to allocate 382.00 MiB (GPU 0; 10.91 GiB total capacity; 9.70 GiB already allocated; 308.50 MiB free; 9.70 GiB reserved in total by PyTorch)
+     [1]  {t:tensor(`randn; x;`cuda); r:mean tensor t; r}
+             ^
+
+   / 26 tensors created (9.7g) before the GPU runs out of memory
+   q)select n:count i,sum[bytes]%2 xexp 30 from obj[]
+   n  bytes   
+   -----------
+   26 9.685755
+
+   q)free()  / free all PyTorch objects
+
+   / add free[t] from within the function
+   q)\ts:100 r:{t:tensor(`randn; x;`cuda); r:mean tensor t; free t; r} 100000000
+   32436 536872016
+
+   q)r
+   -0.000203889e
+
+
 Pointer information
 *******************
 
@@ -118,14 +148,20 @@ ptr
 class
 ^^^^^
 
+device
+^^^^^^
+
+dtype
+^^^^^
+
 size
 ^^^^
 
-bytes
-^^^^^
-
 elements
 ^^^^^^^^
+
+bytes
+^^^^^
 
 Pointer utilities
 *****************
