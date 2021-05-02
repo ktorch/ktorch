@@ -1216,7 +1216,7 @@ static J objsize(Cast c,const Optimizer& o,bool b) {
 
 static J objsize(Kmodel *m,bool b) {
  if(b) // count all tensors & buffers in module,loss & optimizer
-  return objsize(m->m,b) + objsize(m->l,b) + osize(*m->o);
+  return objsize(m->m,b) + objsize(m->l,b) + objsize(m->oc, *m->o, b);
  else
   return objsize(m->m,b);  // just count parameters in module
 }

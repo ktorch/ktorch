@@ -174,6 +174,8 @@ bytes
    b| 80
 
 
+.. _tensor-count:
+
 tensorcount
 ^^^^^^^^^^^
 

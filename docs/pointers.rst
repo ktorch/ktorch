@@ -219,7 +219,10 @@ size
 
 .. function:: size(ptr) -> long/long list
 
-   | Return the size, a list with the size at each dimension for :ref:`tensors, dictionaries and vectors <tensor-size>` and a count of parameters for objects like modules, loss functions, optimizers and overall models.
+   | Returns size, a list with the size at each dimension for :ref:`tensors, dictionaries and vectors <tensor-size>` and a count of parameters for objects like modules, loss functions, optimizers and overall models.
+
+.. note::
+   :func: size() for some objects is different from the overall count of tensors or bytes allocated. The size of an optimizer is given as the number of parameters it is optimizing, but the number of tensor buffers can be much larger (e.g. for the ``Adam`` optimizer, there are four buffers for each parameter). Also the bytes allocated changes after the first optimizer step -- some buffers are not initialized until the first step when gradients are applied.
 
 ::
 
@@ -240,19 +243,24 @@ size
 elements
 ^^^^^^^^
 
-.. function:: elements(ptr) -> long
+.. function:: elements(ptr) -> number of elements
 
-   | Return the raw pointer of the underlying PyTorch object, :ref:`more detail for tensors here <tensor-ptr>`. If the k interface has multiple api-pointers refencing the same object, their raw pointers will match.
+   | Returns the number of elements for :ref:`tensors, dictionaries and vectors <tensor-elements>` and a count of parameter elements for objects like modules, loss functions, optimizers and overall models.
 
 ::
 
 
 bytes
 ^^^^^
+.. function:: bytes(ptr) -> number of bytes allocated
 
-.. function:: bytes(ptr) -> long
 
-   | Return the raw pointer of the underlying PyTorch object, :ref:`more detail for tensors here <tensor-ptr>`. If the k interface has multiple api-pointers refencing the same object, their raw pointers will match.
+tensorcount
+^^^^^^^^^^^
+
+.. function:: tensorcount(ptr) -> count of tensors managed by the object.
+
+   | Return the number of tensors in :ref:`vector and dictionaries of tensors <tensor-count>`. Returns the number of parameters and buffers in modules, optimizers and models.
 
 ::
 
