@@ -4,6 +4,8 @@ Tensor information
 Tensor size
 ***********
 
+.. _tensor-size:
+
 size
 ^^^^
 
@@ -113,6 +115,8 @@ numel
    a| 10
    b| 10
 
+.. _tensor-elements:
+
 elements
 ^^^^^^^^
 
@@ -137,6 +141,8 @@ elements
    q)elements d          / full size in storage
    a| 10
    b| 10
+
+.. _tensor-bytes:
 
 bytes
 ^^^^^
@@ -188,6 +194,8 @@ tensorcount
 
 Pointer information
 *******************
+
+.. _tensor-ptr:
 
 ptr
 ^^^
@@ -393,6 +401,8 @@ options
    b| cuda:0 bool  sparse  nograd   unpinned contiguous
    c| cpu    short strided nograd   pinned   contiguous
 
+.. _tensor-device:
+
 device
 ^^^^^^
 
@@ -413,6 +423,9 @@ device
    a| cuda:0
    b| cuda:1
    c| cpu
+
+
+.. _tensor-dtype:
 
 
 dtype

@@ -1221,7 +1221,7 @@ static J objsize(Kmodel *m,bool b) {
   return objsize(m->m,b);  // just count parameters in module
 }
  
-static K objsize(Ktag *x,bool b=false);
+static K objsize(Ktag *x,bool b=false);  // if b, return tensor count, else "size"
 static K objsize(Ktag *x,bool b) {
  switch(x->a) {
   case Class::tensor:    return tensorsize(((Kten*)x)->t, Attr::size);
@@ -1229,7 +1229,7 @@ static K objsize(Ktag *x,bool b) {
   case Class::dict:      return kj(((Kdict*)x)->d.size());
   case Class::module:
   case Class::loss:      return kj(objsize(((Kmodule*)x)->m,b));
-  case Class::optimizer: return kj(objsize(x->c, (*((Kopt*)x)->o),b));
+  case Class::optimizer: return kj(objsize(x->c, (*((Kopt*)x)->o), b));
   case Class::model:     return kj(objsize((Kmodel*)x,b));
   default: return ktn(0,0);
  }

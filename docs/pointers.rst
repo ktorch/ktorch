@@ -142,26 +142,119 @@ In this example, a 4-byte float with 100,000,000 elements is created repeatedly 
 Pointer information
 *******************
 
+The :func:`obj` function returns a table with columns for ptr, class, device, dtype, size and elements.  The functions below will supply these values separately given a pointer to the PyTorch object.
+
 ptr
 ^^^
+
+.. function:: ptr(ptr) -> long
+
+   | Return the raw pointer of the underlying PyTorch object, :ref:`more detail for tensors here <tensor-ptr>`. If the k interface has multiple api-pointers refencing the same object, their raw pointers will match.
+
+::
+
+   q)t:tensor 1 2 3
+   q)m:module enlist(`linear;128;10)
+   q)o:opt(`adam; m)
+
+   q)ptr each(t;m;o)
+   60715504 61043456 61053536
 
 class
 ^^^^^
 
+.. function:: class(ptr) -> symbol
+
+   | Given pointer, returns symbol indicating class of the object, e.g. ```tensor``, ```module``, etc. 
+
+::
+
+   q)t:tensor 1 2 3
+   q)m:module`relu
+   q)o:opt`sgd
+   q)l:loss`mse
+
+   q)class each(t;m;o;l)
+   `tensor`module`optimizer`loss
+
+
 device
 ^^^^^^
+
+.. function:: device(ptr) -> symbol
+
+   | Return device for the underlying PyTorch object, :ref:`more detail for tensors <tensor-device>` and more on :doc:`devices here<devices>`. Currently, objects like modules and optimizers have multiple parameters and buffers, the device for the first one is returned; no indication is given for cases where parameters or buffers may be stored across multiple GPU's.
+
+::
+
+   q)t:tensor 1 2 3
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)to(q;`cuda)
+
+   q)device each (t;q)
+   `cpu`cuda:0
+
 
 dtype
 ^^^^^
 
+.. function:: dtype(ptr) -> symbol
+
+   | Return data type for tensors, dictionaries and vectors, :ref:`more detail <tensor-dtype>` and more on :doc:`data types here<types>`. Objects like modules and optimizers have multiple parameters and buffers, with the possibility of different data types for each: currently, :func:`dtype` is not implemented for pointers to these objects.
+
+::
+
+   q)t:tensor 1 2 3.0
+   q)dtype t
+   `double
+
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)dtype q
+   'dtype: not implemented for modules
+     [0]  dtype q
+          ^
+
 size
 ^^^^
+
+.. function:: size(ptr) -> long/long list
+
+   | Return the size, a list with the size at each dimension for :ref:`tensors, dictionaries and vectors <tensor-size>` and a count of parameters for objects like modules, loss functions, optimizers and overall models.
+
+::
+
+   q)t:tensor(`randn; 64 128)
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)l:loss`ce
+   q)o:opt(`adam; q)
+   q)m:model addref each(q;l;o)
+
+   q)`tensor`module`loss`optimizer`model!size each(t;q;l;o;m)
+   tensor   | 64 128
+   module   | 2
+   loss     | 0
+   optimizer| 2
+   model    | 2
+
 
 elements
 ^^^^^^^^
 
+.. function:: elements(ptr) -> long
+
+   | Return the raw pointer of the underlying PyTorch object, :ref:`more detail for tensors here <tensor-ptr>`. If the k interface has multiple api-pointers refencing the same object, their raw pointers will match.
+
+::
+
+
 bytes
 ^^^^^
+
+.. function:: bytes(ptr) -> long
+
+   | Return the raw pointer of the underlying PyTorch object, :ref:`more detail for tensors here <tensor-ptr>`. If the k interface has multiple api-pointers refencing the same object, their raw pointers will match.
+
+::
 
 Pointer utilities
 *****************

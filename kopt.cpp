@@ -242,7 +242,7 @@ template<typename O> static K adam(bool a,const O& o) {
 }
 
 template<typename S> static J adamsize(Attr a,const S& s) {
- //count of tensors/elements/bytes in parm buffers
+ //count of tensors/elements/bytes in parameter buffers
  switch(a) {
   case Attr::tensorcount: return     oten(s.step()) +     oten(s.exp_avg()) +     oten(s.exp_avg_sq()) +     oten(s.max_exp_avg_sq());
   case Attr::elements:    return   objnum(s.step()) +   objnum(s.exp_avg()) +   objnum(s.exp_avg_sq()) +   objnum(s.max_exp_avg_sq());
