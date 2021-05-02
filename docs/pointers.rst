@@ -245,7 +245,7 @@ elements
 
 .. function:: elements(ptr) -> number of elements
 
-   | Returns the number of elements for :ref:`tensors, dictionaries and vectors <tensor-elements>` and a count of parameter elements for objects like modules, loss functions, optimizers and overall models.
+   | Returns the number of elements for :ref:`tensors, dictionaries and vectors <tensor-elements>` and a count of parameter and buffer elements for objects like modules, loss functions, optimizers and overall models.
 
 ::
 
@@ -254,6 +254,7 @@ bytes
 ^^^^^
 .. function:: bytes(ptr) -> number of bytes allocated
 
+   | Returns the number of bytes for :ref:`tensors, dictionaries and vectors <tensor-bytes>` and a count of bytes allocated for parameters and buffers for objects like modules, loss functions, optimizers and overall models.
 
 tensorcount
 ^^^^^^^^^^^
