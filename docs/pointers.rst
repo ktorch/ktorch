@@ -222,7 +222,7 @@ size
    | Returns size, a list with the size at each dimension for :ref:`tensors, dictionaries and vectors <tensor-size>` and a count of parameters for objects like modules, loss functions, optimizers and overall models.
 
 .. note::
-   :func: size() for some objects is different from the overall count of tensors or bytes allocated. The size of an optimizer is given as the number of parameters it is optimizing, but the number of tensor buffers can be much larger (e.g. for the ``Adam`` optimizer, there are four buffers for each parameter). Also the bytes allocated changes after the first optimizer step -- some buffers are not initialized until the first step when gradients are applied.
+   :func: size() for some objects is different from the overall count of tensors or bytes allocated. The size of an optimizer is given as the number of parameters it is optimizing, but the number of tensor buffers can be larger (e.g. for the ``Adam`` optimizer, there are upt to three tensor buffers for each parameter). Also the bytes allocated changes after the first optimizer step -- some buffers are not initialized until the first step when gradients are applied.
 
 ::
 
@@ -249,12 +249,45 @@ elements
 
 ::
 
+   q)t:tensor(`randn; 64 128)
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)l:loss`ce
+   q)o:opt(`adamw; q; `amsgrad,1b)
+
+   q)`tensor`module`optimizer!elements each (t;q;o) /no tensors yet for optimizer
+   tensor   | 8192
+   module   | 1290
+   optimizer| 0
+
+   q)backward z:loss(l; x:forward(q;t); y:tensor(`randint;0;10;64))
+   q)step o
+
+   q)`tensor`module`optimizer!elements each (t;q;o)
+   tensor   | 8192
+   module   | 1290
+   optimizer| 3872
+
 
 bytes
 ^^^^^
 .. function:: bytes(ptr) -> number of bytes allocated
 
    | Returns the number of bytes for :ref:`tensors, dictionaries and vectors <tensor-bytes>` and a count of bytes allocated for parameters and buffers for objects like modules, loss functions, optimizers and overall models.
+
+::
+
+   q)t:tensor(`randn; 64 128)
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)l:loss`ce
+   q)o:opt(`adamw; q; `amsgrad,1b)
+
+   q)backward z:loss(l; x:forward(q;t); y:tensor(`randint;0;10;64))
+   q)step o
+
+   q)`tensor`module`optimizer!(tensorcount;elements;bytes)@\:/:(t;q;o)
+   tensor   | 1 8192 32768
+   module   | 2 1290 5160 
+   optimizer| 6 3872 15496
 
 tensorcount
 ^^^^^^^^^^^
@@ -264,6 +297,20 @@ tensorcount
    | Return the number of tensors in :ref:`vector and dictionaries of tensors <tensor-count>`. Returns the number of parameters and buffers in modules, optimizers and models.
 
 ::
+
+   q)t:tensor(`randn; 64 128)
+   q)q:module (`sequential; enlist(`linear;128;10); `relu)
+   q)l:loss`ce
+   q)o:opt(`adamw; q; `amsgrad,1b)
+
+   q)backward z:loss(l; x:forward(q;t); y:tensor(`randint;0;10;64))
+   q)step o
+
+   q)`tensor`module`optimizer!(tensorcount;elements;bytes)@\:/:(t;q;o)
+   tensor   | 1 8192 32768
+   module   | 2 1290 5160 
+   optimizer| 6 3872 15496
+
 
 Pointer utilities
 *****************
