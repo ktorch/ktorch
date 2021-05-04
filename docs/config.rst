@@ -379,6 +379,7 @@ but when the flag is omitted, the default setting is specified with the symbol `
 Version
 *******
 
+Returns the version of the libtorch libraries from PyTorch. Return numeric version if null argument and string version if empty list given.
 
 .. function:: version() -> string
 .. function:: config(::) -> double
