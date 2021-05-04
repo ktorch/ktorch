@@ -1591,6 +1591,7 @@ K optmap(const TensorOptions &o) {
 // setlong - set long integer values, threads & inter-op threads
 // setting - main k interface to show or change configuration settings
 // config - print or return strings of pytorch config (CUDA capability, build options, etc.)
+// version - return string or float version, e.g. "1.8.1" or 1.0801
 // ---------------------------------------------------------------------------------------------
 static Setting cset(S s) {
  for(const auto& c:env().cset)
@@ -1687,6 +1688,14 @@ KAPI config(K x) {
    return KERR("config expects empty argument: config[] prints to stderr, config() returns strings");
   }
  KCATCH("config");
+}
+
+KAPI version(K x) {
+ KTRY
+  TORCH_CHECK(xempty(x), "version: unexpected arg(s), use version() for string, version[] for number");
+  return xnull(x) ? kf(TORCH_VERSION_MAJOR + TORCH_VERSION_MINOR/100.0 + TORCH_VERSION_PATCH/10000.0)
+                  : kp((S)C10_STRINGIZE(TORCH_VERSION_MAJOR) "." C10_STRINGIZE(TORCH_VERSION_MINOR) "." C10_STRINGIZE(TORCH_VERSION_PATCH));
+ KCATCH("version");
 }
 
 // -----------------------------------------------------------------------------------
@@ -2005,6 +2014,7 @@ KAPI fns(K x){
  fn(x, "backward",    KFN(kbackward),   1);
  fn(x, "setting",     KFN(setting),     1);
  fn(x, "config",      KFN(config),      1);
+ fn(x, "version",     KFN(version),     1);
  fn(x, "cudadevice",  KFN(cudadevice),  1);
  fn(x, "cudadevices", KFN(cudadevices), 1);
  fn(x, "seed",        KFN(kseed),       1);

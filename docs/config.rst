@@ -376,3 +376,18 @@ but when the flag is omitted, the default setting is specified with the symbol `
    3 2 
 
 
+Version
+*******
+
+
+.. function:: version() -> string
+.. function:: config(::) -> double
+
+::
+
+   q)version()
+   "1.8.1"
+
+   q)version[]
+   1.0801
+

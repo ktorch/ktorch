@@ -2,7 +2,6 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-
 KAPI contig(K x) {
  KTRY
   Attr a=Attr::contiguous; K y=nullptr;
