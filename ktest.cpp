@@ -2,6 +2,33 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+J vecbytes(const TensorVector& v) {
+ size_t i,j,m=v.size();
+ if(!m)
+  return 0;
+ J n=v[0].storage().nbytes();
+ for(i=1; i<m; ++i) {
+  for(j=0; j<i; ++j)
+   if(v[i].is_alias_of(v[j]))
+    break;
+  if(i==j)
+   n+=v[i].storage().nbytes();
+ }
+ return n;
+}
+  
+J modulebytes(const Module& m) {
+ return vecbytes(m.parameters());
+}
+
+KAPI bytes2(K x) {
+ KTRY
+  Kmodule *m=xmodule(x);
+  TORCH_CHECK(m,"not a module");
+  return kj(vecbytes(m->m->parameters()));
+ KCATCH("bytes2");
+}
+
 KAPI contig(K x) {
  KTRY
   Attr a=Attr::contiguous; K y=nullptr;

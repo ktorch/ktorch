@@ -377,9 +377,9 @@ use
 
    | reuse api-pointer to point to a different underlying PyTorch object without explicitly freeing the original object.
 
-   :param tensor-pointer ptr: a pointer to a previously allocated tensor.
-   :param tensor-expression: a new expression that returns a new tensor.
-   :return: the previous api container frees the first tensor pointer and now contains the new tensor pointer. Returns null.
+   :param ptr: a pointer to a previously allocated tensor, vector or dictionary of tensors.
+   :param tensor-expression: a new expression that returns a new tensor, vector or dictionary of tensors.
+   :return: the previous api container frees the first tensor/vector/dictionary pointer and now contains a pointer to the new object. Returns null.
 
 ::
 

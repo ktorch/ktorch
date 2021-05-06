@@ -382,7 +382,7 @@ Version
 Returns the version of the libtorch libraries from PyTorch. Return numeric version if null argument and string version if empty list given.
 
 .. function:: version() -> string
-.. function:: config(::) -> double
+.. function:: version(::) -> double
 
 ::
 
