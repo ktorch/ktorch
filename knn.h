@@ -343,6 +343,48 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
 };
 TORCH_MODULE(Recur);
 
+// ---------------------------------------------------------------------------------------
+// residual - create up to two Sequentials and an optional activation function
+// ---------------------------------------------------------------------------------------
+class TORCH_API ResidualImpl : public torch::nn::Cloneable<ResidualImpl> {
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Residual";}
+
+ torch::Tensor forward(const torch::Tensor& x) {
+  TORCH_CHECK(!q1.is_empty(), "residual: no modules defined for forward calculation");
+  if(q2.is_empty())
+   return fn.is_empty() ? q1->forward(x) : fn.forward(q1->forward(x));
+  else
+   return fn.is_empty() ? q1->forward(x) + q2->forward(x) : fn.forward(q1->forward(x) + q2->forward(x));
+ }
+
+ void push_back(std::string s,const torch::nn::Sequential& q) {
+ if(q1.is_empty())
+  q1=register_module(s.size() ? s : "q1", q);
+ else if(q2.is_empty() && fn.is_empty())
+  q2=register_module(s.size() ? s : "q2", q);
+ else
+  TORCH_CHECK(false, "residual: ",
+             (q2.is_empty() ? "activation function already defined, cannot add a 2nd sequential module" 
+                            : "both sequential modules already defined, cannot add another sequential module"));
+ }
+
+ void push_back(const torch::nn::Sequential& q) {push_back(std::string(),q);}
+
+ void push_back(std::string s,const torch::nn::AnyModule& m) {
+  TORCH_CHECK(!q1.is_empty(), "residual: cannot add ", mlabel(m.ptr()), " module until sequential module(s) defined");
+  TORCH_CHECK( fn.is_empty(), "residual: cannot add ", mlabel(m.ptr()), " module, activation function already defined");
+  fn=std::move(m), register_module(s.size() ? s : "fn", m.ptr());
+ }
+
+ void push_back(const torch::nn::AnyModule& m) {push_back(std::string(),m);}
+
+ torch::nn::Sequential q1=nullptr,q2=nullptr;
+ torch::nn::AnyModule fn;
+};
+TORCH_MODULE(Residual);
+
 // ----------------------------------------------------------------------------------
 //  nbeats - container for N-BEATS model for forecasting
 //         = a ModuleList for processing blocks (generic/seasonal/trend)

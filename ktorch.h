@@ -170,7 +170,7 @@ enum class Cast:short {
  lstm, lstmout,  maxpool1d,       maxpool2d,       maxpool3d,       mul, nbeats,
  normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
  prelu,          recur,           reflect1d,       reflect2d,       relu,            relu6,
- replicate1d,    replicate2d,     replicate3d,     reshape,         rnn, rnnout,
+ replicate1d,    replicate2d,     replicate3d,     reshape,         residual, rnn, rnnout,
  rrelu,          selu,            sigmoid,         softmax,         softmax2d,
  softmin,        softplus,        softshrink,      softsign,        squeeze,
  tanh,           tanhshrink,      threshold,       transformer,     unfold,
@@ -735,7 +735,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,114> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,115> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -824,6 +824,7 @@ typedef struct {
   std::make_tuple(cs("replicate1d"),      Cast::replicate1d,     typeid(torch::nn::ReplicationPad1dImpl).hash_code(),    "torch.nn.ReplicationPad1d"),
   std::make_tuple(cs("replicate2d"),      Cast::replicate2d,     typeid(torch::nn::ReplicationPad2dImpl).hash_code(),    "torch.nn.ReplicationPad2d"),
   std::make_tuple(cs("replicate3d"),      Cast::replicate3d,     typeid(torch::nn::ReplicationPad3dImpl).hash_code(),    "torch.nn.ReplicationPad3d"),
+  std::make_tuple(cs("residual"),         Cast::residual,        typeid(ResidualImpl).hash_code(),                       ""),
   std::make_tuple(cs("reshape"),          Cast::reshape,         typeid(ReshapeImpl).hash_code(),                        "torch.reshape"),
   std::make_tuple(cs("rnn"),              Cast::rnn,             typeid(torch::nn::RNNImpl).hash_code(),                 "torch.nn.RNN"),
   std::make_tuple(cs("rnnout"),           Cast::rnnout,          typeid(RNNOutputImpl).hash_code(),                      "torch.nn.RNN"),

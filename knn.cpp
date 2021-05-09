@@ -222,6 +222,7 @@ static bool container(Cast c) {
   case Cast::fork:
   case Cast::nbeats:
   case Cast::recur:
+  case Cast::residual:
   case Cast::base:
    return true;
   default: return false;
@@ -238,6 +239,7 @@ static bool container(const Module& m) {
  else if(m.as<Fork>())              return true;
  else if(m.as<NBeats>())            return true;
  else if(m.as<Recur>())             return true;
+ else if(m.as<Residual>())          return true;
  else if(m.as<BaseModule>())        return true;
  else                               return false;
 }
@@ -378,6 +380,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::replicate1d:     return m.as<nn::ReplicationPad1d>()->forward(x);
   case Cast::replicate2d:     return m.as<nn::ReplicationPad2d>()->forward(x);
   case Cast::replicate3d:     return m.as<nn::ReplicationPad3d>()->forward(x);
+  case Cast::residual:        return m.as<Residual>()->forward(x);
   case Cast::reshape:         return m.as<Reshape>()->forward(x);
 //case Cast::rnn:             return m.as<nn::RNN>()->forward(x);
 // no viable conversion from returned value of type 'std::tuple<Tensor, Tensor>' to function return type 'Tensor'
@@ -2972,6 +2975,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::moduledict:  noarg(c,x,i); return nn::ModuleDict().ptr();
   case Cast::modulelist:  noarg(c,x,i); return nn::ModuleList().ptr();
   case Cast::fork:        noarg(c,x,i); return Fork().ptr();
+  case Cast::residual:    noarg(c,x,i); return Residual().ptr();
   case Cast::nbeats:      noarg(c,x,i); return NBeats().ptr();
   case Cast::base:        noarg(c,x,i); return BaseModule().ptr();
   case Cast::parmdict:    return parmdict(x,i); // dictionary can contain parms as options
@@ -3203,6 +3207,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::replicate1d:     return ANY(nn::ReplicationPad1d, m);
   case Cast::replicate2d:     return ANY(nn::ReplicationPad2d, m);
   case Cast::replicate3d:     return ANY(nn::ReplicationPad3d, m);
+  case Cast::residual:        return ANY(Residual, m);
   case Cast::reshape:         return ANY(Reshape, m);
   case Cast::rnn:             return ANY(nn::RNN, m);
   case Cast::rnnout:          return ANY(RNNOutput, m);
@@ -3254,6 +3259,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::moduledict:
   case Cast::modulelist:
   case Cast::fork:
+  case Cast::residual:
   case Cast::nbeats:
   case Cast::base:
   case Cast::gruout:          //take output tensor (from tuple of rnn output)
@@ -3449,6 +3455,7 @@ static void addmodule(Moduleptr& x,const Moduleptr& y) {
  } else if(auto *m=x->as<SeqNest>())        { addany(m,s,y);
  } else if(auto *m=x->as<SeqJoin>())        { addseq(m,s,y);
  } else if(auto *m=x->as<Fork>())           { addseq(m,s,y);
+ } else if(auto *m=x->as<Residual>())       { addseq(m,s,y);
  } else if(auto *m=x->as<NBeats>())         { m->push_back(y);
  } else if(auto *m=x->as<Recur>())          { m->push_back(y);
  } else if(auto *m=x->as<nn::ModuleList>()) { m->push_back(y);
@@ -3870,6 +3877,7 @@ K modulehelp(Cast c) {
   case Cast::replicate1d:     return npad(nn::ReplicationPad1dOptions({1,2}));
   case Cast::replicate2d:     return npad(nn::ReplicationPad2dOptions({1,1,2,0}));
   case Cast::replicate3d:     return npad(nn::ReplicationPad3dOptions({3,3,6,6,1,1}));
+  case Cast::residual:        return KDICT;
   case Cast::reshape:         return getsize(true,SizeOptions({-1,1,28,28}));
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
   case Cast::rnnout:          return KDICT;

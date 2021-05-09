@@ -2,30 +2,66 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-J vecbytes(const TensorVector& v) {
- size_t i,j,m=v.size();
- if(!m)
-  return 0;
- J n=v[0].storage().nbytes();
- for(i=1; i<m; ++i) {
-  for(j=0; j<i; ++j)
-   if(v[i].is_alias_of(v[j]))
-    break;
-  if(i==j)
-   n+=v[i].storage().nbytes();
+J sbytes(const Tensor& t,std::unordered_set<intptr_t>& u) {
+ if(t.use_count()>1 || t.storage().use_count()>1) { // multiple references
+  auto p=(intptr_t)t.storage().data();              // get integer pointer
+  if(u.count(p)) {                                  // if seen before
+   return 0;                                        // don't count bytes
+  } else {                                          // else
+   u.emplace(p);                                    // add pointer to set
+   return t.storage().nbytes();                     // return bytes allocated
+  }
+ } else {
+  return t.storage().nbytes();                      // no multiple references
  }
- return n;
 }
-  
-J modulebytes(const Module& m) {
- return vecbytes(m.parameters());
+
+template<typename V>J sbytes(const V& v) {
+  J n=0; std::unordered_set<intptr_t> u;
+  for(const auto& t:v)
+   if(t.defined())
+    n += sbytes(t,u);
+  return n;
+}
+
+J dbytes(const TensorDict& d) {
+  J n=0; std::unordered_set<intptr_t> u;
+  for(const auto& a:d)
+   if(a.value().defined())
+    n += sbytes(a.value(),u);
+  return n;
+}
+
+//J vecbytes(const TensorVector& v) {
+template<typename V>J vecbytes(const V& v) {
+  J n=0; std::unordered_set<intptr_t> s;
+  for(size_t i=0; i<v.size(); ++i) {
+   if(v[i].storage().use_count()>1) {       // more than 1 tensor uses the storage
+    auto p=(intptr_t)v[i].storage().data(); // get integer pointer
+    if(!s.count(p)) {                       // if not seen before
+     n += v[i].storage().nbytes();          // add the bytes allocated
+     s.emplace(p);                          // add pointer to set
+    }
+   } else {
+    n += v[i].storage().nbytes();
+   }
+  }
+  return n;
 }
 
 KAPI bytes2(K x) {
  KTRY
   Kmodule *m=xmodule(x);
-  TORCH_CHECK(m,"not a module");
-  return kj(vecbytes(m->m->parameters()));
+  auto *v=xvec(x);
+  auto *d=xtensordict(x);
+  if(m)
+   return kj(sbytes(m->m->parameters()));
+  else if(v)
+   return kj(sbytes(*v));
+  else if(d)
+   return kj(dbytes(*d));
+  else
+   TORCH_ERROR("not module/vector");
  KCATCH("bytes2");
 }
 

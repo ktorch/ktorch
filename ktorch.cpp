@@ -1180,7 +1180,7 @@ KAPI use(K x,K y) {
 // objdevice - return tensor device, or first device found if object w'multiple tensors
 // objsize - size tensor, no. of tensors in vector, else count of parameters
 // objnum - number of elements in tensor's underlying storage or sum across tensors
-// objbytes - bytes allocated in tensor's storage or sum acress tensors/parms/buffers
+// objbytes - bytes allocated in tensor's storage or sum across tensors/parms/buffers
 // kobj - k api fn returns table of ptr,object,device,dtype,size,number of elements
 // -----------------------------------------------------------------------------------------
 S objdevice(const Tensor& t) {return tensorsym(t,Attr::device);}
@@ -1261,8 +1261,24 @@ static J objnum(Ktag *x) {
 
 J objbytes(int64_t x) {return sizeof(int64_t);}
 J objbytes(double  x) {return sizeof(double);}
-J objbytes(const Storage& s) {return s.nbytes();}
-J objbytes(const Tensor& t) {return t.defined() ? (t.is_sparse() ? objbytes(t._indices())+objbytes(t._values()) : objbytes(t.storage())) : 0;}
+
+// determine bytes allocated in tensor by looking at underlying storage
+// if more than 1 reference to storage use element count of tensor * size of elements
+// this is to avoid double counting cases like CUDA LSTM modules where a single storage is used for all parameters
+// see: https://github.com/pytorch/pytorch/issues/57632
+J objbytes(const Tensor& t) {
+ if(t.defined()) {
+  if(t.is_sparse())
+   return objbytes(t._indices()) + objbytes(t._values());
+  else if(t.storage().use_count()>1)
+   return t.numel() * t.dtype().itemsize();
+  else
+   return t.storage().nbytes();
+  } else {
+   return 0;
+  }
+}
+
 J objbytes(const TensorVector& v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
 J objbytes(const c10::optional<TensorVector>& v) {return v ? objbytes(*v) : 0;}
 J objbytes(const TensorDeque&  v) {J n=0; for(const auto& t:v) n+=objbytes(t); return n;}
