@@ -483,11 +483,13 @@ bool xsize(K x,J d,double *a) {
 bool xsize(K x,J i,J d,int64_t *a) {return xind(x,i) && xsize(kK(x)[i],d,a);}
 bool xsize(K x,J i,J d,double  *a) {return xind(x,i) && xsize(kK(x)[i],d,a);}
 
-// ------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
 // xten - check arg(s) for allocated ptr to tensor: set tensor & return true if found, else false
 //      - 2nd form, return tensor pointer if found from k value, else null
+// xout - check for tensor at end of list of args, return output tensor pointer
 // xvec - check arg(s) for allocated vector of tensors
-// ------------------------------------------------------------------------------------------------------
+// xtensordict - check arg(s) for allocated dictionary of tensors
+// ----------------------------------------------------------------------------------------------
 bool xten(K x,Tensor &t) {
  if(auto* a=xtag(x))
   if(a->a==Class::tensor && a->c==Cast::tensor)
@@ -504,6 +506,7 @@ Tensor* xten(K x) {
 
 bool xten(K x,J i,Tensor& t) {return xind(x,i) && xten(kK(x)[i],t);}
 Tensor* xten(K x,J i) {return xind(x,i) ? xten(kK(x)[i]) : nullptr;}
+Tensor* xout(K x) {return (!x->t && x->n>1) ? xten(x,x->n-1) : nullptr;}
 
 TensorVector* xvec(K x) {
  if(auto* a=xtag(x))

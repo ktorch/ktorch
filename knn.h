@@ -354,7 +354,7 @@ class TORCH_API ResidualImpl : public torch::nn::Cloneable<ResidualImpl> {
  torch::Tensor forward(const torch::Tensor& x) {
   TORCH_CHECK(!q1.is_empty(), "residual: no modules defined for forward calculation");
   if(q2.is_empty())
-   return fn.is_empty() ? q1->forward(x) : fn.forward(q1->forward(x));
+   return fn.is_empty() ? q1->forward(x) + x : fn.forward(q1->forward(x) + x);
   else
    return fn.is_empty() ? q1->forward(x) + q2->forward(x) : fn.forward(q1->forward(x) + q2->forward(x));
  }
@@ -463,6 +463,10 @@ TORCH_MODULE(Eval);
 class TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
   public:
   using SequentialImpl::SequentialImpl;
+
+  void pretty_print(std::ostream& stream) const override {
+    stream << "SeqNest";
+  }
 
   torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
    if(y.defined())

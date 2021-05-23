@@ -2,6 +2,16 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI kaiming(K x) {
+ KTRY
+  Tensor *t=xten(x);
+  TORCH_CHECK(t,"not a tensor");
+  torch::manual_seed(123);
+  torch::nn::init::kaiming_normal_(*t, 0, torch::kFanOut, torch::kReLU);
+  return (K)0;
+ KCATCH("kaiming");
+}
+
 J sbytes(const Tensor& t,std::unordered_set<intptr_t>& u) {
  if(t.use_count()>1 || t.storage().use_count()>1) { // multiple references
   auto p=(intptr_t)t.storage().data();              // get integer pointer

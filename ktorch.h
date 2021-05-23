@@ -388,6 +388,7 @@ bool xten(K,Tensor&);
 bool xten(K,J,Tensor&);
 Tensor* xten(K);
 Tensor* xten(K,J);
+Tensor* xout(K);
 bool xtenpair(K,Tensor&,Tensor&);
 bool xtenpair(K,J,Tensor&,Tensor&);
 bool xten3(K,Tensor&,Tensor&,Tensor&);

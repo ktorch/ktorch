@@ -464,42 +464,109 @@ KAPI Pnorm(K x) {
  KCATCH("p-norm");
 }
 
-// ----------------------------------------------------------------------------
-// std deviation & variance: same args from k, call with flag v=true if var()
-// ----------------------------------------------------------------------------
-static K variance(K x,bool v) {
+// --------------------------------------------------------------------
+// vargs - process arg(s) from k for std,var,td_mean,var_mean
+// vfloat - convert non-floating point input to double before calc
+// vstack - stack mean & stddev/variance tuple from std_mean/var_mean
+// --------------------------------------------------------------------
+static J vargs(K x,Tensor *&r,Tensor *&t,J& d,IntArrayRef& D,bool& k) {
+ k=false, r=nullptr, t=nullptr;
+ J n=((r=xout(x))) ? x->n-1 : xlen(x);
+ if((t=xten(x)))
+  return 1;
+ else if(!x->t && xlong(x,1,d) && n==2)
+  return 2;
+ else if(!x->t && xsize(x,1,D) && (n==2 || (n==3 && xbool(x,2,k))))
+  return 3;
+ else
+  return xmixed(x,4) ? 0 : 1;
+}
+
+static const Tensor vfloat(const Tensor &t) {return t.is_floating_point() ? t : t.to(torch::kDouble);}
+ 
+static Tensor vstack(const std::tuple<Tensor,Tensor>& t) {
+ return torch::stack({std::get<1>(t),std::get<0>(t)}, 0);
+}
+
+static void vstack(const std::tuple<Tensor,Tensor>& t,Tensor& r) {
+ torch::stack_outf({std::get<1>(t),std::get<0>(t)}, 0, r);
+}
+
+// --------------------------------------------------------------------------
+// std - return unbiased std deviation given k array/tensor and optional dims
+// variance - return unbiased variance given k array/tensor and optional dims
+// meanstd - return mean & std deviation
+// meanvar - return mean & variance
+// --------------------------------------------------------------------------
+KAPI Std(K x) {
  KTRY
-  bool b,k=false,u=true; J d; Tensor r,t;
-  if(xten(x,t)) {
-   return kten(v ? torch::var(t) : torch::std(t));
-  } else if(xbool(x,1,u)) {
-   if(x->n==2) {
-    if(!(b=xten(x,0,t))) t=kput(x,0);
-    return kresult(b, v ? torch::var(t,u) : torch::std(t,u));
-   } else if(x->n==3 && xten(x,2,r)) {
-    return (v ? torch::var_out(r,t.flatten(),0,u,k) : torch::std_out(r,t.flatten(),0,u,k)), (K)0;
-   } else {
-    return KERR("expected args: (input;unbiased flag) or (tensor;unbiased flag;output)");
-   }
-  } else if(xlong(x,1,d)) {
-   J n=xten(x,x->n-1,r) ? x->n-1 : x->n;
-   if(n==2 || (n==3 && xbool(x,2,k)) || (n==4 && xbool(x,2,k) && xbool(x,3,u))) {
-    if(!(b=xten(x,0,t))) t=kput(x,0);
-    if(r.defined())
-     return (v ? torch::var_out(r,t,d,k,u) : torch::std_out(r,t,d,k,u)), (K)0;
-    return kresult(b, v ? torch::var(t,d,k,u) : torch::std(t,d,k,u));
-   } else {
-    return KERR("expected args: (input;dim) or some subset of (input;dim;keepdim;unbiased;output)");
-   }
+  bool k,u=true; Tensor *r,*t; J d; IntArrayRef D;
+  J m=vargs(x,r,t,d,D,k);
+  if(r) {
+   return torch::std_outf(vfloat(t ? *t : kput(x,0)), D, u, k, *r), (K)0;
   } else {
-   t=kput(x);
-   return kget(v ? torch::var(t) : torch::std(t));
+   switch(m) {
+    case 1: return kresult(t, torch::std(vfloat(t ? *t : kput(x)), u));
+    case 2: return kresult(t, torch::std(vfloat(t ? *t : kput(x,0)), d, u));
+    case 3: return kresult(t, torch::std(vfloat(t ? *t : kput(x,0)), D, u, k));
+    default: TORCH_ERROR("std: unrecognized arg(s), expecting input, (input;dim), (input;dims) or (input;dims;keepdim flag)");
+   }
+  }
+ KCATCH("std");
+}
+
+KAPI variance(K x) {
+ KTRY
+  bool k,u=true; Tensor *r,*t; J d; IntArrayRef D;
+  J m=vargs(x,r,t,d,D,k);
+  if(r) {
+   return torch::var_outf(vfloat(t ? *t : kput(x,0)), D, u, k, *r), (K)0;
+  } else {
+   switch(m) {
+    case 1: return kresult(t, torch::var(vfloat(t ? *t : kput(x)), u));
+    case 2: return kresult(t, torch::var(vfloat(t ? *t : kput(x,0)), d, u));
+    case 3: return kresult(t, torch::var(vfloat(t ? *t : kput(x,0)), D, u, k));
+    default: TORCH_ERROR("variance: unrecognized arg(s), expecting input, (input;dim), (input;dims) or (input;dims;keepdim flag)");
+   }
   }
  KCATCH("variance");
 }
 
-KAPI Std(K x) {return variance(x,false);}
-KAPI Var(K x) {return variance(x,true);}
+KAPI meanstd(K x) {
+ KTRY
+  bool k,u=true; Tensor *r,*t; J d; IntArrayRef D;
+  J m=vargs(x,r,t,d,D,k);
+  if(r) {
+   vstack(torch::std_mean(vfloat(t ? *t : kput(x,0)), D, u, k), *r);
+   return (K)0;
+  } else {
+   switch(m) {
+    case 1: return kresult(t, vstack(torch::std_mean(vfloat(t ? *t : kput(x)), u)));
+    case 2: return kresult(t, vstack(torch::std_mean(vfloat(t ? *t : kput(x,0)), d, u)));
+    case 3: return kresult(t, vstack(torch::std_mean(vfloat(t ? *t : kput(x,0)), D, u, k)));
+    default: TORCH_ERROR("meanstd: unrecognized arg(s), expecting input, (input;dim), (input;dims) or (input;dims;keepdim flag)");
+   }
+  }
+ KCATCH("meanstd");
+}
+
+KAPI meanvar(K x) {
+ KTRY
+  bool k,u=true; Tensor *r,*t; J d; IntArrayRef D;
+  J m=vargs(x,r,t,d,D,k);
+  if(r) {
+   vstack(torch::var_mean(vfloat(t ? *t : kput(x,0)), D, u, k), *r);
+   return (K)0;
+  } else {
+   switch(m) {
+    case 1: return kresult(t, vstack(torch::var_mean(vfloat(t ? *t : kput(x)), u)));
+    case 2: return kresult(t, vstack(torch::var_mean(vfloat(t ? *t : kput(x,0)), d, u)));
+    case 3: return kresult(t, vstack(torch::var_mean(vfloat(t ? *t : kput(x,0)), D, u, k)));
+    default: TORCH_ERROR("meanvar: unrecognized arg(s), expecting input, (input;dim), (input;dims) or (input;dims;keepdim flag)");
+   }
+  }
+ KCATCH("meanvar");
+}
 
 // ----------------------------------------------------------------------------------------------
 // mean - return mean, optionally by dimension(s), will first convert to data type, if supplied 
@@ -1878,8 +1945,8 @@ KAPI Bernoulli(K x) {
 // --------------------------------------------------------------------------------------
 KAPI Multinomial(K x) {
  KTRY
-  bool b=false; Tensor *t=xten(x),*r=xten(x,x->n-1); int64_t n; J j=r ? x->n-1 : xlen(x);
   TORCH_CHECK(x->t>=0, "multinomial: not implemented for ",kname(x));
+  bool b=false; Tensor *t=xten(x),*r=xten(x,x->n-1); int64_t n; J j=r ? x->n-1 : xlen(x);
   if(t || !xmixed(x,2)) {                                                // if single tensor/array
    return kresult(t,torch::multinomial(t ? *t : kput(x), 1).squeeze());  // return w'out extra dim
   } else if(xint64(x,1,n) && (j==2 || (j==3 && xbool(x,2,b)))) {       // else if n & optional flag
@@ -2002,6 +2069,8 @@ void mathfn(K x) {
  fn(x, "rank",               KFN(Matrix_rank),        1);
  fn(x, "Max",                KFN(Max),                1);
  fn(x, "mean",               KFN(Mean),               1);
+ fn(x, "meanstd",            KFN(meanstd),            1);
+ fn(x, "meanvar",            KFN(meanvar),            1);
  fn(x, "median",             KFN(Median),             1);
  fn(x, "Min",                KFN(Min),                1);
  fn(x, "amax",               KFN(Amax),               1);
@@ -2062,6 +2131,6 @@ void mathfn(K x) {
  fn(x, "uniform",            KFN(Uniform),            1);
  fn(x, "unique",             KFN(Unique),             1);
  fn(x, "uniquec",            KFN(Uniquec),            1);
- fn(x, "Var",                KFN(Var),                1);
+ fn(x, "variance",           KFN(variance),           1);
  fn(x, "xor",                KFN(Xor),                1);
 }
