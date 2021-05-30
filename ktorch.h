@@ -180,7 +180,8 @@ enum class Cast:short {
 
  bce,       bcelogits, ce,          cosineloss, ctc,        hinge,        //loss fns
  kl,        l1,        margin,      mse,        multilabel, multimargin,
- multisoft, nll,       poissonloss, smoothl1,   softmargin, triplet,    
+ multisoft, nll,       poissonloss, sce,        smoothl1,   softmargin, 
+ triplet,    
 
  adagrad, adam, adamw, lbfgs, rmsprop, sgd //optimizers
 };
@@ -198,23 +199,24 @@ enum class Prob:char {  // probablility distributions
 
 enum class Setting:char {
  undefined,
- addbias,      addzero,   affine,   align,        alloptions, alpha,              amsgrad,       
- batchfirst,   benchmark, beta,     beta1,        beta2,      bi,                 bias,          
- blank,        ceiling,   centered, changetol,    channels,   classes,            cols,          
- complexfirst, countpad,  cuda,     cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
- dampening,    decay,     decoder,  decoderlayer, detach,     deterministic,      dilate,        
- dim,          divisor,   dlayers,  dropout,      dtype,      elayers,            encoder,       
- encoderlayer, end,       eps,      eval,         fn,         freeze,             full,          
- gradtol,      groups,    heads,    hidden,       history,    ignore,             in,            
- in1,          in2,       ind,      indices,      init,       inplace,            interopthreads,
- iter,         k,         kdim,     keepdim,      kvbias,     kvzeros,            lambda,        
- lastoffset,   layernorm, layers,   log,          lower,      lr,                 lrdecay,       
- magma,        margin,    max,      maxnorm,      min,        mkl,                mode,          
- momentum,     nesterov,  norm,     openmp,       out,        outpad,             outsize,       
- p,            pad,       padindex, padmode,      ratio,      reduce,             rescale,       
- rows,         scale,     search,   shape,        size,       slope,              sparse,        
- stackframe,   start,     stride,   swap,         threads,    threshold,          track,         
- train,        transpose, upper,    value,        vdim,       weight,             zeroinf        
+ addbias,      addzero,    affine,    align,        alloptions, alpha,              amsgrad,       
+ batchfirst,   benchmark,  beta,      beta1,        beta2,      bi,                 bias,          
+ blank,        ceiling,    centered,  changetol,    channels,   classes,            cols,          
+ complexfirst, countpad,   cuda,      cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
+ dampening,    decay,      decoder,   decoderlayer, detach,     deterministic,      dilate,        
+ dim,          divisor,    dlayers,   dropout,      dtype,      elayers,            encoder,       
+ encoderlayer, end,        eps,       eval,         fn,         freeze,             full,          
+ gradtol,      groups,     heads,     hidden,       history,    ignore,             in,            
+ in1,          in2,        ind,       indices,      init,       inplace,            interopthreads,
+ iter,         k,          kdim,      keepdim,      kvbias,     kvzeros,            lambda,        
+ lastoffset,   layernorm,  layers,    log,          lower,      lr,                 lrdecay,       
+ magma,        margin,     max,       maxnorm,      min,        mkl,                mode,          
+ momentum,     nesterov,   norm,      openmp,       out,        outpad,             outsize,       
+ p,            pad,        padindex,  padmode,      ratio,      reduce,             rescale,       
+ rows,         scale,      search,    shape,        size,       slope,              smoothing,
+ sparse,       stackframe, start,     stride,       swap,       threads,            threshold,
+ track,        train,      transpose, upper,        value,      vdim,               weight,
+ zeroinf        
 };
 
 enum class State:char {
@@ -568,7 +570,7 @@ int64_t fullsize(TensorVector& v,int64_t d=0);
 int64_t subsets(int64_t w,int64_t n,bool b=false);
 void subset(Tensor& t,int64_t d,int64_t i,int64_t w,int64_t n=0);
 void subset(TensorVector& v,int64_t d,int64_t i,int64_t w,int64_t n=0);
-void setsafe(Tensor& t,const Storage&,int64_t,const IntArrayRef&,const IntArrayRef&);
+void setsafe(Tensor& t,int64_t,const IntArrayRef&,const IntArrayRef&);
 K tensorback(K);
 void tensorfn(K);
 
@@ -970,7 +972,7 @@ typedef struct {
   std::make_tuple(cs("size"),      State::size)
  }};
 
- std::array<std::tuple<S,Cast,std::string>,20> loss = {{             // loss: map symbol -> enum
+ std::array<std::tuple<S,Cast,std::string>,21> loss = {{             // loss: map symbol -> enum
   std::make_tuple(cs("bce"),         Cast::bce,         "torch.nn.BCELoss"),
   std::make_tuple(cs("bcelogits"),   Cast::bcelogits,   "torch.nn.BCEWithLogitsLoss"),
   std::make_tuple(cs("ce"),          Cast::ce,          "torch.nn.CrossEntropyLoss"),
@@ -987,13 +989,14 @@ typedef struct {
   std::make_tuple(cs("nll"),         Cast::nll,         "torch.nn.NLLLoss"),
   std::make_tuple(cs("pairwise"),    Cast::pairwise,    "torch.nn.PairwiseDistance"),
   std::make_tuple(cs("poissonloss"), Cast::poissonloss, "torch.nn.PoissonNLLLoss"),
+  std::make_tuple(cs("sce"),         Cast::sce,         "SmoothCrossEntropy"),
   std::make_tuple(cs("similar"),     Cast::similar,     "torch.nn.CosineSimilarity"),
   std::make_tuple(cs("smoothl1"),    Cast::smoothl1,    "torch.nn.SmoothL1Loss"),
   std::make_tuple(cs("softmargin"),  Cast::softmargin,  "torch.nn.SoftMarginLoss"),
   std::make_tuple(cs("triplet"),     Cast::triplet,     "torch.nn.TripletMarginLoss")
  }};
 
- std::array<std::tuple<S,Setting>,11> lset = {{          // loss option sym -> enum
+ std::array<std::tuple<S,Setting>,12> lset = {{          // loss option sym -> enum
   std::make_tuple(cs("blank"),     Setting::blank),
   std::make_tuple(cs("eps"),       Setting::eps),
   std::make_tuple(cs("full"),      Setting::full),
@@ -1002,6 +1005,7 @@ typedef struct {
   std::make_tuple(cs("margin"),    Setting::margin),
   std::make_tuple(cs("p"),         Setting::p),
   std::make_tuple(cs("reduce"),    Setting::reduce),
+  std::make_tuple(cs("smoothing"), Setting::smoothing),
   std::make_tuple(cs("swap"),      Setting::swap),
   std::make_tuple(cs("weight"),    Setting::weight),
   std::make_tuple(cs("zeroinf"),   Setting::zeroinf)

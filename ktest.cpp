@@ -2,6 +2,24 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI reset(K x) {
+ KTRY
+  Tensor t; J i;IntArrayRef y,z;
+  TORCH_CHECK(xten(x,0,t), "reset: tensor expected as 1st argument");
+  TORCH_CHECK(xlong(x,1,i), "reset: offset (long) expected as 2nd argument, given ",kname(x,1));
+  TORCH_CHECK(x->n<3 || xsize(x,2,y), "reset: size(s) expected as 3rd argument, given ",kname(x,2));
+  TORCH_CHECK(x->n<4 || xsize(x,3,z), "reset: stride(s) expected as 4th argument, given ",kname(x,3));
+  TORCH_CHECK(x->n>1 && x->n<5, "reset: up to 4 arguments expected, (tensor;offset;sizes;strides), but ",x->n," given");
+  if(x->n==2)
+   setsafe(t,i,t.sizes(),t.strides());            // existing size & stride, just move offset
+  else if(x->n==3)
+   setsafe(t,i,y,at::detail::defaultStrides(y));  // derive stride from size
+  else
+   setsafe(t,i,y,z);                              // specify offset, size & stride
+  return (K)0;
+ KCATCH("reset");
+}
+
 KAPI kaiming(K x) {
  KTRY
   Tensor *t=xten(x);

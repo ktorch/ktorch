@@ -1,5 +1,16 @@
 #pragma once
 
+namespace {
+  static inline at::Tensor apply_loss_reduction(const at::Tensor& unreduced, int64_t reduction) {
+    if (reduction == at::Reduction::Mean) {
+      return unreduced.mean();
+    } else if (reduction == at::Reduction::Sum) {
+      return unreduced.sum();
+    }
+    return unreduced;
+  }
+}
+
 // ------------------------------------------------------------------------------------------
 // redefine binary cross entropy loss without batch weights as part of initialization options
 // move batch weight to optional 3rd argument of forward call
@@ -38,3 +49,25 @@ struct TORCH_API BCEWithLogitsLossImpl : public torch::nn::Cloneable<BCEWithLogi
 
 TORCH_MODULE(BCELoss);
 TORCH_MODULE(BCEWithLogitsLoss);
+
+struct TORCH_API SmoothCrossEntropyOptions {
+  typedef c10::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum> reduction_t;
+  TORCH_OPTIONS_CTOR_VARIANT_ARG3(SmoothCrossEntropyOptions, reduction, kNone, kMean, kSum)
+  TORCH_ARG(double, smoothing) = 0.1;
+  TORCH_ARG(reduction_t, reduction) = torch::kMean;
+};
+
+struct TORCH_API SmoothCrossEntropyImpl : public torch::nn::Cloneable<SmoothCrossEntropyImpl> {
+  explicit SmoothCrossEntropyImpl(const SmoothCrossEntropyOptions& options_ = {}) : options(options_) {reset();}
+  void reset() override {}
+  void pretty_print(std::ostream& stream) const override {stream << "SmoothCrossEntropy(smoothing=" << options.smoothing() << ")";}
+ 
+  Tensor forward(const Tensor& input,const Tensor& target) {
+   Tensor p = input.log_softmax(-1).neg();
+   Tensor n = p.gather(-1,target.unsqueeze(1)).squeeze(1);
+   return apply_loss_reduction((1-options.smoothing()) * n + options.smoothing() * p.mean(-1), 
+                               torch::enumtype::reduction_get_enum(options.reduction()));
+  }
+  SmoothCrossEntropyOptions options;
+};
+TORCH_MODULE(SmoothCrossEntropy);

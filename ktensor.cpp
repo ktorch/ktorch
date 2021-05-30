@@ -1351,8 +1351,9 @@ void subset(TensorVector& v,int64_t d,int64_t i,int64_t w,int64_t n) {
  for(auto& t:v) subset(t,d,i,w,n);
 }
 
-void setsafe(Tensor& t,const Storage& s,int64_t i,const IntArrayRef& sz,const IntArrayRef& st) {
- TORCH_CHECK(s.nbytes()>=i+at::detail::computeStorageNbytes(sz,st,1), 
+void setsafe(Tensor& t,int64_t i,const IntArrayRef& sz,const IntArrayRef& st) {
+ const Storage& s=t.storage();
+ TORCH_CHECK(s.nbytes()>=i+at::detail::computeStorageNbytes(sz,st,t.dtype().itemsize()), 
             "size ",sz," and stride ",st," require total of ",
              at::detail::computeStorageNbytes(sz,st,1),
             " plus offset of ",i," exceeds storage size of ",s.nbytes()/t.dtype().itemsize());
@@ -1360,7 +1361,7 @@ void setsafe(Tensor& t,const Storage& s,int64_t i,const IntArrayRef& sz,const In
 }
 
 void subsetsafe(Tensor& t,int64_t d,int64_t i,int64_t w) {
- setsafe(t, t.storage(), i*t.stride(d), newsize(t,d,w), t.strides());
+ setsafe(t, i*t.stride(d), newsize(t,d,w), t.strides());
 }
 
 // -------------------------------------------------------------------------------------------

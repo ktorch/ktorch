@@ -233,7 +233,7 @@ static auto& classwt(K x,J i,Cast c,nn::MultiLabelSoftMarginLossOptions&& o) {
  return o;
 }
 
-template<typename O> O classwt(K x,J i,Cast c) {
+template<typename O> static O classwt(K x,J i,Cast c) {
  O o; Pairs p; J n=xargc(x,i,p); S s=nullptr; Tensor w;
  if(n && xsym(x,i+n-1,s)) n--; // allow last arg of symbol regardless
  for(J j=0;j<n;++j)
@@ -302,6 +302,34 @@ static K classwt(K a,Cast c) {
 KAPI ce(K x)        {return classwt(x, Cast::ce);}
 KAPI nll(K x)       {return classwt(x, Cast::nll);}
 KAPI multisoft(K x) {return classwt(x, Cast::multisoft);}
+
+// ----------------------------------------------------------------------------------
+// sce - smooth cross entropy loss, parse/retrieve smoothing factor and reduce mode
+// ----------------------------------------------------------------------------------
+static SmoothCrossEntropyOptions sce(K x,J i,Cast c) {
+ Pairs p; J n=xargc(x,i,p); S s=nullptr; SmoothCrossEntropyOptions o;
+ if(n && xsym(x,i+n-1,s)) n--;
+ for(J j=0;j<n;++j)
+  switch(j) {
+   case 0: o.smoothing(ldouble(x,i+j,c,Setting::smoothing)); break;
+   default: TORCH_ERROR(lmap(c),": unrecognized positional arg(s), expecting up to 2 args, smoothing factor & reduce mode");
+  }
+ while(xpair(p))
+  switch(lset(p.k)) {
+   case Setting::smoothing: o.smoothing(ldouble(p,c)); break;
+   case Setting::reduce:    s=lsym(p,c); break;
+   default: TORCH_ERROR(lmap(c),": unrecognized option, ",p.k); break;
+  }
+ if(s) reduce(o.reduction(),c,s);
+ return o;
+}
+
+static K sce(bool a,const SmoothCrossEntropyOptions& o) {
+ K x=KDICT; const SmoothCrossEntropyOptions d;
+ if(a || d.smoothing() != o.smoothing()) OPTION(x, smoothing, kf(o.smoothing()));
+ reduce(a,x,o,d);
+ return x;
+}
 
 // ---------------------------------------------------------------------------------------
 // bceloss - handle binary cross-entropy with logits, separate call if batch weights
@@ -595,6 +623,7 @@ static Moduleptr lossinit(Cast c,K x,J i) {
   case Cast::multisoft:   return nn::MultiLabelSoftMarginLoss(classwt(x,i,c,nn::MultiLabelSoftMarginLossOptions())).ptr();
   case Cast::ce:          return nn::CrossEntropyLoss(classwt<nn::CrossEntropyLossOptions>(x,i,c)).ptr();
   case Cast::nll:         return nn::NLLLoss(classwt<nn::NLLLossOptions>(x,i,c)).ptr();
+  case Cast::sce:         return SmoothCrossEntropy(sce(x,i,c)).ptr();
 
   case Cast::hinge:       return nn::HingeEmbeddingLoss( margin<nn::HingeEmbeddingLossOptions>(x,i,c)).ptr();
   case Cast::cosineloss:  return nn::CosineEmbeddingLoss(margin<nn::CosineEmbeddingLossOptions>(x,i,c)).ptr();
@@ -625,6 +654,7 @@ static K lossopt(bool a,Cast c,const Module& m) {
   case Cast::multisoft:   return classwt(a,m.as<nn::MultiLabelSoftMarginLoss>()->options);
   case Cast::ce:          return classwt(a,m.as<nn::CrossEntropyLoss>()->options);
   case Cast::nll:         return classwt(a,m.as<nn::NLLLoss>()->options);
+  case Cast::sce:         return sce(a,m.as<SmoothCrossEntropy>()->options);
 
   case Cast::hinge:       return margin(a,m.as<nn::HingeEmbeddingLoss>()->options);
   case Cast::cosineloss:  return margin(a,m.as<nn::CosineEmbeddingLoss>()->options);
@@ -654,6 +684,7 @@ Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {
   case Cast::bce:         return m.as<BCELoss>()->forward(x,y,{});             // no batch weights defined
   case Cast::bcelogits:   return m.as<BCEWithLogitsLoss>()->forward(x,y,{});   // no batch weights defined
   case Cast::ce:          return m.as<nn::CrossEntropyLoss>()->forward(x,y);
+  case Cast::sce:         return m.as<SmoothCrossEntropy>()->forward(x,y);
   case Cast::hinge:       return m.as<nn::HingeEmbeddingLoss>()->forward(x,y);
   case Cast::kl:          return m.as<nn::KLDivLoss>()->forward(x,y);
   case Cast::l1:          return m.as<nn::L1Loss>()->forward(x,y);
@@ -747,6 +778,7 @@ K losshelp(Cast c) {
   case Cast::nll:         return classwt(true,nn::NLLLossOptions());
   case Cast::pairwise:    return modulehelp(c);
   case Cast::poissonloss: return poisson(true,nn::PoissonNLLLossOptions());
+  case Cast::sce:         return sce(true,SmoothCrossEntropyOptions());
   case Cast::similar:     return modulehelp(c);
   case Cast::smoothl1:    return reduce(true,nn::SmoothL1LossOptions());
   case Cast::softmargin:  return reduce(true,nn::SoftMarginLossOptions());
