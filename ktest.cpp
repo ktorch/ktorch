@@ -2,22 +2,31 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-KAPI reset(K x) {
+KAPI ptest(K x) {
  KTRY
-  Tensor t; J i;IntArrayRef y,z;
-  TORCH_CHECK(xten(x,0,t), "reset: tensor expected as 1st argument");
-  TORCH_CHECK(xlong(x,1,i), "reset: offset (long) expected as 2nd argument, given ",kname(x,1));
-  TORCH_CHECK(x->n<3 || xsize(x,2,y), "reset: size(s) expected as 3rd argument, given ",kname(x,2));
-  TORCH_CHECK(x->n<4 || xsize(x,3,z), "reset: stride(s) expected as 4th argument, given ",kname(x,3));
-  TORCH_CHECK(x->n>1 && x->n<5, "reset: up to 4 arguments expected, (tensor;offset;sizes;strides), but ",x->n," given");
-  if(x->n==2)
-   setsafe(t,i,t.sizes(),t.strides());            // existing size & stride, just move offset
-  else if(x->n==3)
-   setsafe(t,i,y,at::detail::defaultStrides(y));  // derive stride from size
-  else
-   setsafe(t,i,y,z);                              // specify offset, size & stride
+  Tensor *t=xten(x);
+  TORCH_CHECK(t,"no tensor supplied");
+  std::cerr << torch::ArrayRef<double>(t->to(torch::kDouble).data_ptr<double>(),t->numel()>3 ? 3 : t->numel()) << "\n";
   return (K)0;
- KCATCH("reset");
+ KCATCH("ptest");
+}
+
+KAPI ztest(K x) {
+ KTRY
+  auto m=torch::tensor({2.0,2.11});
+  auto s=torch::tensor(0.5);
+  Zscore z(ZscoreOptions(m,s));
+  std::cerr << z << "\n";
+  return (K)0;
+ KCATCH("ztest");
+}
+
+KAPI contig(K x) {
+ KTRY
+  Tensor *t=xten(x);
+  TORCH_CHECK(t,"tensor not given");
+  return kten(t->contiguous());
+ KCATCH("contiguous");
 }
 
 KAPI kaiming(K x) {
@@ -93,7 +102,7 @@ KAPI bytes2(K x) {
  KCATCH("bytes2");
 }
 
-KAPI contig(K x) {
+KAPI contigflag(K x) {
  KTRY
   Attr a=Attr::contiguous; K y=nullptr;
   Ktag *g=xtag(x);

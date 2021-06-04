@@ -1,6 +1,8 @@
 #pragma once
 
 std::string mlabel(const std::shared_ptr<torch::nn::Module>&);
+torch::Tensor zscore_(torch::Tensor&,const torch::Tensor&,const torch::Tensor& d);
+torch::Tensor zscore(const torch::Tensor&,const torch::Tensor&,const torch::Tensor&);
 
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
@@ -533,3 +535,39 @@ class TORCH_API BaseModuleImpl : public torch::nn::Cloneable<BaseModuleImpl> {
  torch::Tensor forward(const torch::Tensor& x) {TORCH_CHECK(false,"nyi");}
 };
 TORCH_MODULE(BaseModule);
+
+// ------------------------------------------------------------------
+// zscore - subtract mean and divide by standard deviation
+// ------------------------------------------------------------------
+struct TORCH_API ZscoreOptions {
+ ZscoreOptions(torch::Tensor m,torch::Tensor d,bool b=false) : mean_(std::move(m)), stddev_(std::move(d)), inplace_(b) {}
+ TORCH_ARG(torch::Tensor, mean) = {};
+ TORCH_ARG(torch::Tensor, stddev) = {};
+ TORCH_ARG(bool, inplace) = false;
+};
+
+class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
+ public:
+ explicit ZscoreImpl(const ZscoreOptions& o) : options(o) {reset();}
+ void reset() override {
+  TORCH_CHECK(options.mean().defined()   && options.mean().is_floating_point(),   "zscore: mean(s) not defined as float/double");
+  TORCH_CHECK(options.stddev().defined() && options.stddev().is_floating_point(), "zscore: std deviation(s) not defined as float/double");
+ }
+
+ void pretty_print(std::ostream& s) const override {
+  auto f=[](auto& x) {return torch::ArrayRef<double>(x.to(torch::kDouble).template data_ptr<double>(),x.numel()>3 ? 3 : x.numel());};
+  s << std::boolalpha
+    << "Zscore(mean=" << f(options.mean()) << ", stddev=" << f(options.stddev()) << ", inplace=" << options.inplace() << ")";
+ }
+
+ torch::Tensor forward(torch::Tensor& t) {
+  return options.inplace() ? zscore_(t,options.mean(),options.stddev()) : zscore(t,options.mean(),options.stddev());
+ }
+  
+ ZscoreOptions options;
+};
+TORCH_MODULE(Zscore);
+
+// ------------------------------------------------------------------
+// random flip, horizontal or vertical depending on dimension given
+// ------------------------------------------------------------------

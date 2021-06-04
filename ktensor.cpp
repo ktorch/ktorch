@@ -1335,6 +1335,7 @@ KAPI kshuffle(K x) {
 //           optional max size of given dim can be supplied, else calculated from storage size
 // setsafe - calls set_() after checking that the length implied by sizes & strides will fit
 // subsetsafe - alternate form of subset using setsafe rather than maximum size dimension
+// reset - [re]set tensor offset, size & storage
 // -------------------------------------------------------------------------------------------
 int64_t subsets(int64_t w,int64_t n,bool b) {return n%w ? n/w + !b : n/w;}
 
@@ -1362,6 +1363,24 @@ void setsafe(Tensor& t,int64_t i,const IntArrayRef& sz,const IntArrayRef& st) {
 
 void subsetsafe(Tensor& t,int64_t d,int64_t i,int64_t w) {
  setsafe(t, i*t.stride(d), newsize(t,d,w), t.strides());
+}
+
+KAPI reset(K x) {
+ KTRY
+  Tensor t; J i;IntArrayRef y,z;
+  TORCH_CHECK(xten(x,0,t), "reset: tensor expected as 1st argument");
+  TORCH_CHECK(xlong(x,1,i), "reset: offset (long) expected as 2nd argument, given ",kname(x,1));
+  TORCH_CHECK(x->n<3 || xsize(x,2,y), "reset: size(s) expected as 3rd argument, given ",kname(x,2));
+  TORCH_CHECK(x->n<4 || xsize(x,3,z), "reset: stride(s) expected as 4th argument, given ",kname(x,3));
+  TORCH_CHECK(x->n>1 && x->n<5, "reset: up to 4 arguments expected, (tensor;offset;sizes;strides), but ",x->n," given");
+  if(x->n==2)
+   setsafe(t,i,t.sizes(),t.strides());            // existing size & stride, just move offset
+  else if(x->n==3)
+   setsafe(t,i,y,at::detail::defaultStrides(y));  // derive stride from size
+  else
+   setsafe(t,i,y,z);                              // specify offset, size & stride
+  return (K)0;
+ KCATCH("reset");
 }
 
 // -------------------------------------------------------------------------------------------
@@ -1822,6 +1841,7 @@ void tensorfn(K x) {
  fn(x, "unsqueeze",    KFN(unsqueeze),     1);
  fn(x, "options",      KFN(options),       1);
  fn(x, "shuffle",      KFN(kshuffle),      1);
+ fn(x, "reset",        KFN(reset),         1);
  fn(x, "batch",        KFN(batch),         1);
  fn(x, "restore",      KFN(restore),       1);
  fn(x, "narrow",       KFN(narrow),        1);

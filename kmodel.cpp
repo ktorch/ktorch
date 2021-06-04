@@ -70,11 +70,15 @@ Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->mc,*m->m,x);}
 Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m->mc,*m->m,v[0]);}
 
 K mbackward(K a) {
- Kmodel *m; Tensor *x,*y,r;
- if((m=xmodel(a,0)) && (x=xten(a,1)) && (y=xten(a,2))) {
+ Kmodel *m=xmodel(a,0); Tensor *x,*y,r; TensorVector *v;
+ TORCH_CHECK(m, "backward: first argument not a model");
+ if((x=xten(a,1)) && (y=xten(a,2)) && a->n==3) {
   r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,*x),*y);
+ } else if ((v=xvec(a,1)) && a->n==2) {
+  TORCH_CHECK(v->size()>1, "backward: vector expected to contain two or more tensors, given ",v->size());
+  r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,v->at(0)),v->at(1));
  } else {
-  TORCH_ERROR("backward expects (model; inputs; targets)");
+  TORCH_ERROR("backward expects (model; inputs; targets) or (model;vector)");
  }
  r.backward();
  return kget(r);
