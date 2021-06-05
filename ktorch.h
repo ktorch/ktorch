@@ -155,26 +155,25 @@ enum class Cast:short {
  base, moduledict, modulelist, parmdict,        // container modules
  sequential, seqnest, seqjoin,
 
- adaptavg1d,     adaptavg2d,      adaptavg3d,      adaptmax1d,      adaptmax2d,  // modules
- adaptmax3d,     adrop,           attention,       avgpool1d,       avgpool2d,
- avgpool3d,      batchnorm1d,     batchnorm2d,     batchnorm3d,
- bilinear,       cat,             celu,            conv1d,          conv2d,
- conv3d,         convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d,
- decoder,        decoderlayer,    drop,            drop2d,          drop3d,
- elu,            embed,           embedbag,        encoder,         encoderlayer,
- expand,         fadrop,          flatten,         fmaxpool2d,      fmaxpool3d,
- fold,           fork,            gelu,            glu,             groupnorm,       gru,  gruout,
- hardshrink,     hardtanh,        identity,        index,           instancenorm1d,  instancenorm2d,
- instancenorm3d, interpolate,     layernorm,       leakyrelu,       linear,
- localnorm,      logsigmoid,      logsoftmax,      lppool1d,        lppool2d,
- lstm, lstmout,  maxpool1d,       maxpool2d,       maxpool3d,       mul, nbeats,
- normalize,      onehot, pad,             pad1d,           pad2d,           pad3d,
- prelu,          recur,           reflect1d,       reflect2d,       relu,            relu6,
- replicate1d,    replicate2d,     replicate3d,     reshape,         residual, rnn, rnnout,
- rrelu,          selu,            sigmoid,         softmax,         softmax2d,
- softmin,        softplus,        softshrink,      softsign,        squeeze,
- tanh,           tanhshrink,      threshold,       transformer,     unfold,
- unsqueeze,      upsample,        zeropad2d,
+ adaptavg1d,  adaptavg2d,   adaptavg3d,      adaptmax1d,      adaptmax2d,      adaptmax3d,   //modules
+ adrop,       attention,    avgpool1d,       avgpool2d,       avgpool3d,       batchnorm1d,
+ batchnorm2d, batchnorm3d,  bilinear,        cat,             celu,            conv1d,     
+ conv2d,      conv3d,       convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d, 
+ decoder,     decoderlayer, drop,            drop2d,          drop3d,          elu,        
+ embed,       embedbag,     encoder,         encoderlayer,    expand,          fadrop,     
+ flatten,     fmaxpool2d,   fmaxpool3d,      fold,            fork,            gelu,       
+ glu,         groupnorm,    gru,             gruout,          hardshrink,      hardtanh,   
+ identity,    index,        instancenorm1d,  instancenorm2d,  instancenorm3d,  interpolate,
+ layernorm,   leakyrelu,    linear,          localnorm,       logsigmoid,      logsoftmax, 
+ lppool1d,    lppool2d,     lstm,            lstmout,         maxpool1d,       maxpool2d,  
+ maxpool3d,   mul,          nbeats,          normalize,       onehot,          pad,        
+ pad1d,       pad2d,        pad3d,           prelu,           randomcrop,      randomflip, 
+ recur,       reflect1d,    reflect2d,       relu,            relu6,           replicate1d,
+ replicate2d, replicate3d,  reshape,         residual,        rnn,             rnnout,     
+ rrelu,       selu,         sigmoid,         softmax,         softmax2d,       softmin,    
+ softplus,    softshrink,   softsign,        squeeze,         tanh,            tanhshrink, 
+ threshold,   transformer,  unfold,          unsqueeze,       upsample,        zeropad2d,  
+ zscore,  
 
  pairwise,  similar, // distance functions
 
@@ -205,16 +204,16 @@ enum class Setting:char {
  complexfirst, countpad,   cuda,      cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
  dampening,    decay,      decoder,   decoderlayer, detach,     deterministic,      dilate,        
  dim,          divisor,    dlayers,   dropout,      dtype,      elayers,            encoder,       
- encoderlayer, end,        eps,       eval,         fn,         freeze,             full,          
+ encoderlayer, end,        eps,       eval,  fill,  fn,         freeze,             full,          
  gradtol,      groups,     heads,     hidden,       history,    ignore,             in,            
  in1,          in2,        ind,       indices,      init,       inplace,            interopthreads,
  iter,         k,          kdim,      keepdim,      kvbias,     kvzeros,            lambda,        
  lastoffset,   layernorm,  layers,    log,          lower,      lr,                 lrdecay,       
- magma,        margin,     max,       maxnorm,      min,        mkl,                mode,          
+ magma,        margin,     max,       maxnorm,      mean, min,        mkl,                mode,          
  momentum,     nesterov,   norm,      openmp,       out,        outpad,             outsize,       
- p,            pad,        padindex,  padmode,      ratio,      reduce,             rescale,       
+ p,            pad,        padflag,   padindex,  padmode,      ratio,      reduce,             rescale,       
  rows,         scale,      search,    shape,        size,       slope,              smoothing,
- sparse,       stackframe, start,     stride,       swap,       threads,            threshold,
+ sparse,       stackframe, start,     std, stride,       swap,       threads,            threshold,
  track,        train,      transpose, upper,        value,      vdim,               weight,
  zeroinf        
 };
@@ -738,7 +737,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,115> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,118> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -819,6 +818,8 @@ typedef struct {
   std::make_tuple(cs("pairwise"),         Cast::pairwise,        typeid(torch::nn::PairwiseDistanceImpl).hash_code(),    "torch.nn.PairwiseDistance"),
   std::make_tuple(cs("parmdict"),         Cast::parmdict,        typeid(torch::nn::ParameterDictImpl).hash_code(),       "torch.nn.ParameterDict"),
   std::make_tuple(cs("prelu"),            Cast::prelu,           typeid(torch::nn::PReLUImpl).hash_code(),               "torch.nn.PReLU"),
+  std::make_tuple(cs("randomcrop"),       Cast::randomcrop,      typeid(RandomCropImpl).hash_code(),                     ""),
+  std::make_tuple(cs("randomflip"),       Cast::randomflip,      typeid(RandomFlipImpl).hash_code(),                     ""),
   std::make_tuple(cs("recur"),            Cast::recur,           typeid(RecurImpl).hash_code(),                          ""),
   std::make_tuple(cs("reflect1d"),        Cast::reflect1d,       typeid(torch::nn::ReflectionPad1dImpl).hash_code(),     "torch.nn.ReflectionPad1d"),
   std::make_tuple(cs("reflect2d"),        Cast::reflect2d,       typeid(torch::nn::ReflectionPad2dImpl).hash_code(),     "torch.nn.ReflectionPad2d"),
@@ -853,7 +854,8 @@ typedef struct {
   std::make_tuple(cs("unfold"),           Cast::unfold,          typeid(torch::nn::UnfoldImpl).hash_code(),              "torch.nn.Unfold"),
   std::make_tuple(cs("unsqueeze"),        Cast::unsqueeze,       typeid(UnsqueezeImpl).hash_code(),                      "torch.unsqueeze"),
   std::make_tuple(cs("upsample"),         Cast::upsample,        typeid(torch::nn::UpsampleImpl).hash_code(),            "torch.nn.Upsample"),
-  std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d")
+  std::make_tuple(cs("zeropad2d"),        Cast::zeropad2d,       typeid(torch::nn::ZeroPad2dImpl).hash_code(),           "torch.nn.ZeroPad2d"),
+  std::make_tuple(cs("zscore"),           Cast::zscore,          typeid(ZscoreImpl).hash_code(),                         "")
  }};
 
  std::array<std::tuple<S,Setting>,15> cset = {{            // configuration settings
@@ -874,7 +876,7 @@ typedef struct {
  std::make_tuple(cs("complexfirst"),       Setting::complexfirst)
 }};
 
- std::array<std::tuple<S,Setting>,81> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,85> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -903,6 +905,7 @@ typedef struct {
   std::make_tuple(cs("encoderlayer"), Setting::encoderlayer),
   std::make_tuple(cs("end"),          Setting::end),
   std::make_tuple(cs("eps"),          Setting::eps),
+  std::make_tuple(cs("fill"),         Setting::fill),
   std::make_tuple(cs("fn"),           Setting::fn),
   std::make_tuple(cs("freeze"),       Setting::freeze),
   std::make_tuple(cs("groups"),       Setting::groups),
@@ -927,6 +930,7 @@ typedef struct {
   std::make_tuple(cs("lower"),        Setting::lower),
   std::make_tuple(cs("max"),          Setting::max),
   std::make_tuple(cs("maxnorm"),      Setting::maxnorm),
+  std::make_tuple(cs("mean"),         Setting::mean),
   std::make_tuple(cs("min"),          Setting::min),
   std::make_tuple(cs("mode"),         Setting::mode),
   std::make_tuple(cs("momentum"),     Setting::momentum),
@@ -936,6 +940,7 @@ typedef struct {
   std::make_tuple(cs("outsize"),      Setting::outsize),
   std::make_tuple(cs("p"),            Setting::p),
   std::make_tuple(cs("pad"),          Setting::pad),
+  std::make_tuple(cs("padflag"),      Setting::padflag),
   std::make_tuple(cs("padindex"),     Setting::padindex),
   std::make_tuple(cs("padmode"),      Setting::padmode),
   std::make_tuple(cs("ratio"),        Setting::ratio),
@@ -947,6 +952,7 @@ typedef struct {
   std::make_tuple(cs("slope"),        Setting::slope),
   std::make_tuple(cs("sparse"),       Setting::sparse),
   std::make_tuple(cs("start"),        Setting::start),
+  std::make_tuple(cs("std"),          Setting::std),
   std::make_tuple(cs("stride"),       Setting::stride),
   std::make_tuple(cs("threshold"),    Setting::threshold),
   std::make_tuple(cs("track"),        Setting::track),

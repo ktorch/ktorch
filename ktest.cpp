@@ -1,5 +1,6 @@
 #include "ktorch.h"
 #include "torch/script.h"
+#include <ATen/core/TransformationHelper.h>
 namespace nn=torch::nn;
 
 KAPI ptest(K x) {
@@ -17,6 +18,13 @@ KAPI ztest(K x) {
   auto s=torch::tensor(0.5);
   Zscore z(ZscoreOptions(m,s));
   std::cerr << z << "\n";
+/*
+  Tensor t=torch::rand(1,torch::kDouble);
+  std::cerr << t.uniform_(0,1).item().toDouble() << "\n";
+  std::cerr << t.uniform_(0,1).data_ptr<double>()[0] << "\n";
+*/
+  RandomFlip f(.3,-2);
+  std::cerr << f << "\n";
   return (K)0;
  KCATCH("ztest");
 }

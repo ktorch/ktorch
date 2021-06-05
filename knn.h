@@ -555,12 +555,12 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
  }
 
  void pretty_print(std::ostream& s) const override {
-  auto f=[](auto& x) {return torch::ArrayRef<double>(x.to(torch::kDouble).template data_ptr<double>(),x.numel()>3 ? 3 : x.numel());};
+  auto f=[](auto& x) {return torch::ArrayRef<double>(x.to(torch::kDouble).template data_ptr<double>(),x.numel()>3 ? 3 : x.numel()).vec();};
   s << std::boolalpha
     << "Zscore(mean=" << f(options.mean()) << ", stddev=" << f(options.stddev()) << ", inplace=" << options.inplace() << ")";
  }
 
- torch::Tensor forward(torch::Tensor& t) {
+ torch::Tensor forward(torch::Tensor t) {
   return options.inplace() ? zscore_(t,options.mean(),options.stddev()) : zscore(t,options.mean(),options.stddev());
  }
   
@@ -569,5 +569,42 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
 TORCH_MODULE(Zscore);
 
 // ------------------------------------------------------------------
+// random crop
+// ------------------------------------------------------------------
+class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
+ public:
+ torch::Tensor forward(torch::Tensor& t) {
+  TORCH_CHECK(false, "nyi");
+  return torch::tensor(0);
+ }
+};
+TORCH_MODULE(RandomCrop);
+
+// ------------------------------------------------------------------
 // random flip, horizontal or vertical depending on dimension given
 // ------------------------------------------------------------------
+struct TORCH_API RandomFlipOptions {
+ RandomFlipOptions(double p=0.5,int64_t d=-1) : p_(p),dim_(d) {}
+ TORCH_ARG(double, p);
+ TORCH_ARG(int64_t, dim);
+};
+
+class TORCH_API RandomFlipImpl : public torch::nn::Cloneable<RandomFlipImpl> {
+ public:
+ RandomFlipImpl(double p,int64_t d) : RandomFlipImpl(RandomFlipOptions(p,d)) {}
+ explicit RandomFlipImpl(const RandomFlipOptions& o) : options(o) {reset();}
+
+ void reset() override {}
+
+ void pretty_print(std::ostream& s) const override {
+  s << "RandomFlip(p=" << options.p() << ", dim=" << options.dim() << ")";
+ }
+
+ torch::Tensor forward(const torch::Tensor& t) {
+  return p.uniform_(0,1).item().toDouble()<options.p() ? t.flip(options.dim()) : t;
+ }
+
+ RandomFlipOptions options;
+ torch::Tensor p=torch::empty(1, torch::kDouble);
+};
+TORCH_MODULE(RandomFlip);

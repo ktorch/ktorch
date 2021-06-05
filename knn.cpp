@@ -373,6 +373,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::pad2d:           return m.as<nn::ConstantPad2d>()->forward(x);
   case Cast::pad3d:           return m.as<nn::ConstantPad3d>()->forward(x);
   case Cast::prelu:           return m.as<nn::PReLU>()->forward(x);
+  case Cast::randomflip:      return m.as<RandomFlip>()->forward(x);
   case Cast::reflect1d:       return m.as<nn::ReflectionPad1d>()->forward(x);
   case Cast::reflect2d:       return m.as<nn::ReflectionPad2d>()->forward(x);
   case Cast::relu:            return m.as<nn::ReLU>()->forward(x);
@@ -403,6 +404,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::unsqueeze:       return m.as<Unsqueeze>()->forward(x);
   case Cast::upsample:        return m.as<nn::Upsample>()->forward(x);
   case Cast::zeropad2d:       return m.as<nn::ZeroPad2d>()->forward(x);
+  case Cast::zscore:          return m.as<Zscore>()->forward(x);
   default: TORCH_ERROR("forward calculation with single tensor argument not implemented for module: ",m.name());
  }
 }
@@ -634,6 +636,7 @@ static c10::optional<double> optdouble(const Pairs& p,Cast c)    {double d=mdoub
 // ----------------------------------------------------------------------------------------------
 // mlongs - check for long(s), return vector else error specific to module and setting
 // longtensor - define tensor from long(s), return tensor else error specific to module & setting
+// doubletensor - define tensor from long/double(s), return tensor else error specific to setting
 // mdoubles - check for double(s), return vector else error specific to module and setting
 // ----------------------------------------------------------------------------------------------
 static LongVector mlongs(K x,J i,Cast c,Setting s) {
@@ -658,6 +661,18 @@ static Tensor longtensor(K x,J i,Cast c,Setting s) {
 static Tensor longtensor(const Pairs& p,Cast c) {
  Tensor t; pten(p,t);
  TORCH_CHECK(t.dtype()==torch::kLong, msym(c)," ",p.k,": long(s) expected, given ",t.dtype(),"(s)");
+ return t;
+}
+
+static Tensor doubletensor(K x,J i,Cast c,Setting s) {
+ Tensor t; if(!xten(x,i,t)) t=kput(x,i); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
+ TORCH_CHECK(t.dtype()==torch::kDouble, msym(c)," ",mset(s),": double(s) expected, given ",t.dtype(),"(s)");
+ return t;
+}
+
+static Tensor doubletensor(const Pairs& p,Cast c) {
+ Tensor t; pten(p,t); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
+ TORCH_CHECK(t.dtype()==torch::kDouble, msym(c)," ",p.k,": double(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
@@ -2941,6 +2956,65 @@ static K transformer(bool a,const nn::TransformerOptions& o) {
  return x;
 }
 
+// ---------------------------------------------------------------------------
+// zscore - set/get mean,stddev & inplace flag for zscore module
+// ---------------------------------------------------------------------------
+static ZscoreOptions zscore(K x,J i,Cast c) {
+ ZscoreOptions o({},{}); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.mean(doubletensor(x,i+j,c,Setting::mean)); break;
+    case 1: o.stddev(doubletensor(x,i+j,c,Setting::std)); break;
+    case 2: o.inplace(mbool(x,i+j, c, Setting::inplace)); break;
+    default: TORCH_ERROR(msym(c),": up to 3 positional args expected, (mean;std;inplace flag), but ",n," given");
+   }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::mean:    o.mean(doubletensor(p,c)); break;
+   case Setting::std:     o.stddev(doubletensor(p,c)); break;
+   case Setting::inplace: o.inplace(mbool(p,c)); break;
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
+  }
+ TORCH_CHECK(o.mean().defined()   && o.mean().numel(),   msym(c),": no mean(s) defined");
+ TORCH_CHECK(o.stddev().defined() && o.stddev().numel(), msym(c),": no stddev(s) defined");
+ return o;
+}
+
+static K zscore(bool a,const ZscoreOptions& o) {
+ K x=KDICT;
+ OPTION(x, mean, kget(o.mean()));
+ OPTION(x, std,  kget(o.stddev()));
+ if(a || o.inplace()) OPTION(x, inplace, kb(o.inplace()));
+ return x;
+}
+
+// ---------------------------------------------------------------------------
+// rflip - set/get probability p and dim for random horizontal/vertical flip
+// ---------------------------------------------------------------------------
+static RandomFlipOptions rflip(K x,J i,Cast c) {
+ RandomFlipOptions o({},{}); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.p(mdouble(x,i+j,c,Setting::mean)); break;
+    case 1: o.dim(int64(x,i+j,c,Setting::dim)); break;
+    default: TORCH_ERROR(msym(c),": up to 2 positional args expected, (p;dim), but ",n," given");
+   }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::p:   o.p(mdouble(p,c)); break;
+   case Setting::dim: o.dim(int64(p,c)); break;
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
+  }
+ return o;
+}
+
+static K rflip(bool a,const RandomFlipOptions& o) {
+ K x=KDICT; const RandomFlipOptions d;
+ if(a || d.p()   != o.p())   OPTION(x, p,   kf(o.p()));
+ if(a || d.dim() != o.dim()) OPTION(x, dim, kj(o.dim()));
+ return x;
+}
+
 // ----------------------------------------------------------------------------------------------------
 // getsize - get size(s) for expand & reshape
 // expand
@@ -3106,6 +3180,9 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::pairwise:     return nn::PairwiseDistance(pairwise(x,i,c)).ptr();
   case Cast::similar:      return nn::CosineSimilarity(similar(x,i,c)).ptr();
 
+  case Cast::zscore:       return Zscore(zscore(x,i,c)).ptr();
+  case Cast::randomcrop:
+  case Cast::randomflip:   return RandomFlip(rflip(x,i,c)).ptr();
   default:
    if(container(c))
     TORCH_ERROR("cannot create container module: ",msym(c));
@@ -3199,6 +3276,8 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
   case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
   case Cast::prelu:           return ANY(nn::PReLU, m);
+//case Cast::randomcrop:      return ANY(RandomCrop, m);
+  case Cast::randomflip:      return ANY(RandomFlip, m);
   case Cast::recur:           return ANY(Recur, m);
   case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
   case Cast::reflect2d:       return ANY(nn::ReflectionPad2d, m);
@@ -3232,6 +3311,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::unsqueeze:       return ANY(Unsqueeze, m);
   case Cast::upsample:        return ANY(nn::Upsample, m);
   case Cast::zeropad2d:       return ANY(nn::ZeroPad2d, m);
+  case Cast::zscore:          return ANY(Zscore, m);
 
   case Cast::interpolate:
   case Cast::normalize:       TORCH_ERROR(msym(c),": unable to create type-erased module, only functional form implemented");
@@ -3388,6 +3468,10 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::threshold:        return threshold(a,m.as<nn::Threshold>()->options);
   case Cast::pairwise:         return pairwise(a,m.as<nn::PairwiseDistance>()->options);
   case Cast::similar:          return similar(a,m.as<nn::CosineSimilarity>()->options);
+
+  case Cast::zscore:           return zscore(a,m.as<Zscore>()->options);
+  case Cast::randomcrop:     //return rflip(a,m.as<RandomFlip>()->options);
+  case Cast::randomflip:       return rflip(a,m.as<RandomFlip>()->options);
 
   default: TORCH_ERROR("unrecognized module: ",m.name(),", unable to retrieve options");
  }
@@ -3869,6 +3953,7 @@ K modulehelp(Cast c) {
   case Cast::parmdict:        return KDICT;
   case Cast::pairwise:        return pairwise(true,nn::PairwiseDistanceOptions());
   case Cast::prelu:           return prelu(true,nn::PReLUOptions());
+  case Cast::randomflip:      return rflip(true,RandomFlipOptions(.5, -1));
   case Cast::recur:           return recur(true,RecurOptions());
   case Cast::reflect1d:       return npad(nn::ReflectionPad1dOptions({1,2}));
   case Cast::reflect2d:       return npad(nn::ReflectionPad2dOptions({1,1,2,0}));
@@ -3903,7 +3988,8 @@ K modulehelp(Cast c) {
   case Cast::unsqueeze:       return squeeze(true,SqueezeOptions(0));
   case Cast::upsample:        return upsample(true,nn::UpsampleOptions());
   case Cast::zeropad2d:       return npad(nn::ZeroPad2dOptions({1,1,2,0}));
-
+  case Cast::zscore:          return zscore(true,ZscoreOptions(torch::tensor({.51,.49,.47}).to(torch::kDouble),
+                                                               torch::tensor({.25,.25,.21}).to(torch::kDouble)));
   case Cast::undefined: {
    const auto& e=env().module; J i=0,n=e.size();
    K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
