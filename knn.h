@@ -571,12 +571,22 @@ TORCH_MODULE(Zscore);
 // ------------------------------------------------------------------
 // random crop
 // ------------------------------------------------------------------
+struct TORCH_API RandomCropOptions {
+ TORCH_ARG(torch::ExpandingArray<2>, size);
+ TORCH_ARG(bool, pad);
+ TORCH_ARG(bool, padflag) = false;
+ TORCH_ARG(bool, fill);
+ TORCH_ARG(bool, padmode);
+};
+
 class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  public:
  torch::Tensor forward(torch::Tensor& t) {
   TORCH_CHECK(false, "nyi");
   return torch::tensor(0);
  }
+
+ RandomCropOptions options;
 };
 TORCH_MODULE(RandomCrop);
 

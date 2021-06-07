@@ -3015,6 +3015,25 @@ static K rflip(bool a,const RandomFlipOptions& o) {
  return x;
 }
 
+// ---------------------------------------------------------------------------
+// rcrop - set/get probability p and dim for random horizontal/vertical flip
+// ---------------------------------------------------------------------------
+Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
+ int64_t r=t.size(-2),c=t.size(-1);      // get rows & cols of tensor to be cropped
+ if(r==h && c==w) {                      // if crop size matches tensor rows & cols
+  return t;                              // return tensor as is
+ } else {
+  int64_t y=r-h+1,x=c-w+1;               // else set possible range for top left corner
+  TORCH_CHECK(x>0 && y>0, "crop: size ",h,"x",w,", exceeds tensor dim(s) ",r,"x",c);
+  y=z.random_(y).item().toLong(), x=z.random_(x).item().toLong();
+  return t.index({torch::indexing::Ellipsis, torch::indexing::Slice(y,y+h), torch::indexing::Slice(x,x+w)});
+ }
+}
+
+Tensor randomcrop(const Tensor& t,int64_t h,int64_t w) {
+ return randomcrop(t,h,w,torch::empty(1,torch::kLong));
+}
+
 // ----------------------------------------------------------------------------------------------------
 // getsize - get size(s) for expand & reshape
 // expand
