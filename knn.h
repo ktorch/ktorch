@@ -3,6 +3,7 @@
 std::string mlabel(const std::shared_ptr<torch::nn::Module>&);
 torch::Tensor zscore_(torch::Tensor&,const torch::Tensor&,const torch::Tensor& d);
 torch::Tensor zscore(const torch::Tensor&,const torch::Tensor&,const torch::Tensor&);
+torch::Tensor randomcrop(const torch::Tensor&,int64_t,int64_t,const torch::Tensor&);
 
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
@@ -569,24 +570,42 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
 TORCH_MODULE(Zscore);
 
 // ------------------------------------------------------------------
-// random crop
+// random crop - pad, then crop tensor height,width at randm offsets
 // ------------------------------------------------------------------
 struct TORCH_API RandomCropOptions {
+ RandomCropOptions(torch::ExpandingArray<2> s,torch::ExpandingArray<4> p=0) : size_(s),pad_(p) {}
+
  TORCH_ARG(torch::ExpandingArray<2>, size);
- TORCH_ARG(bool, pad);
- TORCH_ARG(bool, padflag) = false;
- TORCH_ARG(bool, fill);
- TORCH_ARG(bool, padmode);
+ TORCH_ARG(torch::ExpandingArray<4>, pad);
+ TORCH_ARG(torch::nn::functional::PadFuncOptions::mode_t, padmode) = torch::kConstant;
+ TORCH_ARG(double, value) = 0;
 };
 
 class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  public:
- torch::Tensor forward(torch::Tensor& t) {
-  TORCH_CHECK(false, "nyi");
-  return torch::tensor(0);
+ RandomCropImpl(torch::ExpandingArray<2> s,torch::ExpandingArray<4> p=0) : RandomCropImpl(RandomCropOptions(s,p)) {}
+ explicit RandomCropImpl(const RandomCropOptions& o) : options(o) {reset();}
+
+ void reset() override {
+  p=this->register_buffer("p", torch::empty(1, torch::kLong));
+ }
+
+ void pretty_print(std::ostream& s) const override {
+  s << "RandomCrop(size=" << options.size();
+  if(*options.pad() != *torch::ExpandingArray<4>(0)) s << ", pad=" << options.pad();
+  s << ")";
+ }
+
+ torch::Tensor forward(const torch::Tensor& t) {
+  return(*options.pad() == *torch::ExpandingArray<4>(0) ? t
+         : torch::nn::functional::detail::pad(t,options.pad(),options.padmode(),options.value()),
+         (*options.size())[0],
+         (*options.size())[1],
+          p);
  }
 
  RandomCropOptions options;
+ torch::Tensor p;  //tensor used for random top,left corner
 };
 TORCH_MODULE(RandomCrop);
 
@@ -604,7 +623,9 @@ class TORCH_API RandomFlipImpl : public torch::nn::Cloneable<RandomFlipImpl> {
  RandomFlipImpl(double p,int64_t d) : RandomFlipImpl(RandomFlipOptions(p,d)) {}
  explicit RandomFlipImpl(const RandomFlipOptions& o) : options(o) {reset();}
 
- void reset() override {}
+ void reset() override {
+  p=this->register_buffer("p", torch::empty(1, torch::kDouble));
+ }
 
  void pretty_print(std::ostream& s) const override {
   s << "RandomFlip(p=" << options.p() << ", dim=" << options.dim() << ")";
@@ -615,6 +636,6 @@ class TORCH_API RandomFlipImpl : public torch::nn::Cloneable<RandomFlipImpl> {
  }
 
  RandomFlipOptions options;
- torch::Tensor p=torch::empty(1, torch::kDouble);
+ torch::Tensor p;
 };
 TORCH_MODULE(RandomFlip);

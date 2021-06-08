@@ -204,7 +204,7 @@ enum class Setting:char {
  complexfirst, countpad,   cuda,      cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
  dampening,    decay,      decoder,   decoderlayer, detach,     deterministic,      dilate,        
  dim,          divisor,    dlayers,   dropout,      dtype,      elayers,            encoder,       
- encoderlayer, end,        eps,       eval,  fill,  fn,         freeze,             full,          
+ encoderlayer, end,        eps,       eval,         fn,         freeze,             full,          
  gradtol,      groups,     heads,     hidden,       history,    ignore,             in,            
  in1,          in2,        ind,       indices,      init,       inplace,            interopthreads,
  iter,         k,          kdim,      keepdim,      kvbias,     kvzeros,            lambda,        
@@ -878,7 +878,7 @@ typedef struct {
  std::make_tuple(cs("complexfirst"),       Setting::complexfirst)
 }};
 
- std::array<std::tuple<S,Setting>,85> mset = {{        // module option sym -> enum
+ std::array<std::tuple<S,Setting>,84> mset = {{        // module option sym -> enum
   std::make_tuple(cs("addbias"),      Setting::addbias),
   std::make_tuple(cs("addzero"),      Setting::addzero),
   std::make_tuple(cs("affine"),       Setting::affine),
@@ -907,7 +907,6 @@ typedef struct {
   std::make_tuple(cs("encoderlayer"), Setting::encoderlayer),
   std::make_tuple(cs("end"),          Setting::end),
   std::make_tuple(cs("eps"),          Setting::eps),
-  std::make_tuple(cs("fill"),         Setting::fill),
   std::make_tuple(cs("fn"),           Setting::fn),
   std::make_tuple(cs("freeze"),       Setting::freeze),
   std::make_tuple(cs("groups"),       Setting::groups),

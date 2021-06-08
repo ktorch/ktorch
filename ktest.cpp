@@ -26,6 +26,12 @@ KAPI ztest(K x) {
   auto s=torch::tensor(0.5);
   Zscore z(ZscoreOptions(m,s));
   std::cerr << z << "\n";
+  RandomCrop c1(32);
+  RandomCrop c2(torch::ExpandingArray<2>({32,28}));
+  RandomCrop c3(32,4);
+  std::cerr << c1 << "\n";
+  std::cerr << c2 << "\n";
+  std::cerr << c3 << "\n";
 /*
   Tensor t=torch::rand(1,torch::kDouble);
   std::cerr << t.uniform_(0,1).item().toDouble() << "\n";

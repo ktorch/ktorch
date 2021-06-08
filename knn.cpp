@@ -2693,7 +2693,7 @@ static K attention(bool a,const nn::MultiheadAttentionOptions& o) {
 // --------------------------------------------------------------------------------------
 // encode/decode layers - parse/retrieve settings for multi head attention
 // --------------------------------------------------------------------------------------
-static c10::variant<torch::enumtype::kReLU, torch::enumtype::kGELU> codefn(Cast c,S s) {
+static nn::TransformerOptions::activation_t codefn(Cast c,S s) {
  switch(emap(s)) {
   case Enum::relu: return torch::kReLU;
   case Enum::gelu: return torch::kGELU;
