@@ -3016,8 +3016,50 @@ static K rflip(bool a,const RandomFlipOptions& o) {
 }
 
 // ---------------------------------------------------------------------------
+// padmode - match k symbol to std::variant style enumeration
 // rcrop - set/get probability p and dim for random horizontal/vertical flip
 // ---------------------------------------------------------------------------
+static void padmode(RandomCropOptions& o,S s) {
+ switch(emap(s)) {
+  case Enum::constant:  o.padmode(torch::kConstant); break;
+  case Enum::reflect:   o.padmode(torch::kReflect); break;
+  case Enum::replicate: o.padmode(torch::kReplicate); break;
+  case Enum::circular:  o.padmode(torch::kCircular); break;
+  default: TORCH_ERROR("unrecognized padding mode: ",s); break;
+ }
+}
+
+static RandomCropOptions rcrop(K x,J i,Cast c) {
+ RandomCropOptions o(0); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.size (exarray<2>(x,i+j,c,Setting::size)); break;
+    case 1: o.pad (exarray<4>(x,i+j,c,Setting::pad)); break;
+    case 2: padmode(o,code(x,i+j,c,Setting::padmode)); break;
+    case 3: o.value(mdouble(x,i+j,c,Setting::value));
+    default: TORCH_ERROR(msym(c),": up to 4 positional args expected, (size;pad;pad mode;pad value), but ",n," given");
+   }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::size:    o.size(exarray<2>(p,c)); break;
+   case Setting::pad:     o.pad(exarray<4>(p,c)); break;
+   case Setting::padmode: padmode(o,code(p,c)); break;
+   case Setting::value:   o.value(mdouble(p,c)); break;
+   default: TORCH_ERROR(msym(c)," option: ",p.k," not recognized");
+  }
+ TORCH_CHECK(*o.size() != *torch::ExpandingArray<2>(0), msym(c),": positive cropping height & width not given");
+ return o;
+}
+
+static K rcrop(bool a,const RandomCropOptions& o) {
+ K x=KDICT; const RandomCropOptions d(0);
+ OPTION(x, size, KEX(o.size()));
+ if(a || *d.pad()            != *o.pad())            OPTION(x, pad,     KEX(o.pad()));
+ if(a || d.padmode().index() != o.padmode().index()) OPTION(x, padmode, ks(ESYM(o.padmode())));
+ if(a || d.value()           != o.value())           OPTION(x, value,   kf(o.value()));
+ return x;
+}
+
 Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
  int64_t r=t.size(-2),c=t.size(-1);      // get rows & cols of tensor to be cropped
  if(r==h && c==w) {                      // if crop size matches tensor rows & cols
