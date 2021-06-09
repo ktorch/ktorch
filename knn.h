@@ -3,7 +3,6 @@
 std::string mlabel(const std::shared_ptr<torch::nn::Module>&);
 torch::Tensor zscore_(torch::Tensor&,const torch::Tensor&,const torch::Tensor& d);
 torch::Tensor zscore(const torch::Tensor&,const torch::Tensor&,const torch::Tensor&);
-torch::Tensor randomcrop(const torch::Tensor&,int64_t,int64_t,const torch::Tensor&);
 
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
@@ -581,6 +580,8 @@ struct TORCH_API RandomCropOptions {
  TORCH_ARG(double, value) = 0;
 };
 
+torch::Tensor randomcrop(const torch::Tensor& t,const RandomCropOptions& o,const torch::Tensor& p);
+
 class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  public:
  RandomCropImpl(torch::ExpandingArray<2> s,torch::ExpandingArray<4> p=0) : RandomCropImpl(RandomCropOptions(s,p)) {}
@@ -597,11 +598,7 @@ class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  }
 
  torch::Tensor forward(const torch::Tensor& t) {
-  return(*options.pad() == *torch::ExpandingArray<4>(0) ? t
-         : torch::nn::functional::detail::pad(t,options.pad(),options.padmode(),options.value()),
-         (*options.size())[0],
-         (*options.size())[1],
-          p);
+  return randomcrop(t,options,p);
  }
 
  RandomCropOptions options;

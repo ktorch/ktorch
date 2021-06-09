@@ -2,15 +2,6 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-KAPI kcrop(K x,K y,K z) {
- KTRY
-  Tensor *t=xten(x);
-  TORCH_CHECK(t,"no tensor supplied");
-  TORCH_CHECK(y->t == -KJ && z->t == -KJ, "need longs for 2nd and 3rd args");
-  return kget(randomcrop(*t, y->j, z->j));
- KCATCH("crop");
-}
-
 KAPI ptest(K x) {
  KTRY
   Tensor *t=xten(x);

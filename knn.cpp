@@ -42,6 +42,7 @@ static K mopt(bool,bool,Cast,const Module&);
 // msym - map to/from sym & enum for module, e.g. `conv3d <-> Cast::conv3d
 // msyms - parse module and optional name symbol from k arg(s), throw error if not found
 // mset - map to/from sym & enum for module options, e.g. `bias <-> Setting::bias
+// mpos - throw error if too many positional arguments
 // mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
 // -----------------------------------------------------------------------------------
 static S msym(Cast c) {
@@ -84,6 +85,10 @@ static Setting mset(S x,Cast c) {
   TORCH_ERROR("unrecognized option: `",x);
  else
   TORCH_ERROR(msym(c),": unrecognized option `",x);
+}
+
+static void mpos(K x,Cast c,J n) {
+ TORCH_ERROR(msym(c),": expecting up to ",n," positional args, ",xlen(x)," given");
 }
 
 static K mkeys(bool b) {
@@ -373,6 +378,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::pad2d:           return m.as<nn::ConstantPad2d>()->forward(x);
   case Cast::pad3d:           return m.as<nn::ConstantPad3d>()->forward(x);
   case Cast::prelu:           return m.as<nn::PReLU>()->forward(x);
+  case Cast::randomcrop:      return m.as<RandomCrop>()->forward(x);
   case Cast::randomflip:      return m.as<RandomFlip>()->forward(x);
   case Cast::reflect1d:       return m.as<nn::ReflectionPad1d>()->forward(x);
   case Cast::reflect2d:       return m.as<nn::ReflectionPad2d>()->forward(x);
@@ -3036,8 +3042,8 @@ static RandomCropOptions rcrop(K x,J i,Cast c) {
     case 0: o.size (exarray<2>(x,i+j,c,Setting::size)); break;
     case 1: o.pad (exarray<4>(x,i+j,c,Setting::pad)); break;
     case 2: padmode(o,code(x,i+j,c,Setting::padmode)); break;
-    case 3: o.value(mdouble(x,i+j,c,Setting::value));
-    default: TORCH_ERROR(msym(c),": up to 4 positional args expected, (size;pad;pad mode;pad value), but ",n," given");
+    case 3: o.value(mdouble(x,i+j,c,Setting::value)); break;
+    default: mpos(x,c,i+j); break;
    }
  while(xpair(p))
   switch(mset(p.k,c)) {
@@ -3060,7 +3066,10 @@ static K rcrop(bool a,const RandomCropOptions& o) {
  return x;
 }
 
-Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
+// ---------------------------------------------------------------------------
+// randomcrop - perform random crop given size & padding options
+// ---------------------------------------------------------------------------
+static Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
  int64_t r=t.size(-2),c=t.size(-1);      // get rows & cols of tensor to be cropped
  if(r==h && c==w) {                      // if crop size matches tensor rows & cols
   return t;                              // return tensor as is
@@ -3072,8 +3081,21 @@ Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
  }
 }
 
-Tensor randomcrop(const Tensor& t,int64_t h,int64_t w) {
- return randomcrop(t,h,w,torch::empty(1,torch::kLong));
+static Tensor cpad(const Tensor& t,const RandomCropOptions& o) {
+ return *o.pad() == *ExpandingArray<4>(0) ? t : fnn::detail::pad(t,o.pad(),o.padmode(),o.value());
+}
+
+Tensor randomcrop(const Tensor& t,const RandomCropOptions& o,const Tensor& p) {
+  return randomcrop(cpad(t,o), (*o.size())[0], (*o.size())[1], p);
+}
+
+KAPI krandomcrop(K x) {
+ KTRY
+  TORCH_CHECK(!x->t, "randomcrop: not implemented for ",kname(x));
+  TORCH_CHECK(x->n>1 && x->n<6, "randomcrop: 2-5 args expected, (input;size;pad;padmode;value), but ",x->n," given");
+  Tensor *t=xten(x,0);
+  return kresult(t, randomcrop(t ? *t : kput(x,0), rcrop(x,1,Cast::randomcrop), torch::empty(1,torch::kLong)));
+ KCATCH("randomcrop");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -3242,7 +3264,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::similar:      return nn::CosineSimilarity(similar(x,i,c)).ptr();
 
   case Cast::zscore:       return Zscore(zscore(x,i,c)).ptr();
-  case Cast::randomcrop:
+  case Cast::randomcrop:   return RandomCrop(rcrop(x,i,c)).ptr();
   case Cast::randomflip:   return RandomFlip(rflip(x,i,c)).ptr();
   default:
    if(container(c))
@@ -3337,7 +3359,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::pad3d:           return ANY(nn::ConstantPad3d, m);
   case Cast::pairwise:        return ANY(nn::PairwiseDistance, m);
   case Cast::prelu:           return ANY(nn::PReLU, m);
-//case Cast::randomcrop:      return ANY(RandomCrop, m);
+  case Cast::randomcrop:      return ANY(RandomCrop, m);
   case Cast::randomflip:      return ANY(RandomFlip, m);
   case Cast::recur:           return ANY(Recur, m);
   case Cast::reflect1d:       return ANY(nn::ReflectionPad1d, m);
@@ -3531,7 +3553,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::similar:          return similar(a,m.as<nn::CosineSimilarity>()->options);
 
   case Cast::zscore:           return zscore(a,m.as<Zscore>()->options);
-  case Cast::randomcrop:     //return rflip(a,m.as<RandomFlip>()->options);
+  case Cast::randomcrop:       return rcrop(a,m.as<RandomCrop>()->options);
   case Cast::randomflip:       return rflip(a,m.as<RandomFlip>()->options);
 
   default: TORCH_ERROR("unrecognized module: ",m.name(),", unable to retrieve options");
@@ -4014,6 +4036,7 @@ K modulehelp(Cast c) {
   case Cast::parmdict:        return KDICT;
   case Cast::pairwise:        return pairwise(true,nn::PairwiseDistanceOptions());
   case Cast::prelu:           return prelu(true,nn::PReLUOptions());
+  case Cast::randomcrop:      return rcrop(true,RandomCropOptions(32,4).padmode(torch::kReflect));
   case Cast::randomflip:      return rflip(true,RandomFlipOptions(.5, -1));
   case Cast::recur:           return recur(true,RecurOptions());
   case Cast::reflect1d:       return npad(nn::ReflectionPad1dOptions({1,2}));
@@ -4123,6 +4146,7 @@ void nnfn(K x) {
  fn(x, "onehot",      KFN(Onehot),       1);
  fn(x, "prelu",       KFN(Prelu),        1);
  fn(x, "gelu",        KFN(gelu),         1);
+ fn(x, "randomcrop",  KFN(krandomcrop),  1);
  fn(x, "relu",        KFN(relu),         1);
  fn(x, "relu6",       KFN(relu6),        1);
  fn(x, "rrelu",       KFN(Rrelu),        1);
