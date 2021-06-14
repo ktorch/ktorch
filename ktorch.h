@@ -172,8 +172,8 @@ enum class Cast:short {
  replicate2d, replicate3d,  reshape,         residual,        rnn,             rnnout,     
  rrelu,       selu,         sigmoid,         softmax,         softmax2d,       softmin,    
  softplus,    softshrink,   softsign,        squeeze,         tanh,            tanhshrink, 
- threshold,   transformer,  unfold,          unsqueeze,       upsample,        zeropad2d,  
- zscore,  
+ threshold,   transform,    transformer,     unfold,          unsqueeze,       upsample,
+ zeropad2d,   zscore,  
 
  pairwise,  similar, // distance functions
 
@@ -737,7 +737,7 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,118> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,119> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -850,6 +850,7 @@ typedef struct {
   std::make_tuple(cs("tanh"),             Cast::tanh,            typeid(torch::nn::TanhImpl).hash_code(),                "torch.nn.Tanh"),
   std::make_tuple(cs("tanhshrink"),       Cast::tanhshrink,      typeid(torch::nn::TanhshrinkImpl).hash_code(),          "torch.nn.Tanhshrink"),
   std::make_tuple(cs("threshold"),        Cast::threshold,       typeid(torch::nn::ThresholdImpl).hash_code(),           "torch.nn.Threshold"),
+  std::make_tuple(cs("transform"),        Cast::transform,       typeid(TransformImpl).hash_code(),                      ""),
   std::make_tuple(cs("transformer"),      Cast::transformer,     typeid(torch::nn::TransformerImpl).hash_code(),         "torch.nn.Transformer"),
   std::make_tuple(cs("unfold"),           Cast::unfold,          typeid(torch::nn::UnfoldImpl).hash_code(),              "torch.nn.Unfold"),
   std::make_tuple(cs("unsqueeze"),        Cast::unsqueeze,       typeid(UnsqueezeImpl).hash_code(),                      "torch.unsqueeze"),

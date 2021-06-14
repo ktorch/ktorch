@@ -552,6 +552,8 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
  void reset() override {
   TORCH_CHECK(options.mean().defined()   && options.mean().is_floating_point(),   "zscore: mean(s) not defined as float/double");
   TORCH_CHECK(options.stddev().defined() && options.stddev().is_floating_point(), "zscore: std deviation(s) not defined as float/double");
+  mean=this->register_buffer("mean", options.mean());
+  stddev=this->register_buffer("stddev", options.stddev());
  }
 
  void pretty_print(std::ostream& s) const override {
@@ -561,10 +563,11 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
  }
 
  torch::Tensor forward(torch::Tensor t) {
-  return options.inplace() ? zscore_(t,options.mean(),options.stddev()) : zscore(t,options.mean(),options.stddev());
+  return options.inplace() ? zscore_(t,mean,stddev) : zscore(t,mean,stddev);
  }
   
  ZscoreOptions options;
+ torch::Tensor mean,stddev;
 };
 TORCH_MODULE(Zscore);
 
@@ -636,3 +639,47 @@ class TORCH_API RandomFlipImpl : public torch::nn::Cloneable<RandomFlipImpl> {
  torch::Tensor p;
 };
 TORCH_MODULE(RandomFlip);
+
+
+// -------------------------------------------------------------------------------
+// transform: define sequential modules to transform data in training & eval mode
+// -------------------------------------------------------------------------------
+class TORCH_API TransformImpl : public torch::nn::Cloneable<TransformImpl> {
+ public:
+ TransformImpl() = default;
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "Transform(";}
+
+ void push_back(const torch::nn::Sequential& q) {
+  push_back(children().size()==0 ? "train" : "eval", q);
+ }
+
+ void push_back(std::string s,const torch::nn::Sequential& q) {
+  TORCH_CHECK(children().size()<2, "transform: both training and evaluation transforms already defined");
+  if(children().size()==0)
+   train=register_module(s,std::move(q));
+  else
+   eval=register_module(s,std::move(q));
+ }
+
+ void push_back(const torch::nn::AnyModule& a) {
+  TORCH_CHECK(false, "transform: cannot add ",mlabel(a.ptr())," module, expecting sequential block");
+ }
+
+ void push_back(std::string s,const torch::nn::AnyModule& a) {
+  TORCH_CHECK(false, "transform: cannot add ",mlabel(a.ptr())," module, expecting sequential block");
+ }
+
+ torch::Tensor forward(const torch::Tensor& x) {
+  if(is_training()) {
+   return train.is_empty() || !train->children().size() ? x : train->forward(x);
+  } else {
+   return eval.is_empty()  || !eval->children().size()  ? x : eval->forward(x);
+  }
+  return torch::tensor(1);
+ }
+
+ torch::nn::Sequential train = nullptr;
+ torch::nn::Sequential eval  = nullptr;
+};
+TORCH_MODULE(Transform);

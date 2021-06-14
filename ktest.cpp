@@ -28,6 +28,7 @@ KAPI ztest(K x) {
   std::cerr << t.uniform_(0,1).item().toDouble() << "\n";
   std::cerr << t.uniform_(0,1).data_ptr<double>()[0] << "\n";
 */
+  RandomFlipOptions o;
   RandomFlip f(.3,-2);
   std::cerr << f << "\n";
   return (K)0;
