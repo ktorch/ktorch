@@ -3077,9 +3077,10 @@ static K rcrop(bool a,const RandomCropOptions& o) {
 }
 
 // ---------------------------------------------------------------------------
-// randomcrop - perform random crop given size & padding options
+// rcrop - perform random crop given size & padding options
+// randomcrop - k api function for random cropping
 // ---------------------------------------------------------------------------
-static Tensor randomcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
+static Tensor rcrop(const Tensor& t,int64_t h,int64_t w,const Tensor& z) {
  int64_t r=t.size(-2),c=t.size(-1);      // get rows & cols of tensor to be cropped
  if(r==h && c==w) {                      // if crop size matches tensor rows & cols
   return t;                              // return tensor as is
@@ -3095,16 +3096,16 @@ static Tensor cpad(const Tensor& t,const RandomCropOptions& o) {
  return *o.pad() == *ExpandingArray<4>(0) ? t : fnn::detail::pad(t,o.pad(),o.padmode(),o.value());
 }
 
-Tensor randomcrop(const Tensor& t,const RandomCropOptions& o,const Tensor& p) {
-  return randomcrop(cpad(t,o), (*o.size())[0], (*o.size())[1], p);
+Tensor rcrop(const Tensor& t,const RandomCropOptions& o,const Tensor& p) {
+  return rcrop(cpad(t,o), (*o.size())[0], (*o.size())[1], p);
 }
 
-KAPI krandomcrop(K x) {
+KAPI randomcrop(K x) {
  KTRY
   TORCH_CHECK(!x->t, "randomcrop: not implemented for ",kname(x));
   TORCH_CHECK(x->n>1 && x->n<6, "randomcrop: 2-5 args expected, (input;size;pad;padmode;value), but ",x->n," given");
   Tensor *t=xten(x,0); Tensor p=torch::empty(1, TensorOptions(t ? t->device() : torch::kCPU).dtype(torch::kLong));
-  return kresult(t, randomcrop(t ? *t : kput(x,0), rcrop(x,1,Cast::randomcrop), p));
+  return kresult(t, rcrop(t ? *t : kput(x,0), rcrop(x,1,Cast::randomcrop), p));
  KCATCH("randomcrop");
 }
 
@@ -3135,13 +3136,22 @@ static K rflip(bool a,const RandomFlipOptions& o) {
  return x;
 }
 
-KAPI krandomflip(K x) {
+static Tensor rflip(const Tensor& t,double p,int64_t d) {
+ return torch::empty(1,TensorOptions(t.device()).dtype(torch::kDouble)).uniform_(0,1).item().toDouble()<p ? t.flip(d) : t;
+}
+
+KAPI randomflip(K x) {
  KTRY
   TORCH_CHECK(!x->t, "randomflip: not implemented for ",kname(x));
-  auto o=rflip(x,1,Cast::randomflip);
-  return rflip(true,o);
-  // return p.uniform_(0,1).item().toDouble()<options.p() ? t.flip(options.dim()) : t;
- KCATCH("randomcrop");
+  Tensor *t=xten(x); if(!t) t=xten(x,0);
+  if(t || xmixed(x,3)) {
+   const auto o=rflip(x,1,Cast::randomflip);
+   return kresult(t, rflip(t ? *t : kput(x,0), o.p(), o.dim()));
+  } else {
+   const RandomFlipOptions o;
+   return kget(rflip(kput(x), o.p(), o.dim()));
+  }
+ KCATCH("randomflip");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -4196,7 +4206,8 @@ void nnfn(K x) {
  fn(x, "normalize",   KFN(Normalize),    1);
  fn(x, "onehot",      KFN(Onehot),       1);
  fn(x, "prelu",       KFN(Prelu),        1);
- fn(x, "randomcrop",  KFN(krandomcrop),  1);
+ fn(x, "randomcrop",  KFN(randomcrop),   1);
+ fn(x, "randomflip",  KFN(randomflip),   1);
  fn(x, "relu",        KFN(relu),         1);
  fn(x, "relu6",       KFN(relu6),        1);
  fn(x, "rrelu",       KFN(Rrelu),        1);

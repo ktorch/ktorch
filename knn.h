@@ -583,7 +583,7 @@ struct TORCH_API RandomCropOptions {
  TORCH_ARG(double, value) = 0;
 };
 
-torch::Tensor randomcrop(const torch::Tensor& t,const RandomCropOptions& o,const torch::Tensor& p);
+torch::Tensor rcrop(const torch::Tensor& t,const RandomCropOptions& o,const torch::Tensor& p);
 
 class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  public:
@@ -601,7 +601,7 @@ class TORCH_API RandomCropImpl : public torch::nn::Cloneable<RandomCropImpl> {
  }
 
  torch::Tensor forward(const torch::Tensor& t) {
-  return randomcrop(t,options,p);
+  return rcrop(t,options,p);
  }
 
  RandomCropOptions options;
