@@ -63,8 +63,9 @@ struct TORCH_API SmoothCrossEntropyImpl : public torch::nn::Cloneable<SmoothCros
   void pretty_print(std::ostream& stream) const override {stream << "SmoothCrossEntropy(smoothing=" << options.smoothing() << ")";}
  
   Tensor forward(const Tensor& input,const Tensor& target) {
+   TORCH_CHECK(!target.is_floating_point(), "sce: smooth crossentropy expects integer/long target, given ",target.dtype());
    Tensor p = input.log_softmax(-1).neg();
-   Tensor n = p.gather(-1,target.unsqueeze(1)).squeeze(1);
+   Tensor n = p.gather(-1,target.to(torch::kLong).unsqueeze(1)).squeeze(1);
    return apply_loss_reduction((1-options.smoothing()) * n + options.smoothing() * p.mean(-1), 
                                torch::enumtype::reduction_get_enum(options.reduction()));
   }

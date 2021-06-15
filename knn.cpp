@@ -647,12 +647,12 @@ static double mdouble(const Pairs& p,Cast c) {
 static c10::optional<double> optdouble(K x,J i,Cast c,Setting s) {double d=mdouble(x,i,c,s); if(d==d) return d; else return c10::nullopt;}
 static c10::optional<double> optdouble(const Pairs& p,Cast c)    {double d=mdouble(p,c);     if(d==d) return d; else return c10::nullopt;}
 
-// ----------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // mlongs - check for long(s), return vector else error specific to module and setting
-// longtensor - define tensor from long(s), return tensor else error specific to module & setting
-// doubletensor - define tensor from long/double(s), return tensor else error specific to setting
+// ltensor - define tensor from long(s), else error specific to module & setting
+// ftensor - define tensor from long/float/double(s), else error specific to setting
 // mdoubles - check for double(s), return vector else error specific to module and setting
-// ----------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 static LongVector mlongs(K x,J i,Cast c,Setting s) {
  IntArrayRef a;
  TORCH_CHECK(xsize(x,i,a), msym(c)," ",mset(s),": expected long(s), given ",kname(x,i));
@@ -666,27 +666,27 @@ static LongVector mlongs(const Pairs& p,Cast c) {
  return a.vec();
 }
 
-static Tensor longtensor(K x,J i,Cast c,Setting s) {
+static Tensor ltensor(K x,J i,Cast c,Setting s) {
  Tensor t; if(!xten(x,i,t)) t=kput(x,i);
  TORCH_CHECK(t.dtype()==torch::kLong, msym(c)," ",mset(s),": long(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
-static Tensor longtensor(const Pairs& p,Cast c) {
+static Tensor ltensor(const Pairs& p,Cast c) {
  Tensor t; pten(p,t);
  TORCH_CHECK(t.dtype()==torch::kLong, msym(c)," ",p.k,": long(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
-static Tensor doubletensor(K x,J i,Cast c,Setting s) {
+static Tensor ftensor(K x,J i,Cast c,Setting s) {
  Tensor t; if(!xten(x,i,t)) t=kput(x,i); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
- TORCH_CHECK(t.dtype()==torch::kDouble, msym(c)," ",mset(s),": double(s) expected, given ",t.dtype(),"(s)");
+ TORCH_CHECK(t.is_floating_point(), msym(c)," ",mset(s),": double(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
-static Tensor doubletensor(const Pairs& p,Cast c) {
+static Tensor ftensor(const Pairs& p,Cast c) {
  Tensor t; pten(p,t); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
- TORCH_CHECK(t.dtype()==torch::kDouble, msym(c)," ",p.k,": double(s) expected, given ",t.dtype(),"(s)");
+ TORCH_CHECK(t.is_floating_point(), msym(c)," ",p.k,": double(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
@@ -2599,13 +2599,13 @@ static IndexOptions index(K x,J i,Cast c) {
  for(J j=0;j<n;++j)
    switch(j) {
     case 0: o.dim(int64(x,i+j,c,Setting::dim));  break;
-    case 1: o.ind(longtensor(x,i+j,c,Setting::ind));  break;
+    case 1: o.ind(ltensor(x,i+j,c,Setting::ind));  break;
     default: mpos(x,c,i+j); break;
    }
  while(xpair(p))
   switch(mset(p.k,c)) {
    case Setting::dim: o.dim(int64(p,c)); break;
-   case Setting::ind: o.ind(longtensor(p,c)); break;
+   case Setting::ind: o.ind(ltensor(p,c)); break;
    default: mpair(c,p); break;
   }
  TORCH_CHECK(o.dim() != nj,       msym(c),": dimension cannot be null");
@@ -2977,15 +2977,15 @@ static ZscoreOptions zscore(K x,J i,Cast c) {
  ZscoreOptions o({},{}); Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
-    case 0: o.mean(doubletensor(x,i+j,c,Setting::mean)); break;
-    case 1: o.stddev(doubletensor(x,i+j,c,Setting::std)); break;
+    case 0: o.mean(ftensor(x,i+j,c,Setting::mean)); break;
+    case 1: o.stddev(ftensor(x,i+j,c,Setting::std)); break;
     case 2: o.inplace(mbool(x,i+j, c, Setting::inplace)); break;
     default: mpos(x,c,i+j); break;
    }
  while(xpair(p))
   switch(mset(p.k,c)) {
-   case Setting::mean:    o.mean(doubletensor(p,c)); break;
-   case Setting::std:     o.stddev(doubletensor(p,c)); break;
+   case Setting::mean:    o.mean(ftensor(p,c)); break;
+   case Setting::std:     o.stddev(ftensor(p,c)); break;
    case Setting::inplace: o.inplace(mbool(p,c)); break;
    default: mpair(c,p); break;
   }
@@ -3000,6 +3000,35 @@ static K zscore(bool a,const ZscoreOptions& o) {
  OPTION(x, std,  kget(o.stddev()));
  if(a || o.inplace()) OPTION(x, inplace, kb(o.inplace()));
  return x;
+}
+
+// ----------------------------------------------------------------------------
+// zscore - subtract mean and divide by standard deviation
+// ----------------------------------------------------------------------------
+Tensor zscore_(Tensor& t,const Tensor& m,const Tensor& d) {
+ return t.sub_(m.dim()==1 ? m.view({-1,1,1}) : m).div_(d.dim()==1 ? d.view({-1,1,1}) : d);
+}
+
+Tensor zscore(const Tensor& t,const Tensor& m,const Tensor& d) {
+ return t.sub(m.dim()==1 ? m.view({-1,1,1}) : m).div(d.dim()==1 ? d.view({-1,1,1}) : d);
+}
+
+KAPI kzscore(K x) {
+ KTRY
+  if(x->t) {
+   TORCH_CHECK(x->t > 0, "zscore: not implemented for ",kname(x));
+   Tensor t=kput(x);
+   TORCH_CHECK(t.dim()>0 && t.size(0)==3, "zscore: expecting 3-element list, given ",x->n," element(s)");
+   return kget(zscore(t[0],t[1],t[2]));
+  } else {
+   Tensor *t=xten(x,0); const auto o=zscore(x,1,Cast::zscore);
+   if(t && o.inplace()) {
+    return zscore_(*t, o.mean(), o.stddev()), (K)0;
+   } else {
+    return kresult(t, zscore(t ? *t : kput(x,0), o.mean(), o.stddev()));
+   }
+  }
+ KCATCH("zscore");
 }
 
 // ---------------------------------------------------------------------------
@@ -4167,7 +4196,6 @@ void nnfn(K x) {
  fn(x, "normalize",   KFN(Normalize),    1);
  fn(x, "onehot",      KFN(Onehot),       1);
  fn(x, "prelu",       KFN(Prelu),        1);
- fn(x, "gelu",        KFN(gelu),         1);
  fn(x, "randomcrop",  KFN(krandomcrop),  1);
  fn(x, "relu",        KFN(relu),         1);
  fn(x, "relu6",       KFN(relu6),        1);
@@ -4184,6 +4212,7 @@ void nnfn(K x) {
  fn(x, "pairwise",    KFN(Pairwise),     1);
  fn(x, "pdist",       KFN(pdist),        1);
  fn(x, "similar",     KFN(Similar),      1);
+ fn(x, "zscore",      KFN(kzscore),      1);
 }
 
 /*

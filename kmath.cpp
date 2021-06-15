@@ -482,7 +482,7 @@ static J vargs(K x,Tensor *&r,Tensor *&t,J& d,IntArrayRef& D,bool& k) {
   return xmixed(x,4) ? 0 : 1;
 }
 
-static const Tensor vfloat(const Tensor &t) {return t.is_floating_point() ? t : t.to(torch::kDouble);}
+static const Tensor vfloat(const Tensor &t) {return t.is_floating_point() ? t : t.to(torch::kFloat);}
  
 static Tensor vstack(const std::tuple<Tensor,Tensor>& t) {
  return torch::stack({std::get<1>(t),std::get<0>(t)}, 0);
@@ -1961,38 +1961,6 @@ KAPI Multinomial(K x) {
  KCATCH("multinomial");
 }
 
-// ----------------------------------------------------------------------------
-// zscore - subtract mean and divide by standard deviation
-// ----------------------------------------------------------------------------
-Tensor zscore_(Tensor& t,const Tensor& m,const Tensor& d) {
- return t.sub_(m.dim()==1 ? m.view({-1,1,1}) : m).div_(d.dim()==1 ? d.view({-1,1,1}) : d);
-}
-
-Tensor zscore(const Tensor& t,const Tensor& m,const Tensor& d) {
- return t.sub(m.dim()==1 ? m.view({-1,1,1}) : m).div(d.dim()==1 ? d.view({-1,1,1}) : d);
-}
-
-KAPI Zscore(K x) {
- KTRY
-  if(x->t) {
-   TORCH_CHECK(x->t > 0, "zscore: not implemented for ",kname(x));
-   Tensor t=kput(x);
-   TORCH_CHECK(t.dim()>0 && t.size(0)==3, "zscore: expecting 3-element list, given ",x->n," element(s)");
-   return kget(zscore(t[0],t[1],t[2]));
-  } else {
-   Tensor *t,*m,*d; bool b=false;
-   TORCH_CHECK(x->n==3 || x->n==4, "zscore: expecting 3-4 args, given ",x->n);
-   TORCH_CHECK(x->n==3 || xbool(x,3,b), "zscore: expecting 4th arg of boolean inplace flag, given ",kname(x,3));
-   t=xten(x,0), m=xten(x,1), d=xten(x,2);
-   if(t && b) {
-    return zscore_(*t, m ? *m : kput(x,1), d ? *d : kput(x,2)), (K)0;
-   } else {
-    return kresult(t, zscore(t ? *t : kput(x,0), m ? *m : kput(x,1), d ? *d : kput(x,2)));
-   }
-  }
- KCATCH("zscore");
-}
-
 // -------------------------------------------------------------------------------------
 // map api function to name in q session, upper case for 1st letter if reserved in k
 // -------------------------------------------------------------------------------------
@@ -2165,5 +2133,4 @@ void mathfn(K x) {
  fn(x, "uniquec",            KFN(Uniquec),            1);
  fn(x, "variance",           KFN(variance),           1);
  fn(x, "xor",                KFN(Xor),                1);
- fn(x, "zscore",             KFN(Zscore),             1);
 }
