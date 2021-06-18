@@ -185,6 +185,12 @@ Enum emap(S s) {
  return Enum::undefined;
 }
 
+S emap(Enum e) {
+ for(const auto& m:env().enums)
+  if(std::get<1>(m)==e) return std::get<0>(m);
+ TORCH_ERROR("unrecognized enumeration: ",(I)e);
+}
+
 // ------------------------------------------------------------------------------------------
 // statekey - map from state attribute enumeration to symbol, e.g. State::parms -> `parms
 // statefind - search dictionary keys/table colums for symbol matching given enumeration

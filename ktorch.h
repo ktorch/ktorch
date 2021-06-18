@@ -196,6 +196,11 @@ enum class Prob:char {  // probablility distributions
  cauchy, exponential, geometric, lognormal, normal, random, uniform
 };
 
+enum class Init:char {
+ constant,   dirac,  eye,     kaimingnormal, kaiminguniform, normal, ones,
+ orthogonal, sparse, uniform, xaviernormal,  xavieruniform,  zeros
+};
+
 enum class Setting:char {
  undefined,
  addbias,      addzero,    affine,    align,        alloptions, alpha,              amsgrad,       
@@ -247,9 +252,9 @@ enum class Enum {  // enums to match pytorch variants
  circular,        constant,        conv1d,          conv2d,     conv3d,   
  convtranspose1d, convtranspose2d, convtranspose3d, fanin,      fanout,   
  gelu,            leakyrelu,       linear,          max,        mean,
- nearest,         none,            reflect,         reflection, relu,
- replicate,       sigmoid,         sum,             tanh,       trilinear,
- zeros
+ mish,            nearest,         none,            reflect,    reflection,
+ relu,            replicate,       same,            sigmoid,    silu,
+ sum,             tanh,            trilinear,       valid,      zeros
 };
 
 struct TORCH_API Ktag {
@@ -326,6 +331,7 @@ TypeMeta maptype(Ktype);
 S mapclass(Class);
 S mapattr(Attr);
 Enum emap(S);
+S emap(Enum);
 
 S statekey(State);
 J statefind(State,K,bool r=false);
@@ -737,6 +743,22 @@ typedef struct {
   std::make_tuple(cs("uniform"),     Prob::uniform),
  }};
 
+std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
+  std::make_tuple(cs("constant"),        Init::constant),
+  std::make_tuple(cs("dirac"),           Init::dirac),
+  std::make_tuple(cs("eye"),             Init::eye),
+  std::make_tuple(cs("kaimingnormal"),   Init::kaimingnormal),
+  std::make_tuple(cs("kaiminguniform"),  Init::kaiminguniform),
+  std::make_tuple(cs("normal"),          Init::normal),
+  std::make_tuple(cs("ones"),            Init::ones),
+  std::make_tuple(cs("orthogonal"),      Init::orthogonal),
+  std::make_tuple(cs("sparse"),          Init::sparse),
+  std::make_tuple(cs("uniform"),         Init::uniform),
+  std::make_tuple(cs("xaviernormal"),    Init::xaviernormal),
+  std::make_tuple(cs("xavieruniform"),   Init::xavieruniform),
+  std::make_tuple(cs("zeros"),           Init::zeros),
+ }};
+
  std::array<std::tuple<S,Cast,size_t,std::string>,119> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
@@ -1100,7 +1122,7 @@ typedef struct {
  }};
 
  // array must match order of Enum, so enum can be used as index
- std::array<std::tuple<S,Enum>,31> enums = {{
+ std::array<std::tuple<S,Enum>,35> enums = {{
   std::make_tuple(cs("area"),            Enum::area),
   std::make_tuple(cs("batchmean"),       Enum::batchmean),
   std::make_tuple(cs("bicubic"),         Enum::bicubic),
@@ -1121,16 +1143,20 @@ typedef struct {
   std::make_tuple(cs("linear"),          Enum::linear),
   std::make_tuple(cs("max"),             Enum::max),
   std::make_tuple(cs("mean"),            Enum::mean),
+  std::make_tuple(cs("mish"),            Enum::mish),
   std::make_tuple(cs("nearest"),         Enum::nearest),
   std::make_tuple(cs("none"),            Enum::none),
   std::make_tuple(cs("reflect"),         Enum::reflect),
   std::make_tuple(cs("reflection"),      Enum::reflection),
   std::make_tuple(cs("relu"),            Enum::relu),
   std::make_tuple(cs("replicate"),       Enum::replicate),
+  std::make_tuple(cs("same"),            Enum::same),
   std::make_tuple(cs("sigmoid"),         Enum::sigmoid),
+  std::make_tuple(cs("silu"),            Enum::silu),
   std::make_tuple(cs("sum"),             Enum::sum),
   std::make_tuple(cs("tanh"),            Enum::tanh),
   std::make_tuple(cs("trilinear"),       Enum::trilinear),
+  std::make_tuple(cs("valid"),           Enum::valid),
   std::make_tuple(cs("zeros"),           Enum::zeros)
  }};
 } Env;
@@ -1162,16 +1188,20 @@ struct Esym {
  S operator()(const torch::enumtype::kLinear&)           const { return std::get<0>(env().enums[(size_t)Enum::linear]);}
  S operator()(const torch::enumtype::kMax&)              const { return std::get<0>(env().enums[(size_t)Enum::max]);}
  S operator()(const torch::enumtype::kMean&)             const { return std::get<0>(env().enums[(size_t)Enum::mean]);}
+ S operator()(const torch::enumtype::kMish&)             const { return std::get<0>(env().enums[(size_t)Enum::mish]);}
  S operator()(const torch::enumtype::kNearest&)          const { return std::get<0>(env().enums[(size_t)Enum::nearest]);}
  S operator()(const torch::enumtype::kNone&)             const { return std::get<0>(env().enums[(size_t)Enum::none]);}
  S operator()(const torch::enumtype::kReflect&)          const { return std::get<0>(env().enums[(size_t)Enum::reflect]);}
  S operator()(const torch::enumtype::kReflection&)       const { return std::get<0>(env().enums[(size_t)Enum::reflection]);}
  S operator()(const torch::enumtype::kReLU&)             const { return std::get<0>(env().enums[(size_t)Enum::relu]);}
  S operator()(const torch::enumtype::kReplicate&)        const { return std::get<0>(env().enums[(size_t)Enum::replicate]);}
+ S operator()(const torch::enumtype::kSame&)             const { return std::get<0>(env().enums[(size_t)Enum::same]);}
  S operator()(const torch::enumtype::kSigmoid&)          const { return std::get<0>(env().enums[(size_t)Enum::sigmoid]);}
+ S operator()(const torch::enumtype::kSiLU&)             const { return std::get<0>(env().enums[(size_t)Enum::silu]);}
  S operator()(const torch::enumtype::kSum&)              const { return std::get<0>(env().enums[(size_t)Enum::sum]);}
  S operator()(const torch::enumtype::kTanh&)             const { return std::get<0>(env().enums[(size_t)Enum::tanh]);}
  S operator()(const torch::enumtype::kTrilinear&)        const { return std::get<0>(env().enums[(size_t)Enum::trilinear]);}
+ S operator()(const torch::enumtype::kValid&)            const { return std::get<0>(env().enums[(size_t)Enum::valid]);}
  S operator()(const torch::enumtype::kZeros&)            const { return std::get<0>(env().enums[(size_t)Enum::zeros]);}
 };
 

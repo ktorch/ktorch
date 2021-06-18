@@ -1273,7 +1273,11 @@ KAPI enumtest(K x) {
     torch::enumtype::kBatchMean,
     torch::enumtype::kZeros,
     torch::enumtype::kBorder,
-    torch::enumtype::kReflection
+    torch::enumtype::kReflection,
+    torch::enumtype::kMish,
+    torch::enumtype::kSame,
+    torch::enumtype::kSiLU,
+    torch::enumtype::kValid
   > v;
 
   ENUMTEST(Linear)
@@ -1306,6 +1310,10 @@ KAPI enumtest(K x) {
   ENUMTEST(Zeros)
   ENUMTEST(Border)
   ENUMTEST(Reflection)
+  ENUMTEST(Mish)
+  ENUMTEST(Same)
+  ENUMTEST(SiLU)
+  ENUMTEST(Valid)
  return (K)0;
 }
 

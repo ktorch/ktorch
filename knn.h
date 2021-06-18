@@ -557,9 +557,12 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
  }
 
  void pretty_print(std::ostream& s) const override {
+/*
   auto f=[](auto& x) {return torch::ArrayRef<double>(x.to(torch::kDouble).template data_ptr<double>(),x.numel()>3 ? 3 : x.numel()).vec();};
-  s << std::boolalpha
-    << "Zscore(mean=" << f(options.mean()) << ", stddev=" << f(options.stddev()) << ", inplace=" << options.inplace() << ")";
+  auto m=f(options.mean()); auto v=f(options.stddev());
+  s << std::boolalpha << "Zscore(mean=" << m << ", stddev=" << v << ", inplace=" << options.inplace() << ")";
+*/
+  s << std::boolalpha << "Zscore(inplace=" << options.inplace() << ")";
  }
 
  torch::Tensor forward(torch::Tensor t) {

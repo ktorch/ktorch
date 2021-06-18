@@ -974,13 +974,15 @@ KAPI Normalize(K x) {
 }
 
 // --------------------------------------------------------------------------------------
-// convpad - translate symbol to variant used for padding mode
+// padmode - translate symbol to variant used for padding mode
+// padsym - translate symbol to padding for same or valid
+// convpad - translate input(symbol or long(s)) into padding for convolution
 // conv - create 1-3d convolution, set dictionary given module
 //        with version 1.4, the c++ ConvImpl class was split into regular & transposed
 //        ConvOptions & ConvTransOptions have different members, 
 // convtran - similar to conv() except adds output_padding and changes position order
 // --------------------------------------------------------------------------------------
-static nn::detail::conv_padding_mode_t convpad(S s) {
+static nn::detail::conv_padding_mode_t padmode(S s) {
  switch(emap(s)) {
   case Enum::zeros:     return torch::kZeros;
   case Enum::reflect:   return torch::kReflect;
@@ -988,6 +990,22 @@ static nn::detail::conv_padding_mode_t convpad(S s) {
   case Enum::circular:  return torch::kCircular;
   default: TORCH_ERROR("unrecognized padding mode: ",s); break;
  }
+}
+
+template<size_t D> static nn::detail::conv_padding_t<D> padsym(S s,Cast c) {
+ switch(emap(s)) {
+  case Enum::same:  return torch::kSame;
+  case Enum::valid: return torch::kValid;
+  default: TORCH_ERROR(msym(c),": unrecognized padding: ",s); break;
+ }
+}
+
+template<size_t D> static nn::detail::conv_padding_t<D> convpad(K x,J i,Cast c) {
+ S s; return xsym(x,i,s) ? padsym<D>(s,c) : exarray<D>(x,i,c,Setting::pad);
+}
+
+template<size_t D> static nn::detail::conv_padding_t<D> convpad(const Pairs& p,Cast c) {
+ return p.t == -KS ? padsym<D>(p.s,c) : exarray<D>(p,c);
 }
 
 template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
@@ -999,11 +1017,11 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
     case 1: o.out_channels(int64(x,i+j,c,Setting::in));       out=true; break;
     case 2: o.kernel_size (exarray<D>(x,i+j,c,Setting::size)); sz=true; break;
     case 3: o.stride      (exarray<D>(x,i+j,c,Setting::stride));   break;
-    case 4: o.padding     (exarray<D>(x,i+j,c,Setting::pad));      break;
+    case 4: o.padding     (convpad<D>(x,i+j,c));                   break;
     case 5: o.dilation    (exarray<D>(x,i+j,c,Setting::dilate));   break;
     case 6: o.groups      (int64(x,i+j,c,Setting::groups));        break;
     case 7: o.bias        (mbool    (x,i+j,c,Setting::bias));      break;
-    case 8: o.padding_mode(convpad(code(x,i+j,c,Setting::padmode))); break;
+    case 8: o.padding_mode(padmode(code(x,i+j,c,Setting::padmode))); break;
     default: mpos(x,c,i+j); break;
   }
  while(xpair(p))
@@ -1012,11 +1030,11 @@ template<size_t D> static nn::ConvOptions<D> conv(K x,J i,Cast c) {
    case Setting::out:       o.out_channels(int64(p,c));    out=true; break;
    case Setting::size:      o.kernel_size (exarray<D>(p,c)); sz=true; break;
    case Setting::stride:    o.stride      (exarray<D>(p,c)); break;
-   case Setting::pad:       o.padding     (exarray<D>(p,c)); break;
+   case Setting::pad:       o.padding     (convpad<D>(p,c)); break;
    case Setting::dilate:    o.dilation    (exarray<D>(p,c)); break;
    case Setting::groups:    o.groups      (int64(p,c));     break;
    case Setting::bias:      o.bias        (mbool(p,c));     break;
-   case Setting::padmode:   o.padding_mode(convpad(code(p,c)));   break;
+   case Setting::padmode:   o.padding_mode(padmode(code(p,c)));   break;
    default: mpair(c,p); break;
   }
  TORCH_CHECK(in,  msym(c),": number of input channels not defined");
@@ -1039,7 +1057,7 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
     case 6: o.groups        (int64(x,i+j,c,Setting::groups));      break;
     case 7: o.bias          (mbool(x,i+j,c,Setting::bias));        break;
     case 8: o.dilation      (exarray<D>(x,i+j,c,Setting::dilate)); break;
-    case 9: o.padding_mode  (convpad(code(x,i+j,c,Setting::padmode))); break;
+    case 9: o.padding_mode  (padmode(code(x,i+j,c,Setting::padmode))); break;
     default: mpos(x,c,i+j); break;
   }
  while(xpair(p))
@@ -1053,13 +1071,29 @@ template<size_t D> static nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
    case Setting::groups:    o.groups        (int64(p,c));      break;
    case Setting::bias:      o.bias          (mbool(p,c));      break;
    case Setting::dilate:    o.dilation      (exarray<D>(p,c)); break;
-   case Setting::padmode:   o.padding_mode(convpad(code(p,c)));break;
+   case Setting::padmode:   o.padding_mode(padmode(code(p,c)));break;
    default: mpair(c,p); break;
   }
  TORCH_CHECK(in,  msym(c), ": number of input channels not defined");
  TORCH_CHECK(out, msym(c), ": number of output channels not defined");
  TORCH_CHECK(sz,  msym(c), ": no kernel size(s) given");
  return o;
+}
+
+template<size_t D>static void convpad(K x,bool a,const nn::detail::conv_padding_t<D>& d,const nn::detail::conv_padding_t<D>& o) {
+ if(auto p=c10::get_if<ExpandingArray<D>>(&o)) {
+  auto pd=c10::get_if<ExpandingArray<D>>(&d);
+  if(a || !pd || **pd != **p)
+   OPTION(x, pad, KEX((*p)));
+ } else if(a || d.index() != o.index()) {
+  if(c10::get_if<torch::enumtype::kSame>(&o)) {
+   OPTION(x, pad, ks(emap(Enum::same)));
+  } else if(c10::get_if<torch::enumtype::kValid>(&o)) {
+   OPTION(x, pad, ks(emap(Enum::valid)));
+  } else {
+   TORCH_ERROR("unrecognized convolution padding");
+  }
+ }
 }
 
 template<size_t D> static K conv(bool a,const nn::detail::ConvNdOptions<D>& o) {
@@ -1069,7 +1103,7 @@ template<size_t D> static K conv(bool a,const nn::detail::ConvNdOptions<D>& o) {
  OPTION(x, out,  kj(o.out_channels()));
  OPTION(x, size, KEX(o.kernel_size()));
  if(a || (*o.stride()  != *d.stride()))  OPTION(x, stride, KEX(o.stride()));
- if(a || (*o.padding() != *d.padding())) OPTION(x, pad,    KEX(o.padding()));
+ convpad<D>(x,a,d.padding(),o.padding());
  if(t) {
   if(a || (*o.output_padding() != *d.output_padding())) OPTION(x, outpad, KEX(o.output_padding()));
  } else {
