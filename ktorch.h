@@ -177,10 +177,10 @@ enum class Cast:short {
 
  pairwise,  similar, // distance functions
 
- bce,       bcelogits, ce,          cosineloss, ctc,        hinge,        //loss fns
- kl,        l1,        margin,      mse,        multilabel, multimargin,
- multisoft, nll,       poissonloss, sce,        smoothl1,   softmargin, 
- triplet,    
+ bce,         bcelogits, ce,  cosineloss,  ctc, hinge,        //loss fns
+ huber,       kl,        l1,  margin,      mse, multilabel,
+ multimargin, multisoft, nll, poissonloss, sce, smoothl1,
+ softmargin,  triplet,    
 
  adagrad, adam, adamw, lbfgs, rmsprop, sgd //optimizers
 };
@@ -207,7 +207,7 @@ enum class Setting:char {
  batchfirst,   benchmark,  beta,      beta1,        beta2,      bi,                 bias,          
  blank,        ceiling,    centered,  changetol,    channels,   classes,            cols,          
  complexfirst, countpad,   cuda,      cudadevices,  cudnn,      cudnndeterministic, cudnnversion,  
- dampening,    decay,      decoder,   decoderlayer, detach,     deterministic,      dilate,        
+ dampening,    decay,      decoder,   decoderlayer, delta, detach,     deterministic,      dilate,        
  dim,          divisor,    dlayers,   dropout,      dtype,      elayers,            encoder,       
  encoderlayer, end,        eps,       eval,         fn,         freeze,             full,          
  gradtol,      groups,     heads,     hidden,       history,    ignore,             in,            
@@ -988,7 +988,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("weight"),       Setting::weight)
  }};
 
- std::array<std::tuple<S,State>,11> state = {{        //module state dictionary keys: map symbol -> enum
+ std::array<std::tuple<S,State>,11> state = {{  //module state dictionary keys: map symbol -> enum
   std::make_tuple(cs("buffers"),   State::buffers),
   std::make_tuple(cs("depth"),     State::depth),
   std::make_tuple(cs("module"),    State::module),
@@ -1002,13 +1002,14 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("size"),      State::size)
  }};
 
- std::array<std::tuple<S,Cast,std::string>,21> loss = {{             // loss: map symbol -> enum
+ std::array<std::tuple<S,Cast,std::string>,22> loss = {{   // loss: map symbol -> enum
   std::make_tuple(cs("bce"),         Cast::bce,         "torch.nn.BCELoss"),
   std::make_tuple(cs("bcelogits"),   Cast::bcelogits,   "torch.nn.BCEWithLogitsLoss"),
   std::make_tuple(cs("ce"),          Cast::ce,          "torch.nn.CrossEntropyLoss"),
   std::make_tuple(cs("cosineloss"),  Cast::cosineloss,  "torch.nn.CosineEmbeddingLoss"),
   std::make_tuple(cs("ctc"),         Cast::ctc,         "torch.nn.CTCLoss"),
   std::make_tuple(cs("hinge"),       Cast::hinge,       "torch.nn.HingeEmbeddingLoss"),
+  std::make_tuple(cs("huber"),       Cast::huber,       "torch.nn.HuberLoss"),
   std::make_tuple(cs("kl"),          Cast::kl,          "torch.nn.KLDivLoss"),
   std::make_tuple(cs("l1"),          Cast::l1,          "torch.nn.L1Loss"),
   std::make_tuple(cs("margin"),      Cast::margin,      "torch.nn.MarginRankingLoss"),
@@ -1026,9 +1027,10 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("triplet"),     Cast::triplet,     "torch.nn.TripletMarginLoss")
  }};
 
- std::array<std::tuple<S,Setting>,12> lset = {{          // loss option sym -> enum
+ std::array<std::tuple<S,Setting>,13> lset = {{     // loss option sym -> enum
   std::make_tuple(cs("blank"),     Setting::blank),
   std::make_tuple(cs("eps"),       Setting::eps),
+  std::make_tuple(cs("delta"),     Setting::delta),
   std::make_tuple(cs("full"),      Setting::full),
   std::make_tuple(cs("ignore"),    Setting::ignore),
   std::make_tuple(cs("log"),       Setting::log),
