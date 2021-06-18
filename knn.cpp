@@ -1350,8 +1350,7 @@ static nn::EmbeddingBagMode embedmode(S s) {
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingOptions& o) {
- if(s == Setting::padindex) o.padding_idx(int64n(p,c));
- else TORCH_ERROR("unrecognized option for ",msym(c),": ",mset(s));
+ TORCH_ERROR("unrecognized option for ",msym(c),": ",mset(s));
 }
 
 static void embedset(Cast c,Setting s,Pairs& p,nn::EmbeddingBagOptions& o) {
@@ -1365,7 +1364,7 @@ template<typename O> static void embedpair(Cast c,Pairs& p,O& o,Tensor& w,bool &
   switch(mset(p.k,c)) {
    case Setting::rows:       o.num_embeddings(int64(p,c)); break;
    case Setting::cols:       o.embedding_dim (int64(p,c)); break;
-   case Setting::padindex:   embedset(c,Setting::padindex,p,o); break;
+   case Setting::padindex:   o.padding_idx(int64n(p,c)); break;
    case Setting::maxnorm:    o.max_norm(optdouble(p,c)); break;
    case Setting::p:          o.norm_type(mdouble(p,c)); break;
    case Setting::scale:      o.scale_grad_by_freq(mbool(p,c)); break;
@@ -1449,6 +1448,7 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
     case 4: o.scale_grad_by_freq(mbool(x,i+j,c,Setting::scale)); break;
     case 5: o.mode(embedmode(code(x,i+j,c,Setting::mode))); break;
     case 6: o.sparse(mbool(x,i+j,c,Setting::sparse)); break;
+    case 7: o.padding_idx(int64n(x,i+j,c,Setting::padindex)); break;
     default: mpos(x,c,i+j); break;
   }
  }
@@ -1461,16 +1461,18 @@ static nn::EmbeddingBag embedbag(K x,J i,Cast c) {
 // embedget - templated fucntion to retrieve options specific to Embedding or EmbeddingBag
 // embed - templated function which gets options and initial optional weights
 // -----------------------------------------------------------------------------------------
-static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingOptions& o,const nn::EmbeddingOptions& d) {
- if(s == Setting::padindex && (a || o.padding_idx().has_value()))
+static void embedget(bool a,bool b,K x,Cast c,Setting s,const nn::EmbeddingOptions& o,const nn::EmbeddingOptions& d) {
+ if(!b && s == Setting::padindex && (a || o.padding_idx().has_value()))
   OPTION(x, padindex, kj(o.padding_idx() ? o.padding_idx().value() : nj));
 }
 
-static void embedget(bool a,K x,Cast c,Setting s,const nn::EmbeddingBagOptions& o,const nn::EmbeddingBagOptions& d) {
+static void embedget(bool a,bool b,K x,Cast c,Setting s,const nn::EmbeddingBagOptions& o,const nn::EmbeddingBagOptions& d) {
  if(s == Setting::mode && (a || o.mode().index() != d.mode().index()))
   OPTION(x, mode, ks(ESYM(o.mode())));
  else if(s == Setting::lastoffset && (a || o.include_last_offset() != d.include_last_offset()))
   OPTION(x, lastoffset, kb(o.include_last_offset()));
+ else if(b && s == Setting::padindex && (a || o.padding_idx().has_value()))
+  OPTION(x, padindex, kj(o.padding_idx() ? o.padding_idx().value() : nj));
 }
 
 template<typename O>static K embed(bool a,Cast c,const O& o,const Tensor& w) {
@@ -1482,13 +1484,14 @@ template<typename O>static K embed(bool a,Cast c,const O& o,const Tensor& w) {
   OPTION(x, rows, kj(o.num_embeddings()));
   OPTION(x, cols, kj(o.embedding_dim()));
  }
- embedget(a,x,c,Setting::padindex,o,d); // embedding only
+ embedget(a,false,x,c,Setting::padindex,o,d);   // embedding only
  if(a || o.max_norm().has_value())                         OPTION(x, maxnorm, kf(o.max_norm() ? o.max_norm().value() : nf));
  if(a || o.norm_type()          != d.norm_type())          OPTION(x, p,       kf(o.norm_type()));
  if(a || o.scale_grad_by_freq() != d.scale_grad_by_freq()) OPTION(x, scale,   kb(o.scale_grad_by_freq()));
- embedget(a,x,c,Setting::mode,o,d); //EmbeddingBag only
+ embedget(a,true,x,c,Setting::mode,o,d);        // embedding bag only
  if(a || o.sparse()             != d.sparse())             OPTION(x, sparse,  kb(o.sparse()));
- embedget(a,x,c,Setting::lastoffset,o,d);
+ embedget(a,true,x,c,Setting::lastoffset,o,d);  // embedding bag only
+ embedget(a,true,x,c,Setting::padindex,o,d);    // embedding bag only
  return x;
 }
 
