@@ -166,11 +166,11 @@ enum class Cast:short {
  identity,    index,        instancenorm1d,  instancenorm2d,  instancenorm3d,  interpolate,
  layernorm,   leakyrelu,    linear,          localnorm,       logsigmoid,      logsoftmax, 
  lppool1d,    lppool2d,     lstm,            lstmout,         maxpool1d,       maxpool2d,  
- maxpool3d,   mul,          nbeats,          normalize,       onehot,          pad,        
+ maxpool3d,   mish,         mul,             nbeats,          normalize,       onehot,          pad,        
  pad1d,       pad2d,        pad3d,           prelu,           randomcrop,      randomflip, 
  recur,       reflect1d,    reflect2d,       relu,            relu6,           replicate1d,
  replicate2d, replicate3d,  reshape,         residual,        rnn,             rnnout,     
- rrelu,       selu,         sigmoid,         softmax,         softmax2d,       softmin,    
+ rrelu,       selu,         sigmoid,         silu,            softmax,         softmax2d,       softmin,    
  softplus,    softshrink,   softsign,        squeeze,         tanh,            tanhshrink, 
  threshold,   transform,    transformer,     unfold,          unsqueeze,       upsample,
  zeropad2d,   zscore,  
@@ -759,7 +759,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("zeros"),           Init::zeros),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,119> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,121> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -827,6 +827,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("maxpool1d"),        Cast::maxpool1d,       typeid(torch::nn::MaxPool1dImpl).hash_code(),           "torch.nn.MaxPool1d"),
   std::make_tuple(cs("maxpool2d"),        Cast::maxpool2d,       typeid(torch::nn::MaxPool2dImpl).hash_code(),           "torch.nn.MaxPool2d"),
   std::make_tuple(cs("maxpool3d"),        Cast::maxpool3d,       typeid(torch::nn::MaxPool3dImpl).hash_code(),           "torch.nn.MaxPool3d"),
+  std::make_tuple(cs("mish"),             Cast::mish,            typeid(torch::nn::MishImpl).hash_code(),                "torch.nn.Mish"),
   std::make_tuple(cs("moduledict"),       Cast::moduledict,      typeid(torch::nn::ModuleDictImpl).hash_code(),          "torch.nn.ModuleDict"),
   std::make_tuple(cs("modulelist"),       Cast::modulelist,      typeid(torch::nn::ModuleListImpl).hash_code(),          "torch.nn.ModuleList"),
   std::make_tuple(cs("mul"),              Cast::mul,             typeid(MulImpl).hash_code(),                            "torch.mul"),
@@ -861,6 +862,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("seqnest"),          Cast::seqnest,         typeid(SeqNestImpl).hash_code(),                        ""),
   std::make_tuple(cs("sequential"),       Cast::sequential,      typeid(torch::nn::SequentialImpl).hash_code(),          "torch.nn.Sequential"),
   std::make_tuple(cs("sigmoid"),          Cast::sigmoid,         typeid(torch::nn::SigmoidImpl).hash_code(),             "torch.nn.Sigmoid"),
+  std::make_tuple(cs("silu"),             Cast::silu,            typeid(torch::nn::SiLUImpl).hash_code(),                "torch.nn.SiLU"),
   std::make_tuple(cs("similar"),          Cast::similar,         typeid(torch::nn::CosineSimilarityImpl).hash_code(),    "torch.nn.CosineSimilarity"),
   std::make_tuple(cs("softmax"),          Cast::softmax,         typeid(torch::nn::SoftmaxImpl).hash_code(),             "torch.nn.Softmax"),
   std::make_tuple(cs("softmax2d"),        Cast::softmax2d,       typeid(torch::nn::Softmax2dImpl).hash_code(),           "torch.nn.Softmax2d"),

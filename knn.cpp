@@ -377,6 +377,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::maxpool1d:       return m.as<nn::MaxPool1d>()->forward(x);
   case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
   case Cast::maxpool3d:       return m.as<nn::MaxPool3d>()->forward(x);
+  case Cast::mish:            return m.as<nn::Mish>()->forward(x);
 //case Cast::normalize:       return m.as<nn::normalize>()->forward(x);
   case Cast::nbeats:          return m.as<NBeats>()->forward(x);
   case Cast::onehot:          return m.as<OneHot>()->forward(x);
@@ -403,6 +404,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::seqnest:         return m.as<SeqNest>()->forward(x);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x);
   case Cast::sigmoid:         return m.as<nn::Sigmoid>()->forward(x);
+  case Cast::silu:            return m.as<nn::SiLU>()->forward(x);
   case Cast::softmax:         return m.as<nn::Softmax>()->forward(x);
   case Cast::softmax2d:       return m.as<nn::Softmax2d>()->forward(x);
   case Cast::softmin:         return m.as<nn::Softmin>()->forward(x);
@@ -2047,7 +2049,8 @@ template<typename O> static K npad(const O& o) {
 }
 
 // ------------------------------------------------------------------------------------
-// noarg:  activation fns w'out args, logsigmoid,sigmoid,softsign,tanh,tanhshrink
+// noarg:  activation fns w'out args,
+//         logsigmoid, mish, sigmoid, silu, softsign, tanh, tanhshrink
 // ------------------------------------------------------------------------------------
 static void noarg(Cast c,K x,J i) {TORCH_CHECK(xnone(x,i), msym(c), ": no arguments expected, ", kstring(x));}
 
@@ -2058,10 +2061,12 @@ static K noarg(const char* s,Ft f, K x) {
  KCATCH(s);
 }
 
-KAPI gelu(K x)       {return noarg("gelu",       torch::gelu,                       x);}
-KAPI logsigmoid(K x) {return noarg("logsigmoid", torch::log_sigmoid,                x);}
-KAPI softsign(K x)   {return noarg("softsign",   fnn::softsign,   x);}
-KAPI tanhshrink(K x) {return noarg("tanhshrink", fnn::tanhshrink, x);}
+KAPI gelu(K x)       {return noarg("gelu",       torch::gelu,        x);}
+KAPI logsigmoid(K x) {return noarg("logsigmoid", torch::log_sigmoid, x);}
+KAPI mish(K x)       {return noarg("mish",       fnn::mish,          x);}
+KAPI silu(K x)       {return noarg("silu",       fnn::silu,          x);}
+KAPI softsign(K x)   {return noarg("softsign",   fnn::softsign,      x);}
+KAPI tanhshrink(K x) {return noarg("tanhshrink", fnn::tanhshrink,    x);}
 
 // ------------------------------------------------------------------------------------
 // activation fns with inplace flag as only arg: relu,relu6,selu
@@ -3316,11 +3321,13 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::identity:     noarg(c,x,i); return nn::Identity().ptr();
   case Cast::logsigmoid:   noarg(c,x,i); return nn::LogSigmoid().ptr();
   case Cast::sigmoid:      noarg(c,x,i); return nn::Sigmoid().ptr();
+  case Cast::silu:         noarg(c,x,i); return nn::SiLU().ptr();
   case Cast::softsign:     noarg(c,x,i); return nn::Softsign().ptr();
   case Cast::softmax2d:    noarg(c,x,i); return nn::Softmax2d().ptr();
   case Cast::tanh:         noarg(c,x,i); return nn::Tanh().ptr();
   case Cast::tanhshrink:   noarg(c,x,i); return nn::Tanhshrink().ptr();
   case Cast::gelu:         noarg(c,x,i); return nn::GELU().ptr();
+  case Cast::mish:         noarg(c,x,i); return nn::Mish().ptr();
   case Cast::mul:          noarg(c,x,i); return Mul().ptr();
 
   case Cast::relu:         return  nn::ReLU(inplace(x,i,c)).ptr();
@@ -3441,6 +3448,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
   case Cast::maxpool3d:       return ANY(nn::MaxPool3d, m);
+  case Cast::mish:            return ANY(nn::Mish, m);
   case Cast::mul:             return ANY(Mul, m);
   case Cast::nbeats:          return ANY(NBeats, m);
   case Cast::onehot:          return ANY(OneHot, m);
@@ -3469,6 +3477,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::seqjoin:         return ANY(SeqJoin, m);
   case Cast::seqnest:         return ANY(SeqNest, m);
   case Cast::sigmoid:         return ANY(nn::Sigmoid, m);
+  case Cast::silu:            return ANY(nn::SiLU, m);
   case Cast::similar:         return ANY(nn::CosineSimilarity, m);
   case Cast::softmax:         return ANY(nn::Softmax, m);
   case Cast::softmax2d:       return ANY(nn::Softmax2d, m);
@@ -3524,8 +3533,10 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::gelu:            //pointwise activation fns w'out options
   case Cast::identity:
   case Cast::logsigmoid:
+  case Cast::mish:
   case Cast::mul:
   case Cast::sigmoid:
+  case Cast::silu:
   case Cast::softsign:
   case Cast::softmax2d:
   case Cast::tanh:
@@ -4117,6 +4128,7 @@ K modulehelp(Cast c) {
   case Cast::maxpool1d:       return maxpool(true,nn::MaxPool1dOptions(3));
   case Cast::maxpool2d:       return maxpool(true,nn::MaxPool2dOptions({3,2}));
   case Cast::maxpool3d:       return maxpool(true,nn::MaxPool3dOptions({3,2,2}));
+  case Cast::mish:            return KDICT;
   case Cast::moduledict:      return KDICT;
   case Cast::modulelist:      return KDICT;
   case Cast::mul:             return KDICT;
@@ -4150,6 +4162,7 @@ K modulehelp(Cast c) {
   case Cast::seqnest:
   case Cast::sequential:      return KDICT;
   case Cast::sigmoid:         return KDICT;
+  case Cast::silu:            return KDICT;
   case Cast::similar:         return similar(true,nn::CosineSimilarityOptions());
   case Cast::softmax:         return dim(true,c,nn::SoftmaxOptions(1).dim());
   case Cast::softmax2d:       return KDICT;
