@@ -4282,7 +4282,7 @@ normalize, interpolate  -- functional form implemented, add module?
 pairwise distance & cosine similarity: in both module & functional form but forward method needs 2 input tensors
 fractional pool -- try with indices registered as buffer?
 embeddingbag -- forward w'defaults should work with sequential
-1.7 adds SiLU, UnFlatten
+1.7 adds UnFlatten
 BaseModule - push_back ? / forward ?
 
 GRU,RNN

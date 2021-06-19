@@ -7,7 +7,7 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is just beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch here <https://pytorch.org/get-started/locally/>`_.
-The k interface requires the latest version of PyTorch, labeled ``Stable(1.8.1)``.
+The k interface requires the latest version of PyTorch, labeled ``Stable(1.9.0)``.
 
 The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 150 megabytes for CPU-only.
@@ -71,7 +71,7 @@ It may also be possible to point the make to the libraries already installed wit
 
 ::
 
-   # find the dir for pytorch 1.8.1 libraries in mini conda
+   # find the dir for pytorch 1.9.0 libraries in mini conda
    find ~/miniconda3/lib  -name libtorch.so 
    /home/t/miniconda3/lib/python3.8/site-packages/torch/lib/libtorch.so
 
@@ -94,15 +94,15 @@ In Linux, there's a choice of ABI (application binary interface). Changes in the
 `a newer ABI <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>`_.  The supplied libtorch zip files from PyTorch come in two versions,
 one for the ABI prior to the changes for the C++11 standard, and one with the new ABI.
 
-For example, for Linux, version 1.8.1, with support for CUDA 11.1, the zip files are listed as:
+For example, for Linux, version 1.9.0, with support for CUDA 11.1, the zip files are listed as:
 
 ::
 
    Download here (Pre-cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu111/libtorch-shared-with-deps-1.8.1%2Bcu111.zip
+   https://download.pytorch.org/libtorch/cu111/libtorch-shared-with-deps-1.9.0%2Bcu111.zip
 
    Download here (cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.8.1%2Bcu111.zip
+   https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.9.0%2Bcu111.zip
 
 In their earlier versions, PyTorch only offered the older ABI with their zip files so users could maintain compatibility with older third-party libraries compiled under the old ABI, but now PyTorch offers the choice of old or new versions.
 By default, the Makefile builds code with ``-D_GLIBCXX_USE_CXX11_ABI=0`` for the older API.
@@ -136,20 +136,20 @@ Sample builds
 MacOS, CPU only
 ^^^^^^^^^^^^^^^
 
-First step, get the CPU-only version of libtorch 1.8.1 for MacOS:
+First step, get the CPU-only version of libtorch 1.9.0 for MacOS:
 
 ::
 
    > cd ~
-   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.8.1.zip
+   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.9.0.zip
 
-   > ls -lh libtorch-macos-1.8.1.zip 
-   -rw-r--r--@ 1 t  staff   146M Mar 25 10:44 libtorch-macos-1.8.1.zip
+   > ls -lh libtorch-macos-1.9.0.zip 
+   -rw-r--r--  1 t  staff   162M Jun 15 10:42 libtorch-macos-1.9.0.zip
 
    > rm -rf ~/libtorch  # erase any previous version
 
-   > unzip libtorch-macos-1.8.1.zip 
-   Archive:  libtorch-macos-1.8.1.zip
+   > unzip libtorch-macos-1.9.0.zip 
+   Archive:  libtorch-macos-1.9.0.zip
       creating: libtorch/
       creating: libtorch/bin/
      inflating: libtorch/build-hash     
@@ -219,21 +219,22 @@ Check if the ktorch.so library can be loaded from within a k session:
 Linux, CUDA 11.1
 ^^^^^^^^^^^^^^^^
 
-Build in ``/tmp``, using the libtorch zip file for linux, version 1.8.1, CUDA 11.1 with new c++ ABI.
+Build in ``/tmp``, using the libtorch zip file for linux, version 1.9.0, CUDA 11.1 with new c++ ABI.
 
 ::
 
    > cd /tmp
-   > wget --quiet https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.8.1%2Bcu111.zip
+   > wget --quiet https://download.pytorch.org/libtorch/cu111/libtorch-cxx11-abi-shared-with-deps-1.9.0%2Bcu111.zip
 
-   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip 
-   -rw-rw-r-- 1 t t 2.0G Mar 25 10:46 libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip
+   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.9.0+cu111.zip 
+   -rw-rw-r-- 1 t t 2.1G Jun 15 10:48 libtorch-cxx11-abi-shared-with-deps-1.9.0+cu111.zip
 
-   > unzip libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip 
-   Archive:  libtorch-cxx11-abi-shared-with-deps-1.8.1+cu111.zip
+   > unzip libtorch-cxx11-abi-shared-with-deps-1.9.0+cu111.zip 
+   Archive:  libtorch-cxx11-abi-shared-with-deps-1.9.0+cu111.zip
       creating: libtorch/
       creating: libtorch/lib/
      inflating: libtorch/lib/libasmjit.a  
+     inflating: libtorch/lib/libbackend_with_compiler.so  
      inflating: libtorch/lib/libbenchmark.a  
      inflating: libtorch/lib/libbenchmark_main.a  
      inflating: libtorch/lib/libc10_cuda.so  
