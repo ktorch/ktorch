@@ -358,7 +358,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::hardshrink:      return m.as<nn::Hardshrink>()->forward(x);
   case Cast::hardtanh:        return m.as<nn::Hardtanh>()->forward(x);
   case Cast::identity:        return m.as<nn::Identity>()->forward(x);
-  case Cast::index:           return m.as<Index>()->forward(x);
+  case Cast::indexselect:     return m.as<IndexSelect>()->forward(x);
   case Cast::instancenorm1d:  return m.as<nn::InstanceNorm1d>()->forward(x);
   case Cast::instancenorm2d:  return m.as<nn::InstanceNorm2d>()->forward(x);
   case Cast::instancenorm3d:  return m.as<nn::InstanceNorm3d>()->forward(x);
@@ -400,6 +400,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
 //case Cast::rnn:             return m.as<nn::RNN>()->forward(x);
 // no viable conversion from returned value of type 'std::tuple<Tensor, Tensor>' to function return type 'Tensor'
   case Cast::rrelu:           return m.as<nn::RReLU>()->forward(x);
+  case Cast::select:          return m.as<Select>()->forward(x);
   case Cast::selu:            return m.as<nn::SELU>()->forward(x);
   case Cast::seqnest:         return m.as<SeqNest>()->forward(x);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x);
@@ -2633,11 +2634,11 @@ KAPI Flatten(K x) {  // functional invocation w'different defaults than module(s
  KCATCH("flatten");
 }
 
-// ----------------------------------------------------------
-// select - process dim & index options for Index module
-// ----------------------------------------------------------
-static IndexOptions index(K x,J i,Cast c) {
- IndexOptions o(nj,Tensor()); Pairs p; J n=xargc(x,i,p);
+// ----------------------------------------------------------------
+// indexselect - get/set dim & tensor index for IndexSelect module
+// ----------------------------------------------------------------
+static IndexSelectOptions indexselect(K x,J i,Cast c) {
+ IndexSelectOptions o(nj,Tensor()); Pairs p; J n=xargc(x,i,p);
  for(J j=0;j<n;++j)
    switch(j) {
     case 0: o.dim(int64(x,i+j,c,Setting::dim));  break;
@@ -2650,16 +2651,45 @@ static IndexOptions index(K x,J i,Cast c) {
    case Setting::ind: o.ind(ltensor(p,c)); break;
    default: mpair(c,p); break;
   }
- TORCH_CHECK(o.dim() != nj,       msym(c),": dimension cannot be null");
+ TORCH_CHECK(o.dim() != nj,     msym(c),": dimension cannot be null");
  TORCH_CHECK(o.ind().defined(), msym(c),": no index defined");
  TORCH_CHECK(o.ind().dim()<2,   msym(c),": expecting scalar index or 1-dim list, given ",o.ind().dim(),"-d tensor"); 
  return o;
 }
 
-static K index(bool a,const IndexOptions& o) {
+static K indexselect(bool a,const IndexSelectOptions& o) {
  K x=KDICT;
  OPTION(x, dim,   kj(o.dim()));
  OPTION(x, ind, kget(o.ind()));
+ return x;
+}
+
+// ----------------------------------------------------------------
+// select - get/set dim & scalar index for Select module
+// ----------------------------------------------------------------
+static SelectOptions select(K x,J i,Cast c) {
+ SelectOptions o(nj,nj); Pairs p; J n=xargc(x,i,p);
+ for(J j=0;j<n;++j)
+   switch(j) {
+    case 0: o.dim(int64(x,i+j,c,Setting::dim));  break;
+    case 1: o.ind(int64(x,i+j,c,Setting::ind));  break;
+    default: mpos(x,c,i+j); break;
+   }
+ while(xpair(p))
+  switch(mset(p.k,c)) {
+   case Setting::dim: o.dim(int64(p,c)); break;
+   case Setting::ind: o.ind(int64(p,c)); break;
+   default: mpair(c,p); break;
+  }
+ TORCH_CHECK(o.dim() != nj, msym(c),": no dimension defined");
+ TORCH_CHECK(o.ind() != nj, msym(c),": no index defined");
+ return o;
+}
+
+static K select(bool a,const SelectOptions& o) {
+ K x=KDICT;
+ OPTION(x, dim, kj(o.dim()));
+ OPTION(x, ind, kj(o.ind()));
  return x;
 }
 
@@ -3342,7 +3372,8 @@ static Moduleptr mcreate(K x,J i,Cast c) {
   case Cast::logsoftmax:   return nn::LogSoftmax(dim(x,i,c)).ptr();
   case Cast::flatten:      return nn::Flatten(flatten(x,i,c)).ptr();
 
-  case Cast::index:        return Index(index(x,i,c)).ptr();
+  case Cast::select:       return Select(select(x,i,c)).ptr();
+  case Cast::indexselect:  return IndexSelect(indexselect(x,i,c)).ptr();
   case Cast::squeeze:      return Squeeze(squeeze(x,i,c)).ptr();
   case Cast::unsqueeze:    return Unsqueeze(squeeze(x,i,c)).ptr();
   case Cast::expand:       return Expand(getsize(x,i,c)).ptr();
@@ -3434,7 +3465,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::hardshrink:      return ANY(nn::Hardshrink, m);
   case Cast::hardtanh:        return ANY(nn::Hardtanh, m);
   case Cast::identity:        return ANY(nn::Identity, m);
-  case Cast::index:           return ANY(Index, m);
+  case Cast::indexselect:     return ANY(IndexSelect, m);
   case Cast::instancenorm1d:  return ANY(nn::InstanceNorm1d, m);
   case Cast::instancenorm2d:  return ANY(nn::InstanceNorm2d, m);
   case Cast::instancenorm3d:  return ANY(nn::InstanceNorm3d, m);
@@ -3476,6 +3507,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::rnn:             return ANY(nn::RNN, m);
   case Cast::rnnout:          return ANY(RNNOutput, m);
   case Cast::rrelu:           return ANY(nn::RReLU, m);
+  case Cast::select:          return ANY(Select, m);
   case Cast::selu:            return ANY(nn::SELU, m);
   case Cast::seqjoin:         return ANY(SeqJoin, m);
   case Cast::seqnest:         return ANY(SeqNest, m);
@@ -3636,7 +3668,8 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
   case Cast::logsoftmax:       return dim(a,c,m.as<nn::LogSoftmax>()->options.dim());
   case Cast::flatten:          return flatten(a,m.as<nn::Flatten>()->options);
 
-  case Cast::index:            return index(a,m.as<Index>()->options);
+  case Cast::select:           return select(a,m.as<Select>()->options);
+  case Cast::indexselect:      return indexselect(a,m.as<IndexSelect>()->options);
   case Cast::squeeze:          return squeeze(a,m.as<Squeeze>()->options);
   case Cast::unsqueeze:        return squeeze(a,m.as<Unsqueeze>()->options);
   case Cast::expand:           return getsize(a,m.as<Expand>()->options);
@@ -4113,7 +4146,7 @@ K modulehelp(Cast c) {
   case Cast::hardshrink:      return lambda(true,c,torch::nn::HardshrinkOptions().lambda());
   case Cast::hardtanh:        return hardtanh(true,nn::HardtanhOptions());
   case Cast::identity:        return KDICT;
-  case Cast::index:           return index(true,IndexOptions(1,-1));
+  case Cast::indexselect:     return indexselect(true,IndexSelectOptions(1,torch::arange(3)));
   case Cast::instancenorm1d:
   case Cast::instancenorm2d:
   case Cast::instancenorm3d:  return batchnorm(true,nn::InstanceNormOptions(100));
@@ -4160,6 +4193,7 @@ K modulehelp(Cast c) {
   case Cast::rnn:             return rnn(true,nn::RNNOptions(10,20));
   case Cast::rnnout:          return KDICT;
   case Cast::rrelu:           return rrelu(true,nn::RReLUOptions());
+  case Cast::select:          return select(true,SelectOptions(1,-1));
   case Cast::selu:            return inplace(true,nn::SELUOptions().inplace());
   case Cast::seqjoin:
   case Cast::seqnest:

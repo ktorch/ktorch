@@ -2,6 +2,13 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+KAPI warn(K x) {
+ auto m=torch::nn::MaxPool2d(3);
+ auto t=torch::arange(16).to(torch::kFloat).view({1,4,4});
+ std::cerr << m(t) << "\n";
+ return (K)0;
+}
+
 KAPI ptest(K x) {
  KTRY
   Tensor *t=xten(x);
@@ -331,7 +338,7 @@ Cast mcast2(const Moduleptr& m) {
  } else if(m->as<nn::Hardshrink>()) {              return Cast::hardshrink;
  } else if(m->as<nn::Hardtanh>()) {                return Cast::hardtanh;
  } else if(m->as<nn::Identity>()) {                return Cast::identity;
- } else if(m->as<Index>()) {                       return Cast::index;
+ } else if(m->as<IndexSelect>()) {                 return Cast::indexselect;
  } else if(m->as<nn::InstanceNorm1d>()) {          return Cast::instancenorm1d;
  } else if(m->as<nn::InstanceNorm2d>()) {          return Cast::instancenorm2d;
  } else if(m->as<nn::InstanceNorm3d>()) {          return Cast::instancenorm3d;

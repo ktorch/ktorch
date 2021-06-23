@@ -922,18 +922,23 @@ KAPI  Hamming(K x) {return kwindow(x, 3, "hamming");}
 // fftnorm - check k sym for valid FFT norm string, error else
 // fftargs - return true if additional optional args given with input tensor/array
 // -------------------------------------------------------------------------------
-static c10::optional<std::string> fftnorm(K x) {
+using optint=c10::optional<int64_t>;
+using optstr=c10::optional<std::string>;
+//next version: using optstr=c10::optional<c10::string_view>;
+using optarr=c10::optional<IntArrayRef>;
+
+static optstr fftnorm(K x) {
  static std::array<S,3> s={{cs("forward"),cs("backward"),cs("ortho")}};
  if(nullsym(x)) {
   return c10::nullopt;
  } else {
   for(const auto c:s)
-   if(c == x->s) return std::string(c);
+   if(c == x->s) return std::string(c); // return c with string_view(?)
   TORCH_ERROR("unrecognized fft norm: ",x->s);
  }
 }
 
-static bool fftnorm(K x,c10::optional<std::string>& s) {
+static bool fftnorm(K x,optstr& s) {
  bool b=!x->t && x->n>1 && kK(x)[x->n-1]->t == -KS;
  s=b ? fftnorm(kK(x)[x->n-1]) : c10::nullopt;
  return b;
@@ -944,10 +949,6 @@ static bool fftargs(K x,Tensor *& t) {       // check if arg(s) given with tenso
  else if((t=xten(x,0))) return x->n>1;       // 1st element is tensor, remaining contain arg(s)
  else                   return xmixed(x,4);  // assume "mixed" x is form of (array;arg..)
 }
-
-using optint=c10::optional<int64_t>;
-using optstr=c10::optional<std::string>;
-using optarr=c10::optional<IntArrayRef>;
 
 // ----------------------------------------------------------------------------------------------------
 // 1-d Fast Fourier transforms

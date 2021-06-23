@@ -151,11 +151,10 @@ enum class Class:short {
 
 enum class Cast:short {
  undefined=0, 
- tensor,  model,                                // basic structures
- base, moduledict, modulelist, parmdict,        // container modules
- sequential, seqnest, seqjoin,
-
- adaptavg1d,  adaptavg2d,   adaptavg3d,      adaptmax1d,      adaptmax2d,      adaptmax3d,   //modules
+ tensor,      model,                                     // basic structures
+ base,        moduledict,   modulelist,      parmdict,   // container modules
+ sequential,  seqnest,      seqjoin,
+ adaptavg1d,  adaptavg2d,   adaptavg3d,      adaptmax1d,      adaptmax2d,      adaptmax3d,   // modules
  adrop,       attention,    avgpool1d,       avgpool2d,       avgpool3d,       batchnorm1d,
  batchnorm2d, batchnorm3d,  bilinear,        cat,             celu,            conv1d,     
  conv2d,      conv3d,       convtranspose1d, convtranspose2d, convtranspose3d, crossmap2d, 
@@ -163,26 +162,23 @@ enum class Cast:short {
  embed,       embedbag,     encoder,         encoderlayer,    expand,          fadrop,     
  flatten,     fmaxpool2d,   fmaxpool3d,      fold,            fork,            gelu,       
  glu,         groupnorm,    gru,             gruout,          hardshrink,      hardtanh,   
- identity,    index,        instancenorm1d,  instancenorm2d,  instancenorm3d,  interpolate,
+ identity,    indexselect,  instancenorm1d,  instancenorm2d,  instancenorm3d,  interpolate,
  layernorm,   leakyrelu,    linear,          localnorm,       logsigmoid,      logsoftmax, 
  lppool1d,    lppool2d,     lstm,            lstmout,         maxpool1d,       maxpool2d,  
- maxpool3d,   mish,         mul,             nbeats,          normalize,       onehot,          pad,        
- pad1d,       pad2d,        pad3d,           prelu,           randomcrop,      randomflip, 
- recur,       reflect1d,    reflect2d,       relu,            relu6,           replicate1d,
- replicate2d, replicate3d,  reshape,         residual,        rnn,             rnnout,     
- rrelu,       selu,         sigmoid,         silu,            softmax,         softmax2d,       softmin,    
- softplus,    softshrink,   softsign,        squeeze,         tanh,            tanhshrink, 
- threshold,   transform,    transformer,     unfold,          unsqueeze,       upsample,
- zeropad2d,   zscore,  
-
- pairwise,  similar, // distance functions
-
- bce,         bcelogits, ce,  cosineloss,  ctc, hinge,        //loss fns
- huber,       kl,        l1,  margin,      mse, multilabel,
- multimargin, multisoft, nll, poissonloss, sce, smoothl1,
+ maxpool3d,   mish,         mul,             nbeats,          normalize,       onehot,     
+ pad,         pad1d,        pad2d,           pad3d,           prelu,           randomcrop, 
+ randomflip,  recur,        reflect1d,       reflect2d,       relu,            relu6,      
+ replicate1d, replicate2d,  replicate3d,     reshape,         residual,        rnn,        
+ rnnout,      rrelu,        select,          selu,            sigmoid,         silu,       
+ softmax,     softmax2d,    softmin,         softplus,        softshrink,      softsign,   
+ squeeze,     tanh,         tanhshrink,      threshold,       transform,       transformer,
+ unfold,      unsqueeze,    upsample,        zeropad2d,       zscore,                      
+ pairwise,    similar,                                                                       // distance functions
+ bce,         bcelogits,    ce,               cosineloss,     ctc,             hinge,        // loss fns
+ huber,       kl,           l1,               margin,         mse,             multilabel,
+ multimargin, multisoft,    nll,              poissonloss,    sce,             smoothl1,
  softmargin,  triplet,    
-
- adagrad, adam, adamw, lbfgs, rmsprop, sgd //optimizers
+ adagrad,     adam,         adamw,            lbfgs,          rmsprop,         sgd           // optimizers
 };
 
 enum class Tensormode:char {   // tensor creation modes
@@ -759,7 +755,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("zeros"),           Init::zeros),
  }};
 
- std::array<std::tuple<S,Cast,size_t,std::string>,121> module = {{      // module sym -> enum, type id, pytorch name
+ std::array<std::tuple<S,Cast,size_t,std::string>,122> module = {{      // module sym -> enum, type id, pytorch name
   std::make_tuple(cs("adaptavg1d"),       Cast::adaptavg1d,      typeid(torch::nn::AdaptiveAvgPool1dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool1d"),
   std::make_tuple(cs("adaptavg2d"),       Cast::adaptavg2d,      typeid(torch::nn::AdaptiveAvgPool2dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool2d"),
   std::make_tuple(cs("adaptavg3d"),       Cast::adaptavg3d,      typeid(torch::nn::AdaptiveAvgPool3dImpl).hash_code(),   "torch.nn.AdaptiveAvgPool3d"),
@@ -810,6 +806,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("hardshrink"),       Cast::hardshrink,      typeid(torch::nn::HardshrinkImpl).hash_code(),          "torch.nn.Hardshrink"),
   std::make_tuple(cs("hardtanh"),         Cast::hardtanh,        typeid(torch::nn::HardtanhImpl).hash_code(),            "torch.nn.Hardtanh"),
   std::make_tuple(cs("identity"),         Cast::identity,        typeid(torch::nn::IdentityImpl).hash_code(),            "torch.nn.Identity"),
+  std::make_tuple(cs("indexselect"),      Cast::indexselect,     typeid(IndexSelectImpl).hash_code(),                    "torch.Tensor.index_select"),
   std::make_tuple(cs("instancenorm1d"),   Cast::instancenorm1d,  typeid(torch::nn::InstanceNorm1dImpl).hash_code(),      "torch.nn.InstanceNorm1d"),
   std::make_tuple(cs("instancenorm2d"),   Cast::instancenorm2d,  typeid(torch::nn::InstanceNorm2dImpl).hash_code(),      "torch.nn.InstanceNorm2d"),
   std::make_tuple(cs("instancenorm3d"),   Cast::instancenorm3d,  typeid(torch::nn::InstanceNorm3dImpl).hash_code(),      "torch.nn.InstanceNorm3d"),
@@ -856,7 +853,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("rnn"),              Cast::rnn,             typeid(torch::nn::RNNImpl).hash_code(),                 "torch.nn.RNN"),
   std::make_tuple(cs("rnnout"),           Cast::rnnout,          typeid(RNNOutputImpl).hash_code(),                      "torch.nn.RNN"),
   std::make_tuple(cs("rrelu"),            Cast::rrelu,           typeid(torch::nn::RReLUImpl).hash_code(),               "torch.nn.RReLU"),
-  std::make_tuple(cs("index"),            Cast::index,           typeid(IndexImpl).hash_code(),                         "torch.Tensor.select,torch.index_select"),
+  std::make_tuple(cs("select"),           Cast::select,          typeid(SelectImpl).hash_code(),                         "torch.Tensor.select"),
   std::make_tuple(cs("selu"),             Cast::selu,            typeid(torch::nn::SELUImpl).hash_code(),                "torch.nn.SELU"),
   std::make_tuple(cs("seqjoin"),          Cast::seqjoin,         typeid(SeqJoinImpl).hash_code(),                        ""),
   std::make_tuple(cs("seqnest"),          Cast::seqnest,         typeid(SeqNestImpl).hash_code(),                        ""),
