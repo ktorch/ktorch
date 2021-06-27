@@ -2,10 +2,60 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
-KAPI warn(K x) {
- auto m=torch::nn::MaxPool2d(3);
- auto t=torch::arange(16).to(torch::kFloat).view({1,4,4});
- std::cerr << m(t) << "\n";
+Tensor mloss(Kmodel*m,const Tensor&,const Tensor&);
+
+Tensor trainstep(Kmodel *m,const Tensor& x,const Tensor& y) {
+ auto step = [&](Kmodel *m, const Tensor& x,const Tensor& y) {
+  auto f = [&]() {
+   m->o->zero_grad();
+   auto a=mforward(m->mc,*m->m,x);
+   auto l=mloss(m,a,y);
+   l.backward();
+   return l;
+  }; 
+  return m->o->step(f);
+ };  
+ return step(m,x,y);
+}
+
+enum class metric {
+ Undefined=0,
+ Output=1,
+ Class=2,
+ Accuracy=4,
+ Loss=8
+};
+
+auto operator|(metric x,metric y) {return static_cast<size_t>(x)| static_cast<size_t>(y);}
+auto operator|(size_t x,metric y) {return                     x | static_cast<size_t>(y);}
+auto operator&(size_t x,metric y) {return                     x & static_cast<size_t>(y);}
+auto operator|=(size_t x,metric y){return                     x | y;}
+
+KAPI mtest(K x) {
+ KTRY
+  size_t m=0;
+  m = m | metric::Class;
+  m = m | metric::Loss;
+  m = m | metric::Accuracy;
+  //auto m=metric::Class | metric::Loss | metric::Accuracy;
+  std::cerr << "m:Class,Loss,Accuracy " <<  m                   << "\n";
+  std::cerr << "m | metric::Output    " << (m | metric::Output) << "\n";
+  std::cerr << "m & metric::Loss | metric::Class "  << (m & (metric::Loss | metric::Class)) << "\n";
+  std::cerr << " m==metric::Loss | metric::Class "  << (m== (metric::Loss | metric::Class)) << "\n";
+  std::cerr << " m==Loss | Accuracy | Class "  << (m== (metric::Loss | metric::Class | metric::Accuracy)) << "\n";
+  std::cerr << "m & metric::Loss | metric::Output " << (m & (metric::Loss | metric::Output)) << "\n";
+  std::cerr << "m & Loss " << (m & metric::Loss) << "\n";
+  std::cerr << "m & Output " << (m & metric::Output) << "\n";
+  return (K)0;
+ KCATCH("mtest");
+}
+
+KAPI f1(K x) {
+ auto p=torch::empty(1, torch::kDouble);
+ if(p.uniform_(0,1).le(x->f).item<uint8_t>())
+  std::cerr << "flip\n";
+ else
+  std::cerr << "no change\n";
  return (K)0;
 }
 
@@ -30,11 +80,6 @@ KAPI ztest(K x) {
   std::cerr << c1 << "\n";
   std::cerr << c2 << "\n";
   std::cerr << c3 << "\n";
-/*
-  Tensor t=torch::rand(1,torch::kDouble);
-  std::cerr << t.uniform_(0,1).item().toDouble() << "\n";
-  std::cerr << t.uniform_(0,1).data_ptr<double>()[0] << "\n";
-*/
   RandomFlipOptions o;
   RandomFlip f(.3,-2);
   std::cerr << f << "\n";
@@ -254,7 +299,7 @@ enum class Clip:char {
  none,norm,value
 };
 
-struct TORCH_API TrainOptions {
+struct TORCH_API TrainOptions2 {
  TORCH_ARG(int64_t, batchsize);
  TORCH_ARG(double,  clipvalue);
  TORCH_ARG(double,  clipnorm);
@@ -267,8 +312,14 @@ struct TORCH_API TrainOptions {
  TORCH_ARG(bool,    loss);
  TORCH_ARG(bool,    predict);
  TORCH_ARG(bool,    accuracy);
- TORCH_ARG(bool,    x1);
- //TORCH_ARG(bool,    x2);
+ TORCH_ARG(bool,    x1);  // 41
+ TORCH_ARG(bool,    x2);  // 42
+ TORCH_ARG(bool,    x3);  // ..
+ TORCH_ARG(bool,    x4);
+ TORCH_ARG(bool,    x5);
+ TORCH_ARG(bool,    x6);
+ TORCH_ARG(bool,    x7);
+ TORCH_ARG(bool,    x8);  // 48 bytes
 };
 
 KAPI atest(K x) {
@@ -286,175 +337,6 @@ KAPI atest(K x) {
 
   return (K)0;
  KCATCH("atest");
-}
-
-Cast mcast2(const Moduleptr& m) {
- if       (m->as<nn::AdaptiveAvgPool1d>()) {       return Cast::adaptavg1d;
- } else if(m->as<nn::AdaptiveAvgPool2d>()) {       return Cast::adaptavg2d;
- } else if(m->as<nn::AdaptiveAvgPool3d>()) {       return Cast::adaptavg3d;
- } else if(m->as<nn::AdaptiveMaxPool1d>()) {       return Cast::adaptmax1d;
- } else if(m->as<nn::AdaptiveMaxPool2d>()) {       return Cast::adaptmax2d;
- } else if(m->as<nn::AdaptiveMaxPool3d>()) {       return Cast::adaptmax3d;
- } else if(m->as<nn::AlphaDropout>()) {            return Cast::adrop;
- } else if(m->as<nn::MultiheadAttention>()) {      return Cast::attention;
- } else if(m->as<nn::AvgPool1d>()) {               return Cast::avgpool1d;
- } else if(m->as<nn::AvgPool2d>()) {               return Cast::avgpool2d;
- } else if(m->as<nn::AvgPool3d>()) {               return Cast::avgpool3d;
- } else if(m->as<BaseModule>()) {                  return Cast::base;
- } else if(m->as<nn::BatchNorm1d>()) {             return Cast::batchnorm1d;
- } else if(m->as<nn::BatchNorm2d>()) {             return Cast::batchnorm2d;
- } else if(m->as<nn::BatchNorm3d>()) {             return Cast::batchnorm3d;
- } else if(m->as<nn::Bilinear>()) {                return Cast::bilinear;
- } else if(m->as<Cat>()) {                         return Cast::cat;
- } else if(m->as<nn::CELU>()) {                    return Cast::celu;
- } else if(m->as<nn::Conv1d>()) {                  return Cast::conv1d;
- } else if(m->as<nn::Conv2d>()) {                  return Cast::conv2d;
- } else if(m->as<nn::Conv3d>()) {                  return Cast::conv3d;
- } else if(m->as<nn::ConvTranspose1d>()) {         return Cast::convtranspose1d;
- } else if(m->as<nn::ConvTranspose2d>()) {         return Cast::convtranspose2d;
- } else if(m->as<nn::ConvTranspose3d>()) {         return Cast::convtranspose3d;
- } else if(m->as<nn::CrossMapLRN2d>()) {           return Cast::crossmap2d;
- } else if(m->as<nn::TransformerDecoder>()) {      return Cast::decoder;
- } else if(m->as<nn::TransformerDecoderLayer>()) { return Cast::decoderlayer;
- } else if(m->as<nn::Dropout>()) {                 return Cast::drop;
- } else if(m->as<nn::Dropout2d>()) {               return Cast::drop2d;
- } else if(m->as<nn::Dropout3d>()) {               return Cast::drop3d;
- } else if(m->as<nn::ELU>()) {                     return Cast::elu;
- } else if(m->as<nn::Embedding>()) {               return Cast::embed;
- } else if(m->as<nn::EmbeddingBag>()) {            return Cast::embedbag;
- } else if(m->as<nn::TransformerEncoder>()) {      return Cast::encoder;
- } else if(m->as<nn::TransformerEncoderLayer>()) { return Cast::encoderlayer;
- } else if(m->as<Expand>()) {                      return Cast::expand;
- } else if(m->as<nn::FeatureAlphaDropout>()) {     return Cast::fadrop;
- } else if(m->as<nn::Flatten>()) {                 return Cast::flatten;
- } else if(m->as<nn::FractionalMaxPool2d>()) {     return Cast::fmaxpool2d;
- } else if(m->as<nn::FractionalMaxPool3d>()) {     return Cast::fmaxpool3d;
- } else if(m->as<nn::Fold>()) {                    return Cast::fold;
- } else if(m->as<nn::GELU>()) {                    return Cast::gelu;
- } else if(m->as<nn::GLU>()) {                     return Cast::glu;
- } else if(m->as<nn::GroupNorm>()) {               return Cast::groupnorm;
- } else if(m->as<nn::GRU>()) {                     return Cast::gru;
- } else if(m->as<GRUOutput>()) {                   return Cast::gruout;
- } else if(m->as<nn::Hardshrink>()) {              return Cast::hardshrink;
- } else if(m->as<nn::Hardtanh>()) {                return Cast::hardtanh;
- } else if(m->as<nn::Identity>()) {                return Cast::identity;
- } else if(m->as<IndexSelect>()) {                 return Cast::indexselect;
- } else if(m->as<nn::InstanceNorm1d>()) {          return Cast::instancenorm1d;
- } else if(m->as<nn::InstanceNorm2d>()) {          return Cast::instancenorm2d;
- } else if(m->as<nn::InstanceNorm3d>()) {          return Cast::instancenorm3d;
- } else if(m->as<nn::LayerNorm>()) {               return Cast::layernorm;
- } else if(m->as<nn::LeakyReLU>()) {               return Cast::leakyrelu;
- } else if(m->as<nn::Linear>()) {                  return Cast::linear;
- } else if(m->as<nn::LocalResponseNorm>()) {       return Cast::localnorm;
- } else if(m->as<nn::LogSigmoid>()) {              return Cast::logsigmoid;
- } else if(m->as<nn::LogSoftmax>()) {              return Cast::logsoftmax;
- } else if(m->as<nn::LPPool1d>()) {                return Cast::lppool1d;
- } else if(m->as<nn::LPPool2d>()) {                return Cast::lppool2d;
- } else if(m->as<nn::LSTM>()) {                    return Cast::lstm;
- } else if(m->as<LSTMOutput>()) {                  return Cast::lstmout;
- } else if(m->as<nn::MaxPool1d>()) {               return Cast::maxpool1d;
- } else if(m->as<nn::MaxPool2d>()) {               return Cast::maxpool2d;
- } else if(m->as<nn::MaxPool3d>()) {               return Cast::maxpool3d;
- } else if(m->as<nn::ModuleDict>()) {              return Cast::moduledict;
- } else if(m->as<nn::ModuleList>()) {              return Cast::modulelist;
- } else if(m->as<Mul>()) {                         return Cast::mul;
- } else if(m->as<OneHot>()) {                      return Cast::onehot;
- } else if(m->as<Pad>()) {                         return Cast::pad;
- } else if(m->as<nn::ConstantPad1d>()) {           return Cast::pad1d;
- } else if(m->as<nn::ConstantPad2d>()) {           return Cast::pad2d;
- } else if(m->as<nn::ConstantPad3d>()) {           return Cast::pad3d;
- } else if(m->as<nn::PairwiseDistance>()) {        return Cast::pairwise;
- } else if(m->as<nn::ParameterDict>()) {           return Cast::parmdict;
- } else if(m->as<nn::PReLU>()) {                   return Cast::prelu;
- } else if(m->as<Recur>()) {                       return Cast::recur;
- } else if(m->as<nn::ReflectionPad1d>()) {         return Cast::reflect1d;
- } else if(m->as<nn::ReflectionPad2d>()) {         return Cast::reflect2d;
- } else if(m->as<nn::ReLU>()) {                    return Cast::relu;
- } else if(m->as<nn::ReLU6>()) {                   return Cast::relu6;
- } else if(m->as<nn::ReplicationPad1d>()) {        return Cast::replicate1d;
- } else if(m->as<nn::ReplicationPad2d>()) {        return Cast::replicate2d;
- } else if(m->as<nn::ReplicationPad3d>()) {        return Cast::replicate3d;
- } else if(m->as<Reshape>()) {                     return Cast::reshape;
- } else if(m->as<nn::RNN>()) {                     return Cast::rnn;
- } else if(m->as<RNNOutput>()) {                   return Cast::rnnout;
- } else if(m->as<nn::RReLU>()) {                   return Cast::rrelu;
- } else if(m->as<nn::SELU>()) {                    return Cast::selu;
- } else if(m->as<SeqJoin>()) {                     return Cast::seqjoin;
- } else if(m->as<SeqNest>()) {                     return Cast::seqnest;
- } else if(m->as<nn::Sequential>()) {              return Cast::sequential;
- } else if(m->as<nn::Sigmoid>()) {                 return Cast::sigmoid;
- } else if(m->as<nn::CosineSimilarity>()) {        return Cast::similar;
- } else if(m->as<nn::Softmax>()) {                 return Cast::softmax;
- } else if(m->as<nn::Softmax2d>()) {               return Cast::softmax2d;
- } else if(m->as<nn::Softmin>()) {                 return Cast::softmin;
- } else if(m->as<nn::Softplus>()) {                return Cast::softplus;
- } else if(m->as<nn::Softshrink>()) {              return Cast::softshrink;
- } else if(m->as<nn::Softsign>()) {                return Cast::softsign;
- } else if(m->as<Squeeze>()) {                     return Cast::squeeze;
- } else if(m->as<nn::Tanh>()) {                    return Cast::tanh;
- } else if(m->as<nn::Tanhshrink>()) {              return Cast::tanhshrink;
- } else if(m->as<nn::Threshold>()) {               return Cast::threshold;
- } else if(m->as<nn::Transformer>()) {             return Cast::transformer;
- } else if(m->as<nn::Unfold>()) {                  return Cast::unfold;
- } else if(m->as<Unsqueeze>()) {                   return Cast::unsqueeze;
- } else if(m->as<nn::Upsample>()) {                return Cast::upsample;
- } else if(m->as<nn::ZeroPad2d>()) {               return Cast::zeropad2d;
- } else {
-  TORCH_ERROR("unable to determine module enumeration");
- }
-}
-
-static bool container(Cast c) {
- switch(c) {
-  case Cast::sequential:
-  case Cast::seqnest:
-  case Cast::seqjoin:
-  case Cast::moduledict:
-  case Cast::modulelist:
-  case Cast::parmdict:
-  case Cast::base:
-  case Cast::recur:
-   return true;
-  default: return false;
- }
-}
-
-static bool container(const Module& m) {
- if     (m.as<nn::Sequential>())    return true;
- else if(m.as<SeqNest>())           return true;
- else if(m.as<SeqJoin>())           return true;
- else if(m.as<nn::ModuleDict>())    return true;
- else if(m.as<nn::ModuleList>())    return true;
- else if(m.as<nn::ParameterDict>()) return true;
- else if(m.as<Recur>())             return true;
- else if(m.as<BaseModule>())        return true;
- else                               return false;
-}
-
-static bool container2(const Moduleptr& m) {
- return container(mcast2(m));
-}
-
-KAPI ctest(K x,K y,K z) {
- KTRY
-  Kmodule *k=xmodule(z); const Module& m=*k->m;
-  TORCH_CHECK(k && x->t==-KJ && y->t==-KJ,"unrecognized arg(s)");
-  J n=x->j,b=y->j; bool c=false;
-  if(b) {
-   std::cerr << "using as() on " << mlabel(m) << "\n";
-   for(J i=0; i<n; ++i) {
-     c=container(m);
-     if(c) {
-      b++;
-     }
-  }
-  } else {
-   std::cerr << "using lookup on " << mlabel(m) << "\n";
-   for(J i=0; i<n; ++i) c=container2(k->m);
-  }
-  std::cerr << "container: " << c << " b: " << b <<  "\n";
-  return kb(c);
- KCATCH("container test");
 }
 
 static void gradmode() {
@@ -650,237 +532,6 @@ KAPI mdict(K x) {
  return (K)0;
 }
  
-/*
-  AnyModule(std::shared_ptr<ModuleType> module)
-  AnyModule(ModuleType&& module)
-  AnyModule(const ModuleHolder<ModuleType>& module_holder)
-*/
- 
-static void checkhash(const Moduleptr& x) {
- Cast c=mcast(*x);
- std::cerr << "Cast: " << (I)c << ", " << msym(*x) << "\n";
-}
-
-static void addmodule(nn::Sequential& x,const Moduleptr& y) {
- x->push_back(*y->as<torch::nn::Linear>());
-}
-
-static void addmodule(const Moduleptr& x,const Moduleptr& y) {
- x->as<nn::Sequential>()->push_back(*y->as<torch::nn::Linear>());
-}
-
-static void checkptr(const Moduleptr& x,const Moduleptr& y) {
- if(auto a=std::dynamic_pointer_cast<nn::SequentialImpl>(x)) {
-  std::cerr << "1st arg is a Sequential module\n";
- }
- if(auto a=std::dynamic_pointer_cast<nn::LinearImpl>(y)) {
-  std::cerr << "2nd arg is a Linear module\n";
-  nn::Linear l(a);
- }
-}
-
-KAPI cast(K x) {
- KTRY
-  torch::nn::Sequential a;
-  torch::nn::Linear l(1,2);
-  auto q=a.ptr();
-  auto p=l.ptr();
-  checkptr(q,p);
-  checkhash(q);
-  checkhash(p);
-  addmodule(q,p);
-  addmodule(a,p);
-  a->push_back(p);
-  q->push_back(p);
-  std::cerr << *q << "\n";
-  return (K)0;
- KCATCH("cast");
-}
-
-Tensor c1(Cast c,Moduleptr& m,const Tensor& t) {
- switch(c) {
-  case Cast::adaptavg1d:      TORCH_ERROR("nyi");
-  case Cast::adaptavg2d:      TORCH_ERROR("nyi");
-  case Cast::adaptavg3d:      TORCH_ERROR("nyi");
-  case Cast::adaptmax1d:      TORCH_ERROR("nyi");
-  case Cast::adaptmax2d:      TORCH_ERROR("nyi");
-  case Cast::adaptmax3d:      TORCH_ERROR("nyi");
-  case Cast::adrop:           TORCH_ERROR("nyi");
-  case Cast::attention:       TORCH_ERROR("nyi");
-  case Cast::avgpool1d:       TORCH_ERROR("nyi");
-  case Cast::avgpool2d:       TORCH_ERROR("nyi");
-  case Cast::avgpool3d:       TORCH_ERROR("nyi");
-  case Cast::base:            TORCH_ERROR("nyi");
-  case Cast::batchnorm1d:     TORCH_ERROR("nyi");
-  case Cast::batchnorm2d:     TORCH_ERROR("nyi");
-  case Cast::batchnorm3d:     TORCH_ERROR("nyi");
-  case Cast::bilinear:        TORCH_ERROR("nyi");
-  case Cast::cat:             TORCH_ERROR("nyi");
-  case Cast::celu:            TORCH_ERROR("nyi");
-  case Cast::conv1d:          TORCH_ERROR("nyi");
-  case Cast::conv2d:          TORCH_ERROR("nyi");
-  case Cast::conv3d:          TORCH_ERROR("nyi");
-  case Cast::convtranspose1d: TORCH_ERROR("nyi");
-  case Cast::convtranspose2d: TORCH_ERROR("nyi");
-  case Cast::convtranspose3d: TORCH_ERROR("nyi");
-  case Cast::crossmap2d:      TORCH_ERROR("nyi");
-  case Cast::decoder:         TORCH_ERROR("nyi");
-  case Cast::decoderlayer:    TORCH_ERROR("nyi");
-  case Cast::drop:            TORCH_ERROR("nyi");
-  case Cast::drop2d:          TORCH_ERROR("nyi");
-  case Cast::drop3d:          TORCH_ERROR("nyi");
-  case Cast::elu:             TORCH_ERROR("nyi");
-  case Cast::embed:           TORCH_ERROR("nyi");
-  case Cast::embedbag:        TORCH_ERROR("nyi");
-  case Cast::encoder:         TORCH_ERROR("nyi");
-  case Cast::encoderlayer:    TORCH_ERROR("nyi");
-  case Cast::expand:          TORCH_ERROR("nyi");
-  case Cast::fadrop:          TORCH_ERROR("nyi");
-  case Cast::flatten:         TORCH_ERROR("nyi");
-  case Cast::fmaxpool2d:      TORCH_ERROR("nyi");
-  case Cast::fmaxpool3d:      TORCH_ERROR("nyi");
-  case Cast::fold:            TORCH_ERROR("nyi");
-  case Cast::gelu:            TORCH_ERROR("nyi");
-  case Cast::glu:             TORCH_ERROR("nyi");
-  case Cast::groupnorm:       TORCH_ERROR("nyi");
-  case Cast::gru:             TORCH_ERROR("nyi");
-  case Cast::hardshrink:      TORCH_ERROR("nyi");
-  case Cast::hardtanh:        TORCH_ERROR("nyi");
-  case Cast::identity:        TORCH_ERROR("nyi");
-  case Cast::instancenorm1d:  TORCH_ERROR("nyi");
-  case Cast::instancenorm2d:  TORCH_ERROR("nyi");
-  case Cast::instancenorm3d:  TORCH_ERROR("nyi");
-  case Cast::interpolate:     TORCH_ERROR("nyi");
-  case Cast::layernorm:       TORCH_ERROR("nyi");
-  case Cast::leakyrelu:       TORCH_ERROR("nyi");
-  case Cast::linear:          return std::dynamic_pointer_cast<torch::nn::LinearImpl>(m)->forward(t);
-  case Cast::localnorm:       TORCH_ERROR("nyi");
-  case Cast::logsigmoid:      TORCH_ERROR("nyi");
-  case Cast::logsoftmax:      TORCH_ERROR("nyi");
-  case Cast::lppool1d:        TORCH_ERROR("nyi");
-  case Cast::lppool2d:        TORCH_ERROR("nyi");
-  case Cast::lstm:            TORCH_ERROR("nyi");
-  case Cast::maxpool1d:       TORCH_ERROR("nyi");
-  case Cast::maxpool2d:       TORCH_ERROR("nyi");
-  case Cast::maxpool3d:       TORCH_ERROR("nyi");
-  case Cast::modulelist:      TORCH_ERROR("nyi");
-  case Cast::mul:             TORCH_ERROR("nyi");
-  case Cast::normalize:       TORCH_ERROR("nyi");
-  case Cast::pad:             TORCH_ERROR("nyi");
-  case Cast::pad1d:           TORCH_ERROR("nyi");
-  case Cast::pad2d:           TORCH_ERROR("nyi");
-  case Cast::pad3d:           TORCH_ERROR("nyi");
-  case Cast::pairwise:        TORCH_ERROR("nyi");
-  case Cast::prelu:           TORCH_ERROR("nyi");
-  case Cast::reflect1d:       TORCH_ERROR("nyi");
-  case Cast::reflect2d:       TORCH_ERROR("nyi");
-  case Cast::relu:            TORCH_ERROR("nyi");
-  case Cast::relu6:           TORCH_ERROR("nyi");
-  case Cast::replicate1d:     TORCH_ERROR("nyi");
-  case Cast::replicate2d:     TORCH_ERROR("nyi");
-  case Cast::replicate3d:     TORCH_ERROR("nyi");
-  case Cast::reshape:         TORCH_ERROR("nyi");
-  case Cast::rnn:             TORCH_ERROR("nyi");
-  case Cast::rrelu:           TORCH_ERROR("nyi");
-  case Cast::selu:            TORCH_ERROR("nyi");
-  case Cast::seqjoin:         TORCH_ERROR("nyi");
-  case Cast::seqnest:         TORCH_ERROR("nyi");
-  case Cast::sequential:      TORCH_ERROR("nyi");
-  case Cast::sigmoid:         TORCH_ERROR("nyi");
-  case Cast::similar:         TORCH_ERROR("nyi");
-  case Cast::softmax:         TORCH_ERROR("nyi");
-  case Cast::softmax2d:       TORCH_ERROR("nyi");
-  case Cast::softmin:         TORCH_ERROR("nyi");
-  case Cast::softplus:        TORCH_ERROR("nyi");
-  case Cast::softshrink:      TORCH_ERROR("nyi");
-  case Cast::softsign:        TORCH_ERROR("nyi");
-  case Cast::squeeze:         TORCH_ERROR("nyi");
-  case Cast::tanh:            TORCH_ERROR("nyi");
-  case Cast::tanhshrink:      TORCH_ERROR("nyi");
-  case Cast::threshold:       TORCH_ERROR("nyi");
-  case Cast::transformer:     TORCH_ERROR("nyi");
-  case Cast::unfold:          TORCH_ERROR("nyi");
-  case Cast::unsqueeze:       TORCH_ERROR("nyi");
-  case Cast::upsample:        TORCH_ERROR("nyi");
-  case Cast::zeropad2d:       TORCH_ERROR("nyi");
-  default: TORCH_ERROR("unrecognized module");
- }
-}
-
-void f1() {
- auto t=torch::randn({100,200});
- torch::nn::Linear l(200,100);
- for(size_t i=0; i<1000000; ++i)
-  auto r=l->forward(t);
-}
-
-void f2(Moduleptr m) {
- auto t=torch::randn({100,200});
- for(size_t i=0; i<1000000; ++i)
-  //auto r=std::dynamic_pointer_cast<torch::nn::LinearImpl>(m)->forward(t);
-  auto r=c1(Cast::linear, m, t);
-}
-
-void f3(AnyModule& a) {
- auto t=torch::randn({100,200});
- for(size_t i=0; i<1000000; ++i)
-  auto r=a.forward(t);
-}
-
-
-KAPI a(K x) {
- KTRY
-  AnyModule a(torch::nn::Linear(200,100));
-  f3(a);
-  return (K)0;
- KCATCH("timer");
-}
-
-KAPI f(K x) {
- KTRY
-  //f1();
-  BaseModule m;
-  m->register_module("linear",torch::nn::Linear(200,100));
-  m->register_parameter("tensor",torch::randn(10));
-  f2(m->children()[0]);
-  return (K)0;
- KCATCH("timer");
-}
-
-KAPI g(K x) {
- KTRY
-  f1();
-  return (K)0;
- KCATCH("timer");
-}
-
-KAPI f_old(K x) {
- KTRY
-  BaseModule m;
-  m->register_module("linear",torch::nn::Linear(1,2));
-  m->register_parameter("tensor",torch::randn(10));
-  auto a=AnyModule(m);
-  std::cerr << *m << "\n";
-  //return kdict(m->named_parameters());
-  //return mget(true,true,*m);
-  //return mget(true,true,*m->children()[0]);
-  //return mget(true,true,*a.ptr());
-  // static cast won't compile
-  /* fatal error: cannot cast 'torch::nn::Module *' to
-      'typename _Sp::element_type *' (aka 'torch::nn::LinearImpl *') via virtual base 'torch::nn::Module'
-      'std::static_pointer_cast<torch::nn::LinearImpl, torch::nn::Module>'
-  */
-  //AnyModule l(std::dynamic_pointer_cast<torch::nn::LinearImpl>(m->children()[0]));
-  //auto p=std::dynamic_pointer_cast<torch::nn::SigmoidImpl>(m->children()[0]);
-  auto p=std::dynamic_pointer_cast<torch::nn::LinearImpl>(m->children()[0]);
-  if(p) {
-   return mget(true,true,*p);
-  } else {
-   return kb(false);
-  }
- KCATCH("test base module")
-}
-
 /*
 KAPI cb(K x,K y) {
  KTRY
@@ -1138,7 +789,7 @@ KAPI ksizes(K x) {
  std::cerr << "Kmodule: " << sizeof(Kmodule) << "\n";
  std::cerr << "Kopt:    " << sizeof(Kopt) << "\n";
  std::cerr << "Kmodel:  " << sizeof(Kmodel) << "\n";
- std::cerr << "Training options: " << sizeof(TrainOptions) << "\n";
+ std::cerr << "Training options: " << sizeof(TrainOptions2) << "\n";
  return (K)0;
 }
 
@@ -1340,43 +991,6 @@ KAPI kdata(K x,K y) {
   }
   return (K)0;
  KCATCH("mnist test");
-}
-
-void f(int64_t n) {
- n*=1000000;
- auto t=torch::rand(n);
- double d=0; float f=0,*p=t.data_ptr<float>();
- for(int64_t i=0; i<n; ++i) d+=p[i], f+=p[i];
- std::cerr << "double  sum: " <<   d << "\n";
- std::cerr << "float   sum: " <<   f << "\n\n";
- std::cerr << "double mean: " << d/n << "\n";
- std::cerr << "float  mean: " << f/n << "\n";
- std::cerr << "torch  mean: " << t.mean().item().toFloat() << "\n";
-}
-
-KAPI ftest(K x) {
- f(x->j);
- return (K)0;
-}
-
-KAPI hashtest(K x) {
- std::unordered_set<J> Ptrs;
- Ptrs.insert(10);
- Ptrs.insert(20);
- Ptrs.insert(2);
- Ptrs.insert(20);
-
- std::cerr << "size: " << Ptrs.size() << "\n";
- for(const auto j:Ptrs)
-  std::cerr << j << "\n";
-
- //std::cerr << " find: " << Ptrs.find(20) << "\n";
- std::cerr << "count: " << Ptrs.count(20) << "\n";
- Ptrs.erase(20);
- std::cerr << "size: " << Ptrs.size() << "\n";
- //std::cerr << " find: " << Ptrs.find(20) << "\n";
- std::cerr << "count: " << Ptrs.count(20) << "\n";
- return (K)0;
 }
 
 void errfail() {

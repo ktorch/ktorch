@@ -440,7 +440,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y);
   case Cast::similar:         return m.as<nn::CosineSimilarity>()->forward(x,y);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y);
-  default: TORCH_ERROR("forward calculation with two tensor arguments not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with 2 tensor inputs not implemented for module: ",m.name());
  }
 }
 
@@ -452,7 +452,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
   case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
-  default: TORCH_ERROR("forward calculation with three tensor arguments not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with 3 tensor inputs not implemented for module: ",m.name());
  }
 }
 
@@ -3209,7 +3209,7 @@ static K rflip(bool a,const RandomFlipOptions& o) {
 }
 
 static Tensor rflip(const Tensor& t,double p,int64_t d) {
- return torch::empty(1,TensorOptions(t.device()).dtype(torch::kDouble)).uniform_(0,1).item().toDouble()<p ? t.flip(d) : t;
+ return torch::empty(1,TensorOptions(t.device()).dtype(torch::kDouble)).uniform_(0,1).item<double>()<p ? t.flip(d) : t;
 }
 
 KAPI randomflip(K x) {

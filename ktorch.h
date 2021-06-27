@@ -23,6 +23,7 @@
 #include <stack>
 #include "torch/torch.h"
 #include "knn.h"
+#include "kmodel.h"
 #include "private.h"
 
 // access private name_ element of torch::nn::Module
@@ -287,13 +288,15 @@ struct TORCH_API Kopt : public Ktag {
 };
 
 struct TORCH_API Kmodel : public Ktag {
- Cast mc;          // type of module, typically a container module, e.g. Sequential
- Cast lc;          // type of loss fn
- Cast oc;          // type of optimizer
- Moduleptr m;      // generic pointer to top-level module, e.g. Sequential
- Moduleptr l;      // loss module
- Optptr o;         // shared ptr to optimizer
- Moduleptr om;     // single module or container holding all modules/tensors managed by optimizer
+ Cast mc;             // type of module, typically a container module, e.g. Sequential
+ Cast lc;             // type of loss fn
+ Cast oc;             // type of optimizer
+ Moduleptr m;         // generic pointer to top-level module, e.g. Sequential
+ Moduleptr l;         // loss module
+ Optptr o;            // shared ptr to optimizer
+ Moduleptr om;        // single module or container holding all modules/tensors managed by optimizer
+ TrainOptions train;  // training options
+ EvalOptions eval;    // evaluation options
  Kmodel(Kmodule *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
   a=Class::model; c=Cast::model; r=x->r;
  }
@@ -326,6 +329,7 @@ Ktype maptype(TypeMeta);
 TypeMeta maptype(Ktype);
 S mapclass(Class);
 S mapattr(Attr);
+void print_tensor(std::ostream&,int64_t,const Tensor& t);
 Enum emap(S);
 S emap(Enum);
 

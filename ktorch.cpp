@@ -1856,19 +1856,6 @@ KAPI kclass(K x) {
  KCATCH("class");
 }
 
-KAPI str(K x) {
- KTRY
-  Ktag *g=xtag(x); std::string s;
-  TORCH_CHECK(g, "str: need allocated torch object, e.g. tensor, module, given ",kname(x));
-  switch(g->a) {
-   case Class::tensor:    s=c10::str(((Kten*)g)->t); break;
-   case Class::loss:
-   case Class::module:    s=c10::str(*((Kmodule*)g)->m); break;
-   default: TORCH_ERROR("str: not implemented for ",mapclass(g->a));
-  }
-  return kp(const_cast<S>(s.c_str()));
- KCATCH("class");
-}
 
 KAPI     device(K x) {return xempty(x) ? defaultdevice() : attr(x, -KS, Attr::device);}
 KAPI     layout(K x) {return attr(x, -KS, Attr::layout);}
@@ -1911,6 +1898,34 @@ KAPI contiguous(K x) {
 
 KAPI       size(K x) {return attr(x,  KJ, Attr::size);}
 KAPI     stride(K x) {return attr(x,  KJ, Attr::stride);}
+
+// ---------------------------------------------------------------------------
+// str - PyTorch string representation of tensor or module
+// print_tensor - print first n elements of tensor (for module args)
+// ---------------------------------------------------------------------------
+KAPI str(K x) {
+ KTRY
+  Ktag *g=xtag(x); std::string s;
+  TORCH_CHECK(g, "str: need allocated torch object, e.g. tensor, module, given ",kname(x));
+  switch(g->a) {
+   case Class::tensor:    s=c10::str(((Kten*)g)->t); break;
+   case Class::loss:
+   case Class::module:    s=c10::str(*((Kmodule*)g)->m); break;
+   default: TORCH_ERROR("str: not implemented for ",mapclass(g->a));
+  }
+  return kp(const_cast<S>(s.c_str()));
+ KCATCH("class");
+}
+
+void print_tensor(std::ostream& s,int64_t n,const torch::Tensor& t) {
+ if(t.dim()) {
+  auto m=t.numel(); if(m<n) n=m;
+  for(int64_t i=0; i<n; ++i)
+   s << t.view(-1)[i].item<double>() << (i+1<n ? "," : (n<m ? ".." : ""));
+ } else {
+  s << t.item<double>();
+ }
+}
 
 // ----------------------------------------------------------------------------------------------
 // filewrite - write zero bytes if file writable, create any necessary dir(s), drop leading colon

@@ -1,8 +1,10 @@
 #pragma once
 
 std::string mlabel(const std::shared_ptr<torch::nn::Module>&);
+void print_tensor(std::ostream&,int64_t,const torch::Tensor& t);
 torch::Tensor zscore_(torch::Tensor&,const torch::Tensor&,const torch::Tensor& d);
 torch::Tensor zscore(const torch::Tensor&,const torch::Tensor&,const torch::Tensor&);
+
 
 // --------------------------------------------------------------------------
 // general pad: create module to match functional call with size, mode, value
@@ -195,7 +197,12 @@ class TORCH_API IndexSelectImpl : public torch::nn::Cloneable<IndexSelectImpl> {
   ind=register_buffer("ind", options.ind());
  }
 
- void pretty_print(std::ostream& s) const override {s << "Index(dim=" << options.dim() << ",ind=" << options.ind() << ")";}
+ void pretty_print(std::ostream& s) const override {
+  s << "IndexSelect(dim=" << options.dim() << ",ind="; 
+  print_tensor(s,3,options.ind());
+  s << ")";
+ }
+
  torch::Tensor forward(const torch::Tensor& x) {
   return x.index_select(options.dim(),ind);
  }
@@ -578,12 +585,10 @@ class TORCH_API ZscoreImpl : public torch::nn::Cloneable<ZscoreImpl> {
  }
 
  void pretty_print(std::ostream& s) const override {
-/*
-  auto f=[](auto& x) {return torch::ArrayRef<double>(x.to(torch::kDouble).template data_ptr<double>(),x.numel()>3 ? 3 : x.numel()).vec();};
-  auto m=f(options.mean()); auto v=f(options.stddev());
-  s << std::boolalpha << "Zscore(mean=" << m << ", stddev=" << v << ", inplace=" << options.inplace() << ")";
-*/
-  s << std::boolalpha << "Zscore(inplace=" << options.inplace() << ")";
+  s << std::boolalpha;
+  s << "Zscore(mean="; print_tensor(s,3,mean);
+  s <<    ", stddev="; print_tensor(s,3,stddev);
+  s <<    ", inplace=" << options.inplace() << ")";
  }
 
  torch::Tensor forward(torch::Tensor t) {
@@ -656,7 +661,7 @@ class TORCH_API RandomFlipImpl : public torch::nn::Cloneable<RandomFlipImpl> {
  }
 
  torch::Tensor forward(const torch::Tensor& t) {
-  return p.uniform_(0,1).item().toDouble()<options.p() ? t.flip(options.dim()) : t;
+  return p.uniform_(0,1).item<double>()<options.p() ? t.flip(options.dim()) : t;
  }
 
  RandomFlipOptions options;

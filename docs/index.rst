@@ -46,6 +46,7 @@ Modules
    :maxdepth: 1
 
    modules
+   kmodules
    loss
 
 Training
