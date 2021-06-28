@@ -19,7 +19,7 @@ Pad
 ^^^
 The k api adds a module equivalent of the PyTorch `pad <https://pytorch.org/docs/stable/generated/torch.nn.functional.pad.html>`_ function.
 Given the padding size, along with optional padding mode of  ```constant``, ```reflect``, ```replicate`` or ```circular``,
-and padding value (mode=```constant`` only), returns a tensor padded to given size.
+and padding value (mode = ```constant`` only), returns a tensor padded to given size.
 
 ::
 
@@ -60,10 +60,37 @@ and padding value (mode=```constant`` only), returns a tensor padded to given si
 .. _module-squeeze:
 .. _module-unsqueeze:
 
-Squeeze & Unsqueeze
+Squeeze & unsqueeze
 ^^^^^^^^^^^^^^^^^^^
-https://pytorch.org/docs/stable/generated/torch.squeeze.html
-https://pytorch.org/docs/stable/generated/torch.unsqueeze.html
+Pytorch functions `squeeze <https://pytorch.org/docs/stable/generated/torch.squeeze.html>`_ and
+` unsqueeze <https://pytorch.org/docs/stable/generated/torch.unsqueeze.html> are implemented in module form to allow them to be included in the sequence of operations of a container module's forward calculation. ```squeeze`` removes dimensions of size 1 throught the tensor if no dimension given, or only at the given dimension and ```unsqueeze`` adds a dimension of size 1 inserted at the given position (no default allowed).
+
+::
+
+   q)help`unsqueeze
+   dim    | 0
+   inplace| 0b
+
+   q)m:module enlist(`unsqueeze;1)
+
+   q)tensor r:forward(m; 1 2 3)
+   1
+   2
+   3
+
+   q)s:module `squeeze
+   q)use[r]forward(s;r)
+   q)tensor r
+   1 2 3
+
+   q)q:module seq(`sequential; (`unsqueeze;1); (`unsqueeze;1); (`squeeze;0))
+
+   q)use[r]forward(q;1 2 3)
+   q)tensor r
+   1
+   2
+   3
+
 
 .. index:: expand
 
@@ -71,7 +98,21 @@ https://pytorch.org/docs/stable/generated/torch.unsqueeze.html
 
 Expand
 ^^^^^^
-https://pytorch.org/docs/stable/generated/torch.Tensor.expand.html
+PyTorch method `expand <https://pytorch.org/docs/stable/generated/torch.Tensor.expand.html>`_ is implemented as a module with an option of expanded sizes for each singleton dimension, with ``-1`` used to define no change for the dimension.
+
+::
+
+   q)help`expand
+   size| -1 -1 28 28
+
+   q)m:module enlist(`expand;-1 3)
+
+   q)tensor r:forward(m; 5 1#til 10)
+   0 0 0
+   1 1 1
+   2 2 2
+   3 3 3
+   4 4 4
 
 .. index:: reshape
 
@@ -79,7 +120,7 @@ https://pytorch.org/docs/stable/generated/torch.Tensor.expand.html
 
 Reshape
 ^^^^^^^
-This module implements the PyTorch `reshape https://pytorch.org/docs/stable/generated/torch.reshape.html>`_ function, returning a tensor with the given size. One dimension may be given as -1 and will be recalculated to accomdate the tensor's overall number of elements. ``reshape`` attempts to use the same underlying storage as the input tensor, but if the input is not contiguous or has incompatible strides, ``reshape`` may create a copy.
+This module implements the PyTorch `reshape <https://pytorch.org/docs/stable/generated/torch.reshape.html>`_ function, returning a tensor with the given size. One dimension may be given as -1 and will be recalculated to accomdate the tensor's overall number of elements. ``reshape`` attempts to use the same underlying storage as the input tensor, but if the input is not contiguous or has incompatible strides, ``reshape`` may create a copy.
 
 ::
 
@@ -190,8 +231,8 @@ PyTorch defines a `one_hot <https://pytorch.org/docs/stable/generated/torch.nn.f
 
 Select
 ^^^^^^
-PyTorch defines a `select method <https://pytorch.org/docs/stable/generated/torch.Tensor.select.html>`_ on a tensor to select or "slice" along a given dimension and index.  For a k array, this is similar to ``x i`` or ``x[;;i]``.
-This convenience module allows for the select operation to be added to a sequence of modules as part of the forward calculation, e.g. select the final column of an output from the previous model.
+PyTorch defines a `select method <https://pytorch.org/docs/stable/generated/torch.Tensor.select.html>`_ on a tensor to select or "slice" along a given dimension and index.  For a k array, this is similar to ``x[i]`` or ``x[;;i]``.
+This convenience module allows for the select operation to be added to a sequence of operations as part of the forward calculation, e.g. select the final column of an output from the previous model.
 
 ::
 
@@ -215,8 +256,8 @@ This convenience module allows for the select operation to be added to a sequenc
 
 Index select
 ^^^^^^^^^^^^
-PyTorch defines an `index_select function <https://pytorch.org/docs/stable/generated/torch.index_select.html>`_ and 
-`tensor method <https://pytorch.org/docs/stable/generated/torch.Tensor.index_select.html>`_ which indexes a tensor along a given dimension using supplied indices, similar to the the above ``select``, but with a list of indices.
+PyTorch defines an `index_select <https://pytorch.org/docs/stable/generated/torch.index_select.html>`_ function 
+which indexes a tensor along a given dimension using supplied indices, similar to the the above ``select``, but with a list of indices rather than a single scalar.
 
 ::
 
