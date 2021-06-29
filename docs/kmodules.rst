@@ -9,7 +9,8 @@ or to allow modules to be defined with a sequential or sequential-like container
 
 The k api modules are defined in `knn.h <https://github.com/ktorch/ktorch/blob/master/knn.h>`_.
 
-For example, the ``SeqNest`` module is defined to create a nestable Sequential module by fixing the forward method to return a tensor (rather than the standard, templated return which cannot be nested within another Sequential module. See..)
+For example, the ``SeqNest`` module is defined to create a nestable Sequential module by fixing the forward method to return a tensor (rather than the standard, templated return which cannot be nested within another Sequential module.
+See the section on `defining network models <https://pytorch.org/tutorials/advanced/cpp_frontend.html#defining-the-neural-network-models>`_ for more on PyTorch C++ module classes.
 
 ::
 
