@@ -107,7 +107,7 @@ PyTorch method `expand <https://pytorch.org/docs/stable/generated/torch.Tensor.e
 
    q)m:module enlist(`expand;-1 3)
 
-   q)tensor r:forward(m; 5 1#til 10)
+   q)tensor r:forward(m;5 1#til 5)
    0 0 0
    1 1 1
    2 2 2
@@ -341,12 +341,63 @@ Transformation modules
 Transform container
 ^^^^^^^^^^^^^^^^^^^
 
+The ``transform`` module is somewhat similar to PyTorch's `vision transformers <https://pytorch.org/vision/stable/transforms.html>`_ in that it defines a set of transformations to perform on image data. The k api module can contain up to two sequential modules, the first for defining transforms on inputs when the module is in training mode, the second sequential contains transforms to perform on inputs when the module is in evaluation mode. Either sequential child module may be empty, the evaluation module may be omitted.
+
+::
+
+   q)m:module`transform
+
+   q)module(m; 1; `sequential)           // define random flip & crop, zscore for training inputs
+   q)module(m; 2; (`randomflip;.5;-1))
+   q)module(m; 2; (`randomcrop; 32; 4))
+   q)module(m; 2; (`zscore; .5; .25))
+
+   q)module(m; 1; `sequential)           // define zscore only for evaluation mode
+   q)module(m; 2; (`zscore; .5; .25))
+
+   q)-2 str m;  // PyTorch string representation of the transform
+   Transform((
+     (train): torch::nn::Sequential(
+       (0): RandomFlip(p=0.5, dim=-1)
+       (1): RandomCrop(size=[32, 32], pad=[4, 4, 4, 4])
+       (2): Zscore(mean=0.5, stddev=0.25, inplace=false)
+     )
+     (eval): torch::nn::Sequential(
+       (0): Zscore(mean=0.5, stddev=0.25, inplace=false)
+     )
+   )
+
 .. index:: randomcrop
 
 .. _module-randomcrop:
 
 Random cropping
 ^^^^^^^^^^^^^^^
+
+::
+
+   q)help`randomcrop
+   size   | 32
+   pad    | 4
+   padmode| `reflect
+   value  | 0f
+
+   q)m:module enlist(`randomcrop;5;1)
+
+   q)tensor r:forward(m;5 5#1)
+   0 0 0 0 0
+   0 1 1 1 1
+   0 1 1 1 1
+   0 1 1 1 1
+   0 1 1 1 1
+
+   q)use[r]forward(m;5 5#1)
+   q)tensor r
+   1 1 1 1 0
+   1 1 1 1 0
+   1 1 1 1 0
+   1 1 1 1 0
+   0 0 0 0 0
 
 .. index:: randomflip
 
@@ -355,9 +406,53 @@ Random cropping
 Random flipping
 ^^^^^^^^^^^^^^^
 
+PyTorch has transforms for
+`horizontal <https://pytorch.org/vision/stable/transforms.html#torchvision.transforms.RandomHorizontalFlip>`_ and
+`vertical <https://pytorch.org/vision/stable/transforms.html#torchvision.transforms.RandomVerticalFlip>`_ flips where the image is randomly flipped with the given probability. The ``randomflip`` module in the k api takes a second argument of dimension to flip, e.g. -1 for last or horizontal flip, -2 for 2nd to last or vertical flip. The input image can have several leading dimensions, e.g. n x c x h x w where n is number of images, c is number of channels, h & w are height and width.
+
+::
+
+   q)help `randomflip
+   p  | 0.5
+   dim| -1
+
+   q)m:module enlist(`randomflip; .8; -1)  / high prob of flip along last dim
+
+   q)tensor r:forward(m; 4 4#til 16)
+   3  2  1  0 
+   7  6  5  4 
+   11 10 9  8 
+   15 14 13 12
+
+   q)v:module enlist(`randomflip; .8; -2)  / vertical flip
+
+   q)use[r]forward(v; 64 3 4 4#til 3072)  / 64 3-channel images, 4x4
+   q)tensor[(r;0)][0]
+   12 13 14 15
+   8  9  10 11
+   4  5  6  7 
+   0  1  2  3 
+
 .. index:: zscore
 
 .. _module-zscore:
 
 Zscore
 ^^^^^^
+
+::
+
+   q)help `zscore
+   mean   | 0.51 0.49 0.47
+   std    | 0.25 0.25 0.21
+   inplace| 0b
+
+   q)x:1000?100.0
+   q)m:module enlist(`zscore; avg x; sdev x)
+
+   q)tensor r:forward(m;x)
+   1.559878 -1.312209 1.343763 0.9798773 -0.8676595 0.5637196 -1.044945 -0.63768..
+
+   q)(avg;sdev)@\:tensor r
+   3.730349e-17 1
+
