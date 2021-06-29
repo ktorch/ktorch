@@ -7,8 +7,44 @@ The following modules are not directly available in PyTorch;
 these modules were defined for the k api either for convenience when only the functional form is defined in PyTorch,
 or to allow modules to be defined with a sequential or sequential-like container which defines the forward calculation implicitly.
 
+The k api modules are defined in `knn.h <https://github.com/ktorch/ktorch/blob/master/knn.h>`_.
+
+For example, the ``SeqNest`` module is defined to create a nestable Sequential module by fixing the forward method to return a tensor (rather than the standard, templated return which cannot be nested within another Sequential module. See..)
+
+::
+
+   // ----------------------------------------------------------------------------------
+   // SeqNest - derived from Sequential to allow nested sequentials 
+   //         - no templatized forward result means can be stored as an AnyModule
+   //         - forward method accepts up to three tensors x,y,z w'y & z optional
+   //           forward result is tensor only
+   // ---------------------------------------------------------------------------------
+   class TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
+     public:
+     using SequentialImpl::SequentialImpl;
+   
+     void pretty_print(std::ostream& stream) const override {
+       stream << "SeqNest";
+     }
+   
+     torch::Tensor forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
+      if(y.defined())
+       return z.defined() ? SequentialImpl::forward(x,y,z) : SequentialImpl::forward(x,y);
+      else
+       return SequentialImpl::forward(x);
+     }
+
+    protected:
+     FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
+   };
+
+   TORCH_MODULE(SeqNest);
+
+
 Convenience modules
 *******************
+
+The following module form of defined PyTorch functions collects the function options and stores them in a module, invoking the function with the options as the module's ``forward`` method.
 
 .. index:: pad
 
@@ -341,7 +377,7 @@ Transformation modules
 Transform container
 ^^^^^^^^^^^^^^^^^^^
 
-The ``transform`` module is somewhat similar to PyTorch's `vision transformers <https://pytorch.org/vision/stable/transforms.html>`_ in that it defines a set of transformations to perform on image data. The k api module can contain up to two sequential modules, the first for defining transforms on inputs when the module is in training mode, the second sequential contains transforms to perform on inputs when the module is in evaluation mode. Either sequential child module may be empty, the evaluation module may be omitted.
+The ``transform`` module is somewhat similar to PyTorch's `vision transformer <https://pytorch.org/vision/stable/transforms.html>`_ in that it defines a set of transformations to perform on image data. The k api module can contain up to two sequential modules, the first for defining transforms on inputs when the module is in training mode, the second sequential contains transforms to perform on inputs when the module is in evaluation mode. Either sequential child module may be empty, the evaluation module may be omitted.
 
 ::
 
@@ -375,8 +411,8 @@ Random cropping
 ^^^^^^^^^^^^^^^
 
 The ``randomcrop`` module is similar to PyTorch's
-`RandomCrop <https://pytorch.org/vision/stable/transforms.html?highlight=randomcrop#torchvision.transforms.RandomCrop>`_  transform, taking arguments of desired output size, amount of padding (a single number or all 4 numbers for left,right,top,bottom), padding mode and fill value if padding mode=```constant``.
-See :ref:`module_pad` for more on the padding that is applied prior to the cropping.
+`RandomCrop <https://pytorch.org/vision/stable/transforms.html?highlight=randomcrop#torchvision.transforms.RandomCrop>`_  transform, taking arguments of desired output size, amount of padding (a single number or all 4 numbers for left,right,top,bottom), padding mode and fill value if padding mode = ```constant``.
+See :ref:`pad <module_pad>` for more on the padding that is applied prior to the cropping.
 
 ::
 
