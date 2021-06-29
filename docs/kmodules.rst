@@ -374,6 +374,10 @@ The ``transform`` module is somewhat similar to PyTorch's `vision transformers <
 Random cropping
 ^^^^^^^^^^^^^^^
 
+The ``randomcrop`` module is similar to PyTorch's
+`RandomCrop <https://pytorch.org/vision/stable/transforms.html?highlight=randomcrop#torchvision.transforms.RandomCrop>`_  transform, taking arguments of desired output size, amount of padding (a single number or all 4 numbers for left,right,top,bottom), padding mode and fill value if padding mode=```constant``.
+See :ref:`module_pad` for more on the padding that is applied prior to the cropping.
+
 ::
 
    q)help`randomcrop
@@ -439,6 +443,8 @@ PyTorch has transforms for
 
 Zscore
 ^^^^^^
+
+The ``zscore`` module is similar to PyTorch's `normalize <https://pytorch.org/vision/stable/transforms.html?highlight=normalize#torchvision.transforms.Normalize>`_ transform.  The argument are the mean(s) and standard deviation(s), along with a flag for transforming the tensor in place. Means and standard deviations can be supplied for each RGB channel or in some other form where the sample statistics can be broadcast across the input tensor.
 
 ::
 
