@@ -4046,48 +4046,6 @@ KAPI module(K x) {
 }
 
 // ------------------------------------------------------------------------------------------
-// kclip - handle input ptr to allocated tensor/vector/dict/module/model and args
-//  clip - api function for clipping gradient norm
-// clipv - api function for clipping gradient value
-// ------------------------------------------------------------------------------------------
-static K kclip(bool b,F f,F p,TensorVector& v) {
- if(b)
-  return kf(torch::nn::utils::clip_grad_norm_(v,f,p));
- else
-  return torch::nn::utils::clip_grad_value_(v,f), (K)0;
-}
-
-static K kclip(bool b,F f,F p,Tensor &t)     {auto v=TensorVector{t}; return kclip(b,f,p,v);}
-static K kclip(bool b,F f,F p,TensorDict &d) {auto v=d.values();      return kclip(b,f,p,v);}
-static K kclip(bool b,F f,F p,Moduleptr &m)  {auto v=m->parameters(); return kclip(b,f,p,v);}
-
-static K kclip(K x, bool b,const char *c) {
- KTRY
-  Ktag *g=xtag(x,0); F f,p=2.0;
-  TORCH_CHECK(g, c,": expects tensor(s), module or model as 1st of 2",(b ? "-3" : "")," args");
-  if(b) {
-   TORCH_CHECK(x->n==2 || x->n==3, c,": expects 2-3 args, (",mapclass(g->a),"; max norm; norm exponent)");
-  } else {
-   TORCH_CHECK(x->n==2, c,": expects 2 args, (",mapclass(g->a),"; value)");
-  }
-  TORCH_CHECK(xnum(x,1,f), c,": 2nd arg, ",(b ? "max norm" : "max value"),", is ",kname(x,1),", expecting long/double");
-  if(x->n==3)
-   TORCH_CHECK(xnum(x,2,p), c,": 3rd arg, norm exponent, is ",kname(x,2),", expecting long/double");
-  switch(g->a) {
-   case Class::tensor: return kclip(g,f,p,*xten(x,1));
-   case Class::vector: return kclip(b,f,p,*xvec(x,1));
-   case Class::dict:   return kclip(b,f,p,((Kdict*)g)->d);
-   case Class::module: return kclip(b,f,p,((Kmodule*)g)->m);
-   case Class::model:  return kclip(b,f,p,((Kmodel*)g)->m);
-   default: TORCH_ERROR(c,": not implemented for ",mapclass(g->a));
-  }
- KCATCH(c);
-}
-
-KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
-KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
-
-// ------------------------------------------------------------------------------------------
 //  modulehelp - return a table, via q)module`help, or single dict of options, help`conv2d
 // ------------------------------------------------------------------------------------------
 K modulehelp(Cast c) {
@@ -4253,9 +4211,7 @@ KAPI contain(K x) {
 // ----------------------------------
 void nnfn(K x) {
  fn(x, "seq",         KFN(seq),          1);    // convenience fn for sequential layers
- fn(x, "module",      KFN(module),       1);    // api function for layer create/query
- fn(x, "clip",        KFN(clip),         1);    // api function for layer create/query
- fn(x, "clipv",       KFN(clipv),        1);    // api function for layer create/query
+ fn(x, "module",      KFN(module),       1);    // api function for module create/query
 
  fn(x, "adaptavg1d",  KFN(adaptavg1d),   1);    // functional form of modules/activations
  fn(x, "adaptavg2d",  KFN(adaptavg2d),   1);

@@ -282,6 +282,45 @@ KAPI training(K x) {
  KCATCH("training");
 }
 
+// ------------------------------------------------------------------------------------------
+// kclip - handle input ptr to allocated tensor/vector/dict/module/model and args
+//  clip - api function for clipping gradient norm
+// clipv - api function for clipping gradient value
+// ------------------------------------------------------------------------------------------
+static K kclip(bool b,F f,F p,const TensorVector& v) {
+ std::cerr << "in kclip, b: " << b << "\n";
+ if(b)
+  return kf(torch::nn::utils::clip_grad_norm_(v,f,p));
+ else
+  return torch::nn::utils::clip_grad_value_(v,f), (K)0;
+}
+
+static K kclip(K x, bool b,const char *c) {
+ KTRY
+  Ktag *g=xtag(x,0); F f,p=2.0;
+  TORCH_CHECK(g, c,": expects tensor(s), module or model as 1st of 2",(b ? "-3" : "")," args");
+  if(b) {
+   TORCH_CHECK(x->n==2 || x->n==3, c,": expects 2-3 args, (",mapclass(g->a),"; max norm; norm exponent)");
+  } else {
+   TORCH_CHECK(x->n==2, c,": expects 2 args, (",mapclass(g->a),"; value)");
+  }
+  TORCH_CHECK(xnum(x,1,f), c,": 2nd arg, ",(b ? "max norm" : "max value"),", is ",kname(x,1),", expecting long/double");
+  if(x->n==3)
+   TORCH_CHECK(xnum(x,2,p), c,": 3rd arg, norm exponent, is ",kname(x,2),", expecting long/double");
+  switch(g->a) {
+   case Class::tensor: return kclip(b,f,p,TensorVector{((Kten*)g)->t});
+   case Class::vector: return kclip(b,f,p,((Kvec*)g)->v);
+   case Class::dict:   return kclip(b,f,p,((Kdict*)g)->d.values());
+   case Class::module: return kclip(b,f,p,((Kmodule*)g)->m->parameters());
+   case Class::model:  return kclip(b,f,p,((Kmodel*)g)->m->parameters());
+   default: TORCH_ERROR(c,": not implemented for ",mapclass(g->a));
+  }
+ KCATCH(c);
+}
+
+KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
+KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
+
 // -------------------------------------------------------------------------------------------
 // add model api functions to library dictionary
 // -------------------------------------------------------------------------------------------
@@ -290,47 +329,7 @@ void modelfn(K x) {
  fn(x, "train",      KFN(ktrain),    1);
  fn(x, "training",   KFN(training),  1);
  fn(x, "evaluate",   KFN(evaluate),  1);
+ fn(x, "clip",       KFN(clip),      1);
+ fn(x, "clipv",      KFN(clipv),     1);
 }
-
-/*
- main functions:
-
- step
- train/evaluate
- forward
- backward/loss
-
- train(m; v; ix; iy; window; epochs; shuffle)   / train(m; v; 0; 1; 30; 1; 1b)
- train(m; d; kx; ky; window; epochs; shuffle)   / train(m; d;`x;`y; 30; 1; 1b)
-
- train(m; d; (kx;ky);   train(m;d;(`x1`x2;`y);30)
- train(m;(d;`x); (d;`y); 
- train(m; (x1;x2); y; ..)
-
- forward(m; x)
- forward(m; z; y)
- forward(m; x; y; z)
- forward(m; v)
- forward(m; v; i)
- 
-
- forward(m; (v;0 1); t)
-
- backward(m; 
-
--------------------------------------------------------------------
-
- auto step=[&](Optimizer& o, Sequential m, Tensor x, Tensor y) {
-     auto f=[&]() {
-       o.zero_grad();
-       auto x=m->forward(x);
-       auto l=torch::binary_cross_entropy(x,y);
-       l.backward();
-       return l;
-     };
-     return o.step(f);
-   };
- Tensor loss=step(o,m,x,y);
-
-*/
 

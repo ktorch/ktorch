@@ -46,7 +46,7 @@ Putting all the steps into a function ``f`` which frees intermediate tensors and
 
 ::
 
-   q)f:{[q;l;o;x;y]zerograd o; rx:forward(q;x); r:tensor ry:loss(l;rx;y); backward ry; free each(rx;ry); step o; r}
+   q)f:{[q;l;o;x;y]zerograd o; x:forward(q;x); r:tensor y:loss(l;x;y); backward y; free each(x;y); step o; r}
 
    q)\ts:3 show f[q;l;o;x;y]
    1.031206e
