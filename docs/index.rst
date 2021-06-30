@@ -56,11 +56,8 @@ Training
    :maxdepth: 1
 
    opt 
-
-.. toctree::
-   :maxdepth: 1
-
    model
+   train
  
 Index
 =====

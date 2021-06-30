@@ -705,7 +705,6 @@ class TORCH_API TransformImpl : public torch::nn::Cloneable<TransformImpl> {
   } else {
    return eval.is_empty()  || !eval->children().size()  ? x : eval->forward(x);
   }
-  return torch::tensor(1);
  }
 
  torch::nn::Sequential train = nullptr;

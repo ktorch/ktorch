@@ -18,6 +18,22 @@ Tensor trainstep(Kmodel *m,const Tensor& x,const Tensor& y) {
  return step(m,x,y);
 }
 
+KAPI tbatch(K x) {
+ KTRY
+  Kmodel *m=xmodel(x,0);
+  TORCH_CHECK(m && x->n>1, "trainbatch: unrecognized arg(s), expected 1st arg of model & subsequent inputs");
+  if(x->n==2) {
+   // check for tensor, vector or dictionary
+  } else if(x->n==3) {
+   // check for tensor, vector, dictionary or (vector;i) (dictionary;k)
+   // if vector/dictionary, check for i (i;j) k or (k1;k2)
+  } else {
+   TORCH_ERROR("trainbatch: expecting 2-3 args, given ",x->n);
+  }
+  return (K)0;
+ KCATCH("train batch");
+}
+
 enum class metric {
  Undefined=0,
  Output=1,
