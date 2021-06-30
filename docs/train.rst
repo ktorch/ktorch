@@ -12,7 +12,7 @@ Given a set of inputs and targets, the main training steps are:
 - use an optimizer to reduce the parameters by some fraction of the gradients
 
 
-From the starting examples using generated `spirals <>`_,
+From the starting examples using generated `spirals <https://github.com/ktorch/examples/blob/master/start/spirals.q>`_,
 begin with module ``q``, loss ``l`` and optimizer ``o``:
 
 ::
@@ -41,3 +41,15 @@ With these  PyTorch objects, the k api training steps become:
    q)ry:loss(l;rx;y)     /calculate loss from output & target
    q)backward ry         /backward calc computes parameter gradients
    q)step o              /use optimizer to update parameters from gradients
+
+Putting all the steps into a function ``f`` which frees intermediate tensors and returns loss:
+
+::
+
+   q)f:{[q;l;o;x;y]zerograd o; rx:forward(q;x); r:tensor ry:loss(l;rx;y); backward ry; free each(rx;ry); step o; r}
+
+   q)\ts:3 show f[q;l;o;x;y]
+   1.031206e
+   0.9710665e
+   0.9085126e
+   5 4194736
