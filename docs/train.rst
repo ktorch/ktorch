@@ -8,9 +8,7 @@ Given a set of inputs and targets, the main training steps are:
 - call the forward method of the module describing the neural network to get model outputs
 - call the loss function with the model outputs and targets
 - compute the gradients on all the parameters involved in the loss calculation
-- clip the gradients (optional)
 - use an optimizer to reduce the parameters by some fraction of the gradients
-
 
 From the starting examples using generated `spirals <https://github.com/ktorch/examples/blob/master/start/spirals.q>`_,
 begin with module ``q``, loss ``l`` and optimizer ``o``:

@@ -287,32 +287,42 @@ KAPI training(K x) {
 //  clip - api function for clipping gradient norm
 // clipv - api function for clipping gradient value
 // ------------------------------------------------------------------------------------------
-static K kclip(bool b,F f,F p,const TensorVector& v) {
- std::cerr << "in kclip, b: " << b << "\n";
- if(b)
-  return kf(torch::nn::utils::clip_grad_norm_(v,f,p));
+static F kclip(bool a,F f,F p,const TensorVector& v) {
+ if(a)
+  return torch::nn::utils::clip_grad_norm_(v,f,p);
  else
-  return torch::nn::utils::clip_grad_value_(v,f), (K)0;
+  return torch::nn::utils::clip_grad_value_(v,f), 0;
 }
 
-static K kclip(K x, bool b,const char *c) {
+static K kclip(K x,bool a,const char *c) {
  KTRY
-  Ktag *g=xtag(x,0); F f,p=2.0;
-  TORCH_CHECK(g, c,": expects tensor(s), module or model as 1st of 2",(b ? "-3" : "")," args");
-  if(b) {
-   TORCH_CHECK(x->n==2 || x->n==3, c,": expects 2-3 args, (",mapclass(g->a),"; max norm; norm exponent)");
+  Ktag *g=xtag(x,0); F f,p=2.0; bool b=false;
+  TORCH_CHECK(g, c,": expects tensor(s), module, model or optimizer as 1st of 2",(a ? "-4" : "")," args");
+  if(a) {
+   TORCH_CHECK(x->n>1 && x->n<5, c,": expects 2-4 args, (",mapclass(g->a),"; max norm; norm exponent; group flag)");
   } else {
    TORCH_CHECK(x->n==2, c,": expects 2 args, (",mapclass(g->a),"; value)");
   }
-  TORCH_CHECK(xnum(x,1,f), c,": 2nd arg, ",(b ? "max norm" : "max value"),", is ",kname(x,1),", expecting long/double");
-  if(x->n==3)
+  TORCH_CHECK(xnum(x,1,f), c,": 2nd arg, ",(a ? "max norm" : "max value"),", is ",kname(x,1),", expecting long/double");
+  if(x->n>2)
    TORCH_CHECK(xnum(x,2,p), c,": 3rd arg, norm exponent, is ",kname(x,2),", expecting long/double");
+  if(x->n>3)
+   TORCH_CHECK(xbool(x,3,b), c,": 4th arg, group flag, is ",kname(x,3),", expecting boolean");
   switch(g->a) {
-   case Class::tensor: return kclip(b,f,p,TensorVector{((Kten*)g)->t});
-   case Class::vector: return kclip(b,f,p,((Kvec*)g)->v);
-   case Class::dict:   return kclip(b,f,p,((Kdict*)g)->d.values());
-   case Class::module: return kclip(b,f,p,((Kmodule*)g)->m->parameters());
-   case Class::model:  return kclip(b,f,p,((Kmodel*)g)->m->parameters());
+   case Class::tensor:    return kf(kclip(a,f,p,TensorVector{((Kten*)g)->t}));
+   case Class::vector:    return kf(kclip(a,f,p,((Kvec*)g)->v));
+   case Class::dict:      return kf(kclip(a,f,p,((Kdict*)g)->d.values()));
+   case Class::module:    return kf(kclip(a,f,p,((Kmodule*)g)->m->parameters()));
+   case Class::model:     return kf(kclip(a,f,p,((Kmodel*)g)->m->parameters()));
+   case Class::optimizer:
+    if(a || !b) { //if clip by value or group flag off, consider all parameters across groups for clipping
+     return kf(kclip(a,f,p,((Kopt*)g)->m->parameters()));
+    } else {
+     const auto& y=((Kopt*)g)->o->param_groups();
+     K r=ktn(KF,y.size()); J i=0;
+     for(const auto& z:y) kF(r)[i++]=kclip(a,f,p,z.params()); //clip by parameter group
+     return r;
+    }
    default: TORCH_ERROR(c,": not implemented for ",mapclass(g->a));
   }
  KCATCH(c);
