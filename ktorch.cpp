@@ -1415,52 +1415,6 @@ static K kinfo(K x,bool b,const char* e) {
 KAPI info1(K x) {return kinfo(x, false, "info");}
 KAPI info2(K x) {return kinfo(x, true,  "detail");}
 
-// -----------------------------------------------------------------------------------------
-// zerograd - zero gradients on tensor, vector of tensors, optimizer, sequential or model
-// forward - forward calcs on sequential module or model
-// kbackward - backward calcs on tensor or model(uses model loss(model output,target) )
-// -----------------------------------------------------------------------------------------
-KAPI zerograd(K x) {
- KTRY
-  auto *g=xtag(x);
-  auto f=[](Tensor& t) {if(t.grad().defined()) t.grad().detach().zero_();};
-  TORCH_CHECK(g, "zerograd not implemented for ",kname(x->t));
-  switch(g->a) {
-   case Class::tensor:     f(((Kten*)g)->t); break;
-   case Class::vector:     for(auto& t:((Kvec*)g)->v) f(t); break;
-   case Class::optimizer:  ((Kopt*)g)->o->zero_grad(); break;
-   case Class::model:      ((Kmodel*)g)->o->zero_grad(); break;
-   default: TORCH_ERROR("zerograd not implemented for ",mapclass(g->a));
-  }
-  return (K)0;
- KCATCH("zero gradients");
-}
-
-KAPI forward(K x) {
- KTRY
-  Ktag *g=xtag(x,0);
-  TORCH_CHECK(g, "forward: expects module/model as first arg, with tensor(s)/vector/dictionary as additional args");
-  switch(g->a) {
-   case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
-   case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}
-   default: TORCH_ERROR("forward not implemented for ",mapclass(g->a));
-  }
- KCATCH("forward");
-}
-
-KAPI kbackward(K x) {
- KTRY
-  Ktag *g;
-  TORCH_CHECK((g=xtag(x)) || (g=xtag(x,0)), "backward expects a tensor or model as first arg");
-  switch(g->a) {
-   case Class::tensor: return tensorback(x);
-   case Class::model:  return mbackward(x);
-   default: TORCH_ERROR("backward not implemented for ",mapclass(g->a));
-  }
-  return (K)0;
- KCATCH("backward");
-}
-
 // ---------------------------------------------------------------------------------------------
 // cudadevices - return number of CUDA devices enabled or available CUDA device symbols
 // cudadevice - k interface to set/query current CUDA device, e.g. `cuda:0 
@@ -2049,9 +2003,6 @@ KAPI fns(K x){
  fn(x, "info",        KFN(info1),       1);
  fn(x, "detail",      KFN(info2),       1);
  fn(x, "state",       KFN(kstate),      1);
- fn(x, "forward",     KFN(forward),     1);
- fn(x, "zerograd",    KFN(zerograd),    1);
- fn(x, "backward",    KFN(kbackward),   1);
  fn(x, "setting",     KFN(setting),     1);
  fn(x, "config",      KFN(config),      1);
  fn(x, "version",     KFN(version),     1);

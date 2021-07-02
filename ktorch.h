@@ -576,7 +576,6 @@ int64_t subsets(int64_t w,int64_t n,bool b=false);
 void subset(Tensor& t,int64_t d,int64_t i,int64_t w,int64_t n=0);
 void subset(TensorVector& v,int64_t d,int64_t i,int64_t w,int64_t n=0);
 void setsafe(Tensor& t,int64_t,const IntArrayRef&,const IntArrayRef&);
-K tensorback(K);
 void tensorfn(K);
 
 // nn module & functional routines:
@@ -598,12 +597,14 @@ std::string mlabel(const Module&);
 std::string mlabel(const Moduleptr&);
 std::string mlabel(Kmodule*);
 Cast mcast(const Module&);
+Cast msym(S);
+S msym(Cast);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
-K mforward(Cast,Result,Module&,K);
 Tensor mforward(Cast,Module&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
+TensorVector vforward(Cast,Result,Module&,const Tensor&,const Tensor&,const Tensor&);
 K modulehelp(Cast);
 void nnfn(K);
 

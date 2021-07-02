@@ -34,6 +34,28 @@ KAPI tbatch(K x) {
  KCATCH("train batch");
 }
 
+KAPI ganstep(K a) {
+ KTRY
+  Kmodel *d=xmodel(a,0), *g=xmodel(a,1);
+  TORCH_CHECK(d && g, "ganstep: supply discriminator & generator model as 1st & 2nd args");
+  TORCH_CHECK(d->oc != Cast::lbfgs, "Cannout use lbfgs optimizer with discriminator");
+  TORCH_CHECK(g->oc != Cast::lbfgs, "Cannout use lbfgs optimizer with generator");
+  Tensor* x=xten(a,1); Tensor* y=xten(a,2); Tensor* z=xten(a,3);
+  d->o->zero_grad();
+  Tensor l0=mloss(d, *x, (*y)[0]);
+  l0.backward();
+  Tensor gx=mforward(g->mc,*g->m,*z);
+  Tensor l1=mloss(d, gx.detach(), (*y)[1]);
+  l1.backward();
+  d->o->step();
+  g->o->zero_grad();
+  Tensor l2=mloss(d, gx, (*y)[2]);
+  l2.backward();
+  g->o->step();
+  return(K)0;
+ KCATCH("ganstep");
+}
+
 enum class metric {
  Undefined=0,
  Output=1,

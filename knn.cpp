@@ -46,12 +46,12 @@ static K mopt(bool,bool,Cast,const Module&);
 // mpair - throw error if unrecognized name in name-value pairs
 // mkeys - keys for dict/table of module state: `depth`module`name`options`parms`buffers
 // -----------------------------------------------------------------------------------
-static S msym(Cast c) {
+S msym(Cast c) {
  for(auto& m:env().module) if(c==std::get<1>(m)) return std::get<0>(m);
  TORCH_ERROR("unrecognized module: cannot translate enumeration ",(I)c," to symbol");
 }
 
-static Cast msym(S s) {
+Cast msym(S s) {
  for(const auto& m:env().module) if(s==std::get<0>(m)) return std::get<1>(m);
  TORCH_ERROR("unrecognized module: ",s);
 }
@@ -518,70 +518,6 @@ TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
   case Cast::sequential: return vforward(c,r,m.as<nn::Sequential>(),x,y,z);
   default:
    TORCH_ERROR("unrecognized layer: ",mlabel(m),", unable to run forward calculation");
- }
-}
-
-// ----------------------------------------------------------------------------------------
-// mforward 
-// ----------------------------------------------------------------------------------------
-size_t tensorcount(const Tensor& x,const Tensor& y,const Tensor& z) {
- if(x.defined() && !y.defined() && !z.defined())
-  return 1;
- else if(x.defined() && y.defined() && !z.defined())
-  return 2;
- else if(x.defined() && y.defined() && z.defined())
-  return 3;
- else if(!x.defined())
-  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
- else
-  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
-}
-
-K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y={},const Tensor& z={});
-K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Tensor& z) {
- switch(r) {
-  case Result::tensor:
-   switch(tensorcount(x,y,z)) {
-    case 1: return kten(mforward(c,m,x));
-    case 2: return kten(mforward(c,m,x,y));
-    case 3: return kten(mforward(c,m,x,y,z));
-    default: TORCH_ERROR("forward: unrecognized tensor arg(s)");
-   }
-  case Result::vector:
-  case Result::tuple:
-  case Result::nested:
-   return kvec(vforward(c,r,m,x,y,z));
-  case Result::none:
-   TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
-  case Result::undefined:
-   TORCH_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
-  default: TORCH_ERROR("forward: unrecognized result enumeration(",(I)r,") for ",mlabel(m));
- }
-}
-
-K mforward(Cast c,Result r,Module& m,K a) {
- Tensor x,y,z; TensorVector *v;
- if((v=xvec(a,1))) {
-  TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
-  IntArrayRef i;
-  if(a->n==2) {
-   return mforward(c, r, m, v->at(0));
-  } else if(a->n==3 && xsize(a,2,i)) {
-   switch(i.size()) {
-    case 1: return mforward(c, r, m, v->at(i[0]));
-    case 2: return mforward(c, r, m, v->at(i[0]), v->at(i[1]));
-    case 3: return mforward(c, r, m, v->at(i[0]), v->at(i[1]), v->at(i[2]));
-    default: TORCH_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
-   }
-  } else {
-   TORCH_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
-  }
- } else {
-  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: module/model and up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
-  if(!xten(a,1,x))            x=kput(a,1);
-  if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
-  if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
-  return a->n==2 ? mforward(c,r,m,x) : (a->n==3 ? mforward(c,r,m,x,y) : mforward(c,r,m,x,y,z));
  }
 }
 

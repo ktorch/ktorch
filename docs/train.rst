@@ -51,3 +51,36 @@ Putting all the steps into a function ``f`` which frees intermediate tensors and
    0.9710665e
    0.9085126e
    5 4194736
+
+
+Zero gradients
+**************
+
+
+Backward calculation
+********************
+
+::
+
+   q)z:mean y:mul(x;x:tensor(1 2 3e;`grad))
+
+   q)select name:`x`y`z,device,dtype,gradient,gradfn,leaf from info'[(x;y;z)]
+   name device dtype gradient gradfn        leaf
+   ---------------------------------------------
+   x    cpu    float grad                   1   
+   y    cpu    float grad     MulBackward0  0   
+   z    cpu    float grad     MeanBackward0 0   
+
+   q)backward(y;1e;`retain)
+   q)grad x
+   2 4 6e
+
+   q)zerograd x
+   q)grad x
+   0 0 0e
+
+   q)backward z
+
+   q)grad x
+   0.6666667 1.333333 2e
+

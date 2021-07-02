@@ -61,14 +61,110 @@ KAPI model(K x) {
  KCATCH("model");
 }
 
+// -----------------------------------------------------------------------------------------
+// zerograd - zero gradients on tensor, vector of tensors, optimizer, sequential or model
+// -----------------------------------------------------------------------------------------
+KAPI zerograd(K x) {
+ KTRY
+  auto *g=xtag(x);
+  auto f=[](Tensor& t) { if(t.grad().defined()){t.grad().detach_(); t.grad().zero_();} };
+  TORCH_CHECK(g, "zerograd not implemented for ",kname(x->t));
+  switch(g->a) {
+   case Class::tensor:     f(((Kten*)g)->t); break;
+   case Class::vector:     for(auto& t:((Kvec*)g)->v) f(t); break;
+   case Class::module:     ((Kmodule*)g)->m->zero_grad(); break;
+   case Class::optimizer:  ((Kopt*)g)->o->zero_grad(); break;
+   case Class::model:      ((Kmodel*)g)->o->zero_grad(); break;
+   default: TORCH_ERROR("zerograd not implemented for ",mapclass(g->a));
+  }
+  return (K)0;
+ KCATCH("zero gradients");
+}
+
 // -------------------------------------------------------------------------------------------
 // mforward - return tensor from running forward calcs on input(s)
+// forward - forward calcs on sequential module or model
+// -------------------------------------------------------------------------------------------
+static Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->mc,*m->m,x);}
+static Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m->mc,*m->m,v[0]);}
+
+static size_t tcount(const Tensor& x,const Tensor& y,const Tensor& z) {
+ if(x.defined() && !y.defined() && !z.defined())
+  return 1;
+ else if(x.defined() && y.defined() && !z.defined())
+  return 2;
+ else if(x.defined() && y.defined() && z.defined())
+  return 3;
+ else if(!x.defined())
+  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
+ else
+  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
+}
+
+K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y={},const Tensor& z={});
+K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Tensor& z) {
+ switch(r) {
+  case Result::tensor:
+   switch(tcount(x,y,z)) {
+    case 1: return kten(mforward(c,m,x));
+    case 2: return kten(mforward(c,m,x,y));
+    case 3: return kten(mforward(c,m,x,y,z));
+    default: TORCH_ERROR("forward: unrecognized tensor arg(s)");
+   }
+  case Result::vector:
+  case Result::tuple:
+  case Result::nested:
+   return kvec(vforward(c,r,m,x,y,z));
+  case Result::none:
+   TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
+  case Result::undefined:
+   TORCH_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
+  default: TORCH_ERROR("forward: unrecognized result enumeration(",(I)r,") for ",mlabel(m));
+ }
+}
+
+static K mforward(Cast c,Result r,Module& m,K a) {
+ Tensor x,y,z; TensorVector *v;
+ if((v=xvec(a,1))) {
+  TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
+  IntArrayRef i;
+  if(a->n==2) {
+   return mforward(c, r, m, v->at(0));
+  } else if(a->n==3 && xsize(a,2,i)) {
+   switch(i.size()) {
+    case 1: return mforward(c, r, m, v->at(i[0]));
+    case 2: return mforward(c, r, m, v->at(i[0]), v->at(i[1]));
+    case 3: return mforward(c, r, m, v->at(i[0]), v->at(i[1]), v->at(i[2]));
+    default: TORCH_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
+   }
+  } else {
+   TORCH_ERROR("forward with vector expects format of (module/model;vector) or (module/model;vector;indices)");
+  }
+ } else {
+  TORCH_CHECK(!a->t && a->n>1 && a->n<5, "forward expects 2-4 args: module/model and up to 3 tensors/arrays, e.g. (m;x) or (m;x;y;z)");
+  if(!xten(a,1,x))            x=kput(a,1);
+  if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
+  if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
+  return a->n==2 ? mforward(c,r,m,x) : (a->n==3 ? mforward(c,r,m,x,y) : mforward(c,r,m,x,y,z));
+ }
+}
+
+KAPI forward(K x) {
+ KTRY
+  Ktag *g=xtag(x,0);
+  TORCH_CHECK(g, "forward: expects module/model as first arg, with tensor(s)/vector/dictionary as additional args");
+  switch(g->a) {
+   case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
+   case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}
+   default: TORCH_ERROR("forward not implemented for ",mapclass(g->a));
+  }
+ KCATCH("forward");
+}
+
+// -------------------------------------------------------------------------------------------
 // mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(module(v[0]),v[1])
 // -------------------------------------------------------------------------------------------
-Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->mc,*m->m,x);}
-Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m->mc,*m->m,v[0]);}
-
 K mbackward(K a) {
  Kmodel *m=xmodel(a,0); Tensor *x,*y,r; TensorVector *v;
  TORCH_CHECK(m, "backward: first argument not a model");
@@ -95,6 +191,43 @@ Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
 
 Tensor mloss(Kmodel *m,const TensorVector &v) {return mloss(m,mforward(m,v),v);}
 Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {return lossfwd(m->lc,*m->l,mforward(m,x),y);}
+
+// -----------------------------------------------------------------------------------------
+// tbackward - backprop given tensor, optional tensor & sym for retain/create gradient graph
+// kbackward - backward calcs on tensor or model(uses model loss(model output,target) )
+// -----------------------------------------------------------------------------------------
+static K tbackward(K x) {
+ Tensor t; bool ok=false;
+ if(xten(x,t)) {
+  t.backward(); ok=true;
+ } else if(xten(x,0,t)) {
+  bool a=false,b=false; Tensor g; J n=x->n - xbacksym(x,x->n-1,a,b);
+  if(n==1) {
+    t.backward({},a,b); ok=true;
+  } else if(n==2) {
+   if(!xten(x,1,g)) g=kput(x,1).to(t.device());
+   if(!g.dim() && t.dim()) g.resize_as_(t).fill_(g[0]);
+   t.backward(g,a,b); ok=true;
+  } else if(n==1) {
+    t.backward({},a,b); ok=true;
+  }
+ }
+ TORCH_CHECK(ok, "backward: unexpected arg(s), expecting tensor, (tensor;sym), (tensor;grad tensor/array) or (tensor;grad tensor/array;sym)");
+ return (K)0;
+}
+
+KAPI kbackward(K x) {
+ KTRY
+  Ktag *g;
+  TORCH_CHECK((g=xtag(x)) || (g=xtag(x,0)), "backward expects a tensor or model as first arg");
+  switch(g->a) {
+   case Class::tensor: return tbackward(x);
+   case Class::model:  return mbackward(x);
+   default: TORCH_ERROR("backward not implemented for ",mapclass(g->a));
+  }
+  return (K)0;
+ KCATCH("backward");
+}
 
 // -------------------------------------------------------------------------------------------
 // trainbatch - run model's forward calc, loss, backward calcs and optimizer step in batches
@@ -158,26 +291,6 @@ KAPI ktrain(K x) {
    return KERR("train: unrecognized arg(s)");
   }
  KCATCH("train");
-}
-
-KAPI ganstep(K a) {
- KTRY
-  Kmodel *d=xmodel(a,0), *g=xmodel(a,1);
-  TORCH_CHECK(d && g, "ganstep: supply discriminator & generator model as 1st & 2nd args");
-  Tensor* x=xten(a,1); Tensor* y=xten(a,2); Tensor* z=xten(a,3);
-  d->o->zero_grad();
-  Tensor l0=mloss(d, *x, (*y)[0]);
-  l0.backward();
-  Tensor gx=mforward(g->mc,*g->m,*z);
-  Tensor l1=mloss(d, gx.detach(), (*y)[1]);
-  l1.backward();
-  optstep(d);
-  g->o->zero_grad();
-  Tensor l2=mloss(d, gx, (*y)[2]);
-  l2.backward();
-  optstep(g);
-  return(K)0;
- KCATCH("ganstep");
 }
 
 // --------------------------------------------------------------------------------------------
@@ -336,6 +449,9 @@ KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
 // -------------------------------------------------------------------------------------------
 void modelfn(K x) {
  fn(x, "model",      KFN(model),     1);
+ fn(x, "zerograd",   KFN(zerograd),  1);
+ fn(x, "forward",    KFN(forward),   1);
+ fn(x, "backward",   KFN(kbackward), 1);
  fn(x, "train",      KFN(ktrain),    1);
  fn(x, "training",   KFN(training),  1);
  fn(x, "evaluate",   KFN(evaluate),  1);

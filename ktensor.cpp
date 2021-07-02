@@ -1666,9 +1666,7 @@ KAPI tensorcopy_(K x) {
 
 // ------------------------------------------------------------------------------------------
 // kgrad - return gradient data or empty, if ptr enlisted, return gradient ptr (must free)
-// tensorback - backprop given tensor, optional tensor & sym for retain/create gradient graph
-// detach - detach tensor/vector/dictionary, with optional flag to perform detach in place
-// same - given two tensors, compares underlying ptr, returns true if same
+// gradflag - return requires gradient boolean (as opposed to sym of `grad/`nograd)
 // ------------------------------------------------------------------------------------------
 KAPI kgrad(K x) {
  KTRY
@@ -1705,26 +1703,6 @@ KAPI gradflag(K x) {
    TORCH_ERROR("gradflag: unrecognized arg(s), expecting tensor/vector/dictionary and optional flag");
   }
  KCATCH("gradflag");
-}
-
-K tensorback(K x) {
- Tensor t; bool ok=false;
- if(xten(x,t)) {
-  t.backward(); ok=true;
- } else if(xten(x,0,t)) {
-  bool a=false,b=false; Tensor g; J n=x->n - xbacksym(x,x->n-1,a,b);
-  if(n==1) {
-    t.backward({},a,b); ok=true;
-  } else if(n==2) {
-   if(!xten(x,1,g)) g=kput(x,1).to(t.device());
-   if(!g.dim() && t.dim()) g.resize_as_(t).fill_(g[0]);
-   t.backward(g,a,b); ok=true;
-  } else if(n==1) {
-    t.backward({},a,b); ok=true;
-  }
- }
- TORCH_CHECK(ok, "backward: unexpected arg(s), expecting tensor, (tensor;sym), (tensor;grad tensor/array) or (tensor;grad tensor/array;sym)");
- return (K)0;
 }
 
 // --------------------------------------------------------------------------------------
