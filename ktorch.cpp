@@ -353,16 +353,16 @@ static Ktype atype(K x) {return (x->t || !x->n) ? x->t : atype(kK(x)[0]);}
 
 bool xmixed(K x,J m) {      // check up to m elements of k value for mixed types/lengths
  Ktype t; J i,n;
- if(!x->t)                                              // if general list
-  if(x->n > 1) {                                        // with more than 1 element
-   t=atype(kK(x)[0]);                                   // 1st base type encountered
-   if(t>19) return true;                                // enums,maps,etc.
-   n=t<0 ? 1 : kK(x)[0]->n;                             // 1st size
-   if(m>x->n) m=x->n;                                   // check up to m elements
-   for(i=1;i<m;++i)
-    if(t != atype(kK(x)[i])) return true;               // different data type or scalar vs list
-    else if(n != (t<0 ? 1 : kK(x)[i]->n)) return true;  // different length
-  }
+ if(!x->t && x->n) {                                   // if non-empty general list
+  if(xptr(x) || xptr(x,0)) return true;                // if ptr, or ptr at 1st level
+  t=atype(kK(x)[0]);                                   // 1st base type encountered
+  if(t>19) return true;                                // enums,maps,etc.
+  n=t<0 ? 1 : kK(x)[0]->n;                             // 1st size
+  if(m>x->n) m=x->n;                                   // check up to m elements
+  for(i=1;i<m;++i)
+   if(t != atype(kK(x)[i])) return true;               // different data type or scalar vs list
+   else if(n != (t<0 ? 1 : kK(x)[i]->n)) return true;  // different length
+ }
  return false;
 }
 

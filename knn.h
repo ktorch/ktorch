@@ -344,19 +344,21 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
 
  std::vector<Tensor> forward(const Tensor& x,const Tensor& y,const Tensor& z) {
   std::vector<Tensor> v;
+  bool i=in.is_empty()  || in->is_empty();   // true if Sequential for input undefined or empty
+  bool o=out.is_empty() || out->is_empty();  // true if Sequential for output undefined or empty
   if(!lstm.is_empty()) {
-    Nested r=z.defined() ? lstm->forward(in->is_empty() ? x : in->forward(x), OptTuple(std::make_tuple(y,z)))
-                         : lstm->forward(in->is_empty() ? x : in->forward(x));
+    Nested r=z.defined() ? lstm->forward(i ? x : in->forward(x), OptTuple(std::make_tuple(y,z)))
+                         : lstm->forward(i ? x : in->forward(x));
     Tuple& h=std::get<1>(r);
     if(options.detach()) std::get<0>(h).detach_(), std::get<1>(h).detach_();
-    v.push_back(out->is_empty() ? std::get<0>(r) : out->forward(std::get<0>(r)));
+    v.push_back(o ? std::get<0>(r) : out->forward(std::get<0>(r)));
     v.push_back(std::get<0>(h));
     v.push_back(std::get<1>(h));
   } else if(!gru.is_empty() || !rnn.is_empty()) {
-    Tuple r=rnn.is_empty() ? gru->forward(in->is_empty() ? x : in->forward(x), y)
-                           : rnn->forward(in->is_empty() ? x : in->forward(x), y);
+    Tuple r=rnn.is_empty() ? gru->forward(i ? x : in->forward(x), y)
+                           : rnn->forward(i ? x : in->forward(x), y);
     if(options.detach()) std::get<1>(r).detach_();
-    v.push_back(out->is_empty() ? std::get<0>(r) : out->forward(std::get<0>(r)));
+    v.push_back(o ? std::get<0>(r) : out->forward(std::get<0>(r)));
     v.push_back(std::get<1>(r));
   } else {
    TORCH_CHECK(false, "recur: no recurrent lstm, gru or rnn module defined");

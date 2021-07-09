@@ -2,6 +2,218 @@
 #include "torch/script.h"
 namespace nn=torch::nn;
 
+// need template: Tensor first(const auto& x) {return std::get<0>(x);}
+/*
+class TORCH_API FirstImpl : public torch::nn::Cloneable<FirstImpl> {
+ public:
+ void reset() override {}
+ void pretty_print(std::ostream& s) const override {s << "First()";}
+ template<typename T> torch::Tensor forward(const T& x) {return std::get<0>(x);}
+};
+TORCH_MODULE(First);
+*/
+
+bool xpick(K x,Tensor& t) {
+ if(x->n==2) {
+  if(auto *v=xvec(x,0)) {
+   J i; TORCH_CHECK(xlong(x,1,i), "vector index expected, given ",kname(x,1));
+   return t=v->at(i), true;
+  } else if(auto *d=xtensordict(x,0)) {
+   S s; Tensor *p;
+   TORCH_CHECK(xsym(x,1,s), "dictionary key of symbol expected, given ",kname(x,1));
+   TORCH_CHECK(p=d->find(s),"dictionary key: ",s," not found");
+   return t=*p, true;
+  }
+ }
+ return false;
+}
+
+bool xpick(K x,J i,Tensor& t) {return xind(x,i) && xpick(kK(x)[i],t);}
+
+KAPI pick(K x) {
+ KTRY
+  Tensor t;
+  TORCH_CHECK(xpick(x,t), "Unrecognized arg(s)");
+  return kten(t);
+ KCATCH("pick");
+}
+
+using Tensors=std::array<Tensor,3>;
+
+void f(K a,J i) {
+ TensorVector *v; TensorDict *d=nullptr; Tensor x,y,z;
+ if((v=xvec(a,i+1))) {
+  if(a->n==2) {
+   TORCH_CHECK(v->size()>0, "empty tensor vector");
+  } else {
+   IntArrayRef j;
+   TORCH_CHECK(a->n==3,        "expecting (module/model;vector;indices) but given ",a->n," args");
+   TORCH_CHECK(xsize(a,i+2,j), "expecting (module/model;vector;indices) but 3rd argument is ",kname(a,2));
+  }
+ } else if((d=xtensordict(a,1))) {
+ } else {
+ }
+}
+
+void modelargs(const char *c,K x,Tensors& t,TensorVector *&v,TensorDict *&d) {
+ size_t n=0,m=t.size(); for(const auto& a:t) if(a.defined()) n++; else break;
+ std::cerr << "modelargs, tensor count: " << n << ", arg: " << kstring(x) << "\n";
+ TORCH_CHECK(n<m, c,": ",n," tensors already defined, additional arg(s) not implemented");
+ if(auto *g=xtag(x)) {
+  switch(g->a) {
+   case Class::tensor: t[n]=((Kten*)g)->t; break;
+   case Class::vector:
+    TORCH_CHECK(!n, c,": tensor/vector mix not implemented");
+    TORCH_CHECK(!v, c,": 2nd vector unexpected");
+    v=&((Kvec*)g)->v;  break;
+   case Class::dict: 
+    TORCH_CHECK(!n, c,": tensor/dictionary mix not implemented");
+    TORCH_CHECK(!d, c,": 2nd dictionary unexpected");
+    d=&((Kdict*)g)->d; break;
+   default:
+    TORCH_ERROR(c,": unexpected ",mapclass(g->a)," argument");
+  }
+ } else if(v) {
+  IntArrayRef vi; size_t i=0;
+  TORCH_CHECK(xsize(x,vi), c,": expecting vector indices, given ",kname(x));
+  TORCH_CHECK(vi.size()>0 && vi.size()<=m, "forward: expecting 1-",m," vector indices, ",vi.size()," given");
+  for(auto j:vi) t[i++]=v->at(j);
+ } else if(d) {
+  S s; J sn=xlen(x); Tensor *di;
+  TORCH_CHECK(xsyms(x,s), c,": expecting dictionary key(s), given",(sn ? " " : " empty "),kname(x));
+  TORCH_CHECK(sn>0 && sn<=m, c,": expecting 1-",m," dictionary keys, ",sn," given");
+  for(J i=0;i<sn;++i) {
+   if(i) s=kS(x)[i];
+   TORCH_CHECK(di=d->find(s), c,": dictionary key `",s," not found");
+   t[i]=*di;
+  }
+ } else if(xmixed(x,3)) {
+   for(J i=0; i<x->n; ++i)
+    modelargs(c,kK(x)[i],t,v,d);
+ } else {
+   t[n]=kput(x);
+ }
+}
+
+void modelvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
+ if(x->t == -KJ) {
+  t[0]=v->at(x->j);
+ } else if(x->t == KJ) {
+  TORCH_CHECK(x->n>0 && x->n<4, c,": expecting 1-3 ",(b ? "target" : "input")," indices, given ",x->n);
+  for(J i=0; i<x->n; ++i)
+   t[i]=v->at(kJ(x)[i]);
+ } else {
+  TORCH_ERROR(c,": ",(b ? "target" : "input")," indices expected, given ",kname(x));
+ }
+}
+
+void modelvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
+ if(a->n==2) {
+  TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
+  x[0]=v->at(0); y[0]=v->at(1);
+ } else {
+  TORCH_CHECK(a->n==3, c,": expecting 3 arguments, (model;vector;indices), given ", a->n);
+  K k=kK(a)[2];
+  if(k->t==KJ) {
+   TORCH_CHECK(k->n==2, c,": expecting 2 vector indices, input & target, given ",k->n);
+   x[0]=v->at(kJ(k)[0]); y[0]=v->at(kJ(k)[1]);
+  } else {
+   TORCH_CHECK(!k->t,   c,": expecting 2 sets of vector indices(inputs & targets), given ",kname(k));
+   TORCH_CHECK(k->n==2, c,": expecting 2 sets of vector indices(inputs & targets), given ",k->n);
+   for(J i=0; i<k->n; ++i)
+    modelvec(i,c,kK(k)[i],(i ? y : x),v);
+  }
+ } 
+}
+
+static Tensor* dfind(bool b,const char *c,TensorDict *d,S s) {
+ Tensor *t=d->find(s);
+ TORCH_CHECK(t, c,": unable to find ",(b ? "target" : "input")," key `",s);
+ return t;
+}
+
+void modeldict(bool b,const char *c,K x,Tensors& t,TensorDict *d) {
+ if(x->t == -KS) {
+   t[0]=*dfind(b,c,d,x->s);
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0 && x->n<4, c,": expecting 1-3 ",(b ? "target" : "input")," keys, given ",x->n);
+  for(J i=0; i<x->n; ++i)
+   t[i]=*dfind(b,c,d,kS(x)[i]);
+ } else {
+  TORCH_ERROR(c,": ",(b ? "target" : "input")," keys expected, given ",kname(x));
+ }
+}
+
+void modeldict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
+ if(a->n==2) {
+  //TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
+  //x[0]=v->at(0); y[0]=v->at(1);
+ } else {
+  TORCH_CHECK(a->n==3, c,": expecting 3 arguments, (model;vector;indices), given ", a->n);
+  K k=kK(a)[2];
+  if(k->t==KS) {
+   TORCH_CHECK(k->n==2, c,": expecting 2 dictionary keys, input & target, given ",k->n);
+   x[0]=*dfind(false,c,d,kS(k)[0]);
+   y[0]=*dfind(true, c,d,kS(k)[1]);
+  } else {
+   TORCH_CHECK(!k->t,   c,": expecting 2 sets of dictionary keys(inputs & targets), given ",kname(k));
+   TORCH_CHECK(k->n==2, c,": expecting 2 sets of dictionary keys(inputs & targets), given ",k->n);
+   for(J i=0; i<k->n; ++i)
+    modeldict(i,c,kK(k)[i],(i ? y : x),d);
+  }
+ } 
+}
+
+void argstate(const Tensors& t,TensorVector *v,TensorDict *d) {
+  if(t[2].defined())       std::cerr << "3 tensors defined\n";
+  else if(t[1].defined())  std::cerr << "2 tensors defined\n";
+  else if(t[0].defined())  std::cerr << "1 tensor defined\n";
+  else if(v)               std::cerr << "vector\n";
+  else if(d)               std::cerr << "dictionary\n";
+  else                     std::cerr << "UNEXPECTED ARG(S)!!!\n";
+}
+
+KAPI fwd2(K m,K x) {
+ KTRY
+  auto *g=xtag(m);
+  TORCH_CHECK(g && (g->a==Class::module || g->a==Class::model), "forward: 1st arg of module/model required, given ",kname(m));
+  Tensors t; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  modelargs("forward",x,t,v,d);
+  argstate(t,v,d);
+  return (K)0;
+ KCATCH("forward");
+}
+
+KAPI fwd(K a) {
+ KTRY
+  auto *g=xtag(a,0);
+  TORCH_CHECK(g && (g->a==Class::module || g->a==Class::model) && a->n>1, "forward: requires module/model and at least one input");
+  Tensors x; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  for(J i=1; i<a->n; ++i) modelargs("forward",kK(a)[i],x,v,d);
+  argstate(x,v,d);
+  return (K)0;
+ KCATCH("forward");
+}
+
+KAPI back(K a) {
+ KTRY
+  auto *g=xtag(a,0); const char *c="backward";
+  TORCH_CHECK(g && g->a==Class::model && a->n>2, "backward: expects model with inputs & targets");
+  Tensors x,y; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  modelargs("backward",kK(a)[1],x,v,d);
+  argstate(x,v,d);
+  if(v) {
+   modelvec(c,a,x,y,v);
+   argstate(y,v,d);
+  } else if(d) {
+  } else {
+   modelargs("backward",kK(a)[2],y,v,d);
+   argstate(y,v,d);
+  }
+  return (K)0;
+ KCATCH("backward");
+}
+
 Tensor mloss(Kmodel*m,const Tensor&,const Tensor&);
 
 Tensor trainstep(Kmodel *m,const Tensor& x,const Tensor& y) {
