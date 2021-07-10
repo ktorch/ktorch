@@ -12,6 +12,14 @@ class TORCH_API FirstImpl : public torch::nn::Cloneable<FirstImpl> {
 };
 TORCH_MODULE(First);
 */
+KAPI reformat(K x) {
+ KTRY
+  auto *m=xmodule(x);
+  TORCH_CHECK(m,"not a module");
+  std::cerr << *m->m->children()[0] << "\n";
+  return (K)0;
+ KCATCH("reformat");
+}
 
 bool xpick(K x,Tensor& t) {
  if(x->n==2) {
@@ -95,7 +103,7 @@ void modelargs(const char *c,K x,Tensors& t,TensorVector *&v,TensorDict *&d) {
  }
 }
 
-void modelvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
+void mvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
  if(x->t == -KJ) {
   t[0]=v->at(x->j);
  } else if(x->t == KJ) {
@@ -107,7 +115,7 @@ void modelvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
  }
 }
 
-void modelvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
+void mvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
  if(a->n==2) {
   TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
   x[0]=v->at(0); y[0]=v->at(1);
@@ -121,30 +129,30 @@ void modelvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
    TORCH_CHECK(!k->t,   c,": expecting 2 sets of vector indices(inputs & targets), given ",kname(k));
    TORCH_CHECK(k->n==2, c,": expecting 2 sets of vector indices(inputs & targets), given ",k->n);
    for(J i=0; i<k->n; ++i)
-    modelvec(i,c,kK(k)[i],(i ? y : x),v);
+    mvec(i,c,kK(k)[i],(i ? y : x),v);
   }
  } 
 }
 
-static Tensor* dfind(bool b,const char *c,TensorDict *d,S s) {
+static Tensor* mdict(bool b,const char *c,TensorDict *d,S s) {
  Tensor *t=d->find(s);
  TORCH_CHECK(t, c,": unable to find ",(b ? "target" : "input")," key `",s);
  return t;
 }
 
-void modeldict(bool b,const char *c,K x,Tensors& t,TensorDict *d) {
+void mdict(bool b,const char *c,K x,Tensors& t,TensorDict *d) {
  if(x->t == -KS) {
-   t[0]=*dfind(b,c,d,x->s);
+   t[0]=*mdict(b,c,d,x->s);
  } else if(x->t == KS) {
   TORCH_CHECK(x->n>0 && x->n<4, c,": expecting 1-3 ",(b ? "target" : "input")," keys, given ",x->n);
   for(J i=0; i<x->n; ++i)
-   t[i]=*dfind(b,c,d,kS(x)[i]);
+   t[i]=*mdict(b,c,d,kS(x)[i]);
  } else {
   TORCH_ERROR(c,": ",(b ? "target" : "input")," keys expected, given ",kname(x));
  }
 }
 
-void modeldict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
+void mdict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
  if(a->n==2) {
   //TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
   //x[0]=v->at(0); y[0]=v->at(1);
@@ -153,13 +161,13 @@ void modeldict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
   K k=kK(a)[2];
   if(k->t==KS) {
    TORCH_CHECK(k->n==2, c,": expecting 2 dictionary keys, input & target, given ",k->n);
-   x[0]=*dfind(false,c,d,kS(k)[0]);
-   y[0]=*dfind(true, c,d,kS(k)[1]);
+   x[0]=*mdict(false,c,d,kS(k)[0]);
+   y[0]=*mdict(true, c,d,kS(k)[1]);
   } else {
    TORCH_CHECK(!k->t,   c,": expecting 2 sets of dictionary keys(inputs & targets), given ",kname(k));
    TORCH_CHECK(k->n==2, c,": expecting 2 sets of dictionary keys(inputs & targets), given ",k->n);
    for(J i=0; i<k->n; ++i)
-    modeldict(i,c,kK(k)[i],(i ? y : x),d);
+    mdict(i,c,kK(k)[i],(i ? y : x),d);
   }
  } 
 }
@@ -203,7 +211,7 @@ KAPI back(K a) {
   modelargs("backward",kK(a)[1],x,v,d);
   argstate(x,v,d);
   if(v) {
-   modelvec(c,a,x,y,v);
+   mvec(c,a,x,y,v);
    argstate(y,v,d);
   } else if(d) {
   } else {

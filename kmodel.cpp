@@ -444,6 +444,103 @@ static K kclip(K x,bool a,const char *c) {
 KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
 KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
 
+// ----------------------------------------------------------------------------------------
+// mvec - routines to index into vector of tensors as part of args to forward/backward etc
+// ----------------------------------------------------------------------------------------
+static void mvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
+ if(x->t == -KJ) {
+  t[0]=v->at(x->j);
+ } else if(x->t == KJ) {
+  TORCH_CHECK(x->n>0 && x->n<4, c,": expecting 1-3 ",(b ? "target" : "input")," indices, given ",x->n);
+  for(J i=0; i<x->n; ++i)
+   t[i]=v->at(kJ(x)[i]);
+ } else {
+  TORCH_ERROR(c,": ",(b ? "target" : "input")," indices expected, given ",kname(x));
+ }
+}
+
+static void mvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
+ if(a->n==2) {
+  TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
+  x[0]=v->at(0); y[0]=v->at(1);
+ } else {
+  TORCH_CHECK(a->n==3, c,": expecting 3 arguments, (model;vector;indices), given ", a->n);
+  K k=kK(a)[2];
+  if(k->t==KJ) {
+   TORCH_CHECK(k->n==2, c,": expecting 2 vector indices, input & target, given ",k->n);
+   x[0]=v->at(kJ(k)[0]); y[0]=v->at(kJ(k)[1]);
+  } else {
+   TORCH_CHECK(!k->t,   c,": expecting 2 sets of vector indices(inputs & targets), given ",kname(k));
+   TORCH_CHECK(k->n==2, c,": expecting 2 sets of vector indices(inputs & targets), given ",k->n);
+   for(J i=0; i<k->n; ++i)
+    mvec(i,c,kK(k)[i],(i ? y : x),v);
+  }
+ }
+}
+
+// ---------------------------------------------------------------------------------
+// mdict - index into dictionary of tensors as part of args to forward/backward, etc
+// ---------------------------------------------------------------------------------
+static Tensor* mdict(bool b,const char *c,TensorDict *d,S s) {
+ Tensor *t=d->find(s);
+ TORCH_CHECK(t, c,": unable to find ",(b ? "target" : "input")," key `",s);
+ return t;
+}
+
+static void mdict(bool b,const char *c,K x,Tensors& t,TensorDict *d) {
+ if(x->t == -KS) {
+   t[0]=*mdict(b,c,d,x->s);
+ } else if(x->t == KS) {
+  TORCH_CHECK(x->n>0 && x->n<4, c,": expecting 1-3 ",(b ? "target" : "input")," keys, given ",x->n);
+  for(J i=0; i<x->n; ++i)
+   t[i]=*mdict(b,c,d,kS(x)[i]);
+ } else {
+  TORCH_ERROR(c,": ",(b ? "target" : "input")," keys expected, given ",kname(x));
+ }
+}
+
+static void mdict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
+ if(a->n==2) {
+  //TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
+  //x[0]=v->at(0); y[0]=v->at(1);
+ } else {
+  TORCH_CHECK(a->n==3, c,": expecting 3 arguments, (model;vector;indices), given ", a->n);
+  K k=kK(a)[2];
+  if(k->t==KS) {
+   TORCH_CHECK(k->n==2, c,": expecting 2 dictionary keys, input & target, given ",k->n);
+   x[0]=*mdict(false,c,d,kS(k)[0]);
+   y[0]=*mdict(true, c,d,kS(k)[1]);
+  } else {
+   TORCH_CHECK(!k->t,   c,": expecting 2 sets of dictionary keys(inputs & targets), given ",kname(k));
+   TORCH_CHECK(k->n==2, c,": expecting 2 sets of dictionary keys(inputs & targets), given ",k->n);
+   for(J i=0; i<k->n; ++i)
+    mdict(i,c,kK(k)[i],(i ? y : x),d);
+  }
+ }
+}
+
+// -------------------------------------------------------------------------------------------
+// tcount - return count of defined tensors in array
+// -------------------------------------------------------------------------------------------
+static auto tcount(const Tensors& x) {
+ size_t n=0; 
+ for(const auto& a:x)
+  if(a.defined())
+   n++;
+  else
+   break;
+ return n;
+}
+
+static Output fwd(Cast c,Result r,Module& m,const Tensors& x) {
+ switch(tcount(x)) {
+  case 1: return mForward(c,m,x[0]);
+  case 2: return mForward(c,m,x[0],x[1]);
+  case 3: return mForward(c,m,x[0],x[1],x[2]);
+  default: TORCH_ERROR("no forward method implemented for ",tcount(x)," tensors");
+ }
+}
+
 // -------------------------------------------------------------------------------------------
 // add model api functions to library dictionary
 // -------------------------------------------------------------------------------------------

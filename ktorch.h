@@ -118,6 +118,12 @@ using AnyModule=torch::nn::AnyModule;
 class SeqNest;
 class SeqJoin;
 
+using Tensors  = std::array<Tensor,3>;
+using Tuple    = std::tuple<Tensor,Tensor>;
+using OptTuple = c10::optional<Tuple>;
+using Nested   = std::tuple<Tensor,Tuple>;
+using Output   = c10::variant<Tensor,Tuple,Nested,TensorVector>;
+
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
 
@@ -604,6 +610,9 @@ K mget(bool,bool,const Module&);
 Tensor mforward(Cast,Module&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
 Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
+Output mForward(Cast,Module&,const Tensor&);
+Output mForward(Cast,Module&,const Tensor&,const Tensor&);
+Output mForward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 TensorVector vforward(Cast,Result,Module&,const Tensor&,const Tensor&,const Tensor&);
 K modulehelp(Cast);
 void nnfn(K);

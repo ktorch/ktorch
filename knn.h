@@ -342,7 +342,7 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
   }
  }
 
- std::vector<Tensor> forward(const Tensor& x,const Tensor& y,const Tensor& z) {
+ std::vector<Tensor> forward(const Tensor& x, const Tensor& y={}, const Tensor& z={}) {
   std::vector<Tensor> v;
   bool i=in.is_empty()  || in->is_empty();   // true if Sequential for input undefined or empty
   bool o=out.is_empty() || out->is_empty();  // true if Sequential for output undefined or empty
@@ -365,6 +365,9 @@ class TORCH_API RecurImpl : public torch::nn::Cloneable<RecurImpl> {
   }
   return v;
  }
+
+ FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())},
+                          {2, torch::nn::AnyValue(torch::Tensor())})
 
  RecurOptions options;
  torch::nn::Sequential in=nullptr;

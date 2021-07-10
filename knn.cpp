@@ -422,7 +422,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::upsample:        return m.as<nn::Upsample>()->forward(x);
   case Cast::zeropad2d:       return m.as<nn::ZeroPad2d>()->forward(x);
   case Cast::zscore:          return m.as<Zscore>()->forward(x);
-  default: TORCH_ERROR("forward calculation with single tensor argument not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with single tensor argument not implemented for ",msym(c)," module");
  }
 }
 
@@ -440,7 +440,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y);
   case Cast::similar:         return m.as<nn::CosineSimilarity>()->forward(x,y);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y);
-  default: TORCH_ERROR("forward calculation with 2 tensor inputs not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with 2 tensor inputs not implemented for ",msym(c)," module");
  }
 }
 
@@ -452,7 +452,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
   case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
-  default: TORCH_ERROR("forward calculation with 3 tensor inputs not implemented for module: ",m.name());
+  default: TORCH_ERROR("forward calculation with 3 tensor inputs not implemented for ",msym(c)," module");
  }
 }
 
@@ -521,6 +521,224 @@ TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,
  }
 }
 
+// ------------------------------------------------------------------------------------
+// mforward - given layer, run forward calc on tensor x and optional y,z tensors
+// ------------------------------------------------------------------------------------
+Output mForward(Cast c,Module& m,const Tensor& x) {
+ switch(c) {
+  case Cast::adaptavg1d:      return m.as<nn::AdaptiveAvgPool1d>()->forward(x);
+  case Cast::adaptavg2d:      return m.as<nn::AdaptiveAvgPool2d>()->forward(x);
+  case Cast::adaptavg3d:      return m.as<nn::AdaptiveAvgPool3d>()->forward(x);
+  case Cast::adaptmax1d:      return m.as<nn::AdaptiveMaxPool1d>()->forward(x);
+  case Cast::adaptmax2d:      return m.as<nn::AdaptiveMaxPool2d>()->forward(x);
+  case Cast::adaptmax3d:      return m.as<nn::AdaptiveMaxPool3d>()->forward(x);
+  case Cast::adrop:           return m.as<nn::AlphaDropout>()->forward(x);
+//case Cast::attention:       return m.as<nn::MultiheadAttention>()->forward(x);
+// too few arguments to function call, expected at least 3, have 1
+  case Cast::avgpool1d:       return m.as<nn::AvgPool1d>()->forward(x);
+  case Cast::avgpool2d:       return m.as<nn::AvgPool2d>()->forward(x);
+  case Cast::avgpool3d:       return m.as<nn::AvgPool3d>()->forward(x);
+  case Cast::base:            return m.as<BaseModule>()->forward(x);
+  case Cast::batchnorm1d:     return m.as<nn::BatchNorm1d>()->forward(x);
+  case Cast::batchnorm2d:     return m.as<nn::BatchNorm2d>()->forward(x);
+  case Cast::batchnorm3d:     return m.as<nn::BatchNorm3d>()->forward(x);
+  case Cast::celu:            return m.as<nn::CELU>()->forward(x);
+  case Cast::conv1d:          return m.as<nn::Conv1d>()->forward(x);
+  case Cast::conv2d:          return m.as<nn::Conv2d>()->forward(x);
+  case Cast::conv3d:          return m.as<nn::Conv3d>()->forward(x);
+  case Cast::convtranspose1d: return m.as<nn::ConvTranspose1d>()->forward(x);
+  case Cast::convtranspose2d: return m.as<nn::ConvTranspose2d>()->forward(x);
+  case Cast::convtranspose3d: return m.as<nn::ConvTranspose3d>()->forward(x);
+  case Cast::crossmap2d:      return m.as<nn::CrossMapLRN2d>()->forward(x);
+  case Cast::drop:            return m.as<nn::Dropout>()->forward(x);
+  case Cast::drop2d:          return m.as<nn::Dropout2d>()->forward(x);
+  case Cast::drop3d:          return m.as<nn::Dropout3d>()->forward(x);
+  case Cast::elu:             return m.as<nn::ELU>()->forward(x);
+  case Cast::embed:           return m.as<nn::Embedding>()->forward(x);
+  case Cast::embedbag:        return m.as<nn::EmbeddingBag>()->forward(x);
+  case Cast::encoder:         return m.as<nn::TransformerEncoder>()->forward(x);
+  case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x);
+  case Cast::expand:          return m.as<Expand>()->forward(x);
+  case Cast::fadrop:          return m.as<nn::FeatureAlphaDropout>()->forward(x);
+  case Cast::flatten:         return m.as<nn::Flatten>()->forward(x);
+  case Cast::fmaxpool2d:      return m.as<nn::FractionalMaxPool2d>()->forward(x);
+  case Cast::fmaxpool3d:      return m.as<nn::FractionalMaxPool3d>()->forward(x);
+  case Cast::fold:            return m.as<nn::Fold>()->forward(x);
+  case Cast::fork:            return m.as<Fork>()->forward(x);
+  case Cast::gelu:            return m.as<nn::GELU>()->forward(x);
+  case Cast::glu:             return m.as<nn::GLU>()->forward(x);
+  case Cast::groupnorm:       return m.as<nn::GroupNorm>()->forward(x);
+  case Cast::gru:             return m.as<nn::GRU>()->forward(x);
+  case Cast::hardshrink:      return m.as<nn::Hardshrink>()->forward(x);
+  case Cast::hardtanh:        return m.as<nn::Hardtanh>()->forward(x);
+  case Cast::identity:        return m.as<nn::Identity>()->forward(x);
+  case Cast::indexselect:     return m.as<IndexSelect>()->forward(x);
+  case Cast::instancenorm1d:  return m.as<nn::InstanceNorm1d>()->forward(x);
+  case Cast::instancenorm2d:  return m.as<nn::InstanceNorm2d>()->forward(x);
+  case Cast::instancenorm3d:  return m.as<nn::InstanceNorm3d>()->forward(x);
+//case Cast::interpolate:     return m.as<nn::interpolate>()->forward(x);
+  case Cast::layernorm:       return m.as<nn::LayerNorm>()->forward(x);
+  case Cast::leakyrelu:       return m.as<nn::LeakyReLU>()->forward(x);
+  case Cast::linear:          return m.as<nn::Linear>()->forward(x);
+  case Cast::localnorm:       return m.as<nn::LocalResponseNorm>()->forward(x);
+  case Cast::logsigmoid:      return m.as<nn::LogSigmoid>()->forward(x);
+  case Cast::logsoftmax:      return m.as<nn::LogSoftmax>()->forward(x);
+  case Cast::lppool1d:        return m.as<nn::LPPool1d>()->forward(x);
+  case Cast::lppool2d:        return m.as<nn::LPPool2d>()->forward(x);
+  case Cast::lstm:            return m.as<nn::LSTM>()->forward(x);
+  case Cast::maxpool1d:       return m.as<nn::MaxPool1d>()->forward(x);
+  case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
+  case Cast::maxpool3d:       return m.as<nn::MaxPool3d>()->forward(x);
+  case Cast::mish:            return m.as<nn::Mish>()->forward(x);
+//case Cast::normalize:       return m.as<nn::normalize>()->forward(x);
+  case Cast::nbeats:          return m.as<NBeats>()->forward(x);
+  case Cast::onehot:          return m.as<OneHot>()->forward(x);
+  case Cast::pad:             return m.as<Pad>()->forward(x);
+  case Cast::pad1d:           return m.as<nn::ConstantPad1d>()->forward(x);
+  case Cast::pad2d:           return m.as<nn::ConstantPad2d>()->forward(x);
+  case Cast::pad3d:           return m.as<nn::ConstantPad3d>()->forward(x);
+  case Cast::prelu:           return m.as<nn::PReLU>()->forward(x);
+  case Cast::randomcrop:      return m.as<RandomCrop>()->forward(x);
+  case Cast::randomflip:      return m.as<RandomFlip>()->forward(x);
+  case Cast::recur:           return m.as<Recur>()->forward(x);
+  case Cast::reflect1d:       return m.as<nn::ReflectionPad1d>()->forward(x);
+  case Cast::reflect2d:       return m.as<nn::ReflectionPad2d>()->forward(x);
+  case Cast::relu:            return m.as<nn::ReLU>()->forward(x);
+  case Cast::relu6:           return m.as<nn::ReLU6>()->forward(x);
+  case Cast::replicate1d:     return m.as<nn::ReplicationPad1d>()->forward(x);
+  case Cast::replicate2d:     return m.as<nn::ReplicationPad2d>()->forward(x);
+  case Cast::replicate3d:     return m.as<nn::ReplicationPad3d>()->forward(x);
+  case Cast::residual:        return m.as<Residual>()->forward(x);
+  case Cast::reshape:         return m.as<Reshape>()->forward(x);
+  case Cast::rnn:             return m.as<nn::RNN>()->forward(x);
+  case Cast::rrelu:           return m.as<nn::RReLU>()->forward(x);
+  case Cast::select:          return m.as<Select>()->forward(x);
+  case Cast::selu:            return m.as<nn::SELU>()->forward(x);
+  case Cast::seqnest:         return m.as<SeqNest>()->forward(x);
+  case Cast::sequential:      return m.as<nn::Sequential>()->forward(x);
+  case Cast::sigmoid:         return m.as<nn::Sigmoid>()->forward(x);
+  case Cast::silu:            return m.as<nn::SiLU>()->forward(x);
+  case Cast::softmax:         return m.as<nn::Softmax>()->forward(x);
+  case Cast::softmax2d:       return m.as<nn::Softmax2d>()->forward(x);
+  case Cast::softmin:         return m.as<nn::Softmin>()->forward(x);
+  case Cast::softplus:        return m.as<nn::Softplus>()->forward(x);
+  case Cast::softshrink:      return m.as<nn::Softshrink>()->forward(x);
+  case Cast::softsign:        return m.as<nn::Softsign>()->forward(x);
+  case Cast::squeeze:         return m.as<Squeeze>()->forward(x);
+  case Cast::tanh:            return m.as<nn::Tanh>()->forward(x);
+  case Cast::tanhshrink:      return m.as<nn::Tanhshrink>()->forward(x);
+  case Cast::threshold:       return m.as<nn::Threshold>()->forward(x);
+  case Cast::transform:       return m.as<Transform>()->forward(x);
+  case Cast::unfold:          return m.as<nn::Unfold>()->forward(x);
+  case Cast::unsqueeze:       return m.as<Unsqueeze>()->forward(x);
+  case Cast::upsample:        return m.as<nn::Upsample>()->forward(x);
+  case Cast::zeropad2d:       return m.as<nn::ZeroPad2d>()->forward(x);
+  case Cast::zscore:          return m.as<Zscore>()->forward(x);
+  default: TORCH_ERROR("forward calculation with single tensor argument not implemented for ",msym(c)," module");
+ }
+}
+
+Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
+ switch(c) {
+  case Cast::bilinear:        return m.as<nn::Bilinear>()->forward(x,y);
+  case Cast::cat:             return m.as<Cat>()->forward(x,y);
+  case Cast::decoder:         return m.as<nn::TransformerDecoder>()->forward(x,y);
+  case Cast::decoderlayer:    return m.as<nn::TransformerDecoderLayer>()->forward(x,y);
+  case Cast::encoder:         return m.as<nn::TransformerEncoder>()->forward(x,y);
+  case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y);
+  case Cast::gru:             return m.as<nn::GRU>()->forward(x,y);
+  case Cast::mul:             return m.as<Mul>()->forward(x,y);
+  case Cast::pairwise:        return m.as<nn::PairwiseDistance>()->forward(x,y);
+  case Cast::recur:           return m.as<Recur>()->forward(x,y);
+  case Cast::rnn:             return m.as<nn::RNN>()->forward(x,y);
+  case Cast::seqjoin:         return m.as<SeqJoin>()->forward(x,y);
+  case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y);
+  case Cast::similar:         return m.as<nn::CosineSimilarity>()->forward(x,y);
+  case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y);
+  default: TORCH_ERROR("forward calculation with 2 tensor inputs not implemented for ",msym(c)," module");
+ }
+}
+
+Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+ switch(c) {
+  case Cast::decoder:         return m.as<nn::TransformerDecoder>()->forward(x,y,z);
+  case Cast::decoderlayer:    return m.as<nn::TransformerDecoderLayer>()->forward(x,y,z);
+  case Cast::encoder:         return m.as<nn::TransformerEncoder>()->forward(x,y,z);
+  case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
+  case Cast::lstm:            return m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)));
+  case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
+  case Cast::recur:           return m.as<Recur>()->forward(x,y,z);
+  case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
+  default: TORCH_ERROR("forward calculation with 3 tensor inputs not implemented for ",msym(c)," module");
+ }
+}
+
+// ---------------------------------------------------------------------------------
+// tupvector - copy tuple(s) returned from recurrent modules to vector of tensors
+// vcheck - check for requisite number of tensors for vector-returning forward calcs
+// vforward - handle container modules, e.g. sequential, via template
+//            forward calc returns vector, e.g. rnn, return output, hidden state
+// ---------------------------------------------------------------------------------
+/*
+static void tupvector(TensorVector& v,const std::tuple<Tensor,Tensor>& x) {
+ v.push_back(std::get<0>(x));
+ v.push_back(std::get<1>(x));
+}
+
+static TensorVector tupvector(const std::tuple<Tensor,Tensor>& x) {
+ TensorVector v; tupvector(v,x); return v;
+}
+
+static TensorVector tupvector(const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
+ TensorVector v;
+ v.push_back(std::get<0>(x));
+ tupvector(v,std::get<1>(x));
+ return v;
+}
+
+static size_t vcheck(Cast c,size_t lo,size_t hi,const Tensor& x,const Tensor& y, const Tensor& z) {
+ size_t n=x.defined() + y.defined() + z.defined();
+ TORCH_CHECK(lo<=n, msym(c),": requires at least ",lo," tensor",(lo==1 ? "" : "s"),", but ",n," supplied"); 
+ TORCH_CHECK(n<=hi, msym(c),": requires at most ", hi," tensor",(hi==1 ? "" : "s"),", but ",n," supplied");
+ TORCH_CHECK(!z.defined() || y.defined(), msym(c),": 3rd tensor given, but 2nd tensor is not defined");
+ return n;
+}
+
+template<typename M>
+static TensorVector vforward(Cast c,Result r,M* m,const Tensor& x,const Tensor& y,const Tensor& z) {
+ using Tuple=std::tuple<Tensor,Tensor>;
+ using Nested=std::tuple<Tensor,Tuple>;
+ using OptTuple=c10::optional<Tuple>;
+ auto n=vcheck(c,1,3,x,y,z);
+ if(r==Result::tuple) {
+  TORCH_CHECK(n<3, msym(c),": forward calculation requires 1-2 tensor arguments, ",n," supplied");
+  return tupvector(n==1 ? m->template forward<Tuple>(x) : m->template forward<Tuple>(x,y));
+ } else if(r==Result::nested) {
+  return tupvector(z.defined() ? m->template forward<Nested>(x,OptTuple(std::make_tuple(y,z)))
+                               : m->template forward<Nested>(x));
+ } else if(r==Result::vector) {
+  return m->template forward<TensorVector>(x,y,z);
+ } else {
+  TORCH_ERROR(msym(c),": unable to call forward for result type ",mresult(r));
+ }
+}
+
+TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+ using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
+ switch(c) {
+  case Cast::fork:  vcheck(c,1,1,x,y,z); return tupvector(m.as<Fork>()->forward(x));
+  case Cast::rnn:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::RNN>()->forward(x,y));
+  case Cast::gru:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::GRU>()->forward(x,y));
+  case Cast::recur: vcheck(c,1,3,x,y,z); return m.as<Recur>()->forward(x,y,z);
+  case Cast::lstm:  vcheck(c,1,3,x,y,z); 
+   return tupvector(z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
+                                : m.as<nn::LSTM>()->forward(x));
+  case Cast::sequential: return vforward(c,r,m.as<nn::Sequential>(),x,y,z);
+  default:
+   TORCH_ERROR("unrecognized layer: ",mlabel(m),", unable to run forward calculation");
+ }
+}
+*/
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
