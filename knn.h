@@ -297,6 +297,34 @@ class TORCH_API ForkImpl : public torch::nn::Cloneable<ForkImpl> {
 TORCH_MODULE(Fork);
 
 // --------------------------------------------------------------------------------
+// LSTM - allow forward to accept simple tensors, call PyTorch LSTM w'tensor, tuple
+// --------------------------------------------------------------------------------
+class TORCH_API LSTMImpl : public torch::nn::LSTMImpl {
+  public:
+  LSTMImpl(int64_t i, int64_t h) : LSTMImpl(torch::nn::LSTMOptions(i, h)) {}
+  explicit LSTMImpl(const torch::nn::LSTMOptions& o) : torch::nn::LSTMImpl(o) {}
+
+  using Tuple   = std::tuple<torch::Tensor,torch::Tensor>;
+  using Nested  = std::tuple<torch::Tensor,Tuple>;
+  using Tensors = std::array<torch::Tensor,3>;
+
+  Tensors tensors(const Nested& x) {
+   return {std::get<0>(x), std::get<0>(std::get<1>(x)), std::get<1>(std::get<1>(x))};
+  }
+
+  Tensors forward(const torch::Tensor& x,const torch::Tensor& y={},const torch::Tensor& z={}) {
+   if(z.defined())
+    return tensors(torch::nn::LSTMImpl::forward(x, std::make_tuple(y,z)));
+   else
+    return tensors(torch::nn::LSTMImpl::forward(x));
+  }
+ protected:
+  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, 
+                           {2, torch::nn::AnyValue(torch::Tensor())})
+};
+TORCH_MODULE(LSTM);
+
+// --------------------------------------------------------------------------------
 // Recur - receive input & hidden state for rnn layer
 //         sequential modules in/out apply transformations to input & rnn output
 // --------------------------------------------------------------------------------
@@ -510,7 +538,8 @@ class TORCH_API SeqNestImpl : public torch::nn::SequentialImpl {
     return SequentialImpl::forward(x);
   }
  protected:
-  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())}, {2, torch::nn::AnyValue(torch::Tensor())})
+  FORWARD_HAS_DEFAULT_ARGS({1, torch::nn::AnyValue(torch::Tensor())},
+                           {2, torch::nn::AnyValue(torch::Tensor())})
 };
 TORCH_MODULE(SeqNest);
 

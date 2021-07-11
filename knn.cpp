@@ -371,7 +371,7 @@ Tensor mforward(Cast c,Module& m,const Tensor& x) {
   case Cast::logsoftmax:      return m.as<nn::LogSoftmax>()->forward(x);
   case Cast::lppool1d:        return m.as<nn::LPPool1d>()->forward(x);
   case Cast::lppool2d:        return m.as<nn::LPPool2d>()->forward(x);
-//case Cast::lstm:            return m.as<nn::LSTM>()->forward(x);
+//case Cast::lstm:            return m.as<LSTM>()->forward(x);
 //case Cast::lstmout:
 // no viable conversion from returned value of type 'std::tuple<Tensor, Tensor>' to function return type 'Tensor'
   case Cast::maxpool1d:       return m.as<nn::MaxPool1d>()->forward(x);
@@ -471,6 +471,17 @@ static TensorVector tupvector(const std::tuple<Tensor,Tensor>& x) {
  TensorVector v; tupvector(v,x); return v;
 }
 
+static TensorVector tupvector(const Tensors& x) {
+ return {std::get<0>(x), std::get<1>(x), std::get<2>(x)};
+/*
+ TensorVector v; 
+ v.push_back(std::get<0>(x));
+ v.push_back(std::get<1>(x));
+ v.push_back(std::get<2>(x));
+ return v;
+*/
+}
+
 static TensorVector tupvector(const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
  TensorVector v;
  v.push_back(std::get<0>(x));
@@ -506,15 +517,14 @@ static TensorVector vforward(Cast c,Result r,M* m,const Tensor& x,const Tensor& 
 }
 
 TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
- using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
  switch(c) {
   case Cast::fork:  vcheck(c,1,1,x,y,z); return tupvector(m.as<Fork>()->forward(x));
   case Cast::rnn:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::RNN>()->forward(x,y));
   case Cast::gru:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::GRU>()->forward(x,y));
   case Cast::recur: vcheck(c,1,3,x,y,z); return m.as<Recur>()->forward(x,y,z);
   case Cast::lstm:  vcheck(c,1,3,x,y,z); 
-   return tupvector(z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
-                                : m.as<nn::LSTM>()->forward(x));
+   return tupvector(z.defined() ? m.as<LSTM>()->forward(x,y,z)
+                                : m.as<LSTM>()->forward(x));
   case Cast::sequential: return vforward(c,r,m.as<nn::Sequential>(),x,y,z);
   default:
    TORCH_ERROR("unrecognized layer: ",mlabel(m),", unable to run forward calculation");
@@ -585,7 +595,7 @@ Output mForward(Cast c,Module& m,const Tensor& x) {
   case Cast::logsoftmax:      return m.as<nn::LogSoftmax>()->forward(x);
   case Cast::lppool1d:        return m.as<nn::LPPool1d>()->forward(x);
   case Cast::lppool2d:        return m.as<nn::LPPool2d>()->forward(x);
-  case Cast::lstm:            return m.as<nn::LSTM>()->forward(x);
+  case Cast::lstm:            return m.as<LSTM>()->forward(x);
   case Cast::maxpool1d:       return m.as<nn::MaxPool1d>()->forward(x);
   case Cast::maxpool2d:       return m.as<nn::MaxPool2d>()->forward(x);
   case Cast::maxpool3d:       return m.as<nn::MaxPool3d>()->forward(x);
@@ -665,7 +675,7 @@ Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
   case Cast::decoderlayer:    return m.as<nn::TransformerDecoderLayer>()->forward(x,y,z);
   case Cast::encoder:         return m.as<nn::TransformerEncoder>()->forward(x,y,z);
   case Cast::encoderlayer:    return m.as<nn::TransformerEncoderLayer>()->forward(x,y,z);
-  case Cast::lstm:            return m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)));
+  case Cast::lstm:            return m.as<LSTM>()->forward(x,y,z);
   case Cast::transformer:     return m.as<nn::Transformer>()->forward(x,y,z);
   case Cast::recur:           return m.as<Recur>()->forward(x,y,z);
   case Cast::sequential:      return m.as<nn::Sequential>()->forward(x,y,z);
@@ -673,72 +683,6 @@ Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z
  }
 }
 
-// ---------------------------------------------------------------------------------
-// tupvector - copy tuple(s) returned from recurrent modules to vector of tensors
-// vcheck - check for requisite number of tensors for vector-returning forward calcs
-// vforward - handle container modules, e.g. sequential, via template
-//            forward calc returns vector, e.g. rnn, return output, hidden state
-// ---------------------------------------------------------------------------------
-/*
-static void tupvector(TensorVector& v,const std::tuple<Tensor,Tensor>& x) {
- v.push_back(std::get<0>(x));
- v.push_back(std::get<1>(x));
-}
-
-static TensorVector tupvector(const std::tuple<Tensor,Tensor>& x) {
- TensorVector v; tupvector(v,x); return v;
-}
-
-static TensorVector tupvector(const std::tuple<Tensor, std::tuple<Tensor, Tensor>>& x) {
- TensorVector v;
- v.push_back(std::get<0>(x));
- tupvector(v,std::get<1>(x));
- return v;
-}
-
-static size_t vcheck(Cast c,size_t lo,size_t hi,const Tensor& x,const Tensor& y, const Tensor& z) {
- size_t n=x.defined() + y.defined() + z.defined();
- TORCH_CHECK(lo<=n, msym(c),": requires at least ",lo," tensor",(lo==1 ? "" : "s"),", but ",n," supplied"); 
- TORCH_CHECK(n<=hi, msym(c),": requires at most ", hi," tensor",(hi==1 ? "" : "s"),", but ",n," supplied");
- TORCH_CHECK(!z.defined() || y.defined(), msym(c),": 3rd tensor given, but 2nd tensor is not defined");
- return n;
-}
-
-template<typename M>
-static TensorVector vforward(Cast c,Result r,M* m,const Tensor& x,const Tensor& y,const Tensor& z) {
- using Tuple=std::tuple<Tensor,Tensor>;
- using Nested=std::tuple<Tensor,Tuple>;
- using OptTuple=c10::optional<Tuple>;
- auto n=vcheck(c,1,3,x,y,z);
- if(r==Result::tuple) {
-  TORCH_CHECK(n<3, msym(c),": forward calculation requires 1-2 tensor arguments, ",n," supplied");
-  return tupvector(n==1 ? m->template forward<Tuple>(x) : m->template forward<Tuple>(x,y));
- } else if(r==Result::nested) {
-  return tupvector(z.defined() ? m->template forward<Nested>(x,OptTuple(std::make_tuple(y,z)))
-                               : m->template forward<Nested>(x));
- } else if(r==Result::vector) {
-  return m->template forward<TensorVector>(x,y,z);
- } else {
-  TORCH_ERROR(msym(c),": unable to call forward for result type ",mresult(r));
- }
-}
-
-TensorVector vforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
- using OptTuple=c10::optional<std::tuple<Tensor,Tensor>>;
- switch(c) {
-  case Cast::fork:  vcheck(c,1,1,x,y,z); return tupvector(m.as<Fork>()->forward(x));
-  case Cast::rnn:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::RNN>()->forward(x,y));
-  case Cast::gru:   vcheck(c,1,2,x,y,z); return tupvector(m.as<nn::GRU>()->forward(x,y));
-  case Cast::recur: vcheck(c,1,3,x,y,z); return m.as<Recur>()->forward(x,y,z);
-  case Cast::lstm:  vcheck(c,1,3,x,y,z); 
-   return tupvector(z.defined() ? m.as<nn::LSTM>()->forward(x,OptTuple(std::make_tuple(y,z)))
-                                : m.as<nn::LSTM>()->forward(x));
-  case Cast::sequential: return vforward(c,r,m.as<nn::Sequential>(),x,y,z);
-  default:
-   TORCH_ERROR("unrecognized layer: ",mlabel(m),", unable to run forward calculation");
- }
-}
-*/
 // ----------------------------------------------------------------------------------------------------
 // covers of input checking fns with error msg specific to module settings and module names:
 // ----------------------------------------------------------------------------------------------------
@@ -3498,7 +3442,7 @@ static Moduleptr mcreate(K x,J i,Cast c) {
 
   case Cast::rnn:          return nn::RNN(rnn(x,i,c)).ptr();
   case Cast::gru:          return nn::GRU(rnn<nn::GRUOptions>(x,i,c)).ptr();
-  case Cast::lstm:         return nn::LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
+  case Cast::lstm:         return LSTM(rnn<nn::LSTMOptions>(x,i,c)).ptr();
   case Cast::recur:        return Recur(recur(x,i,c)).ptr();
 
   case Cast::rnnout:       noarg(c,x,i); return RNNOutput().ptr();
@@ -3631,7 +3575,7 @@ static AnyModule anymodule(Cast c,const Moduleptr& m) {
   case Cast::logsoftmax:      return ANY(nn::LogSoftmax, m);
   case Cast::lppool1d:        return ANY(nn::LPPool1d, m);
   case Cast::lppool2d:        return ANY(nn::LPPool2d, m);
-  case Cast::lstm:            return ANY(nn::LSTM, m);
+  case Cast::lstm:            return ANY(LSTM, m);
   case Cast::lstmout:         return ANY(LSTMOutput, m);
   case Cast::maxpool1d:       return ANY(nn::MaxPool1d, m);
   case Cast::maxpool2d:       return ANY(nn::MaxPool2d, m);
@@ -3810,7 +3754,7 @@ static K mopt(bool a,bool b,Cast c,const Module& m) { //a:all options returned i
 
   case Cast::rnn:              return rnn(a,m.as<nn::RNN>()->options);
   case Cast::gru:              return rnn(a,m.as<nn::GRU>()->options);
-  case Cast::lstm:             return rnn(a,m.as<nn::LSTM>()->options);
+  case Cast::lstm:             return rnn(a,m.as<LSTM>()->options);
   case Cast::recur:            return recur(a,m.as<Recur>()->options);
 
   case Cast::relu:             return inplace(a,m.as<nn::ReLU>()->options.inplace());

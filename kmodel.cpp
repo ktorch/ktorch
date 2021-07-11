@@ -532,12 +532,26 @@ static auto tcount(const Tensors& x) {
  return n;
 }
 
-static Output fwd(Cast c,Result r,Module& m,const Tensors& x) {
+static Output fwd(Cast c,Module& m,const Tensors& x) {
  switch(tcount(x)) {
   case 1: return mForward(c,m,x[0]);
   case 2: return mForward(c,m,x[0],x[1]);
   case 3: return mForward(c,m,x[0],x[1],x[2]);
   default: TORCH_ERROR("no forward method implemented for ",tcount(x)," tensors");
+ }
+}
+
+K kout(bool b,const Output& o) {
+ if(auto a=c10::get_if<Tensor>(&o)) {
+  return b ? kget(*a) : kten(*a);
+ } else if(auto a=c10::get_if<Tuple>(&o)) {
+  return (K)0;
+ } else if(auto a=c10::get_if<Tensors>(&o)) {
+  return (K)0;
+ } else if(auto a=c10::get_if<TensorVector>(&o)) {
+  return b ? kget(*a) : kvec(*a);
+ } else {
+  TORCH_ERROR("unrecognized output from module forward calculation");
  }
 }
 

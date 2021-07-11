@@ -118,11 +118,9 @@ using AnyModule=torch::nn::AnyModule;
 class SeqNest;
 class SeqJoin;
 
-using Tensors  = std::array<Tensor,3>;
-using Tuple    = std::tuple<Tensor,Tensor>;
-using OptTuple = c10::optional<Tuple>;
-using Nested   = std::tuple<Tensor,Tuple>;
-using Output   = c10::variant<Tensor,Tuple,Nested,TensorVector>;
+using Tuple   = std::tuple<Tensor,Tensor>;
+using Tensors = std::array<Tensor,3>;                             // holds input(s) to modules
+using Output  = c10::variant<Tensor,Tuple,Tensors,TensorVector>;  // output from forward calc of modules
 
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
@@ -546,6 +544,9 @@ K kget(const DoubleVector&);
 K kget(const TensorVector& v,K x=nullptr);
 K kget(const TensorDict& d,K x=nullptr);
 K kget(const TensorDeque&);
+K kget(const Tuple&);
+K kget(const Tensors&);
+K kget(const Output&);
 Tensor kput(K);
 Tensor kput(K,J);
 TensorDict kputd(K);
@@ -833,7 +834,7 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("logsoftmax"),       Cast::logsoftmax,      typeid(torch::nn::LogSoftmaxImpl).hash_code(),          "torch.nn.LogSoftmax"),
   std::make_tuple(cs("lppool1d"),         Cast::lppool1d,        typeid(torch::nn::LPPool1dImpl).hash_code(),            "torch.nn.LPPool1d"),
   std::make_tuple(cs("lppool2d"),         Cast::lppool2d,        typeid(torch::nn::LPPool2dImpl).hash_code(),            "torch.nn.LPPool2d"),
-  std::make_tuple(cs("lstm"),             Cast::lstm,            typeid(torch::nn::LSTMImpl).hash_code(),                "torch.nn.LSTM"),
+  std::make_tuple(cs("lstm"),             Cast::lstm,            typeid(LSTMImpl).hash_code(),                           "torch.nn.LSTM"),
   std::make_tuple(cs("lstmout"),          Cast::lstmout,         typeid(LSTMOutputImpl).hash_code(),                     "torch.nn.LSTM"),
   std::make_tuple(cs("maxpool1d"),        Cast::maxpool1d,       typeid(torch::nn::MaxPool1dImpl).hash_code(),           "torch.nn.MaxPool1d"),
   std::make_tuple(cs("maxpool2d"),        Cast::maxpool2d,       typeid(torch::nn::MaxPool2dImpl).hash_code(),           "torch.nn.MaxPool2d"),

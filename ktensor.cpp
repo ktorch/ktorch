@@ -178,6 +178,33 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
  }
 }
 
+// --------------------------------------------------------------------------
+// kget - get output variant, tensor, tuple, 3-element tensor array or vector
+// --------------------------------------------------------------------------
+K kget(const Tuple& t) {
+ return knk(2,kget(std::get<0>(t)),kget(std::get<1>(t)));
+}
+
+K kget(const Tensors& t) {
+ J i=0; K x=ktn(0,std::tuple_size<Tensors>::value);
+ for(const auto& a:t) kK(x)[i++]=kget(a);
+ return x;
+}
+
+K kget(const Output& o) {
+ if(auto a=c10::get_if<Tensor>(&o)) {
+  return kget(*a);
+ } else if(auto a=c10::get_if<Tuple>(&o)) {
+  return kget(*a);
+ } else if(auto a=c10::get_if<Tensors>(&o)) {
+  return kget(*a);
+ } else if(auto a=c10::get_if<TensorVector>(&o)) {
+  return kget(*a);
+ } else {
+  TORCH_ERROR("unrecognized output from module forward calculation");
+ }
+}
+
 // -------------------------------------------------------------------------------
 // checkint - check options for modes not implemented for integral types
 // checksparse - check options for sparse tensor, signal nyi combinations

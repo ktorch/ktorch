@@ -17,6 +17,8 @@ KAPI reformat(K x) {
   auto *m=xmodule(x);
   TORCH_CHECK(m,"not a module");
   std::cerr << *m->m->children()[0] << "\n";
+  LSTM l(28,128);
+  std::cerr << *l << "\n";
   return (K)0;
  KCATCH("reformat");
 }
@@ -931,22 +933,6 @@ void putbuffers(K x,Cast c,const Tensor& t,const torch::optim::OptimizerParamSta
   }
 */
   default: TORCH_ERROR("unrecognized optimizer: ",(I)c,", unable to set parameter state");
- }
-}
-
-enum TensorPair {TensorPair};
-enum TensorTriple {triple};
-Tensor                           f1(const Tensor& x) {return x;}
-std::tuple<Tensor,Tensor>        f1(const Tensor& x,enum TensorPair)   { return std::make_tuple(x,x+100);}
-std::tuple<Tensor,Tensor,Tensor> f1(const Tensor& x,TensorTriple) { return std::make_tuple(x,x+10,x+1000);}
-
-KAPI ftest1(K a) {
- Tensor x,y,z;
- x=torch::arange(8);
- switch(a->j) {
-  case 2: std::tie(x,y)  =f1(x,TensorPair);   return kget(y);
-  case 3: std::tie(x,y,z)=f1(x,triple); return kget(z);
-  default: return kget(f1(x));
  }
 }
 
