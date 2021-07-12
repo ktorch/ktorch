@@ -444,10 +444,64 @@ static K kclip(K x,bool a,const char *c) {
 KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
 KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
 
+// ----------------------------------------------------------------
+// tcount - return count of defined tensors in array
+// margs - process k args into tensor array, vector or dictionary
+// ----------------------------------------------------------------
+static auto tcount(const Tensors& x) {
+ size_t n=0; 
+ for(const auto& a:x)
+  if(a.defined())
+   n++;
+  else
+   break;
+ return n;
+}
+
+static void margs(const char *c,K x,Tensors& t,TensorVector *&v,TensorDict *&d) {
+ size_t m=t.size(),n=tcount(t);
+ TORCH_CHECK(n<m, c,": ",n," tensors already defined, additional arg(s) not implemented");
+ if(auto *g=xtag(x)) {
+  switch(g->a) {
+   case Class::tensor: t[n]=((Kten*)g)->t; break;
+   case Class::vector:
+    TORCH_CHECK(!n, c,": tensor/vector mix not implemented");
+    TORCH_CHECK(!v, c,": 2nd vector unexpected");
+    v=&((Kvec*)g)->v;  break;
+   case Class::dict:
+    TORCH_CHECK(!n, c,": tensor/dictionary mix not implemented");
+    TORCH_CHECK(!d, c,": 2nd dictionary unexpected");
+    d=&((Kdict*)g)->d; break;
+   default:
+    TORCH_ERROR(c,": unexpected ",mapclass(g->a)," argument");
+  }
+ } else if(v) {
+  IntArrayRef vi; size_t i=0;
+  TORCH_CHECK(xsize(x,vi), c,": expecting vector indices, given ",kname(x));
+  TORCH_CHECK(vi.size()>0 && vi.size()<=m, "forward: expecting 1-",m," vector indices, ",vi.size()," given");
+  for(auto j:vi) t[i++]=v->at(j);
+ } else if(d) {
+  S s; J sn=xlen(x); Tensor *di;
+  TORCH_CHECK(xsyms(x,s), c,": expecting dictionary key(s), given",(sn ? " " : " empty "),kname(x));
+  TORCH_CHECK(sn>0 && sn<=m, c,": expecting 1-",m," dictionary keys, ",sn," given");
+  for(J i=0;i<sn;++i) {
+   if(i) s=kS(x)[i];
+   TORCH_CHECK(di=d->find(s), c,": dictionary key `",s," not found");
+   t[i]=*di;
+  }
+ } else if(xmixed(x,3)) {
+   for(J i=0; i<x->n; ++i)
+    margs(c,kK(x)[i],t,v,d);
+ } else {
+   t[n]=kput(x);
+ }
+}
+
 // ----------------------------------------------------------------------------------------
 // mvec - routines to index into vector of tensors as part of args to forward/backward etc
 // ----------------------------------------------------------------------------------------
 static void mvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
+ // attempt to set tensor(s) in array t with index/indices into vector v from input x
  if(x->t == -KJ) {
   t[0]=v->at(x->j);
  } else if(x->t == KJ) {
@@ -460,6 +514,7 @@ static void mvec(bool b,const char *c,K x,Tensors& t,TensorVector *v) {
 }
 
 static void mvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
+ // attempt to set tensor(s) in arrays x,y with indices into vector v from input args a
  if(a->n==2) {
   TORCH_CHECK(v->size()==2, c,": unable to determine input & target given vector of ",v->size()," elements");
   x[0]=v->at(0); y[0]=v->at(1);
@@ -482,12 +537,14 @@ static void mvec(const char *c,K a,Tensors& x,Tensors& y,TensorVector *v) {
 // mdict - index into dictionary of tensors as part of args to forward/backward, etc
 // ---------------------------------------------------------------------------------
 static Tensor* mdict(bool b,const char *c,TensorDict *d,S s) {
+ // return tensor given symbol key, else signal not found
  Tensor *t=d->find(s);
  TORCH_CHECK(t, c,": unable to find ",(b ? "target" : "input")," key `",s);
  return t;
 }
 
 static void mdict(bool b,const char *c,K x,Tensors& t,TensorDict *d) {
+ // attempt to set tensors in array t with key(s) into dictionary d from input x
  if(x->t == -KS) {
    t[0]=*mdict(b,c,d,x->s);
  } else if(x->t == KS) {
@@ -519,19 +576,9 @@ static void mdict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
  }
 }
 
-// -------------------------------------------------------------------------------------------
-// tcount - return count of defined tensors in array
-// -------------------------------------------------------------------------------------------
-static auto tcount(const Tensors& x) {
- size_t n=0; 
- for(const auto& a:x)
-  if(a.defined())
-   n++;
-  else
-   break;
- return n;
-}
-
+// ------------------------------------------------------------------------------
+//  fwd calcs..
+// ------------------------------------------------------------------------------
 static Output fwd(Cast c,Module& m,const Tensors& x) {
  switch(tcount(x)) {
   case 1: return mForward(c,m,x[0]);
@@ -541,18 +588,36 @@ static Output fwd(Cast c,Module& m,const Tensors& x) {
  }
 }
 
-K kout(bool b,const Output& o) {
- if(auto a=c10::get_if<Tensor>(&o)) {
-  return b ? kget(*a) : kten(*a);
- } else if(auto a=c10::get_if<Tuple>(&o)) {
+KAPI forward2(K a) {
+ KTRY
+  auto *m=xmodel(a,0); auto *q=m ? nullptr : xmodule(a,0);
+  TORCH_CHECK((m || q) && a->n>1, "forward: requires a module or model and at least one input");
+  Cast c=m ? m->mc : q->c; Tensors x; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  for(J i=1; i<a->n; ++i) margs("forward",kK(a)[i],x,v,d);
+  if(v) {
+   TORCH_CHECK(v->size(), "forward: empty vector given");
+   x[0]=v->at(0);
+  } else if(d) {
+   TORCH_CHECK("forward: unable to derive tensor inputs from given dictionary");
+  }
+  return kout(fwd(c,*(m ? m->m : q->m),x));
+ KCATCH("forward");
+}
+
+KAPI back(K a) {
+ KTRY
+  auto *g=xtag(a,0); const char *c="backward";
+  TORCH_CHECK(g && g->a==Class::model && a->n>2, "backward: expects model with inputs & targets");
+  Tensors x,y; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  margs("backward",kK(a)[1],x,v,d);
+  if(v) {
+   mvec(c,a,x,y,v);
+  } else if(d) {
+  } else {
+   margs("backward",kK(a)[2],y,v,d);
+  }
   return (K)0;
- } else if(auto a=c10::get_if<Tensors>(&o)) {
-  return (K)0;
- } else if(auto a=c10::get_if<TensorVector>(&o)) {
-  return b ? kget(*a) : kvec(*a);
- } else {
-  TORCH_ERROR("unrecognized output from module forward calculation");
- }
+ KCATCH("backward");
 }
 
 // -------------------------------------------------------------------------------------------

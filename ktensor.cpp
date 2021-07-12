@@ -178,9 +178,11 @@ K kget(const TensorDict& d,K x) { // x-nullptr by default, can contain sym(s) fo
  }
 }
 
-// --------------------------------------------------------------------------
-// kget - get output variant, tensor, tuple, 3-element tensor array or vector
-// --------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// kget - return module output as array or list of arrays of tensor values
+// tvec - return vector of tensors from tensor array
+// kout - return module output as tensor or vector of tensors
+// ------------------------------------------------------------------------
 K kget(const Tuple& t) {
  return knk(2,kget(std::get<0>(t)),kget(std::get<1>(t)));
 }
@@ -201,7 +203,25 @@ K kget(const Output& o) {
  } else if(auto a=c10::get_if<TensorVector>(&o)) {
   return kget(*a);
  } else {
-  TORCH_ERROR("unrecognized output from module forward calculation");
+  TORCH_ERROR("unrecognized output from forward calculation");
+ }
+}
+
+TensorVector tvec(const Tensors& t) {
+ return {t[0],t[1],t[2]};
+}
+
+K kout(const Output& o) {
+ if(auto a=c10::get_if<Tensor>(&o)) {
+  return kten(*a);
+ } else if(auto a=c10::get_if<Tuple>(&o)) {
+  return kvec({std::get<0>(*a),std::get<1>(*a)});
+ } else if(auto a=c10::get_if<Tensors>(&o)) {
+  return kvec(tvec(*a));
+ } else if(auto a=c10::get_if<TensorVector>(&o)) {
+  return kvec(*a);
+ } else {
+  TORCH_ERROR("unrecognized output from forward calculation");
  }
 }
 

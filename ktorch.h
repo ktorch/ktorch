@@ -547,6 +547,8 @@ K kget(const TensorDeque&);
 K kget(const Tuple&);
 K kget(const Tensors&);
 K kget(const Output&);
+TensorVector tvec(const Tensors&);
+K kout(const Output&);
 Tensor kput(K);
 Tensor kput(K,J);
 TensorDict kputd(K);
