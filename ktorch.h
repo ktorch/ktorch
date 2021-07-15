@@ -118,9 +118,11 @@ using AnyModule=torch::nn::AnyModule;
 class SeqNest;
 class SeqJoin;
 
-using Tuple   = std::tuple<Tensor,Tensor>;
-using Tensors = std::array<Tensor,3>;                             // holds input(s) to modules
-using Output  = c10::variant<Tensor,Tuple,Tensors,TensorVector>;  // output from forward calc of modules
+using Tuple         = std::tuple<Tensor,Tensor>;
+using Tensors       = std::array<Tensor,3>;
+using TensorVectors = std::array<TensorVector,2>;
+using Input         = c10::variant<TensorVector,TensorVectors,TensorDict>; 
+using Output        = c10::variant<Tensor,Tuple,Tensors,TensorVector>;
 
 using Optimizer=torch::optim::Optimizer;
 using Optptr=std::shared_ptr<Optimizer>;
@@ -243,10 +245,6 @@ enum class Metric: char {
  loss, accuracy, max, out
 };
 
-enum class Result: short {
- undefined=-1, none, tensor, vector, tuple, nested
-};
-
 enum class Enum {  // enums to match pytorch variants
  undefined=-1,
  area,            batchmean,       bicubic,         bilinear,   border,   
@@ -261,7 +259,6 @@ enum class Enum {  // enums to match pytorch variants
 struct TORCH_API Ktag {
  Class  a = Class::undefined;
  Cast   c = Cast::undefined;
- Result r = Result::undefined;
  virtual ~Ktag() = default;
 };
 
@@ -281,7 +278,7 @@ struct TORCH_API Kdict : public Ktag {
 };
 
 struct TORCH_API Kmodule : public Ktag {
- Kmodule(Class x,Cast y,Result z,Moduleptr p) : m(std::move(p)) {a=x; c=y; r=z;}
+ Kmodule(Class x,Cast y,Moduleptr p) : m(std::move(p)) {a=x; c=y;}
  Moduleptr m;
 };
 
@@ -302,7 +299,7 @@ struct TORCH_API Kmodel : public Ktag {
  TrainOptions train;  // training options
  EvalOptions eval;    // evaluation options
  Kmodel(Kmodule *x,Kmodule *y,Kopt *z) : mc(x->c),lc(y->c),oc(z->c),m(x->m),l(y->m),o(z->o),om(z->m) {
-  a=Class::model; c=Cast::model; r=x->r;
+  a=Class::model; c=Cast::model;
  }
 };
 
@@ -493,7 +490,7 @@ K optmap(const Tensor&);
 K optmap(const TensorOptions&);
 std::string kstring(K);
 std::string kstring(K,J);
-K kout(K);
+K kshow(K);
 K kcast(Ktype,K);
 K kbool(K);
 J kfind(K,const std::string&);
@@ -534,7 +531,6 @@ void kfree(const std::vector<K>&);
 void fn(K,const char*,void*,I);
 void randomfn(K);
 void mathfn(K);
-S mresult(Result);
 K attr(K,Ktype,Attr);
 
 // tensor & vector routines:
@@ -610,18 +606,15 @@ Cast msym(S);
 S msym(Cast);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
-Tensor mforward(Cast,Module&,const Tensor&);
-Tensor mforward(Cast,Module&,const Tensor&,const Tensor&);
-Tensor mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Output mForward(Cast,Module&,const Tensor&);
 Output mForward(Cast,Module&,const Tensor&,const Tensor&);
 Output mForward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
-TensorVector vforward(Cast,Result,Module&,const Tensor&,const Tensor&,const Tensor&);
 K modulehelp(Cast);
 void nnfn(K);
 
 // loss functions:
 K kloss(Cast,const Moduleptr&);
+Tensor losstensor(Cast,const Output&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);
@@ -712,14 +705,6 @@ typedef struct {
   std::make_tuple(cs("loss"),      Class::loss),
   std::make_tuple(cs("optimizer"), Class::optimizer),
   std::make_tuple(cs("model"),     Class::model)
- }};
-
- std::array<std::tuple<S,Result>,5> result = {{       //result types of modules
-  std::make_tuple(cs("none"),    Result::none),
-  std::make_tuple(cs("tensor"),  Result::tensor),
-  std::make_tuple(cs("vector"),  Result::vector),
-  std::make_tuple(cs("tuple"),   Result::tuple),
-  std::make_tuple(cs("nested"),  Result::nested)
  }};
 
  std::array<std::tuple<S,Class>,3> model = {{

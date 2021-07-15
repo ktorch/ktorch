@@ -12,6 +12,15 @@ class TORCH_API FirstImpl : public torch::nn::Cloneable<FirstImpl> {
 };
 TORCH_MODULE(First);
 */
+
+KAPI reftest(K x) {
+ IntArrayRef a((int64_t*)&x->j,1);
+ IntArrayRef b({1234});
+ for(auto j:a) std::cerr << j << "\n";
+ for(auto j:b) std::cerr << j << "\n";
+ return (K)0;
+}
+
 KAPI reformat(K x) {
  KTRY
   auto *m=xmodule(x);
@@ -54,10 +63,14 @@ Tensor trainstep(Kmodel *m,const Tensor& x,const Tensor& y) {
  auto step = [&](Kmodel *m, const Tensor& x,const Tensor& y) {
   auto f = [&]() {
    m->o->zero_grad();
-   auto a=mforward(m->mc,*m->m,x);
-   auto l=mloss(m,a,y);
-   l.backward();
-   return l;
+   auto r=mForward(m->mc,*m->m,x);
+   if(auto a=c10::get_if<Tensor>(&r)) {
+    auto l=mloss(m,*a,y);
+    l.backward();
+    return l;
+   } else {
+    TORCH_ERROR("trainstep only implemented for tensor result");
+   }
   }; 
   return m->o->step(f);
  };  
@@ -90,7 +103,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=mforward(g->mc,*g->m,*z);
+  Tensor gx=c10::get<Tensor>(mForward(g->mc,*g->m,*z));
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   d->o->step();
@@ -862,8 +875,10 @@ KAPI ksizes(K x) {
  std::cerr << "Tensors: " << sizeof(Tensors) << "\n";
  std::cerr << "TensorVector: " << sizeof(TensorVector) << "\n";
  std::cerr << "TensorDict: " << sizeof(TensorDict) << "\n";
+ std::cerr << "Input:  " << sizeof(Input) << "\n";
  std::cerr << "Output:  " << sizeof(Output) << "\n";
  std::cerr << "Training options: " << sizeof(TrainOptions2) << "\n";
+ std::cerr << "Small TensorVector: " << sizeof(torch::SmallVector<Tensor,5>) << "\n";
  return (K)0;
 }
 

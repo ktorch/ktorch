@@ -731,6 +731,32 @@ K lossdict(bool a,bool b,Cast c,const Module &m) {
  return xD(k,v);
 }
 
+// ----------------------------------------------------------------------------
+// losstensor - given module output, return output tensor to use for loss calc
+// lossfwd - calculate loss given input(s) & target(s)
+// ----------------------------------------------------------------------------
+Tensor losstensor(Cast c,const Output& o) {
+ switch(c) {
+  case Cast::cosineloss:
+  case Cast::margin:
+  case Cast::triplet:
+  case Cast::ctc:
+   TORCH_ERROR("unable to get tensor for loss calculation, not implemented for ",lmap(c));
+  default:
+   if(auto a=c10::get_if<Tensor>(&o)) {
+    return *a;
+   } else if(auto a=c10::get_if<Tuple>(&o)) {
+    return std::get<0>(*a);
+   } else if(auto a=c10::get_if<Tensors>(&o)) {
+    return a->front();
+   } else if(auto a=c10::get_if<TensorVector>(&o)) {
+    return a->front();
+   } else {
+    TORCH_ERROR("unable to get tensor for loss calculation -- unrecognized module output");
+   }
+ }
+}
+ 
 Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {
  switch(c) {
   case Cast::bce:         return m.as<BCELoss>()->forward(x,y,{});             // no batch weights defined
@@ -757,11 +783,11 @@ Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {
 
 Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
  switch(c) {
-  case Cast::bce:        return m.as<BCELoss>()->forward(x,y,z);           // z=batch weights
-  case Cast::bcelogits:  return m.as<BCEWithLogitsLoss>()->forward(x,y,z); // z=batch weights
-  case Cast::cosineloss: return m.as<nn::CosineEmbeddingLoss>()->forward(x,y,z);
-  case Cast::margin:     return m.as<nn::MarginRankingLoss>()->forward(x,y,z);
-  case Cast::triplet:    return m.as<nn::TripletMarginLoss>()->forward(x,y,z);
+  case Cast::bce:        return m.as<BCELoss>()->forward(x,y,z);                 // z=batch weights
+  case Cast::bcelogits:  return m.as<BCEWithLogitsLoss>()->forward(x,y,z);       // z=batch weights
+  case Cast::cosineloss: return m.as<nn::CosineEmbeddingLoss>()->forward(x,y,z); // x=input1,y=input2,z=target
+  case Cast::margin:     return m.as<nn::MarginRankingLoss>()->forward(x,y,z);   // x=input1,y=input2,z=target
+  case Cast::triplet:    return m.as<nn::TripletMarginLoss>()->forward(x,y,z);   // x=anchor,y=positive,z=negative
   default: TORCH_ERROR("unable to calculate ",m.name()," loss given 3 tensors (e.g. input,target,weight  or input1,input2,target");
  }
 }

@@ -1,11 +1,11 @@
 #include "ktorch.h"
 
-// -------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // modelpart - parse args from k to define module, loss & optimizer
 // modelkeys - return list of symbols used for model state dictionary
 // modelstate - return a dictionary with state of module, loss fn & optimizer
 // model - create model from module, loss & optimizer or retrieve input options
-// -------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 static void modelpart(K x,J i,Kmodule*& q,Kmodule*& l,Kopt*& o) {
  for(;i<x->n;++i) {
   auto* g=xtag(x,i);
@@ -46,7 +46,7 @@ KAPI model(K x) {
   } else {
    m=xmodel(x,0); modelpart(x,m ? 1 : 0,q,l,o);
    if(m) {
-    if(q) m->mc=q->c, m->r=q->r, m->m=q->m;  //assign new module
+    if(q) m->mc=q->c, m->m=q->m;             //assign new module
     if(l) m->lc=l->c, m->l=l->m;             //new loss function
     if(o) m->oc=o->c, m->o=o->o, m->om=o->m; //new optimizer
     modelfree(x,1);
@@ -82,59 +82,21 @@ KAPI zerograd(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// mforward - return tensor from running forward calcs on input(s)
-// forward - forward calcs on sequential module or model
+// kforward - return tensor from parsing k args & running forward calcs on input(s)
+// forward - forward calcs on module/model given inputs & targets
 // -------------------------------------------------------------------------------------------
-static Tensor mforward(Kmodel *m,const Tensor& x) {return mforward(m->mc,*m->m,x);}
-static Tensor mforward(Kmodel *m,const TensorVector& v) {return mforward(m->mc,*m->m,v[0]);}
-
-static size_t tcount(const Tensor& x,const Tensor& y,const Tensor& z) {
- if(x.defined() && !y.defined() && !z.defined())
-  return 1;
- else if(x.defined() && y.defined() && !z.defined())
-  return 2;
- else if(x.defined() && y.defined() && z.defined())
-  return 3;
- else if(!x.defined())
-  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but initial x tensor not defined");
- else
-  TORCH_ERROR("forward: unrecognized tensor arg(s), expecting x, (x;y) or (x;y;z), but given (x;z)");
-}
-
-K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y={},const Tensor& z={});
-K mforward(Cast c,Result r,Module& m,const Tensor& x,const Tensor& y,   const Tensor& z) {
- switch(r) {
-  case Result::tensor:
-   switch(tcount(x,y,z)) {
-    case 1: return kten(mforward(c,m,x));
-    case 2: return kten(mforward(c,m,x,y));
-    case 3: return kten(mforward(c,m,x,y,z));
-    default: TORCH_ERROR("forward: unrecognized tensor arg(s)");
-   }
-  case Result::vector:
-  case Result::tuple:
-  case Result::nested:
-   return kvec(vforward(c,r,m,x,y,z));
-  case Result::none:
-   TORCH_ERROR("forward: no forward calculation defined for ",msym(c)," module");
-  case Result::undefined:
-   TORCH_ERROR("forward: no result type defined for ",msym(c)," module's forward calculation");
-  default: TORCH_ERROR("forward: unrecognized result enumeration(",(I)r,") for ",mlabel(m));
- }
-}
-
-static K mforward(Cast c,Result r,Module& m,K a) {
+static K kforward(Cast c,Module& m,K a) {
  Tensor x,y,z; TensorVector *v;
  if((v=xvec(a,1))) {
   TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
   IntArrayRef i;
   if(a->n==2) {
-   return mforward(c, r, m, v->at(0));
+   return kout(mForward(c, m, v->at(0)));
   } else if(a->n==3 && xsize(a,2,i)) {
    switch(i.size()) {
-    case 1: return mforward(c, r, m, v->at(i[0]));
-    case 2: return mforward(c, r, m, v->at(i[0]), v->at(i[1]));
-    case 3: return mforward(c, r, m, v->at(i[0]), v->at(i[1]), v->at(i[2]));
+    case 1: return kout(mForward(c, m, v->at(i[0])));
+    case 2: return kout(mForward(c, m, v->at(i[0]), v->at(i[1])));
+    case 3: return kout(mForward(c, m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
     default: TORCH_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
    }
   } else {
@@ -145,7 +107,7 @@ static K mforward(Cast c,Result r,Module& m,K a) {
   if(!xten(a,1,x))            x=kput(a,1);
   if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
   if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
-  return a->n==2 ? mforward(c,r,m,x) : (a->n==3 ? mforward(c,r,m,x,y) : mforward(c,r,m,x,y,z));
+  return kout(a->n==2 ? mForward(c,m,x) : (a->n==3 ? mForward(c,m,x,y) : mForward(c,m,x,y,z)));
  }
 }
 
@@ -154,8 +116,8 @@ KAPI forward(K x) {
   Ktag *g=xtag(x,0);
   TORCH_CHECK(g, "forward: expects module/model as first arg, with tensor(s)/vector/dictionary as additional args");
   switch(g->a) {
-   case Class::module: {auto *m=(Kmodule*)g; return mforward(m->c, m->r,*m->m,x);}
-   case Class::model:  {auto *m=(Kmodel*)g;  return mforward(m->mc,m->r,*m->m,x);}
+   case Class::module: {auto *m=(Kmodule*)g; return kforward(m->c, *m->m,x);}
+   case Class::model:  {auto *m=(Kmodel*)g;  return kforward(m->mc,*m->m,x);}
    default: TORCH_ERROR("forward not implemented for ",mapclass(g->a));
   }
  KCATCH("forward");
@@ -169,10 +131,10 @@ K mbackward(K a) {
  Kmodel *m=xmodel(a,0); Tensor *x,*y,r; TensorVector *v;
  TORCH_CHECK(m, "backward: first argument not a model");
  if((x=xten(a,1)) && (y=xten(a,2)) && a->n==3) {
-  r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,*x),*y);
+  r=lossfwd(m->lc,*m->l, losstensor(m->lc,mForward(m->mc,*m->m,*x)), *y);
  } else if ((v=xvec(a,1)) && a->n==2) {
   TORCH_CHECK(v->size()>1, "backward: vector expected to contain two or more tensors, given ",v->size());
-  r=lossfwd(m->lc,*m->l,mforward(m->mc,*m->m,v->at(0)),v->at(1));
+  r=lossfwd(m->lc,*m->l, losstensor(m->lc,mForward(m->mc,*m->m,v->at(0))), v->at(1));
  } else {
   TORCH_ERROR("backward expects (model; inputs; targets) or (model;vector)");
  }
@@ -189,8 +151,13 @@ Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
   TORCH_ERROR("model: ", v.size()," inputs given, expecting 2-3");
 }
 
-Tensor mloss(Kmodel *m,const TensorVector &v) {return mloss(m,mforward(m,v),v);}
-Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {return lossfwd(m->lc,*m->l,mforward(m,x),y);}
+Tensor mloss(Kmodel *m,const TensorVector &v) {
+ return mloss(m, losstensor(m->lc, mForward(m->mc,*m->m,v.at(0))), v);
+}
+
+Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {
+ return lossfwd(m->lc,*m->l, losstensor(m->lc, mForward(m->mc,*m->m,x)), y);
+}
 
 // -----------------------------------------------------------------------------------------
 // tbackward - backprop given tensor, optional tensor & sym for retain/create gradient graph
@@ -296,6 +263,12 @@ KAPI ktrain(K x) {
 // --------------------------------------------------------------------------------------------
 // evalfwd - forward calc on given module layer and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
+static Tensor evalfwd(Cast c,Module& m,Tensor& x) {
+ auto r=mForward(c,m,x); auto a=c10::get_if<Tensor>(&r);
+ TORCH_CHECK(a, "evaluate: ",msym(c)," output not simple tensor, not implemented");
+ return *a;
+}
+
 static Tensor evalfwd(Cast c,Module& m,Tensor& x,int64_t w) {
  bool b=m.is_training(); Tensor y;
  if(b) m.train(false);               // turn off training mode
@@ -304,12 +277,12 @@ static Tensor evalfwd(Cast c,Module& m,Tensor& x,int64_t w) {
   TensorVector r;
   for(int64_t i=0; i<n; i+=w) {      // batches of w
    subset(x,0,i,w,n);
-   r.emplace_back(mforward(c,m,x));  // accumulate forward calcs
+   r.emplace_back(evalfwd(c,m,x));  // accumulate forward calcs
   }
   subset(x,0,0,n,n);                 // restore size of inputs
   y=torch::cat(r);                   // and join batch results
  } else {
-  y=mforward(c,m,x);                 // no batching, run forward on full inputs
+  y=evalfwd(c,m,x);                  // no batching, run forward on full input
  }
  if(b) m.train(true);
  return y;
@@ -444,59 +417,6 @@ static K kclip(K x,bool a,const char *c) {
 KAPI clip(K x)  {return kclip(x, true,  "clip gradient norm");}
 KAPI clipv(K x) {return kclip(x, false, "clip gradient value");}
 
-// ----------------------------------------------------------------
-// tcount - return count of defined tensors in array
-// margs - process k args into tensor array, vector or dictionary
-// ----------------------------------------------------------------
-static auto tcount(const Tensors& x) {
- size_t n=0; 
- for(const auto& a:x)
-  if(a.defined())
-   n++;
-  else
-   break;
- return n;
-}
-
-static void margs(const char *c,K x,Tensors& t,TensorVector *&v,TensorDict *&d) {
- size_t m=t.size(),n=tcount(t);
- TORCH_CHECK(n<m, c,": ",n," tensors already defined, additional arg(s) not implemented");
- if(auto *g=xtag(x)) {
-  switch(g->a) {
-   case Class::tensor: t[n]=((Kten*)g)->t; break;
-   case Class::vector:
-    TORCH_CHECK(!n, c,": tensor/vector mix not implemented");
-    TORCH_CHECK(!v, c,": 2nd vector unexpected");
-    v=&((Kvec*)g)->v;  break;
-   case Class::dict:
-    TORCH_CHECK(!n, c,": tensor/dictionary mix not implemented");
-    TORCH_CHECK(!d, c,": 2nd dictionary unexpected");
-    d=&((Kdict*)g)->d; break;
-   default:
-    TORCH_ERROR(c,": unexpected ",mapclass(g->a)," argument");
-  }
- } else if(v) {
-  IntArrayRef vi; size_t i=0;
-  TORCH_CHECK(xsize(x,vi), c,": expecting vector indices, given ",kname(x));
-  TORCH_CHECK(vi.size()>0 && vi.size()<=m, "forward: expecting 1-",m," vector indices, ",vi.size()," given");
-  for(auto j:vi) t[i++]=v->at(j);
- } else if(d) {
-  S s; J sn=xlen(x); Tensor *di;
-  TORCH_CHECK(xsyms(x,s), c,": expecting dictionary key(s), given",(sn ? " " : " empty "),kname(x));
-  TORCH_CHECK(sn>0 && sn<=m, c,": expecting 1-",m," dictionary keys, ",sn," given");
-  for(J i=0;i<sn;++i) {
-   if(i) s=kS(x)[i];
-   TORCH_CHECK(di=d->find(s), c,": dictionary key `",s," not found");
-   t[i]=*di;
-  }
- } else if(xmixed(x,3)) {
-   for(J i=0; i<x->n; ++i)
-    margs(c,kK(x)[i],t,v,d);
- } else {
-   t[n]=kput(x);
- }
-}
-
 // ----------------------------------------------------------------------------------------
 // mvec - routines to index into vector of tensors as part of args to forward/backward etc
 // ----------------------------------------------------------------------------------------
@@ -576,6 +496,137 @@ static void mdict(const char *c,K a,Tensors& x,Tensors& y,TensorDict *d) {
  }
 }
 
+// ----------------------------------------------------------------
+// tcount - return count of defined tensors in array
+// margs - process k args into tensor array, vector or dictionary
+// ----------------------------------------------------------------
+static auto tcount(const Tensors& x) {
+ size_t n=0; 
+ for(const auto& a:x)
+  if(a.defined())
+   n++;
+  else
+   break;
+ return n;
+}
+
+static void margs(const char *c,K x,Tensors& t,TensorVector *&v,TensorDict *&d) {
+ size_t m=t.size(),n=tcount(t);
+ TORCH_CHECK(n<m, c,": ",n," tensors already defined, additional arg(s) not implemented");
+ if(auto *g=xtag(x)) {
+  switch(g->a) {
+   case Class::tensor: t[n]=((Kten*)g)->t; break;
+   case Class::vector:
+    TORCH_CHECK(!n, c,": tensor/vector mix not implemented");
+    TORCH_CHECK(!v, c,": 2nd vector unexpected");
+    v=&((Kvec*)g)->v;  break;
+   case Class::dict:
+    TORCH_CHECK(!n, c,": tensor/dictionary mix not implemented");
+    TORCH_CHECK(!d, c,": 2nd dictionary unexpected");
+    d=&((Kdict*)g)->d; break;
+   default:
+    TORCH_ERROR(c,": unexpected ",mapclass(g->a)," argument");
+  }
+ } else if(v) {
+  IntArrayRef vi; size_t i=0;
+  TORCH_CHECK(xsize(x,vi), c,": expecting vector indices, given ",kname(x));
+  TORCH_CHECK(vi.size()>0 && vi.size()<=m, "forward: expecting 1-",m," vector indices, ",vi.size()," given");
+  for(auto j:vi) t[i++]=v->at(j);
+ } else if(d) {
+  S s; J sn=xlen(x); Tensor *di;
+  TORCH_CHECK(xsyms(x,s), c,": expecting dictionary key(s), given",(sn ? " " : " empty "),kname(x));
+  TORCH_CHECK(sn>0 && sn<=m, c,": expecting 1-",m," dictionary keys, ",sn," given");
+  for(J i=0;i<sn;++i) {
+   if(i) s=kS(x)[i];
+   TORCH_CHECK(di=d->find(s), c,": dictionary key `",s," not found");
+   t[i]=*di;
+  }
+ } else if(xmixed(x,3)) {
+   for(J i=0; i<x->n; ++i)
+    margs(c,kK(x)[i],t,v,d);
+ } else {
+   t[n]=kput(x);
+ }
+}
+
+static void margs(const char *c,K a,Tensors& x,Tensors& y,TensorVector *&v,TensorDict *&d) {
+ margs(c,kK(a)[1],x,v,d);
+ if(v) {
+  mvec(c,a,x,y,v);
+ } else if(d) {
+ } else {
+  margs(c,kK(a)[2],y,v,d);
+ }
+}
+
+// ---------------------------------------------------------------------------
+// addtensor - add tensor(s) to vector from given dictionary/vector
+// modelarg - handle k inputs for forward calculations
+// modelargs - handke k inputs for both forward & backward calculations
+// ---------------------------------------------------------------------------
+static void addtensor(TensorVector& a,const char *c,K x,TensorVector *v) {
+ IntArrayRef i; TORCH_CHECK(xsize(x,i), c,": expecting vector indices, given ",kname(x));
+ for(auto j:i) {
+  TORCH_CHECK(-1<j && j<v->size(), c,": invalid vector index of ",j);
+   a.emplace_back(v->at(j));
+ }
+}
+
+static void addtensor(TensorVector& a,const char *c,K x,TensorDict *d) {
+  S s; J n=xlen(x); Tensor *t;
+  TORCH_CHECK(xsyms(x,s), c,": expecting dictionary key(s), given",(n ? " " : " empty "),kname(x));
+  for(J i=0;i<n;++i) {
+   if(i) s=kS(x)[i];
+   TORCH_CHECK(t=d->find(s), c,": dictionary key `",s," not found");
+   a.emplace_back(*t);
+  }
+}
+
+static bool modelarg(TensorVector& a,size_t n,K x,const char *c,TensorVector *&v,TensorDict *&d) {
+ bool b=true;Tensor *t;
+ TORCH_CHECK(n<2, c,": argument(s) nested too deeply");
+ if(v) {
+  b=false; addtensor(a,c,x,v);
+ } else if(d) {
+  b=false; addtensor(a,c,x,d);
+ } else if((t=xten(x)) || (v=xvec(x)) || (d=xtensordict(x))) {
+  if(t) a.emplace_back(*t);
+ } else if(xptr(x)) {
+  TORCH_ERROR(c,": unexpected ",kname(x)," argument");
+ } else if(xmixed(x,3)) {
+  for(J i=0; i<x->n; ++i)
+   TORCH_CHECK(modelarg(a,n+1,kK(x)[i],c,v,d) || i==x->n-1, c,": too many nested arg(s) given");
+  b=false;
+ } else {
+   a.emplace_back(kput(x));
+ }
+ return b;
+}
+
+static TensorVector modelarg(K x,const char* c) {
+ TensorVector a,*v=nullptr; TensorDict *d=nullptr; 
+ for(J i=1; i<x->n; ++i) 
+  TORCH_CHECK(modelarg(a,0,kK(x)[i],c,v,d) || i==x->n-1,
+              c,": unexpected arg(s) i=",i," tensors defined: ",a.size());
+ return a;
+/*
+ if(a.size()) return a;  // vector of inputs defined from vector/dict & indices/keys
+ else if(v)   return v;  // vector given, no indices
+ else if(d)   return d;  // dictionary given, no keys
+ else TORCH_ERROR(c,": no tensors defined");
+*/
+}
+
+static void modelargs(const char *c,K a,Tensors& x,Tensors& y,TensorVector *&v,TensorDict *&d) {
+ margs(c,kK(a)[1],x,v,d);
+ if(v) {
+  mvec(c,a,x,y,v);
+ } else if(d) {
+ } else {
+  margs(c,kK(a)[2],y,v,d);
+ }
+}
+
 // ------------------------------------------------------------------------------
 //  fwd calcs..
 // ------------------------------------------------------------------------------
@@ -588,17 +639,33 @@ static Output fwd(Cast c,Module& m,const Tensors& x) {
  }
 }
 
+static Output fwd(Cast c,Module& m,const TensorVector& x) {
+ switch(x.size()) {
+  case 1: return mForward(c,m,x[0]);
+  case 2: return mForward(c,m,x[0],x[1]);
+  case 3: return mForward(c,m,x[0],x[1],x[2]);
+  default: TORCH_ERROR("no forward method implemented for ",x.size()," tensors");
+ }
+}
+
+KAPI margtest(K x) {
+ KTRY
+  auto *m=xmodel(x,0); auto *q=m ? nullptr : xmodule(x,0); Cast c=m ? m->mc : q->c;
+  TORCH_CHECK((m || q) && x->n>1, "forward: requires a module or model and at least one input");
+  return kout(fwd(c,m ? *m->m : *q->m, modelarg(x,"forward")));
+ KCATCH("forward");
+}
+
 KAPI forward2(K a) {
  KTRY
-  auto *m=xmodel(a,0); auto *q=m ? nullptr : xmodule(a,0);
+  auto *m=xmodel(a,0); auto *q=m ? nullptr : xmodule(a,0); Cast c=m ? m->mc : q->c;
   TORCH_CHECK((m || q) && a->n>1, "forward: requires a module or model and at least one input");
-  Cast c=m ? m->mc : q->c; Tensors x; TensorVector *v=nullptr; TensorDict *d=nullptr;
+  Tensors x; TensorVector *v=nullptr; TensorDict *d=nullptr;
   for(J i=1; i<a->n; ++i) margs("forward",kK(a)[i],x,v,d);
   if(v) {
-   TORCH_CHECK(v->size(), "forward: empty vector given");
-   x[0]=v->at(0);
+   TORCH_CHECK(v->size(), "forward: empty vector given"); x[0]=v->at(0);
   } else if(d) {
-   TORCH_CHECK("forward: unable to derive tensor inputs from given dictionary");
+   TORCH_ERROR("forward: unable to derive tensor inputs from dictionary without keys");
   }
   return kout(fwd(c,*(m ? m->m : q->m),x));
  KCATCH("forward");
@@ -606,16 +673,10 @@ KAPI forward2(K a) {
 
 KAPI back(K a) {
  KTRY
-  auto *g=xtag(a,0); const char *c="backward";
-  TORCH_CHECK(g && g->a==Class::model && a->n>2, "backward: expects model with inputs & targets");
+  auto *m=xmodel(a,0);
+  TORCH_CHECK(m && a->n>2, "backward: expects model with inputs & targets");
   Tensors x,y; TensorVector *v=nullptr; TensorDict *d=nullptr;
-  margs("backward",kK(a)[1],x,v,d);
-  if(v) {
-   mvec(c,a,x,y,v);
-  } else if(d) {
-  } else {
-   margs("backward",kK(a)[2],y,v,d);
-  }
+  margs("backward",a,x,y,v,d);
   return (K)0;
  KCATCH("backward");
 }

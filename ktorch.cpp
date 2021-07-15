@@ -1000,7 +1000,7 @@ std::string kstring(K x) {
 
 std::string kstring(K x,J i) {return kstring(xind(x,i) ? kK(x)[i] : x);}
 
-K kout(K x) {return k(0,(S)"0N!",r1(x),0);}
+K kshow(K x) {return k(0,(S)"0N!",r1(x),0);}
 K kcast(Ktype t,K x) {return k(0,(S)"$",kh(t),r1(x),0);}
 K kbool(K x) {return kcast(1,x);}
 
@@ -1724,19 +1724,11 @@ KAPI kseed(K x) {
 // -----------------------------------------------------------------------------------------
 // query object attributes, e.g. tensor/vector and other object attributes
 // -----------------------------------------------------------------------------------------
-// mresult - return symbol indicating module result type, e.g. `tensor`tuple
 // moduleattr - handle a limited set of module attributes
 // modelattr - handle a limited set of model attributes
 // attr - attempt to get attribute of given object (more attributes implemented for tensors)
 // -----------------------------------------------------------------------------------------
-S mresult(Result r) {
- for(const auto& a:env().result)
-  if(std::get<1>(a) == r) return std::get<0>(a);
- TORCH_CHECK(r==Result::undefined, "module result type is unrecognized: ",(I)r);
- return nullsym();
-}
-
-static K moduleattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
+static K moduleattr(Class c,const Moduleptr& p,Ktype k,Attr a) {
  switch(a) {
   case Attr::ref:      return kj(p.use_count());
   case Attr::ptr:      return kj((intptr_t)p.get());
@@ -1744,7 +1736,6 @@ static K moduleattr(Class c,Result r,const Moduleptr& p,Ktype k,Attr a) {
   case Attr::size:     return kj(p->parameters().size());
   case Attr::bytes:    return kj(objbytes(*p));
   case Attr::elements: return kj(objnum(*p));
-  case Attr::result:   return ks(mresult(r));
   default: TORCH_ERROR(mapattr(a),": not implemented for ",(c==Class::loss ? "loss " : ""),"modules");
  }
 }
@@ -1765,7 +1756,6 @@ static K modelattr(Kmodel *m,Ktype k,Attr a) {
   case Attr::size:     return kj(m->m->parameters().size());
   case Attr::bytes:    return kj(objbytes(m));
   case Attr::elements: return kj(objnum(m));
-  case Attr::result:   return ks(mresult(m->r));
   default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(m->a));
  }
 }
@@ -1779,7 +1769,7 @@ K attr(K x,Ktype k,Attr a) {
    case Class::vector:    return vectorattr(((Kvec*)g)->v,k,a);
    case Class::dict:      return dictattr(((Kdict*)g)->d,k,a);
    case Class::module:
-   case Class::loss:      return moduleattr(g->a,g->r,((Kmodule*)g)->m,k,a);
+   case Class::loss:      return moduleattr(g->a,((Kmodule*)g)->m,k,a);
    case Class::optimizer: return optattr(g->c, ((Kopt*)g)->o, k, a);
    case Class::model:     return modelattr((Kmodel*)g, k, a);
    default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(g->a));

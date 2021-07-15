@@ -1146,10 +1146,10 @@ torch.stft(input, n_fft, hop_length=None, win_length=None, window=None, center=T
 */
 
 /* OTHER & BLAS routine chained_matmul
-broadcast_tensors(*tensors) -> List of Tensors[SOURCE]
-einsum(equation, *operands) -> Tensor[SOURCE]
-meshgrid(*tensors, **kwargs)[SOURCE]
-chain_matmul(*matrices)[SOURCE]
+broadcast_tensors(*tensors) -> List of tensors
+einsum(equation, *operands) -> tensor
+meshgrid(*tensors, **kwargs)
+chain_matmul(*matrices)
 */
 
 // -------------------------------------------------------------------------------------
