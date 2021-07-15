@@ -63,7 +63,7 @@ Tensor trainstep(Kmodel *m,const Tensor& x,const Tensor& y) {
  auto step = [&](Kmodel *m, const Tensor& x,const Tensor& y) {
   auto f = [&]() {
    m->o->zero_grad();
-   auto r=mForward(m->mc,*m->m,x);
+   auto r=mforward(m->mc,*m->m,x);
    if(auto a=c10::get_if<Tensor>(&r)) {
     auto l=mloss(m,*a,y);
     l.backward();
@@ -103,7 +103,7 @@ KAPI ganstep(K a) {
   d->o->zero_grad();
   Tensor l0=mloss(d, *x, (*y)[0]);
   l0.backward();
-  Tensor gx=c10::get<Tensor>(mForward(g->mc,*g->m,*z));
+  Tensor gx=c10::get<Tensor>(mforward(g->mc,*g->m,*z));
   Tensor l1=mloss(d, gx.detach(), (*y)[1]);
   l1.backward();
   d->o->step();

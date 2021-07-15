@@ -91,12 +91,12 @@ static K kforward(Cast c,Module& m,K a) {
   TORCH_CHECK(v->size(), "forward: empty vector of tensors supplied");
   IntArrayRef i;
   if(a->n==2) {
-   return kout(mForward(c, m, v->at(0)));
+   return kout(mforward(c, m, v->at(0)));
   } else if(a->n==3 && xsize(a,2,i)) {
    switch(i.size()) {
-    case 1: return kout(mForward(c, m, v->at(i[0])));
-    case 2: return kout(mForward(c, m, v->at(i[0]), v->at(i[1])));
-    case 3: return kout(mForward(c, m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
+    case 1: return kout(mforward(c, m, v->at(i[0])));
+    case 2: return kout(mforward(c, m, v->at(i[0]), v->at(i[1])));
+    case 3: return kout(mforward(c, m, v->at(i[0]), v->at(i[1]), v->at(i[2])));
     default: TORCH_ERROR("forward: vector w'indices expects 1-3 indices, ",i.size()," supplied");
    }
   } else {
@@ -107,7 +107,7 @@ static K kforward(Cast c,Module& m,K a) {
   if(!xten(a,1,x))            x=kput(a,1);
   if(a->n>=3 && !xten(a,2,y)) y=kput(a,2);
   if(a->n==4 && !xten(a,3,z)) z=kput(a,3);
-  return kout(a->n==2 ? mForward(c,m,x) : (a->n==3 ? mForward(c,m,x,y) : mForward(c,m,x,y,z)));
+  return kout(a->n==2 ? mforward(c,m,x) : (a->n==3 ? mforward(c,m,x,y) : mforward(c,m,x,y,z)));
  }
 }
 
@@ -124,22 +124,30 @@ KAPI forward(K x) {
 }
 
 // -------------------------------------------------------------------------------------------
-// mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
+// losstensor - given module output, return output tensor to use for loss calc
 // mloss - given model and vector of inputs, e.g. v=x,y, loss=loss(module(v[0]),v[1])
+// mbackward - given model, input & target, do forward calcs, get loss, backward prop on loss
 // -------------------------------------------------------------------------------------------
-K mbackward(K a) {
- Kmodel *m=xmodel(a,0); Tensor *x,*y,r; TensorVector *v;
- TORCH_CHECK(m, "backward: first argument not a model");
- if((x=xten(a,1)) && (y=xten(a,2)) && a->n==3) {
-  r=lossfwd(m->lc,*m->l, losstensor(m->lc,mForward(m->mc,*m->m,*x)), *y);
- } else if ((v=xvec(a,1)) && a->n==2) {
-  TORCH_CHECK(v->size()>1, "backward: vector expected to contain two or more tensors, given ",v->size());
-  r=lossfwd(m->lc,*m->l, losstensor(m->lc,mForward(m->mc,*m->m,v->at(0))), v->at(1));
- } else {
-  TORCH_ERROR("backward expects (model; inputs; targets) or (model;vector)");
+static Tensor losstensor(Cast c,const Output& o) {
+ switch(c) {
+  case Cast::cosineloss:
+  case Cast::margin:
+  case Cast::triplet:
+  case Cast::ctc:
+   TORCH_ERROR("unable to get tensor for loss calculation, not implemented for ",lmap(c));
+  default:
+   if(auto a=c10::get_if<Tensor>(&o)) {
+    return *a;
+   } else if(auto a=c10::get_if<Tuple>(&o)) {
+    return std::get<0>(*a);
+   } else if(auto a=c10::get_if<Tensors>(&o)) {
+    return a->front();
+   } else if(auto a=c10::get_if<TensorVector>(&o)) {
+    return a->front();
+   } else {
+    TORCH_ERROR("unable to get tensor for loss calculation -- unrecognized module output");
+   }
  }
- r.backward();
- return kget(r);
 }
 
 Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
@@ -152,11 +160,26 @@ Tensor mloss(Kmodel *m,const Tensor& x,const TensorVector &v) {
 }
 
 Tensor mloss(Kmodel *m,const TensorVector &v) {
- return mloss(m, losstensor(m->lc, mForward(m->mc,*m->m,v.at(0))), v);
+ return mloss(m, losstensor(m->lc, mforward(m->mc,*m->m,v.at(0))), v);
 }
 
 Tensor mloss(Kmodel *m,const Tensor& x,const Tensor& y) {
- return lossfwd(m->lc,*m->l, losstensor(m->lc, mForward(m->mc,*m->m,x)), y);
+ return lossfwd(m->lc,*m->l, losstensor(m->lc, mforward(m->mc,*m->m,x)), y);
+}
+
+K mbackward(K a) {
+ Kmodel *m=xmodel(a,0); Tensor *x,*y,r; TensorVector *v;
+ TORCH_CHECK(m, "backward: first argument not a model");
+ if((x=xten(a,1)) && (y=xten(a,2)) && a->n==3) {
+  r=mloss(m,*x,*y);
+ } else if ((v=xvec(a,1)) && a->n==2) {
+  TORCH_CHECK(v->size()>1, "backward: vector expected to contain two or more tensors, given ",v->size());
+  r=mloss(m,*v);
+ } else {
+  TORCH_ERROR("backward expects (model; inputs; targets) or (model;vector)");
+ }
+ r.backward();
+ return kget(r);
 }
 
 // -----------------------------------------------------------------------------------------
@@ -264,7 +287,7 @@ KAPI ktrain(K x) {
 // evalfwd - forward calc on given module layer and inputs, in batches if batchsize given
 // --------------------------------------------------------------------------------------------
 static Tensor evalfwd(Cast c,Module& m,Tensor& x) {
- auto r=mForward(c,m,x); auto a=c10::get_if<Tensor>(&r);
+ auto r=mforward(c,m,x); auto a=c10::get_if<Tensor>(&r);
  TORCH_CHECK(a, "evaluate: ",msym(c)," output not simple tensor, not implemented");
  return *a;
 }
@@ -632,18 +655,18 @@ static void modelargs(const char *c,K a,Tensors& x,Tensors& y,TensorVector *&v,T
 // ------------------------------------------------------------------------------
 static Output fwd(Cast c,Module& m,const Tensors& x) {
  switch(tcount(x)) {
-  case 1: return mForward(c,m,x[0]);
-  case 2: return mForward(c,m,x[0],x[1]);
-  case 3: return mForward(c,m,x[0],x[1],x[2]);
+  case 1: return mforward(c,m,x[0]);
+  case 2: return mforward(c,m,x[0],x[1]);
+  case 3: return mforward(c,m,x[0],x[1],x[2]);
   default: TORCH_ERROR("no forward method implemented for ",tcount(x)," tensors");
  }
 }
 
 static Output fwd(Cast c,Module& m,const TensorVector& x) {
  switch(x.size()) {
-  case 1: return mForward(c,m,x[0]);
-  case 2: return mForward(c,m,x[0],x[1]);
-  case 3: return mForward(c,m,x[0],x[1],x[2]);
+  case 1: return mforward(c,m,x[0]);
+  case 2: return mforward(c,m,x[0],x[1]);
+  case 3: return mforward(c,m,x[0],x[1],x[2]);
   default: TORCH_ERROR("no forward method implemented for ",x.size()," tensors");
  }
 }

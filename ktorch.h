@@ -606,15 +606,16 @@ Cast msym(S);
 S msym(Cast);
 S msym(const Module&);
 K mget(bool,bool,const Module&);
-Output mForward(Cast,Module&,const Tensor&);
-Output mForward(Cast,Module&,const Tensor&,const Tensor&);
-Output mForward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
+Output mforward(Cast,Module&,const Tensor&);
+Output mforward(Cast,Module&,const Tensor&,const Tensor&);
+Output mforward(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 K modulehelp(Cast);
 void nnfn(K);
 
 // loss functions:
 K kloss(Cast,const Moduleptr&);
-Tensor losstensor(Cast,const Output&);
+Cast lmap(S);
+S lmap(Cast);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&);
 Tensor lossfwd(Cast,Module&,const Tensor&,const Tensor&,const Tensor&,const Tensor&);

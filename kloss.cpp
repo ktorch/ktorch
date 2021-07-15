@@ -16,13 +16,13 @@ namespace fnn=torch::nn::functional;
 // ------------------------------------------------------------------------------------------------------
 K kloss(Cast c,const Moduleptr& m) {return kmodule(c,m,Class::loss);}
 
-static Cast lmap(S s) {
+Cast lmap(S s) {
  for(const auto& m:env().loss)
   if(std::get<0>(m)==s) return std::get<1>(m);
  TORCH_ERROR("unrecognized loss function: ",s);
 }
 
-static S lmap(Cast c) {
+S lmap(Cast c) {
  for(const auto& m:env().loss)
   if(std::get<1>(m)==c) return std::get<0>(m);
  TORCH_ERROR("unrecognized loss function: ",(I)c);
@@ -732,31 +732,8 @@ K lossdict(bool a,bool b,Cast c,const Module &m) {
 }
 
 // ----------------------------------------------------------------------------
-// losstensor - given module output, return output tensor to use for loss calc
 // lossfwd - calculate loss given input(s) & target(s)
 // ----------------------------------------------------------------------------
-Tensor losstensor(Cast c,const Output& o) {
- switch(c) {
-  case Cast::cosineloss:
-  case Cast::margin:
-  case Cast::triplet:
-  case Cast::ctc:
-   TORCH_ERROR("unable to get tensor for loss calculation, not implemented for ",lmap(c));
-  default:
-   if(auto a=c10::get_if<Tensor>(&o)) {
-    return *a;
-   } else if(auto a=c10::get_if<Tuple>(&o)) {
-    return std::get<0>(*a);
-   } else if(auto a=c10::get_if<Tensors>(&o)) {
-    return a->front();
-   } else if(auto a=c10::get_if<TensorVector>(&o)) {
-    return a->front();
-   } else {
-    TORCH_ERROR("unable to get tensor for loss calculation -- unrecognized module output");
-   }
- }
-}
- 
 Tensor lossfwd(Cast c,Module& m,const Tensor& x,const Tensor&y) {
  switch(c) {
   case Cast::bce:         return m.as<BCELoss>()->forward(x,y,{});             // no batch weights defined

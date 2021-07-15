@@ -274,9 +274,9 @@ static K mresult(Kmodule *m,Cast c,Modules& q) {
 }
 
 // ------------------------------------------------------------------------------------
-// mForward - given layer, run forward calc on tensor x and optional y,z tensors
+// mforward - given layer, run forward calc on tensor x and optional y,z tensors
 // ------------------------------------------------------------------------------------
-Output mForward(Cast c,Module& m,const Tensor& x) {
+Output mforward(Cast c,Module& m,const Tensor& x) {
  switch(c) {
   case Cast::adaptavg1d:      return m.as<nn::AdaptiveAvgPool1d>()->forward(x);
   case Cast::adaptavg2d:      return m.as<nn::AdaptiveAvgPool2d>()->forward(x);
@@ -390,7 +390,7 @@ Output mForward(Cast c,Module& m,const Tensor& x) {
  }
 }
 
-Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
+Output mforward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
  switch(c) {
   case Cast::bilinear:        return m.as<nn::Bilinear>()->forward(x,y);
   case Cast::cat:             return m.as<Cat>()->forward(x,y);
@@ -411,7 +411,7 @@ Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y) {
  }
 }
 
-Output mForward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
+Output mforward(Cast c,Module& m,const Tensor& x,const Tensor& y,const Tensor& z) {
  switch(c) {
   case Cast::decoder:         return m.as<nn::TransformerDecoder>()->forward(x,y,z);
   case Cast::decoderlayer:    return m.as<nn::TransformerDecoderLayer>()->forward(x,y,z);
