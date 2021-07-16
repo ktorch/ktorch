@@ -234,11 +234,11 @@ enum class Attr:char {
  undefined = 0,
  bytes,  densedim, dim, elements,  itemsize, nnz, numel, offset, // long scalars
  ptr, ref, sparsedim, sptr, sref, tensorcount, weakref,
- device, dtype, gradfn, gradient, layout, memory, result,        // symbol
- coalesced, contiguous, contiguous2d, contiguous3d, gradflag,    // boolean
- leaf, pinned, sparseflag,
- size, stride,                                                   // long list
- data, storage                                                   // other: list,dict,..
+ device, dtype, gradfn, gradient, layout, memory, result,       // symbol
+ coalesced, contiguous, contiguous2d, contiguous3d, defined,    // boolean
+ gradflag, leaf, pinned, sparseflag,
+ size, stride,                                                  // long list
+ data, storage                                                  // other: list,dict,..
 };
  
 enum class Metric: char {
@@ -1074,13 +1074,14 @@ std::array<std::tuple<S,Init>,13> init = {{   //initialization methods
   std::make_tuple(cs("search"),     Setting::search)
  }};
 
- std::array<std::tuple<S,Attr>,34> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,35> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("bytes"),        Attr::bytes),
   std::make_tuple(cs("coalesced"),    Attr::coalesced),
   std::make_tuple(cs("contiguous"),   Attr::contiguous),
   std::make_tuple(cs("contiguous2d"), Attr::contiguous2d),
   std::make_tuple(cs("contiguous3d"), Attr::contiguous3d),
   std::make_tuple(cs("data"),         Attr::data),
+  std::make_tuple(cs("defined"),      Attr::defined),
   std::make_tuple(cs("device"),       Attr::device),
   std::make_tuple(cs("densedim"),     Attr::densedim),
   std::make_tuple(cs("dim"),          Attr::dim),

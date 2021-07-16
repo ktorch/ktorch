@@ -855,6 +855,26 @@ KAPI metrictest(K x) {
  KCATCH("metrics");
 }
 
+struct InputVector {
+ torch::SmallVector<Tensor,7> v;
+ uint8_t x;
+ uint8_t y;
+};
+
+using Input2=c10::variant<InputVector,TensorDict>;
+
+struct Input3 {
+ c10::variant<Tensor,TensorVector> x;
+ c10::variant<Tensor,TensorVector> y;
+};
+
+struct TensorVectors2 {
+ TensorVector x;
+ TensorVector y;
+};
+
+using InputArgs = c10::variant<Tensor,TensorDict,TensorVector,TensorVectors2>;
+
 KAPI ksizes(K x) {
  std::cerr << "type_info: " << sizeof(std::type_info) << "\n";
  J j; auto h=typeid(j).hash_code();
@@ -878,7 +898,16 @@ KAPI ksizes(K x) {
  std::cerr << "Input:  " << sizeof(Input) << "\n";
  std::cerr << "Output:  " << sizeof(Output) << "\n";
  std::cerr << "Training options: " << sizeof(TrainOptions2) << "\n";
- std::cerr << "Small TensorVector: " << sizeof(torch::SmallVector<Tensor,5>) << "\n";
+ std::cerr << "TensorVectors: " << sizeof(TensorVectors) << "\n";
+ std::cerr << "Small TensorVector(5): " << sizeof(torch::SmallVector<Tensor,5>) << "\n";
+ std::cerr << "Small TensorVector(7): " << sizeof(torch::SmallVector<Tensor,7>) << "\n";
+ std::cerr << "Small TensorVector(9): " << sizeof(torch::SmallVector<Tensor,9>) << "\n";
+ std::cerr << "InputVector: " << sizeof(InputVector) << "\n";
+ std::cerr << "Input: " << sizeof(Input) << "\n";
+ std::cerr << "Input2: " << sizeof(Input2) << "\n";
+ std::cerr << "Input3: " << sizeof(Input3) << "\n";
+ std::cerr << "TensorVectors: " << sizeof(TensorVectors2) << "\n";
+ std::cerr << "InputArgs: " << sizeof(InputArgs) << "\n";
  return (K)0;
 }
 

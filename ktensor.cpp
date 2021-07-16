@@ -114,7 +114,7 @@ static K kgets(I i,I j,Ktype k,J b,const int64_t *s,S &p) {
 
 K kget(const Tensor &t) {
  if(!t.defined())
-  return ktn(0,0);
+  return (K)0;   // NULL TENSOR ktn(0,0);
  else if (t.is_complex())
   return kget(toreal(t));
  else if (!t.dim())      // if 0-dimensional
@@ -276,7 +276,9 @@ static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
  // pinned memory doesn't seem to be handled from within any .to() method
  //"Operators taking TensorOptions cannot take a TensorOptions with options.requires_grad set as true. This isn't implemented yet."
  //"to(options) doesn't support converting to a different layout, but got self.layout being Strided and options.layout set as Sparse"
- if(checksparse(o))
+ if(!t.defined())
+  return t;
+ else if(checksparse(o))
    return t.to_sparse().to(o.requires_grad(false),a,b).set_requires_grad(o.requires_grad());
  else if(t.is_sparse() && o.has_layout() && o.layout()==torch::kStrided)
    return to(t.to_dense(),o);
@@ -287,7 +289,7 @@ static Tensor to(const Tensor& t,const TensorOptions& o,bool a,bool b) {
 }
 
 K to(Kten* t,const TensorOptions& o,bool a,bool b) {
- //auto r=t->t.to(o,a,b);
+ TORCH_CHECK(t->t.defined(),"to: cannot change attribute(s) of an undefined tensor");
  auto r=to(t->t,o,a,b);
  if(b)                 // if copy flag set
   return kten(r);      // return new tensor
@@ -298,15 +300,19 @@ K to(Kten* t,const TensorOptions& o,bool a,bool b) {
 
 void to(TensorDict& d,const TensorOptions& o,bool a) {
  for(auto& i:d) {
-  auto t=i.value().to(o,a);
-  if(!i.value().is_same(t)) i.value()=std::move(t);
+  if(i.value().defined()) {
+   auto t=i.value().to(o,a);
+   if(!i.value().is_same(t)) i.value()=std::move(t);
+  }
  }
 }
 
 void to(TensorVector& v,const TensorOptions& o,bool a) {
  for(auto& t:v) {
-  auto r=t.to(o,a);
-  if(!t.is_same(r)) t=std::move(r);
+  if(t.defined()) {
+   auto r=t.to(o,a);
+   if(!t.is_same(r)) t=std::move(r);
+  }
  }
 }
 
@@ -373,7 +379,8 @@ Tensor kput(K x) {
  Tensor t;                 // undefined tensor
  if(x->t < 0)              // if scalar
   kputscalar(x,t);         // create scalar backed by tensor
- else                      // else go through the depth of the array
+else if(!xnull(x))       // else go through the depth of the array
+// else                      // else go through the depth of the array NULL TENSOR
   kputs(x,0,k,s,b,p,t);    // until base data type encountered
  return t;
 }
@@ -741,7 +748,8 @@ static K tensorput(K x) {
   r.resize_(t.sizes()).copy_(t,true);
   return (K)0;
  } else {
-  return kten(to(t,o));
+  //return kten(to(t,o));  // NULL TENSOR
+  return kten(t.defined() ? to(t,o) : t);
  }
 }
 
@@ -1132,26 +1140,26 @@ J tensorlong(const Tensor& t,Attr a) {
   case Attr::bytes:     return objbytes(t);
   case Attr::offset:    return t.is_sparse() ? nj : t.storage_offset();
   case Attr::ref:       return t.use_count();
-  case Attr::sref:      return t.storage().use_count();
-  case Attr::weakref:   return t.weak_use_count();
+  case Attr::sref:      return t.defined() ? t.storage().use_count() : 0;
+  case Attr::weakref:   return t.defined() ? t.weak_use_count() : 0;
   case Attr::ptr:       return (intptr_t)t.unsafeGetTensorImpl();
-  case Attr::sptr:      return t.is_sparse() ? nj : (intptr_t)t.storage().data();
+  case Attr::sptr:      return !t.defined() || t.is_sparse() ? 0 : (intptr_t)t.storage().data();
   case Attr::densedim:  return t.is_sparse() ? t.dense_dim()  : t.dim();
   case Attr::sparsedim: return t.is_sparse() ? t.sparse_dim() : 0;
-  case Attr::nnz:       return t.is_sparse() ? t._nnz() : t.count_nonzero().item().toLong();
+  case Attr::nnz:       return t.is_sparse() ? t._nnz() : (t.defined() ? t.count_nonzero().item().toLong() : 0);
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
 
 S tensorsym(const Tensor& t,Attr a) {
  switch(a) {
-  case Attr::device:   return optdev(t.device());
-  case Attr::dtype:    return optdtype(t.dtype());
-  case Attr::layout:   return optlayout(t.layout());
-  case Attr::gradient: return optgrad(t.requires_grad());
-  case Attr::gradfn:   return (S)(t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
-  case Attr::pinned:   return optpin(t.is_sparse() ? false : t.is_pinned());
-  case Attr::memory:   return optmemory(t.suggest_memory_format());
+  case Attr::device:   return t.defined() ? optdev(t.device()) : nullsym();
+  case Attr::dtype:    return t.defined() ? optdtype(t.dtype()) : nullsym();
+  case Attr::layout:   return t.defined() ? optlayout(t.layout()) : nullsym();
+  case Attr::gradient: return t.defined() ? optgrad(t.requires_grad()) : nullsym();
+  case Attr::gradfn:   return (S)(t.defined() && t.grad_fn() ?  t.grad_fn()->name().c_str() : "");
+  case Attr::pinned:   return optpin(!t.defined() || t.is_sparse() ? false : t.is_pinned());
+  case Attr::memory:   return t.defined() ? optmemory(t.suggest_memory_format()) : nullsym();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1162,9 +1170,10 @@ static bool tensorflag(const Tensor &t,Attr a) {
   case Attr::contiguous:   return t.is_sparse() ? false : t.is_contiguous();
   case Attr::contiguous2d: return t.is_sparse() ? false : t.is_contiguous(torch::MemoryFormat::ChannelsLast);
   case Attr::contiguous3d: return t.is_sparse() ? false : t.is_contiguous(torch::MemoryFormat::ChannelsLast3d);
+  case Attr::defined:      return t.defined();
   case Attr::gradflag:     return t.requires_grad();
-  case Attr::leaf:         return t.is_leaf();
-  case Attr::pinned:       return t.is_sparse() ? false : t.is_pinned();
+  case Attr::leaf:         return !t.defined() || t.is_leaf();
+  case Attr::pinned:       return !t.defined() || t.is_sparse() ? false : t.is_pinned();
   case Attr::sparseflag:   return t.is_sparse();
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
@@ -1173,7 +1182,7 @@ static bool tensorflag(const Tensor &t,Attr a) {
 K tensorsize(const Tensor &t,Attr a) {
  switch(a) {
   case Attr::size:    return klist(t.dim(),t.sizes().data());
-  case Attr::stride:  return t.is_sparse() ? ktn(0,0) : klist(t.dim(),t.strides().data());
+  case Attr::stride:  return !t.defined() || t.is_sparse() ? ktn(0,0) : klist(t.dim(),t.strides().data());
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1269,14 +1278,12 @@ static K stordata(const Tensor& a) {
  return x;
 }
 
-static K storinfo(const Tensor& t,const Storage& c) {
- const auto& s=t.storage(); const auto& d=t.dtype();
+static K storinfo(const Tensor& t) {
  K x=xD(ktn(KS,0),ktn(0,0)),*k=&kK(x)[0],*v=&kK(x)[1];
- js(k, mapattr(Attr::size));     jk(v, kj(s.nbytes()/d.itemsize()));
- js(k, mapattr(Attr::itemsize)); jk(v, kj(d.itemsize()));
- js(k, mapattr(Attr::ref));      jk(v, kj(storlong(s, Attr::ref)));
- js(k, mapattr(Attr::ptr));      jk(v, kj(storlong(s, Attr::ptr)));
- js(k, mapattr(Attr::data));     jk(v, stordata(t));
+ js(k, mapattr(Attr::bytes));    jk(v, kj(t.defined() ? t.storage().nbytes() : 0));
+ js(k, mapattr(Attr::ref));      jk(v, kj(t.defined() ? storlong(t.storage(), Attr::ref) : 0));
+ js(k, mapattr(Attr::ptr));      jk(v, kj(t.defined() ? storlong(t.storage(), Attr::ptr) : 0));
+ js(k, mapattr(Attr::data));     jk(v, t.defined() ? stordata(t) : knk(0,0));
  return x;
 }
 
@@ -1287,29 +1294,30 @@ K tensorinfo(const Tensor& t,bool d) {
   js(a, cs("values"));  jk(b, tensorinfo(t._values(),d));
   return x;
  }
- K x=xD(ktn(KS,0),ktn(0,0)),*a=&kK(x)[0],*b=&kK(x)[1];
- js(a, mapattr(Attr::device));      jk(b, ks(tensorsym(t,  Attr::device)));
- js(a, mapattr(Attr::dtype));       jk(b, ks(tensorsym(t,  Attr::dtype)));
- js(a, mapattr(Attr::layout));      jk(b, ks(tensorsym(t,  Attr::layout)));
- js(a, mapattr(Attr::gradient));    jk(b, ks(tensorsym(t,  Attr::gradient)));
- js(a, mapattr(Attr::pinned));      jk(b, ks(tensorsym(t,  Attr::pinned)));
- js(a, mapattr(Attr::memory));      jk(b, ks(tensorsym(t,  Attr::memory)));
- js(a, mapattr(Attr::leaf));        jk(b, kb(tensorflag(t, Attr::leaf)));
- js(a, mapattr(Attr::gradfn));      jk(b, ks(tensorsym(t,  Attr::gradfn)));
- js(a, mapattr(Attr::dim));         jk(b, kj(tensorlong(t, Attr::dim)));
- js(a, mapattr(Attr::sparsedim));   jk(b, kj(tensorlong(t, Attr::sparsedim)));
- js(a, mapattr(Attr::size));        jk(b, tensorsize(t,    Attr::size));
- js(a, mapattr(Attr::stride));      jk(b, tensorsize(t,    Attr::stride));
- js(a, mapattr(Attr::numel));       jk(b, kj(tensorlong(t, Attr::numel)));
- js(a, mapattr(Attr::itemsize));    jk(b, kj(tensorlong(t, Attr::itemsize)));
- js(a, mapattr(Attr::contiguous));  jk(b, kb(tensorflag(t, Attr::contiguous)));
- js(a, mapattr(Attr::coalesced));   jk(b, kb(tensorflag(t, Attr::coalesced)));
- js(a, mapattr(Attr::offset));      jk(b, kj(tensorlong(t, Attr::offset)));
- js(a, mapattr(Attr::ptr));         jk(b, kj(tensorlong(t, Attr::ptr)));
- js(a, mapattr(Attr::ref));         jk(b, kj(tensorlong(t, Attr::ref)));
+ K x=xD(ktn(KS,0),ktn(0,0)),*k=&kK(x)[0],*v=&kK(x)[1]; bool b=t.defined();
+ js(k, mapattr(Attr::defined));     jk(v, kb(tensorflag(t, Attr::defined)));
+ js(k, mapattr(Attr::device));      jk(v, ks(b ? tensorsym(t,Attr::device) : nullsym()));
+ js(k, mapattr(Attr::dtype));       jk(v, ks(b ? tensorsym(t,Attr::dtype) : nullsym()));
+ js(k, mapattr(Attr::layout));      jk(v, ks(b ? tensorsym(t,Attr::layout) : nullsym()));
+ js(k, mapattr(Attr::gradient));    jk(v, ks(b ? tensorsym(t,Attr::gradient) : nullsym()));
+ js(k, mapattr(Attr::pinned));      jk(v, ks(b ? tensorsym(t,Attr::pinned) : nullsym()));
+ js(k, mapattr(Attr::memory));      jk(v, ks(b ? tensorsym(t,Attr::memory) : nullsym()));
+ js(k, mapattr(Attr::leaf));        jk(v, kb(tensorflag(t, Attr::leaf)));
+ js(k, mapattr(Attr::gradfn));      jk(v, ks(tensorsym(t,  Attr::gradfn)));
+ js(k, mapattr(Attr::dim));         jk(v, kj(tensorlong(t, Attr::dim)));
+ js(k, mapattr(Attr::sparsedim));   jk(v, kj(tensorlong(t, Attr::sparsedim)));
+ js(k, mapattr(Attr::size));        jk(v, tensorsize(t,    Attr::size));
+ js(k, mapattr(Attr::stride));      jk(v, tensorsize(t,    Attr::stride));
+ js(k, mapattr(Attr::numel));       jk(v, kj(tensorlong(t, Attr::numel)));
+ js(k, mapattr(Attr::itemsize));    jk(v, kj(tensorlong(t, Attr::itemsize)));
+ js(k, mapattr(Attr::contiguous));  jk(v, kb(tensorflag(t, Attr::contiguous)));
+ js(k, mapattr(Attr::coalesced));   jk(v, kb(tensorflag(t, Attr::coalesced)));
+ js(k, mapattr(Attr::offset));      jk(v, kj(tensorlong(t, Attr::offset)));
+ js(k, mapattr(Attr::ptr));         jk(v, kj(tensorlong(t, Attr::ptr)));
+ js(k, mapattr(Attr::ref));         jk(v, kj(tensorlong(t, Attr::ref)));
  if(d) {
-  js(a, mapattr(Attr::storage));   
-  jk(b, storinfo(t, t.dtype()==torch::kHalf ? t.cpu().to(torch::kFloat).storage() : t.cpu().storage()));
+  js(k, mapattr(Attr::storage));   
+  jk(v, storinfo(t));
  }
  return x;
 }

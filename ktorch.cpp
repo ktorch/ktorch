@@ -1516,22 +1516,12 @@ K optkey() {
  return x;
 }
 
-K optval(const Tensor &t,K x,J i) {
- if(x->t==KS) {
-  kS(x)[0]=optdev(t.device());
-  kS(x)[1]=optdtype(t.dtype());
-  kS(x)[2]=optlayout(t.layout());
-  kS(x)[3]=optgrad(t.requires_grad());
-  kS(x)[4]=optpin(t.is_sparse() ? false : t.is_pinned());
-  kS(x)[5]=optmemory(t.suggest_memory_format());
- } else {
-  kS(kK(x)[0])[i]=optdev(t.device());
-  kS(kK(x)[1])[i]=optdtype(t.dtype());
-  kS(kK(x)[2])[i]=optlayout(t.layout());
-  kS(kK(x)[3])[i]=optgrad(t.requires_grad());
-  kS(kK(x)[4])[i]=optpin(t.is_sparse() ? false : t.is_pinned());
-  kS(kK(x)[5])[i]=optmemory(t.suggest_memory_format());
- }
+K optval(K x,J i) {
+ for(J j=0;j<x->n;++j)
+  if(x->t==KS)
+   kS(x)[j]=nullsym();
+  else
+   kS(kK(x)[j])[i]=nullsym();
  return x;
 }
 
@@ -1550,6 +1540,27 @@ K optval(const TensorOptions &o,K x,J i) {
   kS(kK(x)[3])[i]=optgrad(o.requires_grad());
   kS(kK(x)[4])[i]=optpin(o.pinned_memory());
   kS(kK(x)[5])[i]=optmemory(o.memory_format_opt());
+ }
+ return x;
+}
+
+K optval(const Tensor &t,K x,J i) {
+ if(!t.defined()) {
+  return optval(x,i);
+ } else if(x->t==KS) {
+  kS(x)[0]=optdev(t.device());
+  kS(x)[1]=optdtype(t.dtype());
+  kS(x)[2]=optlayout(t.layout());
+  kS(x)[3]=optgrad(t.requires_grad());
+  kS(x)[4]=optpin(t.is_sparse() ? false : t.is_pinned());
+  kS(x)[5]=optmemory(t.suggest_memory_format());
+ } else {
+  kS(kK(x)[0])[i]=optdev(t.device());
+  kS(kK(x)[1])[i]=optdtype(t.dtype());
+  kS(kK(x)[2])[i]=optlayout(t.layout());
+  kS(kK(x)[3])[i]=optgrad(t.requires_grad());
+  kS(kK(x)[4])[i]=optpin(t.is_sparse() ? false : t.is_pinned());
+  kS(kK(x)[5])[i]=optmemory(t.suggest_memory_format());
  }
  return x;
 }
@@ -1818,6 +1829,7 @@ KAPI dtype(K x) {
   return attr(x, -KS, Attr::dtype);
 }
 
+KAPI    defined(K x) {return attr(x, -KB, Attr::defined);}
 KAPI  coalesced(K x) {return attr(x, -KB, Attr::coalesced);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
 KAPI     pinned(K x) {return attr(x, -KB, Attr::pinned);}
@@ -2023,6 +2035,7 @@ KAPI fns(K x){
  fn(x, "layout",      KFN(layout),      1);
  fn(x, "layout",      KFN(layout),      1);
  fn(x, "memory",      KFN(memory),      1);
+ fn(x, "defined",     KFN(defined),     1);
  fn(x, "coalesced",   KFN(coalesced),   1);
  fn(x, "contiguous",  KFN(contiguous),  1);
  fn(x, "leaf",        KFN(leaf),        1);
