@@ -44,7 +44,7 @@ Or download as a zip file:
 
 .. index:: Makefile
 
-Source file names
+PyTorch zip files
 *****************
 
 The libtorch.zip files from PyTorch are saved by version: when version 1.12.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
@@ -305,15 +305,15 @@ Checking the configuration:
 	   MKL_NUM_THREADS : [not set]
    ATen parallel backend: OpenMP
 
-If ``OpenMP`` not available, the ATen parallel backend may be listed as something like ``native thread pool``.
+If ``OpenMP`` is not available, the ATen parallel backend may be listed as something like ``native thread pool``.
 
-To make the ``ktorch.so`` library to q sessions without specifying a path, can do something like the following:
+To make the ``ktorch.so`` library available to q sessions without specifying a path, can do something like the following:
 
 ::
 
    ln -s $(pwd)/ktorch.so ~/q/m64
 
-Once the library is built, can try examples:
+Once the library is built, it can be tested with some examples:
 
 ::
 
@@ -323,7 +323,7 @@ Once the library is built, can try examples:
   
    > q examples/start/spirals.q
    KDB+ 4.0 2021.07.12 Copyright (C) 1993-2021 Kx Systems
-   m64/ 8(16)core 32768MB t imac 10.0.1.10 EXPIRE 2022.11.17 tom.fergson@gmail.com KOD #5006517
+   m64/ 8(16)core 32768MB
 
                                         
             0       2   2 2 2 2 2          
