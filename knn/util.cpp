@@ -152,13 +152,15 @@ Tensor ltensor(const Pairs& p,Cast c) {
 }
 
 Tensor ftensor(K x,J i,Cast c,Setting s) {
- Tensor t; if(!xten(x,i,t)) t=kput(x,i); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
+ Tensor t; if(!xten(x,i,t)) t=kput(x,i); 
+ if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
  TORCH_CHECK(t.is_floating_point(), msym(c)," ",mset(s),": double(s) expected, given ",t.dtype(),"(s)");
  return t;
 }
 
 Tensor ftensor(const Pairs& p,Cast c) {
- Tensor t; pten(p,t); if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
+ Tensor t; pten(p,t);
+ if(t.dtype()==torch::kLong) t=t.to(torch::kDouble);
  TORCH_CHECK(t.is_floating_point(), msym(c)," ",p.k,": double(s) expected, given ",t.dtype(),"(s)");
  return t;
 }

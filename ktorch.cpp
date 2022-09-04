@@ -936,7 +936,7 @@ static void xpair(Pairs& p,K x,J i) {
    case -KSHORT: p.j=x->h; p.t=-KJ; break;
    case -KI:     p.j=x->i; p.t=-KJ; break;
    case -KJ:     p.j=x->j; p.t=-KJ; break;
-   case -KE:     p.f=x->e; p.t=-KF; break;
+   case -KE:     p.e=x->e; p.t=-KE; break;
    case -KF:     p.f=x->f; p.t=-KF; break;
    default: TORCH_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
   }
@@ -950,7 +950,7 @@ static void xpair(Pairs& p,K x,J i) {
    case KSHORT: p.j=kH(x)[i]; p.t=-KJ; break;
    case KI:     p.j=kI(x)[i]; p.t=-KJ; break;
    case KJ:     p.j=kJ(x)[i]; p.t=-KJ; break;
-   case KE:     p.f=kE(x)[i]; p.t=-KF; break;
+   case KE:     p.e=kE(x)[i]; p.t=-KE; break;
    case KF:     p.f=kF(x)[i]; p.t=-KF; break;
    default: TORCH_ERROR("name-value pairs not implemented for ",kname(x->t)," value"); break;
   }
@@ -1041,7 +1041,7 @@ bool pbool(const Pairs& p) {if(p.t!=-KB) perr(p,"boolean"); return p.b;}
 J plong(const Pairs& p) {if(p.t!=-KJ) perr(p,"long integer"); return p.j;}
 
 double pdouble(const Pairs& p) {
- if(!(p.t==-KJ || p.t==-KF)) perr(p,"float, double or integer scalar");
+ if(!(p.t==-KJ || p.t==-KF)) perr(p,"double or integer scalar");
  return p.t==-KJ ? p.j : p.f;
 }
 
@@ -1103,6 +1103,7 @@ void pten(const Pairs& p,Tensor &t) {
   case 0: if(!(xten(p.v,t))) t=kput(p.v); break;
   case -KB: t=torch::full({},Scalar(p.b),maptype(KB)); break;
   case -KJ: t=torch::full({},Scalar((int64_t)p.j),maptype(KJ)); break;
+  case -KE: t=torch::full({},Scalar(p.e),maptype(KE)); break;
   case -KF: t=torch::full({},Scalar(p.f),maptype(KF)); break;
   case KB:
   case KSHORT:

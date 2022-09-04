@@ -10,6 +10,175 @@
 namespace nn=torch::nn;
 namespace fnn=torch::nn::functional;
 
+//#include "c10d/NCCLUtils.hpp"
+//#include "torch/csrc/cuda/nccl.h"
+
+KAPI nccl(K x) {
+ KTRY
+  Tensor a,b;
+  TORCH_CHECK(xten(x,0,a), "1st arg must be a tensor");
+  TORCH_CHECK(xten(x,1,b), "2nd arg must be a tensor");
+  //return kb(torch::cuda::nccl::is_available({a,b}));
+  return (K)0;
+ KCATCH("gradcopy");
+}
+
+KAPI gradcopy(K x) {
+ KTRY
+  TORCH_CHECK(!x->t,"gradcopy: expecting general list, given ",kname(x));
+  TORCH_CHECK(x->n==3,"gradcopy: expecting 3 args, (dict;name;values), ",x->n," given");
+  auto *d=xtensordict(x,0); S s;
+  TORCH_CHECK(d, "gradcopy: expecting 1st arg of a dictionary of parameters, given ",kname(x,0));
+  TORCH_CHECK(xsym(x,1,s), "gradcopy: expecting 2nd arg of a parameter name, given ",kname(x,1));
+  auto *t=d->find(s);
+  TORCH_CHECK(t, "gradcopy: unable to find parameter `",s);
+  auto& g=t->mutable_grad();
+  TORCH_CHECK(g.defined(),"gradcopy: parameter `",s," gradient not defined");
+  g.copy_(kput(x,2).view(g.sizes()));
+  return (K)0;
+ KCATCH("gradcopy");
+}
+
+static bool xfn(K x,std::string& s) {
+ bool b=true;
+ if(xsym(x))
+  s=x->s;
+ else if(x->t==KC)
+  s.assign((S)kC(x),x->n);
+ else
+  b=false;
+ return b;
+}
+
+static bool xfn(K x,J i,std::string& s) {return xind(x,i) && xfn(kK(x)[i],s);}
+
+static bool xint(K x,I& i) {
+ bool b=true;
+ switch(x->t) {
+  case -KI: i=x->i; break;
+  case -KJ: i=x->j; break;
+  default: b=false; break;
+ }
+ return b;
+}
+
+static bool xint(K x,J j,I& i) {return xind(x,j) && xint(kK(x)[j],i);}
+
+static unsigned gradhook1(const Tensor& t,int h,const std::string& f,S s) {
+ return t.register_hook([h,f,s](const Tensor& x) {
+  K r;
+  if(h) {
+   r=k(h,(S)f.c_str(),ks(s),kget(x.flatten()),(K)0);
+  } else {
+   K g=kten(x);
+   r=k(0,(S)f.c_str(),ks(s),r1(g),(K)0);
+   TORCH_CHECK(xfree(g),"hook: unable to free gradient for parameter `",s); r0(g);
+  }
+  TORCH_CHECK(r, "hook: network error, gradient callback for parameter `",s);
+  if(h>=0) {
+   if(r->t == -128) {
+    std::string e(r->s); r0(r);
+    TORCH_ERROR("hook: gradient callback for parameter `",s,", ",e);
+   } else {
+    r0(r);
+   }
+  }
+ }); 
+}
+
+static unsigned gradhook(const Tensor& t,int h,S f,S s) {
+ return t.register_hook([h,f,s](const Tensor& x) {
+  K r;
+  if(h) {
+   r=k(0, (S)"{[h;f;s;x] h(f;s;x)}", ki(h), ks(f), ks(s), kget(x.flatten()), (K)0);
+   //r=k(h,(S)f.c_str(),ks(s),kget(x.flatten()),(K)0);
+  } else {
+   K g=kten(x);
+   r=k(0,f,ks(s),r1(g),(K)0);
+   TORCH_CHECK(xfree(g),"hook: unable to free gradient for parameter `",s); r0(g);
+  }
+  TORCH_CHECK(r, "hook: network error, gradient callback for parameter `",s);
+  if(h>=0) {
+   if(r->t == -128) {
+    std::string e(r->s); r0(r);
+    TORCH_ERROR("hook: gradient callback for parameter `",s,", ",e);
+   } else {
+    r0(r);
+   }
+  }
+ }); 
+}
+
+static K gradhook(const TensorDict& d,int h,S f) {
+ size_t i=0; K k=ktn(KS,d.size()), v=ktn(KJ,d.size());
+ for(const auto& a:d.items()) {
+  S s=cs(a.key().c_str()); kS(k)[i]=s; kJ(v)[i++]=gradhook(a.value(),h,f,s);
+ }
+ return xD(k,v);
+}
+
+// unhook   void remove_hook(unsigned pos) const;
+KAPI hook1(K x) {
+ KTRY
+  TORCH_CHECK(!x->t,"hook: not implemented for arg of ",kname(x));
+  TORCH_CHECK(x->n==3, "hook: expecting 3 args, (object;handle;callback), given ",x->n);
+  auto *m=xmodel(x,0); auto *q=m ? m->kmodule() : xmodule(x,0); auto *d=q ? nullptr : xtensordict(x,0);
+  TORCH_CHECK(q || d, "hook: expecting 1st arg of model, module or parameter dictionary, given ",kname(x,0));
+  I h; std::string f;
+  TORCH_CHECK(xint(x,1,h), "hook: expecting 2nd arg of k connection handle (long or integer), given ",kname(x,1));
+  TORCH_CHECK(xfn(x,2,f), "hook: expecting 3rd arg of callback function name (symbol) or expression (string), given ",kname(x,2));
+  TORCH_CHECK(f.size(), "hook: callback function name/expression is empty");
+  //const auto& p=q ? q->module().named_parameters() : *d;
+  return (K)0; //return gradhook(p,h,f);
+ KCATCH("hook");
+}
+
+// unhook   void remove_hook(unsigned pos) const;
+KAPI hook(K x) {
+ KTRY
+  TORCH_CHECK(!x->t,"hook: not implemented for arg of ",kname(x));
+  TORCH_CHECK(x->n==3, "hook: expecting 3 args, (object;handle;callback), given ",x->n);
+  auto *m=xmodel(x,0); auto *q=m ? m->kmodule() : xmodule(x,0); auto *d=q ? nullptr : xtensordict(x,0);
+  TORCH_CHECK(q || d, "hook: expecting 1st arg of model, module or parameter dictionary, given ",kname(x,0));
+  I h; S f;
+  TORCH_CHECK(xint(x,1,h), "hook: expecting 2nd arg of k connection handle (long or integer), given ",kname(x,1));
+  TORCH_CHECK(xsym(x,2,f), "hook: expecting 3rd arg of callback function name (symbol), given ",kname(x,2));
+  //TORCH_CHECK(f.size(), "hook: callback function name/expression is empty");
+  const auto& p=q ? q->module().named_parameters() : *d;
+  return gradhook(p,h,f);
+ KCATCH("hook");
+}
+
+KAPI gradsend(K x) {
+ KTRY
+  TORCH_CHECK(!x->t,"gradsend: not implemented for arg of ",kname(x));
+  TORCH_CHECK(x->n==3, "gradsend: expecting 3 args, (object;handle;callback), given ",x->n);
+  auto *m=xmodel(x,0); auto *q=m ? m->kmodule() : xmodule(x,0); auto *d=q ? nullptr : xtensordict(x,0);
+  TORCH_CHECK(q || d, "gradsend: expecting 1st arg of model, module or parameter dictionary, given ",kname(x,0));
+  I h; S f;
+  TORCH_CHECK(xint(x,1,h), "gradsend: expecting 2nd arg of k connection handle (long or integer), given ",kname(x,1));
+  TORCH_CHECK(xsym(x,2,f), "gradsend: expecting 3rd arg of callback function name (symbol), given ",kname(x,2));
+  const auto& p=q ? q->module().named_parameters() : *d;
+  for(const auto& a:p.items()) {
+   const auto& g=a.value().grad();
+   if(g.defined()) {
+    S s=cs(a.key().c_str());
+    K r=k(h,f,ks(s),kget(g.flatten()),(K)0);
+    TORCH_CHECK(r, "gradsend: network error, gradient callback for parameter `",s);
+    if(h>=0) {
+     if(r->t == -128) {
+      std::string e(r->s); r0(r);
+      TORCH_ERROR("gradsend: parameter `",s,", ",e);
+     } else {
+      r0(r);
+     }
+    }
+   }
+  }
+  return (K)0;
+ KCATCH("gradsend");
+}
+
 KAPI testhalf(K x) {
  KTRY
   auto t=torch::tensor({1.0,2.0,3.0});

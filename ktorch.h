@@ -129,6 +129,7 @@ typedef struct Pairs {
  union {
   bool   b;  // boolean value from current pair
   J      j;  // long value
+  float  e;  // float value
   double f;  // double value
   S      s;  // symbol value
   K      v;  // value (isn't sym or numeric scalar)

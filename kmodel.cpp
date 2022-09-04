@@ -1141,6 +1141,30 @@ KAPI     target(K x) {return modelinput(x, true,  false, "target");}
 KAPI  testinput(K x) {return modelinput(x, false, true,  "testinput");}
 KAPI testtarget(K x) {return modelinput(x, false, false, "testtarget");}
 
+// ----------------------------------------------------------------------------------
+// datasize/testsize - return number of inputs in model data with or without batching
+// ----------------------------------------------------------------------------------
+static auto inputsize(const Input& x) {
+ Tensor t;
+ if       (auto a=c10::get_if<Tensor>(&x)) {       t=*a;
+ } else if(auto a=c10::get_if<TensorVector>(&x)) { if(a->size()) t=a->front();
+ } else if(auto a=c10::get_if<TensorDict>(&x))   { if(a->size()) t=a->front().value();
+ }
+ return t.defined() ? (t.dim() ? t.size(0) : 1) : 0;
+}
+
+static K inputsize(K x,bool b,const char *c) {
+ KTRY
+  auto *m=xmodel(x);
+  TORCH_CHECK(m, c,": model argument expected, given ",kname(x));
+  return kj(inputsize(b ? m->data.x : m->testdata.x));
+ KCATCH(c);
+}
+
+KAPI datasize(K x) {return inputsize(x, true,  "datasize");}
+KAPI testsize(K x) {return inputsize(x, false, "testsize");}
+
+
 // ------------------------------------------------------------------------
 // modelrun - test/train w'current data or supplying new input(s)/target(s)
 // ------------------------------------------------------------------------
@@ -1811,6 +1835,7 @@ void modelfn(K x) {
  fn(x, "clone",       KFN(Clone),       1);
  fn(x, "copyparms",   KFN(copyparms),   1);
  fn(x, "data",        KFN(data),        1);
+ fn(x, "datasize",    KFN(datasize),    1);
  fn(x, "eforward",    KFN(eforward),    1);
  fn(x, "evaluate",    KFN(evaluate),    1);
  fn(x, "forward",     KFN(forward),     1);
@@ -1836,6 +1861,7 @@ void modelfn(K x) {
  fn(x, "testinit",    KFN(testinit),    1);
  fn(x, "testinput",   KFN(testinput),   1);
  fn(x, "test",        KFN(test),        1);
+ fn(x, "testsize",    KFN(testsize),    1);
  fn(x, "testrestore", KFN(testrestore), 1);
  fn(x, "testrun",     KFN(testrun),     1);
  fn(x, "testtarget",  KFN(testtarget),  1);

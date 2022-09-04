@@ -447,8 +447,10 @@ The :func:`backward` call is on the tensor returned from the :func:`loss` call w
 
    q)parmnames q
    `a.weight`a.bias
+
    q)b:parm(q;`a.bias)
 
+   q)seed 7
    q)x:tensor(`randn; 10 64)
    q)y:tensor(`randint;10;10)
    q)m:model(q; loss`ce; opt(`sgd;q))
@@ -458,12 +460,11 @@ The :func:`backward` call is on the tensor returned from the :func:`loss` call w
    q)backward z
 
    q)tensor z
-   2.372e
+   2.358e
    q)grad b
-   0.04662 0.07708 0.04859 -0.03963 -0.03394 -0.03124 -0.04909 0.08847 0.05875 0..
+   -0.1293 -0.06398 0.07666 0.06759 0.02692 0.07495 -0.03646 0.06521 -0.01563 0...
 
-
-After defining training inputs and targets for the model,
+After defining batchsize, defining training inputs and targets for the model,
 calling the :func:`backward` with a single model argument runs the forward, loss and backward step together:
 
 ::
@@ -474,21 +475,28 @@ calling the :func:`backward` with a single model argument runs the forward, loss
 
    q)nograd m
    q)backward m
-   2.372e
+   2.358e
 
    q)grad b
-   0.04662 0.07708 0.04859 -0.03963 -0.03394 -0.03124 -0.04909 0.08847 0.05875 0..
+   -0.1293 -0.06398 0.07666 0.06759 0.02692 0.07495 -0.03646 0.06521 -0.01563 0...
 
-This part of the example runs the calculations in batches:
+This part of the example runs the same calculations in explicit batches:
 
 ::
 
    q)nograd m
-   q)g:l:n:(); while[batch m; nograd m; n,:count input m; l,:backward m; g,:enlist grad b]
+   q)g:l:n:(); while[batch m; nograd m; n,:datasize m; l,:backward m; g,:enlist grad b]
 
+   q)n
+   3 3 3 1
+
+   q)l
+   2.146 2.302 2.602 2.43e
+  
    q)n wavg/:(l;g)
-   2.372
-   0.04662 0.07708 0.04859 -0.03963 -0.03394 -0.03124 -0.04909 0.08847 0.05875 0..
+   2.358
+   -0.1293 -0.06398 0.07666 0.06759 0.02692 0.07495 -0.03646 0.06521 -0.01563 0...
+
 
 (The higher level :func:`run` and :func:`testrun` functions can be used with conforming models to handle the bach loop and calculation of loss, subsequent gradients, updating of parameters and output of model metrics.)
 
@@ -1004,6 +1012,34 @@ The functions can also be used to define model inputs and targets, for both trai
    q)test(m;`batchsize;5)
    q)testdata(m; til 100; 100#0 1)
    20
+
+datasize, testsize
+^^^^^^^^^^^^^^^^^^
+
+These functions retrieve the number of training or test inputs and are sensitive to the particular batch if called
+in a batch-by-batch context
+
+.. function:: datasize(model) -> count of training samples
+.. function:: testsize(model) -> count of test samples
+
+   :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
+   :return: Returns the overall count of training/test inputs and targets, or, if used in a batch-by-batch context, the count in the particular batch.
+
+::
+
+   q)m:model(module`relu; loss`ce;opt`sgd)    /dummy model
+   q)train(m; `batchsize; 3)
+   q)data(m; 1+til 10; 100+til 10)
+   4
+
+   q)datasize m
+   10
+
+   q)while[batch m; 0N!(datasize m; data m)]
+   (3;(1 2 3;100 101 102))
+   (3;(4 5 6;103 104 105))
+   (3;(7 8 9;106 107 108))
+   (1;(,10;,109))
 
 input, testinput
 ^^^^^^^^^^^^^^^^

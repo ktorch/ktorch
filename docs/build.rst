@@ -7,7 +7,7 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
-The k interface is built with the latest version of PyTorch as of July 2022, labeled ``Stable(1.12.0)``.
+The k interface is built with the latest version of PyTorch as of August 2022, labeled ``Stable(1.12.1)``.
 
 The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 200 megabytes for CPU-only.
@@ -47,33 +47,33 @@ Or download as a zip file:
 PyTorch zip files
 *****************
 
-The libtorch.zip files from PyTorch are saved by version: when version 1.12.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
+The libtorch.zip files from PyTorch are saved by version: when version 1.12.1 is no longer the latest version, it is still possible to retrieve the version-specific files:
 
 - Linux CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-1.12.0%2Bcpu.zip
-   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-1.12.1%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcpu.zip
 
 - Linux CUDA 10.2
-   - https://download.pytorch.org/libtorch/cu102/libtorch-shared-with-deps-1.12.0%2Bcu102.zip
-   - https://download.pytorch.org/libtorch/cu102/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu102.zip
+   - https://download.pytorch.org/libtorch/cu102/libtorch-shared-with-deps-1.12.1%2Bcu102.zip
+   - https://download.pytorch.org/libtorch/cu102/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcu102.zip
 
 - Linux CUDA 11.3
-   - https://download.pytorch.org/libtorch/cu113/libtorch-shared-with-deps-1.12.0%2Bcu113.zip
-   - https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu113.zip
+   - https://download.pytorch.org/libtorch/cu113/libtorch-shared-with-deps-1.12.1%2Bcu113.zip
+   - https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcu113.zip
 
 - Linux CUDA 11.6
-   - https://download.pytorch.org/libtorch/cu116/libtorch-shared-with-deps-1.12.0%2Bcu116.zip
-   - https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu116.zip
+   - https://download.pytorch.org/libtorch/cu116/libtorch-shared-with-deps-1.12.1%2Bcu116.zip
+   - https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcu116.zip
 
 - MacOS CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.0.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.1.zip
 
 - Release Notes
    - https://github.com/pytorch/pytorch/releases
-   - https://github.com/pytorch/pytorch/releases/tag/v1.12.0
+   - https://github.com/pytorch/pytorch/releases/tag/v1.12.1
 
 - Source
-   - https://github.com/pytorch/pytorch/archive/refs/tags/v1.12.0.zip
+   - https://github.com/pytorch/pytorch/archive/refs/tags/v1.12.1.zip
 
 Makefile
 ********
@@ -99,12 +99,12 @@ TORCH has the location of the libraries for PyTorch. Default is set to ~/libtorc
 
    make TORCH=/customdir/libtorch
 
-It may also be possible to build ``ktorch.so`` using libraries already installed with an existing 1.12.0 python version of PyTorch.
+It may also be possible to build ``ktorch.so`` using libraries already installed with an existing 1.12.1 python version of PyTorch.
 
 
 ::
 
-   # find the dir for pytorch 1.12.0 libraries in mini conda
+   # find the dir for pytorch 1.12.1 libraries in mini conda
    find ~/miniconda3/lib  -name libtorch.so 
    /home/t/miniconda3/lib/python3.8/site-packages/torch/lib/libtorch.so
 
@@ -133,15 +133,15 @@ In Linux, there's a choice of ABI (application binary interface). Changes in the
 `a newer ABI <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>`_.  The supplied libtorch zip files from PyTorch come in two versions,
 one for the ABI prior to the changes for the C++11 standard, and one with the new ABI.
 
-For example, for Linux, version 1.12.0, with support for CUDA 11.3, the zip files are listed as:
+For example, for Linux, version 1.12.1, with support for CUDA 11.3, the zip files are listed as:
 
 ::
 
    Download here (Pre-cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu113/libtorch-shared-with-deps-1.12.0%2Bcu113.zip
+   https://download.pytorch.org/libtorch/cu113/libtorch-shared-with-deps-1.12.1%2Bcu113.zip
 
    Download here (cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu113.zip
+   https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcu113.zip
 
 
 
@@ -184,20 +184,20 @@ Sample builds
 MacOS, CPU only
 ^^^^^^^^^^^^^^^
 
-First step, get the CPU-only version of libtorch 1.12.0 for MacOS:
+First step, get the CPU-only version of libtorch 1.12.1 for MacOS:
 
 ::
 
    > cd ~
-   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.0.zip
+   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.1.zip
 
-   > ls -lh libtorch-macos-1.12.0.zip 
-   -rw-r--r--  1 t  staff   150M Jun 27 19:50 libtorch-macos-1.12.0.zip
+   > ls -lh libtorch-macos-1.12.1.zip 
+   -rw-r--r--  1 t  staff   150M Jun 27 19:50 libtorch-macos-1.12.1.zip
 
    > rm -rf ~/libtorch  # erase any previous version
 
-   > unzip libtorch-macos-1.12.0.zip 
-   Archive:  libtorch-macos-1.12.0.zip
+   > unzip libtorch-macos-1.12.1.zip 
+   Archive:  libtorch-macos-1.12.1.zip
       creating: libtorch/
       creating: libtorch/bin/
      inflating: libtorch/build-hash     
@@ -289,7 +289,7 @@ Checking the configuration:
      - LAPACK is enabled (usually provided by MKL)
      - NNPACK is enabled
      - CPU capability usage: AVX2
-     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_12.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -Xpreprocessor -fopenmp -I/usr/local/include -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO -DUSE_COREML_DELEGATE -O2 -fPIC -Wno-narrowing -Wall -Wextra -Werror=return-type -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-unused-local-typedefs -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-range-loop-analysis -Wno-pass-failed -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unknown-warning-option -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-aligned-allocation-unavailable -Wno-c++14-extensions -Wno-constexpr-not-const -Wno-missing-braces -Qunused-arguments -fcolor-diagnostics -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -Wno-unused-private-field -Wno-missing-braces -Wno-c++14-extensions -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_VERSION=1.12.0, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=OFF, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, 
+     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_12.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -Xpreprocessor -fopenmp -I/usr/local/include -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO -DUSE_COREML_DELEGATE -O2 -fPIC -Wno-narrowing -Wall -Wextra -Werror=return-type -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-unused-local-typedefs -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-range-loop-analysis -Wno-pass-failed -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unknown-warning-option -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-aligned-allocation-unavailable -Wno-c++14-extensions -Wno-constexpr-not-const -Wno-missing-braces -Qunused-arguments -fcolor-diagnostics -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -Wno-unused-private-field -Wno-missing-braces -Wno-c++14-extensions -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_VERSION=1.12.1, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=OFF, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, 
    
    ATen/Parallel:
 	   at::get_num_threads() : 4
@@ -355,18 +355,18 @@ Once the library is built, it can be tested with some examples:
 Linux, CUDA 11.3
 ^^^^^^^^^^^^^^^^
 
-Build in ``/tmp``, using the libtorch zip file for linux, version 1.12.0, CUDA 11.3 with newer c++ ABI.
+Build in ``/tmp``, using the libtorch zip file for linux, version 1.12.1, CUDA 11.3 with newer c++ ABI.
 
 ::
 
    > cd /tmp
    > rm -rf libtorch
-   > wget --quiet https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu113.zip
+   > wget --quiet https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcu113.zip
 
-   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.12.0+cu113.zip 
-   -rw-rw-r-- 1 t t 1.8G Jun 27 19:56 libtorch-cxx11-abi-shared-with-deps-1.12.0+cu113.zip
+   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.12.1+cu113.zip 
+   -rw-rw-r-- 1 t t 1.8G Jun 27 19:56 libtorch-cxx11-abi-shared-with-deps-1.12.1+cu113.zip
 
-   > unzip -q libtorch-cxx11-abi-shared-with-deps-1.12.0+cu113.zip 
+   > unzip -q libtorch-cxx11-abi-shared-with-deps-1.12.1+cu113.zip 
    > ls libtorch
    bin/  build-hash  build-version  include/  lib/  share/
 
@@ -443,10 +443,10 @@ Load in a k session, check version and settings:
    q){key[x]set'x}(`ktorchtmp 2:`fns,1)[]; /define api fns in root
 
    q)version[]
-   1.12
+   1.1201
 
    q)version()
-   "1.12.0"
+   "1.12.1"
 
    q)setting[]
    mkl               | 1b
