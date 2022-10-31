@@ -138,6 +138,13 @@ K kget(const LongVector& v)   {return klist(v.size(),v.data());}
 K kget(const DoubleVector& v) {return klist(v.size(),v.data());}
 
 K kget(const TensorDeque& v) {
+ bool b=true;
+ for(const auto& t:v)
+  if(t.dim()) {
+   b=false;
+   break;
+  }
+ if(b) std::cerr << "deque is all scalars..\n";
  K x=ktn(0,v.size());
  for(size_t i=0; i<v.size(); ++i) kK(x)[i]=kget(v[i]);
  return x;
@@ -636,7 +643,7 @@ static void tensorout(K x,Tensormode m,Tensor &t,Tensor &r) {  // t:output, r:re
   case Tensormode::arange:
    b=m==Tensormode::range;
    if     (x->n==3 && xnum(x,1,z))                              r = b ? torch::range_out(t,0,z)   : torch::arange_out(t,z);
-   else if(x->n==4 && xnum(x,1,a) && xnum(x,2,z))               r = b ? torch::range_out(t,a,z)   : torch::arange_out(t,a,z);
+   else if(x->n==4 && xnum(x,1,a) && xnum(x,2,z))               r = b ? torch::range_out(t,a,z)   : torch::arange_out(t,a,z,1);
    else if(x->n==5 && xnum(x,1,a) && xnum(x,2,z) && xnum(x,3,n))r = b ? torch::range_out(t,a,z,n) : torch::arange_out(t,a,z,n);
    break;
   case Tensormode::linspace:
@@ -1039,9 +1046,6 @@ KAPI sparseindex(K x) {
 // cat - join arrays or tensors along given dimension (dim 0 if none given)
 // stack - join same-sized arrays along a new dimension (leading dim if none given)
 // ----------------------------------------------------------------------------------------------
-using Fld = Tensor  (*)(         TensorList, int64_t);
-using Gld = Tensor& (*)(Tensor&, TensorList, int64_t);
-
 bool kcat1(K x) {for(J i=0;i<x->n;++i) if(xten(x,i)) return true; return false;}
 
 bool kcat2(K x,int64_t& d, Tensor& r) {
@@ -1051,28 +1055,35 @@ bool kcat2(K x,int64_t& d, Tensor& r) {
   return false;
 }
 
-K kcat(K x,Fld f,Gld g,const char* s) {
+K kcat(K x,bool b,const char* s) {
  KTRY
   TORCH_CHECK(!x->t, s," not implemented for ",kname(x->t));
   int64_t d=0; Tensor r; TensorVector *v;
   if((v=xvec(x))){
-   return kten(f(*v,d));
+   return kten(b ? torch::cat(*v,d) : torch::stack(*v,d));
   } else if((v=xvec(x,0))) {
    TORCH_CHECK(kcat2(x,d,r), s," expects vector, (vector;dim), (vector;dim;out tensor) or (vector;out tensor)");
-   return r.defined() ? (g(r,*v,d), (K)0) : kten(f(*v,d));
+   if(r.defined()) 
+    return (b ? torch::cat_out(r,*v,d) : torch::stack_out(r,*v,d)), (K)0;
+   else
+    return kten(b ? torch::cat(*v,d) : torch::stack(*v,d));
   } else if(kcat1(x)) {
-   return kten(f(vec(x,false),d));
+   return kten(b ? torch::cat(vec(x,false),d) : torch::stack(vec(x,false),d));
   } else if((x->n==1 && !kK(x)[0]->t) || kcat2(x,d,r)) {
    K y=kK(x)[0];
-   return r.defined() ? (g(r,vec(y,false),d), (K)0) : kresult(!y->t && kcat1(y),f(vec(y,false),d));
+   if(r.defined())
+    return (b ? torch::cat_out(r,vec(y,false),d) : torch::stack_out(r,vec(y,false),d)), (K)0;
+   else
+    return kresult(!y->t && kcat1(y),b ? torch::cat(vec(y,false),d) : torch::stack(vec(y,false),d));
   } else {
-   return kget(f(vec(x,false),d));
+   return kget(b ? torch::cat(vec(x,false),d) : torch::stack(vec(x,false),d));
   }
  KCATCH(s);
 }
 
-KAPI cat(K x)   {return kcat(x, torch::cat,   torch::cat_out,   "cat");}
-KAPI stack(K x) {return kcat(x, torch::stack, torch::stack_out, "stack");}
+// as of v1.13.0, unable to use fn prototypes: cat uses ItensorRef, stack still uses TensorList
+KAPI cat(K x)   {return kcat(x, true,  "cat");}
+KAPI stack(K x) {return kcat(x, false, "stack");}
 
 // ----------------------------------------------------------------------------------------------
 // permute - k api for permute (not just for complex tensors)
@@ -1213,6 +1224,20 @@ static bool tensorflag(const Tensor &t,Attr a) {
  }
 }
 
+static char tensorchar(const Tensor &t,Attr a) {
+ switch(a) {
+  case Attr::ktype:
+   if(t.defined()) {
+    for(const auto& a:env().dtype)
+     if(t.dtype()==std::get<1>(a))
+      return std::get<3>(a);
+    TORCH_ERROR(mapattr(a),": unable to map PyTorch type ",t.dtype()," to k type");
+   }
+   return ' ';
+  default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
+ }
+}
+
 K tensorsize(const Tensor &t,Attr a) {
  switch(a) {
   case Attr::size:    return klist(t.dim(),t.sizes().data());
@@ -1227,6 +1252,7 @@ K tensorattr(const Tensor &t,Ktype k,Attr a) {
   case  KJ: return tensorsize(t,a);
   case -KS: return ks(tensorsym(t,a));
   case -KB: return kb(tensorflag(t,a));
+  case -KC: return kc(tensorchar(t,a));
   default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
  }
 }
@@ -1245,7 +1271,8 @@ template<typename V> static K vattr(const V &v,Ktype k,Attr a) {
     case  KJ: kK(x)[i]=tensorsize(t,a); break;
     case -KS: kS(x)[i]=tensorsym(t,a);  break;
     case -KB: kG(x)[i]=tensorflag(t,a); break;
-    default: TORCH_ERROR(mapattr(a),": not implemented for tensors");
+    case -KC: kC(x)[i]=tensorchar(t,a); break;
+    default: TORCH_ERROR(mapattr(a),": not implemented for tensor dictionary/vector");
    }
    ++i;
   }
@@ -1396,24 +1423,16 @@ int64_t fullsize(const Tensor& t,int64_t d,int64_t n) {
  return n;
 }
 
-int64_t fullsize(TensorVector& v,int64_t d,int64_t n) {
+int64_t fullsize(const TensorVector& v,int64_t d,int64_t n) {
  if(n<0) n=maxsize(v,d);
- for(const auto& t:v) if(t.size(d) != n) fullsize(t,d);
+ for(const auto& t:v) if(t.size(d) != n) fullsize(t,d,n);
  return n;
 }
 
-int64_t fullsize(TensorDict& x,int64_t d,int64_t n) {
+int64_t fullsize(const TensorDict& x,int64_t d,int64_t n) {
  if(n<0) n=maxsize(x,d);
- for(const auto& i:x.items()) if(i.value().size(d) != n) fullsize(i.value(),d);
+ for(const auto& i:x.items()) if(i.value().size(d) != n) fullsize(i.value(),d,n);
  return n;
-}
-
-int64_t fullsize(const Input& x,int64_t d,int64_t n) {
- return c10::visit(
-  c10::overloaded(
-   [&](const auto& x)  {return fullsize(x,d,n);},
-   [&](const Empty& x) {return int64_t(0);}
-  ),x);
 }
 
 // -------------------------------------------------------------------------------------------
@@ -1525,7 +1544,7 @@ void subsetsafe(Tensor& t,int64_t d,int64_t i,int64_t w) {
 KAPI reset(K x) {
  KTRY
   Tensor t; J i;IntArrayRef y,z;
-  TORCH_CHECK(xten(x,0,t), "reset: tensor expected as 1st argument");
+  TORCH_CHECK(xten(x,0,t), "reset: tensor expected as 1st of at least two arguments");
   TORCH_CHECK(xlong(x,1,i), "reset: offset (long) expected as 2nd argument, given ",kname(x,1));
   TORCH_CHECK(x->n<3 || xsize(x,2,y), "reset: size(s) expected as 3rd argument, given ",kname(x,2));
   TORCH_CHECK(x->n<4 || xsize(x,3,z), "reset: stride(s) expected as 4th argument, given ",kname(x,3));

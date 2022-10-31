@@ -50,7 +50,7 @@ template<typename O> K cpad(const O& o) {
  K x=KDICT;
  msetting(x, Setting::pad, KEX(o.padding()));
  msetting(x, Setting::value, kf(o.value()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ template<size_t D,typename M> M npad(K x,J i,Cast c) {
 template<typename O> K npad(const O& o) {
  K x=KDICT;
  msetting(x, Setting::pad, KEX(o.padding()));
- return x;
+ return resolvedict(x);
 }
 
 } //namespace knn

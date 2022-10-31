@@ -198,7 +198,7 @@ template<typename O> static void reduce(bool a,K x,const O& o,const O d) {
 }
 
 template<typename O> static K reduce(bool a,const O& o,const O d=O());
-template<typename O> static K reduce(bool a,const O& o,const O d) {K x=KDICT; reduce(a,x,o,d); return x;}
+template<typename O> static K reduce(bool a,const O& o,const O d) {K x=KDICT; reduce(a,x,o,d); return resolvedict(x);}
 
 // ----------------------------------------------------------------------------
 // beta - get/set beta & reduction options for smooth L1 loss
@@ -225,7 +225,7 @@ static K beta(bool a,const nn::SmoothL1LossOptions& o) {
  K x=KDICT; const nn::SmoothL1LossOptions d;
  if(a || d.beta() != o.beta()) OPTION(x, beta, kf(o.beta()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // ------------------------------------------------------------
@@ -259,7 +259,7 @@ static K crossentropy(bool a,const nn::CrossEntropyLossOptions& o) {
  if(a || d.ignore_index()    != o.ignore_index())    OPTION(x, ignore,    kj(o.ignore_index()));
  if(a || d.label_smoothing() != o.label_smoothing()) OPTION(x, smoothing, kf(o.label_smoothing()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------
@@ -287,7 +287,7 @@ static K huber(bool a,const nn::HuberLossOptions& o) {
  K x=KDICT; const nn::HuberLossOptions d;
  if(a || d.delta() != o.delta()) OPTION(x, delta, kf(o.delta()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------------
@@ -322,7 +322,7 @@ static K multi(bool a,const nn::MultiMarginLossOptions& o) {
  if(a || d.margin() != o.margin()) OPTION(x, margin, kf(o.margin()));
  if(a || o.weight().defined())     OPTION(x, weight, kget(o.weight()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // -------------------------------------------------------------------------------------------
@@ -385,14 +385,14 @@ static K classwt(bool a,const knn::BCEWithLogitsLossOptions& o) {
  K x=KDICT;
  if(a || o.pos_weight().defined()) OPTION(x,weight,kget(o.pos_weight()));
  reduce(a,x,o);
- return x;
+ return resolvedict(x);
 }
 
 static K classwt(bool a,const nn::MultiLabelSoftMarginLossOptions& o) {
  K x=KDICT;
  if(a || o.weight().defined()) OPTION(x,weight,kget(o.weight()));
  reduce(a,x,o);
- return x;
+ return resolvedict(x);
 }
 
 template<typename O> static K classwt(bool a,const O& o) {
@@ -400,7 +400,7 @@ template<typename O> static K classwt(bool a,const O& o) {
  if(a || o.weight().defined()) OPTION(x, weight, kget(o.weight()));
  if(a || d.ignore_index() != o.ignore_index()) OPTION(x, ignore, kj(o.ignore_index()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // -------------------------------------------------------------------------
@@ -434,7 +434,7 @@ static K poisson(bool a,const nn::PoissonNLLLossOptions& o) {
  if(a || d.full()      != o.full())      OPTION(x, full, kb(o.full()));
  if(a || d.eps()       != o.eps())       OPTION(x, eps,  kf(o.eps()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 // -----------------------------------------------------------------------------------------
@@ -570,7 +570,7 @@ template<typename O> static K margin(bool a,const O& o) {
  K x=KDICT; const O d;
  if(a || d.margin() != o.margin()) OPTION(x, margin, kf(o.margin()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 static K marginloss(K a,Cast c) {
@@ -640,7 +640,7 @@ static K triplet(bool a,const nn::TripletMarginLossOptions& o) {
  if(a || d.eps()    != o.eps())    OPTION(x, eps,    kf(o.eps()));
  if(a || d.swap()   != o.swap())   OPTION(x, swap,   kb(o.swap()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 KAPI Triplet(K a) {
@@ -684,7 +684,7 @@ static K ctc(bool a,const nn::CTCLossOptions& o) {
  if(a || d.blank()         != o.blank())         OPTION(x, blank,   kj(o.blank()));
  if(a || d.zero_infinity() != o.zero_infinity()) OPTION(x, zeroinf, kb(o.zero_infinity()));
  reduce(a,x,o,d);
- return x;
+ return resolvedict(x);
 }
 
 KAPI Ctc(K a) {

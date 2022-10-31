@@ -39,7 +39,7 @@ K fold(bool a,const torch::nn::FoldOptions& o) {
  if(a || (*o.dilation() != *d.dilation())) msetting(x, Setting::dilate, KEX(o.dilation()));
  if(a || (*o.padding()  != *d.padding()))  msetting(x, Setting::pad,    KEX(o.padding()));
  if(a || (*o.stride()   != *d.stride()))   msetting(x, Setting::stride, KEX(o.stride()));
- return x;
+ return resolvedict(x);
 }
 
 torch::nn::UnfoldOptions unfold(K x,J i,Cast c) {
@@ -71,7 +71,7 @@ K unfold(bool a,const torch::nn::UnfoldOptions& o) {
  if(a || (*o.dilation() != *d.dilation())) msetting(x, Setting::dilate, KEX(o.dilation()));
  if(a || (*o.padding()  != *d.padding()))  msetting(x, Setting::pad,    KEX(o.padding()));
  if(a || (*o.stride()   != *d.stride()))   msetting(x, Setting::stride, KEX(o.stride()));
- return x;
+ return resolvedict(x);
 }
 
 } // knn namespace

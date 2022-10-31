@@ -29,7 +29,7 @@ K similar(bool a,const torch::nn::CosineSimilarityOptions& o) {
  K x=KDICT; torch::nn::CosineSimilarityOptions d; 
  if(a || (o.dim() != o.dim())) msetting(x, Setting::dim, kj(o.dim()));
  if(a || (o.eps() != d.eps())) msetting(x, Setting::eps, kf(o.eps()));
- return x;
+ return resolvedict(x);
 }
 
 torch::nn::PairwiseDistanceOptions pairwise(K x,J i,Cast c) {
@@ -57,7 +57,7 @@ K pairwise(bool a,const torch::nn::PairwiseDistanceOptions& o) {
  if(a || (o.p()       != d.p()))       msetting(x, Setting::p,       kf(o.p()));
  if(a || (o.eps()     != d.eps()))     msetting(x, Setting::eps,     kf(o.eps()));
  if(a || (o.keepdim() != d.keepdim())) msetting(x, Setting::keepdim, kb(o.keepdim()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

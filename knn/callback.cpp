@@ -286,7 +286,7 @@ K callback(bool a,bool b,const CallbackImpl& m) {
   if(a || p.size()) msetting(x, Setting::parms,   kget(p));
   if(a || f.size()) msetting(x, Setting::buffers, kget(f));
  }
- return x;
+ return resolvedict(x);
 }
 
 // ---------------------------------------------------------------------------

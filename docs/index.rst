@@ -61,6 +61,7 @@ Training
    train
    swa
    freeze
+   dist
  
 Index
 =====

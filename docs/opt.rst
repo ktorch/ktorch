@@ -249,7 +249,7 @@ In this kind of call the created optimizer is used as the 1st argument rather th
    :param pointer optimizer: an :doc:`api-pointer <pointers>` to an allocated optimizer.
    :param boolean all: an optional flag set true to return all options and set false to return only non-default options. If not specified, the flag uses the :ref:`global setting <settings>` for :ref:`show all options <alloptions>`.
 
-   :return: A k dictionary of optimizer type, options (a list of dictionaries, one per parameter group) and a table describing the parameters managed by the optimizer.
+   :return: A k dictionary of optimizer type, the table of options with one row per parameter group, and a table describing the parameters managed by the optimizer.
 
 ::
 
@@ -259,8 +259,8 @@ In this kind of call the created optimizer is used as the 1st argument rather th
 
    q)show d:opt o
    optimizer| `adamw
-   options  | ,`lr`beta1`beta2`eps`decay`amsgrad!(0.0002;0.9;0.999;1e-08;0.01;0b)
-   parms    | +`parmgroup`pointer`module`name`size!(0 0;80428176 80752400;`linea..
+   options  | +`lr`beta1`beta2`eps`decay`amsgrad!(,0.0002;,0.9;,0.999;,1e-08;,0...
+   parms    | +`parmgroup`pointer`module`name`size!(0 0;71886512 71887200;`linea..
 
    q)first d`options
    lr     | 0.0002
@@ -273,10 +273,12 @@ In this kind of call the created optimizer is used as the 1st argument rather th
    q)d`parms
    parmgroup pointer  module name     size  
    -----------------------------------------
-   0         80428176 linear a.weight 10 128
-   0         80752400 linear a.bias   ,10   
+   0         71886512 linear a.weight 10 128
+   0         71887200 linear a.bias   ,10   
+
 
 The optimizer definition retrieved via :ref:`opt() <optdef>` cannot be used directly to create a new optimizer, but the options can be reused.
+(optimizers require their underlying parameters, which are created separately, usually by creating a module or set of modules.)
 
 In the example below, two linear modules are used in the creation of an ``adamw`` optimizer with two :ref:`parameter groups <optgroups>`:
 
@@ -297,12 +299,19 @@ In the example below, two linear modules are used in the creation of an ``adamw`
    0.01 0.9   0.999 1e-08 0.01  0      
    0.02 0.9   0.999 1e-08 0.04  0      
 
+   q)opt[(o;0b)]`options   /only non-default options
+   lr   decay
+   ----------
+   0.01 0.01 
+   0.02 0.04 
+
 Now create a new optimizer, copying the previous options:
 
 ::
 
    q)n:opt d`optimizer
-   q){opt(x; y; (); z)}[n]'[til count d`options; d`options];
+   q)t:d`options
+   q){opt(x; y; (); z)}[n]'[til count t;t];
 
 The new optimizer has matching options for each parameter group, but no parameters defined:
 
@@ -468,7 +477,7 @@ The k-api :ref:`state() <optstate>` function attempts to link any available modu
    :param pointer optimizer: an :doc:`api-pointer <pointers>` to an allocated optimizer.
    :param boolean all: an optional flag set true to return all options and set false to return only non-default options. If not specified, the flag uses the :ref:`global setting <settings>` for :ref:`show all options <alloptions>`.
 
-   :return: A k dictionary of optimizer type, options (a list of dictionaries, one per parameter group) and a table describing the parameters managed by the optimizer. The output of state is similar to the output of :ref:`opt() <optdef>` except the parameter table includes a final column of all the buffers updated by the optimizer at each step.
+   :return: A k dictionary of optimizer type, a table of options with one row for each parameter group and a table describing the parameters managed by the optimizer. The output of state is similar to the output of :ref:`opt() <optdef>` except the parameter table includes a final column of all the buffers updated by the optimizer at each step.
 
 In the example below, an ``adamw`` optimizer is created to manage the parameters of a sequential module:
 
@@ -520,7 +529,7 @@ Restoring state
 ^^^^^^^^^^^^^^^
 
 An optimizer can be restored from a previously saved state, along with the module(s) used to supply the optimizer with parameters.
-The same :ref:`opt() <optinit>` function is used, but is supplied with two different arguments: a state dictionary and a module.
+The same :ref:`opt() <optinit>` function is used, but is supplied with different arguments: a state dictionary and a module.
 
 .. function:: opt(state; module) -> optimizer
 

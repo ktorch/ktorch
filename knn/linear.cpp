@@ -33,7 +33,7 @@ K linear(bool a,const torch::nn::LinearOptions& o) {
  msetting(x, Setting::in,  kj(o.in_features()));
  msetting(x, Setting::out, kj(o.out_features()));
  if(a || (o.bias() != d.bias())) msetting(x, Setting::bias, kb(o.bias()));
- return x;
+ return resolvedict(x);
 }
 
 // --------------------------------------------------------------
@@ -69,7 +69,7 @@ K bilinear(bool a,const torch::nn::BilinearOptions& o) {
  msetting(x, Setting::in2,  kj(o.in2_features()));
  msetting(x, Setting::out, kj(o.out_features()));
  if(a || (o.bias() != d.bias())) msetting(x, Setting::bias, kb(o.bias()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

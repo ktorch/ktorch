@@ -100,7 +100,7 @@ template<typename O> K rnn(bool a,const O& o) {
  if(a || (o.batch_first()   != d.batch_first()))  msetting(x, Setting::batchfirst, kb(o.batch_first()));
  if(a || (o.dropout()       != d.dropout()))      msetting(x, Setting::dropout,    kf(o.dropout()));
  if(a || (o.bidirectional() != d.bidirectional()))msetting(x, Setting::bi,         kb(o.bidirectional()));
- return x;
+ return resolvedict(x);
 }
 
 }  // knn namespace

@@ -53,7 +53,7 @@ K groupnorm(bool a,const torch::nn::GroupNormOptions& o) {
  msetting(x, Setting::channels, kj(o.num_channels()));
  if(a || (o.eps()    != d.eps()))    msetting(x, Setting::eps,    kf(o.eps()));
  if(a || (o.affine() != d.affine())) msetting(x, Setting::affine, kb(o.affine()));
- return x;
+ return resolvedict(x);
 }
 
 // -----------------------------------------------------------------
@@ -84,7 +84,7 @@ K layernorm(bool a,const torch::nn::LayerNormOptions& o) {
  msetting(x, Setting::shape, klist(o.normalized_shape().size(),o.normalized_shape().data()));
  if(a || (o.eps()    != d.eps())) msetting(x, Setting::eps, kf(o.eps()));
  if(a || (o.elementwise_affine() != d.elementwise_affine())) msetting(x, Setting::affine, kb(o.elementwise_affine()));
- return x;
+ return resolvedict(x);
 }
 
 // --------------------------------------------------------------------------
@@ -119,7 +119,7 @@ K normalize(bool a,const torch::nn::functional::NormalizeFuncOptions& o) {
  if(a || o.p()   != d.p())   msetting(x, Setting::p, kf(o.p()));
  if(a || o.dim() != d.dim()) msetting(x, Setting::dim, kj(o.dim()));
  if(a || o.eps() != d.eps()) msetting(x, Setting::eps, kj(o.eps()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

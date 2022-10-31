@@ -39,7 +39,7 @@ template<typename O> K maxpool(bool a,const O& o) {
  if(a || *o.padding()  != *d.padding())  msetting(x, Setting::pad,     KEX(o.padding()));
  if(a || *o.dilation() != *d.dilation()) msetting(x, Setting::dilate,  KEX(o.dilation()));
  if(a || o.ceil_mode() != d.ceil_mode()) msetting(x, Setting::ceiling, kb(o.ceil_mode()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ template<size_t D,typename T> T adapt(K x,J i,Cast c) {
 template<typename O> K adapt(const O& o) {
  K x=KDICT;
  msetting(x, Setting::size, KEX(o.output_size()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ template<typename O> K fpool(bool a,const O& o) {
  msetting(x, Setting::size, KEX(o.kernel_size()));
  if(a || o.output_size().has_value())    msetting(x, Setting::outsize, o.output_size() ? KEX(o.output_size().value())  : ktn(0,0));
  if(a || o.output_ratio().has_value())   msetting(x, Setting::ratio,   o.output_ratio()? KEX(o.output_ratio().value()) : ktn(0,0));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------
@@ -194,6 +194,6 @@ template<typename O> K lppool(bool a,const O& o) {
  msetting(x, Setting::size, KEX(o.kernel_size()));
  if(a || *o.stride()   != *d.stride())   msetting(x, Setting::stride,  KEX(o.stride()));
  if(a || o.ceil_mode() != d.ceil_mode()) msetting(x, Setting::ceiling, kb(o.ceil_mode()));
- return x;
+ return resolvedict(x);
 }
 } // knn namespace

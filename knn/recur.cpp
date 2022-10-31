@@ -84,7 +84,7 @@ RecurOptions recur(K x,J i,Cast c) {
 K recur(bool a,const RecurOptions& o) {
  K x=KDICT;
  if(a || o.detach() != RecurOptions().detach()) msetting(x, Setting::detach, kb(o.detach()));
- return x;
+ return resolvedict(x);
 }
 
 // --------------------------------------------------------------------------------------

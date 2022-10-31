@@ -65,7 +65,7 @@ K select(bool a,const SelectOptions& o) {
  K x=KDICT;
  msetting(x, Setting::dim, kj(o.dim()));
  msetting(x, Setting::ind, kj(o.ind()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------
@@ -95,7 +95,7 @@ K indexselect(bool a,const IndexSelectOptions& o) {
  K x=KDICT;
  msetting(x, Setting::dim,   kj(o.dim()));
  msetting(x, Setting::ind, kget(o.ind()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

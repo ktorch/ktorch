@@ -75,7 +75,7 @@ K selfattn(bool a,const SelfAttentionOptions& o) {
  msetting(x, Setting::heads, kj(o.heads()));
  if(a || (o.dropout() != d.dropout())) msetting(x, Setting::dropout, kf(o.dropout()));
  if(a || (o.norm()    != d.norm()))    msetting(x, Setting::norm,    kb(o.norm()));
- return x;
+ return resolvedict(x);
 }
 
 // -----------------------------------------------------
@@ -125,7 +125,7 @@ K attention(bool a,const torch::nn::MultiheadAttentionOptions& o) {
  if(a || (o.add_zero_attn() != d.add_zero_attn())) msetting(x, Setting::addzero, kb(o.add_zero_attn()));
  if(a || (o.kdim()          != d.kdim()))          msetting(x, Setting::kdim,    kj(o.kdim()));
  if(a || (o.vdim()          != d.vdim()))          msetting(x, Setting::vdim,    kj(o.vdim()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

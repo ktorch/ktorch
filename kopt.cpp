@@ -237,14 +237,13 @@ static void adagrad(K x,J i,Cast c,ParamGroup& g) {
 
 static K adagrad(bool a,const AdagradOptions& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; AdagradOptions d;
- if(a || d.lr()           != o.lr())           OPTSET(x, lr,      kf(o.lr()));
+ K x=KDICT; AdagradOptions d; OPTSET(x, lr, kf(o.lr()));
  if(a || d.lr_decay()     != o.lr_decay())     OPTSET(x, lrdecay, kf(o.lr_decay()));
  if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,   kf(o.weight_decay()));
  if(a || d.initial_accumulator_value() !=
          o.initial_accumulator_value())        OPTSET(x, init,    kf(o.initial_accumulator_value()));
  if(a || d.eps()          != o.eps())          OPTSET(x, eps,     kf(o.eps()));
- return x;
+ return resolvedict(x);
 }
 
 static K adaget(const AdagradParamState& s) {
@@ -303,14 +302,13 @@ template<typename O> static void adam(K x,J i,Cast c,ParamGroup& g) {
 
 template<typename O> static K adam(bool a,const O& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; const O d; 
- if(a || d.lr()           != o.lr())                       OPTSET(x, lr,      kf(o.lr()));
+ K x=KDICT; const O d; OPTSET(x, lr, kf(o.lr()));
  if(a || std::get<0>(d.betas()) != std::get<0>(o.betas())) OPTSET(x, beta1,   kf(std::get<0>(o.betas())));
  if(a || std::get<1>(d.betas()) != std::get<1>(o.betas())) OPTSET(x, beta2,   kf(std::get<1>(o.betas())));
  if(a || d.eps()          != o.eps())                      OPTSET(x, eps,     kf(o.eps()));
  if(a || d.weight_decay() != o.weight_decay())             OPTSET(x, decay,   kf(o.weight_decay()));
  if(a || d.amsgrad()      != o.amsgrad())                  OPTSET(x, amsgrad, kb(o.amsgrad()));
- return x;
+ return resolvedict(x);
 }
 
 template<typename S> static K adamget(const S& s) { //template for adam/adamw
@@ -381,8 +379,7 @@ static void lamb(K x,J i,Cast c,ParamGroup& g) {
 
 static K lamb(bool a,const LambOptions& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; const LambOptions d;
- if(a || d.lr()           != o.lr())                       OPTSET(x, lr,         kf(o.lr()));
+ K x=KDICT; const LambOptions d; OPTSET(x, lr, kf(o.lr()));
  if(a || std::get<0>(d.betas()) != std::get<0>(o.betas())) OPTSET(x, beta1,      kf(std::get<0>(o.betas())));
  if(a || std::get<1>(d.betas()) != std::get<1>(o.betas())) OPTSET(x, beta2,      kf(std::get<1>(o.betas())));
  if(a || d.eps()          != o.eps())                      OPTSET(x, eps,        kf(o.eps()));
@@ -392,7 +389,7 @@ static K lamb(bool a,const LambOptions& o) {
  if(a || d.trustclip()    != o.trustclip())                OPTSET(x, trustclip,  kb(o.trustclip()));
  if(a || d.trustmin()     != o.trustmin())                 OPTSET(x, trustmin,   kf(o.trustmin()));
  if(a || d.trustmax()     != o.trustmax())                 OPTSET(x, trustmax,   kf(o.trustmax()));
- return x;
+ return resolvedict(x);
 }
 
 static K lambget(const LambParamState& s) {
@@ -456,15 +453,14 @@ static void lbfgs(K x,J i,Cast c,ParamGroup& g) {
 
 static K lbfgs(bool a,const LBFGSOptions& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; LBFGSOptions d;
- if(a || d.lr()               != o.lr())               OPTSET(x, lr,        kf(o.lr()));
+ K x=KDICT; LBFGSOptions d; OPTSET(x, lr, kf(o.lr()));
  if(a || d.max_iter()         != o.max_iter())         OPTSET(x, iter,      kj(o.max_iter()));
  if(a || o.max_eval())                                 OPTSET(x, eval,      kj(o.max_eval() ? *o.max_eval() : nj));
  if(a || d.tolerance_grad()   != o.tolerance_grad())   OPTSET(x, gradtol,   kf(o.tolerance_grad()));
  if(a || d.tolerance_change() != o.tolerance_change()) OPTSET(x, changetol, kf(o.tolerance_change()));
  if(a || d.history_size()     != o.history_size())     OPTSET(x, history,   kj(o.history_size()));
  if(o.line_search_fn().has_value())                    OPTSET(x, search,    ks(cs(o.line_search_fn().value().c_str())));
- return x;
+ return resolvedict(x);
 }
 
 static K lbget(const LBFGSParamState& s) {
@@ -557,14 +553,13 @@ static void rmsprop(K x,J i,Cast c,ParamGroup& g) {
 
 static K rmsprop(bool a,const RMSpropOptions& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; RMSpropOptions d;
- if(a || d.lr()           != o.lr())           OPTSET(x, lr,       kf(o.lr()));
+ K x=KDICT; RMSpropOptions d; OPTSET(x, lr, kf(o.lr()));
  if(a || d.alpha()        != o.alpha())        OPTSET(x, alpha,    kf(o.alpha()));
  if(a || d.eps()          != o.eps())          OPTSET(x, eps,      kf(o.eps()));
  if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,    kf(o.weight_decay()));
  if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum, kf(o.momentum()));
  if(a || d.centered()     != o.centered())     OPTSET(x, centered, kb(o.centered()));
- return x;
+ return resolvedict(x);
 }
 
 static K rmsget(const RMSpropParamState& s) {
@@ -625,13 +620,12 @@ static void sgd(K x,J i,Cast c,ParamGroup& g) {
 
 static K sgd(bool a,const SGDOptions& o) {
  //return all or non-default options as k dictionary
- K x=KDICT; SGDOptions d(LR);
- if(a || d.lr()           != o.lr())           OPTSET(x, lr,        kf(o.lr()));
+ K x=KDICT; SGDOptions d(LR); OPTSET(x, lr, kf(o.lr()));
  if(a || d.momentum()     != o.momentum())     OPTSET(x, momentum,  kf(o.momentum()));
  if(a || d.dampening()    != o.dampening())    OPTSET(x, dampening, kf(o.dampening()));
  if(a || d.weight_decay() != o.weight_decay()) OPTSET(x, decay,     kf(o.weight_decay()));
  if(a || d.nesterov()     != o.nesterov())     OPTSET(x, nesterov,  kb(o.nesterov()));
- return x;
+ return resolvedict(x);
 }
 
 static K sgdget(const SGDParamState& s) {
@@ -656,26 +650,141 @@ static J sgdsize(Attr a, const SGDParamState& s) {
  }
 }
 
+// ---------------------------------------------------------------------------
+// optimizer settings are handled as a dictionary per optimizer group
+// lists of dictionaries are resolved to a table; the code gets elaborate
+// to accomodate the option of maintaining only the non-default settings:
+// ---------------------------------------------------------------------------
+// findsym - given symbol, returns index in k list of symols if found, else -1
+// checkgroup - return true if setting found in any group's dict of settings
+// setting1 - assign group value to row & col in settings table (general list)
+// setting2 - assign group value to row & col in settings table (simple list)
+// tablecol - given setting symbol, default value and group dictionaries
+//            find setting in each group and populate table column
+// ---------------------------------------------------------------------------
+static J findsym(S s,K x) {
+ for(J i=0; i<x->n; ++i) if(s==kS(x)[i]) return i;
+ return -1;
+}
+
+bool checkgroup(S s,K x) {
+ for(J i=0; i<x->n; ++i) if(findsym(s, kK(kK(x)[i])[0])>-1) return true;
+ return false;
+}
+ 
+static void setting1(Cast c,S s,K v,J i,K x) {
+ switch(v->t) {
+  case KS: TORCH_CHECK(x->t==-KS, omap(c),": group[",i,"] setting for '",s,"' expects symbol, given ",kname(x));  kS(v)[i]=x->s; break;
+  case KB: TORCH_CHECK(x->t==-KB, omap(c),": group[",i,"] setting for '",s,"' expects boolean, given ",kname(x)); kG(v)[i]=x->g; break;
+  case KJ: TORCH_CHECK(x->t==-KJ, omap(c),": group[",i,"] setting for '",s,"' expects long, given ",kname(x));    kJ(v)[i]=x->j; break;
+  case KF: 
+   TORCH_CHECK(x->t==-KF || x->t==-KJ, omap(c),": group[",i,"] setting for '",s,"' expects double, given ",kname(x));
+   kF(v)[i]= x->t==-KF ? x->f : (F)x->j;
+   break;
+  default: TORCH_ERROR(omap(c),": unable to define setting for '",s,", ",kname(v)," unexpected"); break;
+ }
+}
+
+static void setting2(Cast c,S s,K v,J i,K g,J j) {
+ switch(v->t) {
+  case KS: TORCH_CHECK(g->t==KS, omap(c),": group[",i,"] setting for '",s,"' expects symbol, given ",kname(g));  kS(v)[i]=kS(g)[j]; break;
+  case KB: TORCH_CHECK(g->t==KB, omap(c),": group[",i,"] setting for '",s,"' expects boolean, given ",kname(g)); kG(v)[i]=kG(g)[j]; break;
+  case KJ: TORCH_CHECK(g->t==KJ, omap(c),": group[",i,"] setting for '",s,"' expects long, given ",kname(g));    kJ(v)[i]=kJ(g)[j]; break;
+  case KF: 
+   TORCH_CHECK(g->t==KF || g->t==KJ, omap(c),": group[",i,"] setting for '",s,"' expects double, given ",kname(g));
+   kF(v)[i]= g->t==KF ? kF(g)[j] : (F)kJ(g)[j];
+   break;
+  default: TORCH_ERROR(omap(c),": unable to define setting for '",s,", ",kname(v)," unexpected"); break;
+ }
+}
+
+static K tablecol(Cast c,S s,K x,K y) {
+ TORCH_CHECK(x->t<0, omap(c),": unable define default setting for '",s,"' using ",kname(x));
+ K v=ktn(-x->t,y->n);
+ for(J i=0; i<y->n;++i) {
+  K z=kK(y)[i], k=kK(z)[0], g=kK(z)[1];
+  J j=findsym(s,k);
+  if(j<0)       setting1(c,s,v,i,x);         // no setting defined for group, use default
+  else if(g->t) setting2(c,s,v,i,g,j);       // group settings are simple list
+  else          setting1(c,s,v,i,kK(g)[j]);  // group settings are general list
+ }
+ return v;
+}
+ 
 // -------------------------------------------------------------------------------------
-// optdict - return a list of dictionaries, one per group of optimizer settings
+// optdefaults - return default options for single optimizer or table for all
+// optsetting - return dictionary of options in parameter group of given optimizer type
+// optsettings - return table of settings, one row per optimizer group
 // buffersize - count tensors, elements or bytes of optimizer buffers for each parameter
 // -------------------------------------------------------------------------------------
-K optdict(bool a,Cast c,const Optimizer& o) {
- size_t i=0,n=o.param_groups().size(); K x,r=ktn(0,n);
- for(const auto&g:o.param_groups()) {
-  switch(c) {
-   case Cast::adagrad: x=adagrad(a, static_cast<const AdagradOptions&>(g.options())); break;
-   case Cast::adam:       x=adam(a, static_cast<const AdamOptions&>   (g.options())); break;
-   case Cast::adamw:      x=adam(a, static_cast<const AdamWOptions&>  (g.options())); break;
-   case Cast::lamb:       x=lamb(a, static_cast<const LambOptions&>   (g.options())); break;
-   case Cast::lbfgs:     x=lbfgs(a, static_cast<const LBFGSOptions&>  (g.options())); break;
-   case Cast::rmsprop: x=rmsprop(a, static_cast<const RMSpropOptions&>(g.options())); break;
-   case Cast::sgd:         x=sgd(a, static_cast<const SGDOptions&>    (g.options())); break;
-   default: TORCH_ERROR("Unrecognized optimizer: ",(I)c);
+K optdefaults(Cast c) {
+ switch(c) {
+  case Cast::adagrad: return adagrad(true,AdagradOptions());
+  case Cast::adam:    return adam(true,AdamOptions());
+  case Cast::adamw:   return adam(true,AdamWOptions());
+  case Cast::lamb:    return lamb(true,LambOptions());
+  case Cast::lbfgs:   return lbfgs(true,LBFGSOptions().line_search_fn("strong_wolf"));
+  case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
+  case Cast::sgd:     return sgd(true,SGDOptions(LR));
+
+  case Cast::undefined: {
+   const auto& e=env().opt; J i=0,n=e.size();
+   K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
+   kS(k)[0]=cs("optimizer"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
+   for(const auto& a:e) {
+    kS(s)[i]=std::get<0>(a);
+    kK(d)[i]=kp((S)std::get<2>(a).c_str());
+    kK(o)[i]=optdefaults(std::get<1>(a)); ++i;
+   }
+   return xT(xD(k,knk(3,s,d,o)));
   }
-  kK(r)[i++]=x;
+  default: TORCH_ERROR("no help implemented for optimizer enumeration: ",(I)c);
  }
- return r;
+}
+
+static K optsetting(bool a,Cast c,const Options& o) {
+ switch(c) {
+  case Cast::adagrad: return adagrad(a, static_cast<const AdagradOptions&>(o));
+  case Cast::adam:    return adam(a,    static_cast<const AdamOptions&>   (o));
+  case Cast::adamw:   return adam(a,    static_cast<const AdamWOptions&>  (o));
+  case Cast::lamb:    return lamb(a,    static_cast<const LambOptions&>   (o));
+  case Cast::lbfgs:   return lbfgs(a,   static_cast<const LBFGSOptions&>  (o));
+  case Cast::rmsprop: return rmsprop(a, static_cast<const RMSpropOptions&>(o));
+  case Cast::sgd:     return sgd(a,     static_cast<const SGDOptions&>    (o));
+  default: TORCH_ERROR("Unrecognized optimizer: ",(I)c);
+ }
+}
+
+static K maketable(Cast c,K x) {
+ K o=optdefaults(c), s=kK(o)[0], d=kK(o)[1]; std::vector<J> j;
+ for(J i=0; i<s->n; ++i)
+  if(checkgroup(kS(s)[i],x)) j.push_back(i);
+ K k=ktn(KS,j.size()), v=ktn(0,j.size());
+ for(J i=0; i<k->n; i++)
+  kS(k)[i]=kS(s)[j[i]],
+  kK(v)[i]=tablecol(c, kS(k)[i], kK(d)[j[i]], x);
+ r0(o);
+ return xT(xD(k,v));
+}
+ 
+K optsettings(bool a,Cast c,const Optimizer& o) {
+ size_t i=0,n=o.param_groups().size(); K d=ktn(0,n);
+ for(const auto&g:o.param_groups())
+  kK(d)[i++]=optsetting(a,c,g.options()); // build list of dictionaries
+ K t=maketable(c,d); r0(d);               // convert list to table
+ return t;
+}
+
+KAPI settingstest(K x,K y) {
+ KTRY
+  S s;
+  TORCH_CHECK(xsym(x,s), "1st arg of symbol");
+  TORCH_CHECK(!y->t && y->n, "2nd arg is non-empty list of dictionaries");
+  for(J i=0;i<y->n;++i)
+   TORCH_CHECK(xdict(kK(y)[i]), "element[",i,"] is not a dictionary");
+  Cast c=omap(s);
+  return maketable(c,y);
+ KCATCH("settings test");
 }
 
 static J buffersize(Attr a,Cast c,const ParamState& p) {
@@ -1038,7 +1147,7 @@ static TensorVector vectorparms(const TensorVector& a,K x,const Optimizer& o,Mod
 K optget(bool a,bool b,Cast c,const Optimizer &o,const Module& m) {
  K k=ktn(KS,3),v=ktn(0,3);
  kS(k)[0]=statekey(State::optimizer); kK(v)[0]=ks(omap(c));
- kS(k)[1]=statekey(State::options);   kK(v)[1]=optdict(a,c,o);
+ kS(k)[1]=statekey(State::options);   kK(v)[1]=optsettings(a,c,o);
  kS(k)[2]=statekey(State::parms);     kK(v)[2]=getparms(b,c,o,m);
  return xD(k,v);
 }
@@ -1129,16 +1238,43 @@ static void optedit(bool b,Cast c,K x,K y,J i,Optimizer& o,Moduleptr& m) {
 }
 
 // ---------------------------------------------------------------------------------------
-// putgroups - given type & list of options, add empty group(s), return optimizer
+// grouprow - extract group settings from table row as a dictionary
+// putgroups - given type & table of options, add empty group(s), return optimizer
 // putbuffers - put buffers in k dict -> optimizer's state for one parameter
 // putparms - assign optimizer parameters into group(s), add parameter buffers
 // optput - given optimizer state and module, recreate optimizer (w'buffer state if given)
 // ---------------------------------------------------------------------------------------
+static K grouprow(K x,J r) {
+ K s=kK(x->k)[0], c=kK(x->k)[1], k=ktn(KS,s->n), v=ktn(0,s->n);
+ for(J i=0;i<s->n;++i) kS(k)[i]=kS(s)[i];
+  for(J i=0;i<s->n;++i) {
+  K y=kK(c)[i];
+  switch(y->t) {
+   case KB: kK(v)[i]=kb(kG(y)[r]); break;
+   case KI: kK(v)[i]=ki(kI(y)[r]); break;
+   case KJ: kK(v)[i]=kj(kJ(y)[r]); break;
+   case KE: kK(v)[i]=ke(kE(y)[r]); break;
+   case KF: kK(v)[i]=kf(kF(y)[r]); break;
+   case KS: kK(v)[i]=ks(kS(y)[r]); break;
+   default: TORCH_ERROR("opt: unable to extract setting from table of group options, ",kname(y)," column not implemented"); break;
+  }
+ }
+ return xD(k,v);
+}
+
 static Optptr putgroups(Cast c,K x) {
- TORCH_CHECK(!x->t && x->n>0, "opt: unrecognized options dictionary list for ",omap(c)," optimizer");
- Optptr o;
- for(J i=0; i<x->n; ++i) {
-  ParamGroup g({}); addoptions(c,kK(x)[i],0,g);
+ TORCH_CHECK(x->t==98, "opt: unrecognized settings for ",omap(c)," optimizer, expecting table, given ",kname(x));
+ J n=xlen(x);
+ TORCH_CHECK(n, "opt: empty table of settings supplied for ",omap(c)," optimizer, need at least one row");
+ Optptr o; 
+ for(J i=0; i<n; ++i) {
+  K d=grouprow(x,i); ParamGroup g({});
+  try {
+   addoptions(c,d,0,g); r0(d);
+  } catch(...) {
+   r0(d);
+   throw;
+  }
   if(!i) o=optinit(c,g);
   else   o->add_param_group(g);
  }
@@ -1176,7 +1312,8 @@ static void putparms(Cast c,K x,Optimizer& o,const Module& m) {
  }
 }
 
-static K optput(S s,K x,K y,const Moduleptr& m) { //s:optimizer name, x:options, y:parm table
+static K optput(S s,K x,K y,const Moduleptr& m) {
+// s:optimizer name, x:table of group options, y:table of parameters
  Cast c=omap(s); Optptr o=putgroups(c,x); putparms(c,y,*o,*m);
  return kopt(c,o,m);
 }
@@ -1200,7 +1337,11 @@ KAPI opt(K x) {
     return (K)0;
    }
   } else if(xdict(x,0) && (m=xmodule(x,1)) && x->n==2) {
-   return optput(stateoptimizer(kK(x)[0]), stateoptlist(kK(x)[0]), stategroups(kK(x)[0]), m->m);
+   K s=kK(x)[0]; // state dictionary defining optimizer, group options and parameters
+   return optput(statesym(State::optimizer,true,s),  // optimizer name, e.g. `sgd
+                 statetable(State::options,s),       // table of options, a row for each group
+                 statetable(State::parms,s),         // table of parameters
+                 m->m);
   } else if((l=xmodel(x))) {
    return kopt(l->kopt());
   } else {
@@ -1278,34 +1419,6 @@ KAPI lr(K x) {
    return (K)0;
   }
  KCATCH("lr");
-}
-
-// ---------------------------------------------------------------------------------------
-// opthelp - return options for individual optimizer or table of all optimizer options
-// ---------------------------------------------------------------------------------------
-K opthelp(Cast c) {
- switch(c) {
-  case Cast::adagrad: return adagrad(true,AdagradOptions());
-  case Cast::adam:    return adam(true,AdamOptions());
-  case Cast::adamw:   return adam(true,AdamWOptions());
-  case Cast::lamb:    return lamb(true,LambOptions());
-  case Cast::lbfgs:   return lbfgs(true,LBFGSOptions().line_search_fn("strong_wolf"));
-  case Cast::rmsprop: return rmsprop(true,RMSpropOptions());
-  case Cast::sgd:     return sgd(true,SGDOptions(LR));
-
-  case Cast::undefined: {
-   const auto& e=env().opt; J i=0,n=e.size();
-   K k=ktn(KS,3),s=ktn(KS,n),d=ktn(0,n),o=ktn(0,n);
-   kS(k)[0]=cs("optimizer"); kS(k)[1]=cs("pytorch"); kS(k)[2]=cs("options");
-   for(const auto& a:e) {
-    kS(s)[i]=std::get<0>(a);
-    kK(d)[i]=kp((S)std::get<2>(a).c_str());
-    kK(o)[i]=opthelp(std::get<1>(a)); ++i;
-   }
-   return xT(xD(k,knk(3,s,d,o)));
-  }
-  default: TORCH_ERROR("no help implemented for optimizer enumeration: ",(I)c);
- }
 }
 
 // --------------------------------------------------

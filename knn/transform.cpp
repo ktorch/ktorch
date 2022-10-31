@@ -52,7 +52,7 @@ K zscore(bool a,const ZscoreOptions& o) {
  msetting(x, Setting::mean, kget(o.mean()));
  msetting(x, Setting::std,  kget(o.stddev()));
  if(a || o.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------
@@ -126,7 +126,7 @@ K rcrop(bool a,const RandomCropOptions& o) {
  if(a || *d.pad()            != *o.pad())            msetting(x, Setting::pad,     KEX(o.pad()));
  if(a || d.padmode().index() != o.padmode().index()) msetting(x, Setting::padmode, ks(ESYM(o.padmode())));
  if(a || d.value()           != o.value())           msetting(x, Setting::value,   kf(o.value()));
- return x;
+ return resolvedict(x);
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ K rflip(bool a,const RandomFlipOptions& o) {
  K x=KDICT; const RandomFlipOptions d;
  if(a || d.p()   != o.p())   msetting(x, Setting::p,   kf(o.p()));
  if(a || d.dim() != o.dim()) msetting(x, Setting::dim, kj(o.dim()));
- return x;
+ return resolvedict(x);
 }
 
 Tensor rflip(const Tensor& t,const RandomFlipOptions& o) {

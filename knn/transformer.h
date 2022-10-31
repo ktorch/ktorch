@@ -47,7 +47,7 @@ template<typename O>K codelayer(bool a,Cast c,const O& o) {
  if(a || (o.dim_feedforward()    != d.dim_feedforward()))    msetting(x, Setting::dim,     kj(o.dim_feedforward()));
  if(a || (o.dropout()            != d.dropout()))            msetting(x, Setting::dropout, kf(o.dropout()));
  if(a || (o.activation().index() != d.activation().index())) msetting(x, Setting::fn,      ks(codefn(c,o.activation())));
- return x;
+ return resolvedict(x);
 }
 
 // ------------------------------------------------------------------------------------

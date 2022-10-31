@@ -43,11 +43,14 @@ bool xptr(K x,J i) {return xind(x,i) && xptr(kK(x)[i]);}
 Ktag* xtag(K x) {return xptr(x) ? (Ktag*)kK(x)[0]->j : nullptr;}
 Ktag* xtag(K x,J i) {return xind(x,i) ? xtag(kK(x)[i]) : nullptr;}
 
-// ------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
 // null - true if null for given type
 // match - return true if scalars match (check long/double value)
 // kscalar - return k double/long from torch scalar
-// ------------------------------------------------------------------------------------------
+// resolve - serialize, then deserialize, to remove k object types created via c-api
+// resolvedict - return dict with simple value list if general list of all same type
+// Resolve - k api function to call `resolve`
+// ---------------------------------------------------------------------------------
 bool null(const char* x) { return !x || !strlen(x);}
 bool null(const J x)     { return x == nj; }
 
@@ -70,6 +73,39 @@ K kscalar(const Scalar &s) {
  else if(s.isFloatingPoint())
   return kf(s.toDouble());
  TORCH_ERROR("unexpected scalar type(s), neither integral or floating point, cannot convert");
+}
+
+K resolve(K x) {
+ K b=b9(-1,x);
+ TORCH_CHECK(b, "b9: failed to serialize ",kname(x));
+ K z=d9(b); r0(b);
+ TORCH_CHECK(z, "d9: failed to deserialize ",kname(x));
+ return z;
+}
+
+K resolvedict(K x) {
+ K y=kK(x)[1]; auto t=(!y->t && y->n) ? kK(y)[0]->t : 0;
+ if(t==-KB || t==-KJ || t==-KS || t==-KF) {
+  for(J i=1; i<y->n; ++i)
+   if(t != kK(y)[i]->t) return x;
+  K v=ktn(-t,y->n);
+  for(J i=0; i<y->n; ++i) {
+   switch(t) {
+    case -KB: kG(v)[i]=kK(y)[i]->g; break;
+    case -KJ: kJ(v)[i]=kK(y)[i]->j; break;
+    case -KS: kS(v)[i]=kK(y)[i]->s; break;
+    case -KF: kF(v)[i]=kK(y)[i]->f; break;
+   }
+  }
+  kK(x)[1]=v; r0(y);
+ }
+ return x;
+}
+
+KAPI Resolve(K x) {
+ KTRY
+  return resolve(x);
+ KCATCH("resolve");
 }
 
 // ------------------------------------------------------------------------------------------
@@ -245,7 +281,8 @@ static J statelong(State e,bool r,K x,J j) { //e:enum, e.g. State::depth, r:requ
  }
 }
 
-static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:required, x:dict/table, j:table row
+S statesym(State e, bool r,K x,J j) {
+// e:enum, e.g. State::module, r:required, x:dict/table, j:table row or -1
  J i=statefind(e,x,r);
  if(i<0) {
   return nullptr;
@@ -269,7 +306,8 @@ static S statesym(State e, bool r,K x,J j) { //e:enum, e.g. State::module, r:req
  }
 }
 
-static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/table, j:row (if table)
+K statedict(State e,K x,J j) {
+// e:enum, e.g. State::options, x:dict/table, j:row (if table, else -1)
  J i=statefind(e,x);
  if(i<0) return nullptr;
  K v=x->t == 98 ? kK(kK(x->k)[1])[i] : kK(x)[1];
@@ -277,13 +315,7 @@ static K statedict(State e,K x,J j) {  // e:enum, e.g. State::options, x:dict/ta
  TORCH_CHECK(!v->t, statekey(e),": expected general list, given ",kname(v));
  TORCH_CHECK(-1<j && j<v->n, statekey(e),"[",j,"] index beyond ",v->n,"-row table");
  v=kK(v)[j];
- if(e==State::optlist) {
-  TORCH_CHECK(!v->t, statekey(e),": expected list of dictionaries, given ",kname(v));
-  for(J i=0; i<v->n; ++i)
-   TORCH_CHECK(kK(v)[i]->t==99, statekey(e),": expected list of dictionaries but list[",i,"] is ",kname(kK(v)[i]));
- } else {
-  TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
- }
+ TORCH_CHECK(v->t==99, statekey(e),": expected dictionary, given ",kname(v));
  return v;
 }
 
@@ -298,7 +330,7 @@ static K statelist(State e,K x,J j) {  // e:enum, e.g. State::size, x:dict/table
  return v;
 }
 
-static K statetable(State e,K x) {
+K statetable(State e,K x) {
  J i=statefind(e,x);
  if(i<0) return nullptr;
  TORCH_CHECK(x->t==99, "expecting dictionary containing ",statekey(e),", given ",kname(x->t));
@@ -322,14 +354,11 @@ K statecol(State e,K x,short t) {
 J statedepth(K x,J j)     {return statelong(State::depth,true,x,j);}
 J stategroup(K x,J j)     {return statelong(State::parmgroup,true,x,j);}
 S statemodule(K x,J j)    {return statesym(State::module,true,x,j);}
-S stateoptimizer(K x,J j) {return statesym(State::optimizer,true,x,j);}
 S statename(K x,J j)      {return statesym(State::name,false,x,j);}
 K stateoptions(K x,J j)   {return statedict(State::options,x,j);}
-K stateoptlist(K x,J j)   {return statedict(State::optlist,x,j);}
 K stateparms(K x,J j)     {return statedict(State::parms,x,j);}
 K statebuffers(K x,J j)   {return statedict(State::buffers,x,j);}
 K statesize(K x,J j)      {return statelist(State::size,x,j);}
-K stategroups(K x)        {return statetable(State::parms,x);}
 
 // ------------------------------------------------------
 // nullsym - return null symbol or test for null symbol
@@ -1914,7 +1943,7 @@ static K getsetting(Setting s) {
   case Setting::cuda:               return kb(torch::cuda::is_available());
   case Setting::magma:              return kb(torch::hasMAGMA());
   case Setting::cudnn:              return kb(torch::cuda::cudnn_is_available());
-  case Setting::cudnnversion:       return kj(torch::cuda::cudnn_is_available() ? at::detail::getCUDAHooks().versionCuDNN() : nj);
+  case Setting::cudnnversion:       return kj(torch::cuda::cudnn_is_available() ? torch::globalContext().versionCuDNN() : nj);
   case Setting::cudadevices:        return kj(env().cuda);
   case Setting::benchmark:          return kb(torch::globalContext().benchmarkCuDNN());
   case Setting::deterministic:      return kj(torch::globalContext().deterministicAlgorithms() ? 
@@ -2021,8 +2050,7 @@ KAPI version(K x) {
 // kseed - k interface to query/set device seed or query/reset seed for all devices
 // -----------------------------------------------------------------------------------
 J deviceseed(Device &d, bool b=false,J s=0) { // d:device, b:set flag, s:seed to set
- torch::DeviceGuard dg(d);
- auto g=at::globalContext().defaultGenerator(d.is_cuda() ? torch::kCUDA : torch::kCPU);
+ auto g=torch::globalContext().defaultGenerator(d);
  if(b) {
   if(null(s))
    g.seed();
@@ -2077,6 +2105,8 @@ static K moduleattr(Kmodule *m,Ktype k,Attr a) {
   case Attr::ref:          return kj(m->moduleptr().use_count());
   case Attr::ptr:          return kj((intptr_t)m->moduleptr().get());
   case Attr::device:       return ks(objdevice(m->module(), optdev(Device(torch::kCPU))));
+  case Attr::dtype:
+  case Attr::ktype:        return dictattr(m->module().named_parameters(),k,a); 
   case Attr::size:         return kj(m->module().parameters().size());
   case Attr::bytes:        return kj(objbytes(m->module()));
   case Attr::elements:     return kj(objnum(m->module()));
@@ -2104,9 +2134,11 @@ static K modelattr(Kmodel *m,Ktype k,Attr a) {
   case Attr::size:         return kj(m->module().parameters().size());
   case Attr::bytes:        return kj(objbytes(m));
   case Attr::elements:     return kj(objnum(m));
+  case Attr::dtype:
+  case Attr::ktype:
   case Attr::gradflag:
-  case Attr::gradient:     return dictattr(m->module().named_parameters(),k,a);
-  case Attr::inputmodule:  return moduleattr(m->kmodule(), k, a);
+  case Attr::gradient: 
+  case Attr::inputmodule:
   case Attr::outputmodule: return moduleattr(m->kmodule(), k, a);
   default: TORCH_ERROR(mapattr(a),": not implemented for ",mapclass(m->a));
  }
@@ -2201,6 +2233,7 @@ KAPI dtype(K x) {
 
 KAPI    defined(K x) {return attr(x, -KB, Attr::defined);}
 KAPI  coalesced(K x) {return attr(x, -KB, Attr::coalesced);}
+KAPI      ktype(K x) {return attr(x, -KC, Attr::ktype);}
 KAPI       leaf(K x) {return attr(x, -KB, Attr::leaf);}
 KAPI     pinned(K x) {return attr(x, -KB, Attr::pinned);}
 KAPI sparseflag(K x) {return attr(x, -KB, Attr::sparseflag);}
@@ -2425,7 +2458,7 @@ K khelp(K x,bool h,const char *e) {
      case Class::dict:      return optmap(TensorOptions());
      case Class::module:    return modulehelp(true);
      case Class::loss:      return modulehelp(false);
-     case Class::optimizer: return opthelp(Cast::undefined);
+     case Class::optimizer: return optdefaults(Cast::undefined);
      default: TORCH_ERROR(e, ": not implemented for ",mapclass(a));
     }
    } else if((t=helptopic(s)) != Help::undefined) {
@@ -2441,7 +2474,7 @@ K khelp(K x,bool h,const char *e) {
     switch(a) {
      case Class::module:    return h ? modulehelp(true,c,nullptr) : modexample(c);
      case Class::loss:      return h ? modulehelp(false,c,nullptr) : lossexample(c);
-     case Class::optimizer: return opthelp(c);
+     case Class::optimizer: return optdefaults(c);
      default: TORCH_ERROR(e,": not implemented for ",mapclass(a));
     }
    }
@@ -2453,7 +2486,7 @@ K khelp(K x,bool h,const char *e) {
     case Class::dict:      return dictoptions(g->dict());
     case Class::module:    return h ? modulehelp(g->kmodule()) : moduleoptions(a,false,g->c,g->module());
     case Class::loss:      return h ? modulehelp(g->kmodule()) : lossoptions(a,g->c,g->module());
-    case Class::optimizer: return optdict(a,g->c,g->opt());
+    case Class::optimizer: return optsettings(a,g->c,g->opt());
     default: TORCH_ERROR((h ? "help" : "options"),": not implemented for ",mapclass(g->a));
    }
   } else {
@@ -2598,6 +2631,7 @@ KAPI fns(K x){
  fn(x, "objtype",      KFN(objtype),     1);
  fn(x, "device",       KFN(device),      1);
  fn(x, "dtype",        KFN(dtype),       1);
+ fn(x, "ktype",        KFN(ktype),       1);
  fn(x, "gradfn",       KFN(gradfn),      1);
  fn(x, "gradient",     KFN(gradient),    1);
  fn(x, "layout",       KFN(layout),      1);
@@ -2615,6 +2649,7 @@ KAPI fns(K x){
  fn(x, "str",          KFN(str),         1);
  fn(x, "options",      KFN(options),     1);
  fn(x, "help",         KFN(help),        1);
+ fn(x, "resolve",      KFN(Resolve),     1);
 
  tensorfn(x);
  mathfn(x);

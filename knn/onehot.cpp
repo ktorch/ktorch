@@ -44,7 +44,7 @@ K onehot(bool a,const OneHotOptions& o) {
  K x=KDICT;
  msetting(x, Setting::classes, kj(o.num_classes()));
  if(o.dtype()) msetting(x, Setting::dtype, ks(stype(o.dtype().value())));
- return x;
+ return resolvedict(x);
 }
 
 Tensor onehot(const Tensor& t,const OneHotOptions& o) {

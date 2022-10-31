@@ -18,7 +18,7 @@ bool inplace(K x,J i,Cast c) {
  return b;
 }
 
-K inplace(bool a,bool b) {K x=KDICT; if(a || b) msetting(x, Setting::inplace, kb(b)); return x;}
+K inplace(bool a,bool b) {K x=KDICT; if(a || b) msetting(x, Setting::inplace, kb(b)); return resolvedict(x);}
 
 // --------------------------------------------------------------------------------------
 // set/get slope & inplace flag for leakyrelu - a small positive gradient(slope) when x<0
@@ -49,7 +49,7 @@ K slope(bool a,Cast c,const torch::nn::LeakyReLUOptions& o) {
  K x=KDICT; torch::nn::LeakyReLUOptions d;
  if(a || o.negative_slope()   != d.negative_slope()) msetting(x, Setting::slope,   kf(o.negative_slope()));
  if(a || o.inplace()          != d.inplace())        msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 // ------------------------------------------------------------
 // get/set single option: lambda (for hardshrink, softshrink)
@@ -72,7 +72,7 @@ double lambda(K x,J i,Cast c) {
 K lambda(bool a,Cast c,double l) {
  K x=KDICT;
  if(a || l != lambda(c)) msetting(x, Setting::lambda, kf(l));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------
@@ -100,7 +100,7 @@ int64_t dim(K x,J i,Cast c) {
 K dim(bool a,Cast c,int64_t d) {
  K x=KDICT;
  if(a || d != dim(c)) msetting(x, Setting::dim, kj(d));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ K rrelu(bool a,const torch::nn::RReLUOptions& o) {
  if(a || d.lower()   != o.lower())   msetting(x, Setting::lower,   kf(o.lower()));
  if(a || d.upper()   != o.upper())   msetting(x, Setting::upper,   kf(o.upper()));
  if(a || d.inplace() != o.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------
@@ -196,7 +196,7 @@ K hardtanh(bool a,const torch::nn::HardtanhOptions& o) {
  if(a || d.min_val() != o.min_val()) msetting(x, Setting::min,     kf(o.min_val()));
  if(a || d.max_val() != o.max_val()) msetting(x, Setting::max,     kf(o.max_val()));
  if(a || d.inplace() != o.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------------------------------------------
@@ -221,7 +221,7 @@ K softplus(bool a,const torch::nn::SoftplusOptions& o) {
  K x=KDICT; torch::nn::SoftplusOptions d;
  if(a || d.beta()      != o.beta())      msetting(x, Setting::beta,      kf(o.beta()));
  if(a || d.threshold() != o.threshold()) msetting(x, Setting::threshold, kf(o.threshold()));
- return x;
+ return resolvedict(x);
 }
 
 // -------------------------------------------------------------
@@ -251,7 +251,7 @@ K threshold(bool a,const torch::nn::ThresholdOptions& o) {
  msetting(x, Setting::threshold, kf(o.threshold()));
  msetting(x, Setting::value,     kf(o.value()));
  if(a || o.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 // -----------------------------------------------------------------------------------
@@ -277,7 +277,7 @@ K prelu(bool a,const torch::nn::PReLUOptions& o) {
  K x=KDICT; torch::nn::PReLUOptions d;
  if(a || d.num_parameters() != o.num_parameters()) msetting(x, Setting::in,   kj(o.num_parameters()));
  if(a || d.init()           != o.init())           msetting(x, Setting::init, kf(o.init()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

@@ -47,7 +47,7 @@ template<typename O> K batchnorm(bool a,const O& o) {
  if(a || !momentum(o.momentum(),d.momentum())) msetting(x, Setting::momentum,  kf(momentum(o.momentum())));
  if(a || (o.affine()   != d.affine()))         msetting(x, Setting::affine,    kb(o.affine()));
  if(a || (o.track_running_stats() != d.track_running_stats())) msetting(x, Setting::track, kb(o.track_running_stats()));
- return x;
+ return resolvedict(x);
 }
 
 // -------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ template<typename O> K localnorm(bool a,Cast c,const O& o) {
  if(a || (o.alpha() != d.alpha())) msetting(x, Setting::alpha, kf(o.alpha()));
  if(a || (o.beta()  != d.beta()))  msetting(x, Setting::beta,  kf(o.beta()));
  if(a || (o.k()     != d.k()))     msetting(x, Setting::k,     c==Cast::localnorm ? kf(o.k()) : kj(o.k()));
- return x;
+ return resolvedict(x);
 }
 
 // ---------------------------------------------------------------

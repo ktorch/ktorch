@@ -38,7 +38,7 @@ template<typename O> K alpha(bool a,const O& o) {
  K x=KDICT; O d;
  if(a || o.alpha()   != d.alpha())   msetting(x, Setting::alpha,   kf(o.alpha()));
  if(a || o.inplace() != d.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 // --------------------------------------------------------------------------------------

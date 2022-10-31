@@ -139,7 +139,7 @@ template<size_t D> K conv(bool a,const torch::nn::detail::ConvNdOptions<D>& o) {
   if(a || (*o.dilation() != *d.dilation())) msetting(x, Setting::dilate, KEX(o.dilation()));
  }
  if(a || o.padding_mode().index() != d.padding_mode().index()) msetting(x, Setting::padmode, ks(padmode(o.padding_mode())));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

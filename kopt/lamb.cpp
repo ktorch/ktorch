@@ -81,7 +81,7 @@ Tensor Lamb::step(LossClosure closure)  {
   NoGradGuard no_grad;
   Tensor loss = {};
   if (closure != nullptr) {
-    at::AutoGradMode enable_grad(true);
+    torch::AutoGradMode enable_grad(true);
     loss = closure();
   }
 

@@ -61,9 +61,9 @@ K resetgrad(K x,bool b,const char *c) {
 KAPI   nograd(K x) {return resetgrad(x, true,  "nograd");}
 KAPI zerograd(K x) {return resetgrad(x, false, "zerograd");}
 
-// --------------------------------------------------------------------------------------------
-//  metric  - map k symbol <-> metric, e.g. `accuracy -> Metric::accuracy
-// --------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------
+//  metric  - map k symbol <-> metric, e.g. `output -> Metric::output
+// -------------------------------------------------------------------
 static Metric metric(S s) {
  for(const auto& m:env().metric)
   if(std::get<0>(m)==s) return std::get<1>(m);
@@ -415,12 +415,20 @@ KAPI backward(K a) {
 }
 
 // ----------------------------------------------------------------------------
-// fullsize -- undo any batching on inputs & outputs
+// fullsize -- undo any batching on input(s) & target(s)
 // ----------------------------------------------------------------------------
+static int64_t fullinput(const Input& x,int64_t d,int64_t n) {
+ return c10::visit(
+  c10::overloaded(
+   [&](const auto& x)  {return fullsize(x,d,n);},
+   [&](const Empty& x) {return int64_t(0);}
+  ),x);
+}
+
 static int64_t fullsize(Data& d) {
  d.batch(-1); auto n=d.size();
- fullsize(d.x, 0, n);
- fullsize(d.y, 0, n);
+ fullinput(d.x, 0, n);
+ fullinput(d.y, 0, n);
  return n;
 }
 
@@ -447,9 +455,15 @@ static void reindex(TensorDict& x,const Tensor& i,int64_t d=0) {
 static void reindex(Input& x,const Tensor& i,int64_t d=0) {
  c10::visit(
   c10::overloaded(
-   [&](auto& x)  {reindex(x,i,d);},
-   [&](Empty& x) {}
+   [&](Tensor& x)       {reindex(x,i,d);},
+   [&](TensorVector& x) {reindex(x,i,d);},
+   [&](TensorDict& x)   {reindex(x,i,d);},
+   [&](Empty& x)        {}
   ),x);
+}
+
+static Tensor perm(int64_t n,Generator& g) {
+ return torch::randperm(n, g, torch::dtype(torch::kLong).device(g.device()));
 }
 
 static Tensor perm(int64_t n,const Device& d) {
@@ -469,36 +483,48 @@ template<typename T>static void reshuffle(T& t, int64_t d=0) {
  }
 }
 
-static void reshuffle(Data& d) {
- auto n=fullsize(d);
- if(n) {
-  Tensor i=perm(d.size(), firstdevice(d.x,d.y));
-  reindex(d.x,i); reindex(d.y,i);
-  d.p = d.p.defined() ? d.p.index_select(0,i.to(d.p.device())) : i;
+static bool reshuffle(const  TestOptions& o,Data& d) {return false;}
+
+static bool reshuffle(const TrainOptions& o,Data& d) {
+ if(o.shuffle()) {
+  auto n=fullsize(d);
+  if(n) {
+   Tensor i; auto c=firstdevice(d.x,d.y);
+   if(o.tasks()<2) {
+    i=perm(d.size(), c);
+   } else {
+    if(!d.g.defined()) {  // set generator so different tasks can use same permutation
+     d.g=torch::globalContext().defaultGenerator(o.shufflecuda() ? c : Device(DeviceType::CPU)).clone();
+     d.g.set_current_seed(o.shuffleseed());
+    }
+    i=perm(d.size(), d.g);
+   }
+   reindex(d.x,i); reindex(d.y,i);
+   d.p = d.p.defined() ? d.p.index_select(0,i.to(d.p.device())) : i;
+  }
+  return true;
+ } else {
+  return false;
  }
 }
 
 // ----------------------------------------------------------------------------
-// shuffleflag - pick up shuffle setting in training options else false
 // newmetrics - [re]init a vector of vectors to accumulate tensors per batch
 // batchinit - reset any previous batching, shuffle if required, reset metrics
 // ----------------------------------------------------------------------------
-bool shuffleflag(const TrainOptions& o) {return o.shuffle();}
-bool shuffleflag(const TestOptions& o)  {return false;}
-
-static void newmetrics(size_t m,int64_t n,Data& d) {
- d.m = MetricData(m);
+static void newmetrics(size_t m,int64_t i,int64_t j,Data& d) {
+ // number of metrics, i-task, j-number of tasks
+ auto n=d.batches();        // number of batches
+ d.m = MetricData(m);       // vector of tensors for each metric
+ auto v = n/j + (i < n%j);  // number of vector elements for each metric
  for(size_t i=0; i<m; ++i)
   if(n>-1)
-   d.m[i]=TensorVector(n);  // reserve space for tensors from each batch
+   d.m[i]=TensorVector(v);  // reserve space for tensors from each batch
 }
 
-template<typename O> static void batchinit(O& o,Data& d) {
- if(shuffleflag(o))
-  reshuffle(d);
- else
-  fullsize(d);
- newmetrics(o.metrics().size(), d.batches(), d);
+template<typename O> static void batchinit(const O& o,Data& d) {
+ if(!reshuffle(o,d)) fullsize(d);
+ newmetrics(o.metrics().size(), o.task(), o.tasks(), d);
 }
 
 KAPI shuffle(K x) {
@@ -513,7 +539,7 @@ KAPI shuffle(K x) {
   } else if (auto a=b ? xtensordict(x) : xtensordict(x,0)) { reshuffle(*a,d);
   } else if (auto a=b ? xmodel(x) : xmodel(x,0)) {
    TORCH_CHECK(d==0, "shuffle: model data is only batched on dimension 0, but given dimension ",d);
-   reshuffle(a->data);
+   reshuffle(a->train,a->data);
   } else {
    TORCH_ERROR("shuffled: expecting tensor,vector,dictionary or model, given ",kname(x));
   }
@@ -535,12 +561,12 @@ KAPI unshuffle(K x) {
  KCATCH("unshuffle");
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // batches - calculate number of batches given overall data size & batch size
 // datainit - [re]assign input(s) & target(s) for training/testing
-// nextbatch - true if more data, setting batch size for inputs & targets
+// nextbatch - true if more data, setting batch size for model inputs & targets
 // batch/testbatch - k api functions to process next batch
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 static void batches(Data& d,bool b,int64_t n,int64_t w) {
  if(w>n) w=n;
  d.size(n);                 // size of tensors along batch dim (typically 1st dim)
@@ -561,6 +587,7 @@ template<typename O> static int64_t datainit(O& o,Data& d,const Input& x,const I
  d.x = std::move(x);   // model input(s)
  d.y = std::move(y);   // target(s)
  d.p = Tensor();       // permutation index (used if shuffling training data)
+ d.g = Generator();    // generator used for permutations
  return d.batches();   // return number of batches
 }
 
@@ -573,9 +600,9 @@ template<typename O> static int64_t datainit(O& o,Data& d,bool b,const Input& z)
 }
 
 template<typename O> static bool nextbatch(const O& o,Data &d) {
- auto i=1 + d.batch();
+ auto i=d.batch(); bool b=i<0; i=b ? o.task() : i + o.tasks();
  if(i < d.batches()) {
-  if(!i) batchinit(o,d);
+  if(b) batchinit(o,d);
   batch(d.x, i, d.batchsize(), 0, d.size()); // select i'th batch of input(s)
   batch(d.y, i, d.batchsize(), 0, d.size()); // select i'th batch of target(s)
   d.batch(i);                                // [re]set current batch index
@@ -640,7 +667,7 @@ KAPI  testinit(K x) {return batchinit(x, false, "testinit");}
 // ---------------------------------------------------------------------------
 // output - retrieve output tensor from model output (vector,tuple, etc.)
 // hidden - retrieve hidden state, hidden cell state from model output
-// accuracy - return boolean with 1's where predict matches target
+// matches - return count where prediction matches target and overall count
 // ---------------------------------------------------------------------------
 static Tensor output(Kmodel *m,const Output& x) {
  return c10::visit(
@@ -667,11 +694,12 @@ static Tensor hidden(Metric m,const Output& x) {
  }
 }
 
-static Tensor accuracy(Kmodel *m,const Tensor& yhat,const Input &y) {
+static Tensor matches(Kmodel *m,const Tensor& yhat,const Input &y) {
  if(auto a=c10::get_if<Tensor>(&y)) {
-  return a->eq(yhat).sum();
+  return torch::stack({a->eq(yhat).sum(),
+                       torch::tensor(a->numel(),torch::device(a->device()))}).view({1,2});
  } else {
-  TORCH_ERROR("unable to calculate accuracy from ",inputname(y)," of target(s)");
+  TORCH_ERROR("unable to calculate matches from ",inputname(y)," of target(s)");
  }
 }
 
@@ -685,15 +713,17 @@ static bool lossflag(const Metrics& m) {
  return false;
 }
 
-static void metrics(Kmodel *m,const Metrics& k,Data& d) {
-  auto j=d.batch();              // assign metric[i][j]
+static void metrics(Kmodel *m,const Metrics& k,int64_t n,Data& d) {
+  auto j=d.batch() / n;          // assign metric[i][j] with n tasks
   if(k.size()) {                 // if metrics defined
    size_t i=0; Tensor out,pred;  // tensors for output, prediction
    for(auto c:k) {
     switch(c) {
      case Metric::output:
       if(!out.defined()) out=output(m,d.z);
-      d.m[i][j]=out;
+      // if network is identity function, out -> d.z -> d.x, i.e. a part of input
+      // without clone, when input(s) resized, stored metric is also resized
+      d.m[i][j]=(out.defined() && out.use_count()>2) ? out.clone() : out;
       break;
      case Metric::loss:
      case Metric::batchloss:
@@ -705,9 +735,10 @@ static void metrics(Kmodel *m,const Metrics& k,Data& d) {
       d.m[i][j]=pred.detach();
       break;
      case Metric::accuracy:
+     case Metric::matches:
       if(!out.defined()) out=output(m,d.z).detach();
       if(!pred.defined()) pred=out.argmax(-1).detach();
-      d.m[i][j]=accuracy(m,pred,d.y).detach();
+      d.m[i][j]=matches(m,pred,d.y).detach();
       break;
      case Metric::hidden:
      case Metric::hiddencell:
@@ -750,9 +781,9 @@ TensorVector hiddenstate (Data& d) {
 // backstep - calculate outputs,loss,gradients and perform optimizer step
 // ---------------------------------------------------------------------------
 template<typename O> static void batchcalc(Kmodel *m,bool b,const O& o,Data& d) {
- d.z=mforward(m->kmodule(), o.hidden() && d.batch()>0 ? hiddenstate(d) : d.x);
+ d.z=mforward(m->kmodule(), o.hidden() && d.batch() > o.task() ? hiddenstate(d) : d.x);
  if(b) d.l=losscalc(m, d.z, d.y);
- metrics(m,o.metrics(),d);
+ metrics(m, o.metrics(), o.tasks(), d);
 }
 
 static void trainstep(Kmodel *m,const Input& x,const Input& y) {
@@ -771,14 +802,14 @@ static void trainstep(Kmodel *m,const Input& x,const Input& y) {
 
 static void trainstep(Kmodel *m) {
  auto& d=m->data;
- trainstep(m, m->train.hidden() && d.batch()>0 ? hiddenstate(d) : d.x, d.y);
+ trainstep(m, m->train.hidden() && d.batch() > m->train.task() ? hiddenstate(d) : d.x, d.y);
 }
 
 static void trainloop(Kmodel *m) {
  bool a=trainflag(m->module(),true); auto& d=m->data; const auto& o=m->train;
  while(nextbatch(o,d)) {
   trainstep(m);
-  metrics(m,m->train.metrics(),m->data);
+  metrics(m, o.metrics(), o.tasks(), m->data);
  }
  m->module().train(a); fullsize(d);
 }
@@ -830,9 +861,9 @@ template<typename O> static K getmetrics(const O& o,Data& d) {
    v.emplace_back(Tensor());                 // use undefined tensor
  } else {
   for(auto m:o.metrics()) {
-   if(m==Metric::accuracy) {
-    auto n=d.batches() * d.batchsize(); if(n>d.size()) n=d.size();
-    v[i] = 100.0*v[i].sum().to(torch::kDouble) / n;
+   if(m==Metric::accuracy || m==Metric::matches) {
+    auto s=v[i].sum(0);
+    v[i] = m==Metric::accuracy ? 100.0*s[0].div(s[1]) : s;
    } else if(m==Metric::loss) {
     v[i] = v[i].sum().to(torch::kDouble) / d.batches();
    }
@@ -880,15 +911,19 @@ static S modelopt(Setting s) {
 // ----------------------------------------------------------------------
 static K getoption(Kmodel *m,bool t,Setting s) {
  switch(s) {
-  case Setting::batchsize:  return kj(t ? m->train.batchsize()     : m->test.batchsize());
-  case Setting::droplast:   return kb(t ? m->train.droplast()      : m->test.droplast());
-  case Setting::hidden:     return kb(t ? m->train.hidden()        : m->test.hidden());
-  case Setting::tensor:     return kb(t ? m->train.tensor()        : m->test.tensor());
-  case Setting::dictionary: return kb(t ? m->train.dictionary()    : m->test.dictionary());
-  case Setting::shuffle:    return t    ? kb(m->train.shuffle())   : nullptr;
-  case Setting::sync:       return t    ? kb(m->train.sync())      : nullptr;
-  case Setting::clipgroup:  return t    ? kb(m->train.clipgroup()) : nullptr;
-  case Setting::clipvalue:  return t && m->train.clipvalue() ? kf(*m->train.clipvalue()) : nullptr;
+  case Setting::batchsize:   return kj(t ? m->train.batchsize()       : m->test.batchsize());
+  case Setting::droplast:    return kb(t ? m->train.droplast()        : m->test.droplast());
+  case Setting::hidden:      return kb(t ? m->train.hidden()          : m->test.hidden());
+  case Setting::tensor:      return kb(t ? m->train.tensor()          : m->test.tensor());
+  case Setting::dictionary:  return kb(t ? m->train.dictionary()      : m->test.dictionary());
+  case Setting::shuffle:     return t    ? kb(m->train.shuffle())     : nullptr;
+  case Setting::shufflecuda: return t    ? kb(m->train.shufflecuda()) : nullptr;
+  case Setting::shuffleseed: return t    ? kj(m->train.shuffleseed()) : nullptr;
+  case Setting::sync:        return t    ? kb(m->train.sync())        : nullptr;
+  case Setting::task:        return kj(t ? m->train.task()            : m->test.task());
+  case Setting::tasks:       return kj(t ? m->train.tasks()           : m->test.tasks());
+  case Setting::clipgroup:   return t    ? kb(m->train.clipgroup())   : nullptr;
+  case Setting::clipvalue:   return t && m->train.clipvalue() ? kf(*m->train.clipvalue()) : nullptr;
   case Setting::clipnorm:
    if(t && m->train.clipnorm()) {
     K y=ktn(KF,2); const auto& z=*m->train.clipnorm(); kF(y)[0]=z[0]; kF(y)[1]=z[1];
@@ -913,7 +948,7 @@ static K getoption(Kmodel *m,bool t,SymArrayRef a) {
     K z=getoption(m,t,modelopt(k,t));
     dictadd(y, k, z ? z : knull());
    }
-   return y;
+   return resolvedict(y);
   } catch(...) {
    if(y) r0(y);
    throw;
@@ -923,12 +958,16 @@ static K getoption(Kmodel *m,bool t,SymArrayRef a) {
 static K getoption(Kmodel *m,bool t,bool a) {
  K x=KDICT; K y;
  OPTION(x, batchsize, getoption(m,t,Setting::batchsize));
+ OPTION(x, task,      getoption(m,t,Setting::task));
+ OPTION(x, tasks,     getoption(m,t,Setting::tasks));
  OPTION(x, droplast,  getoption(m,t,Setting::droplast));
  OPTION(x, hidden,    getoption(m,t,Setting::hidden));
  if(t) {
-  OPTION(x, shuffle,   getoption(m,t,Setting::shuffle));
-  OPTION(x, sync,      getoption(m,t,Setting::sync));
-  OPTION(x, clipgroup, getoption(m,t,Setting::clipgroup));
+  OPTION(x, shuffle,     getoption(m,t,Setting::shuffle));
+  OPTION(x, shufflecuda, getoption(m,t,Setting::shufflecuda));
+  OPTION(x, shuffleseed, getoption(m,t,Setting::shuffleseed));
+  OPTION(x, sync,        getoption(m,t,Setting::sync));
+  OPTION(x, clipgroup,   getoption(m,t,Setting::clipgroup));
   y=getoption(m,t,Setting::clipnorm);  if(a || y) OPTION(x, clipnorm,  y ? y : knull());
   y=getoption(m,t,Setting::clipvalue); if(a || y) OPTION(x, clipvalue, y ? y : knull());
  }
@@ -940,6 +979,7 @@ static K getoption(Kmodel *m,bool t,bool a) {
 
 // -----------------------------------------------------------------
 // clipnorm - handle 1-2 long(s)/double(s) for clipping by norm
+// checkopt - check for incompatible train/test options
 // setoption - parse k arg(s) to set or reset model options
 // -----------------------------------------------------------------
 static void clipnorm(Kmodel *m,S a,K x) {
@@ -961,6 +1001,11 @@ static void clipnorm(Kmodel *m,S a,K x) {
  }
 }
 
+template<typename O> static void checkopt(const char *c,const O& o) {
+ TORCH_CHECK(o.task() < o.tasks(), c,": task ",o.task()," implies at least ",o.task()+1," tasks, but only ",o.tasks()," defined");
+ TORCH_CHECK(o.tasks()==1 || o.batchsize(), c,": zero batchsize incompatible with ",o.tasks()," tasks");
+}
+
 static void setoption(Kmodel *m,bool t,Setting s,S a,K x) {
  bool b; J n; F f;
  switch(s) {
@@ -969,6 +1014,16 @@ static void setoption(Kmodel *m,bool t,Setting s,S a,K x) {
    TORCH_CHECK(n>=0,       a,": cannot be less than zero, given ",n);
    if(t) m->train.batchsize(n), batches(m->data,m->train.droplast(),n);
    else  m->test.batchsize(n), batches(m->testdata,m->test.droplast(),n);
+   break;
+  case Setting::task:
+   TORCH_CHECK(xlong(x,n), a,": expects one long integer, given ",kname(x));
+   TORCH_CHECK(n>=0,       a,": cannot be less than zero, given ",n);
+   if(t) m->train.task(n); else m->test.task(n);
+   break;
+  case Setting::tasks:
+   TORCH_CHECK(xlong(x,n), a,": expects one long integer, given ",kname(x));
+   TORCH_CHECK(n>0,        a,": cannot be less than one, given ",n);
+   if(t) m->train.tasks(n); else m->test.tasks(n);
    break;
   case Setting::clipnorm:
    TORCH_CHECK(t, a,": not set for evaluation");
@@ -1013,6 +1068,16 @@ static void setoption(Kmodel *m,bool t,Setting s,S a,K x) {
    TORCH_CHECK(xbool(x,b), a,": expects one boolean, given ",kname(x));
    m->train.shuffle(b);
    break;
+  case Setting::shufflecuda:
+   TORCH_CHECK(t, a,": not set for evaluation");
+   TORCH_CHECK(xbool(x,b), a,": expects one boolean, given ",kname(x));
+   m->train.shufflecuda(b);
+   break;
+  case Setting::shuffleseed:
+   TORCH_CHECK(t, a,": not set for evaluation");
+   TORCH_CHECK(xlong(x,n), a,": expects one long integer, given ",kname(x));
+   m->train.shuffleseed(n);
+   break;
   case Setting::sync:
    TORCH_CHECK(t, a,": not set for evaluation");
    TORCH_CHECK(xbool(x,b), a,": expects one boolean, given ",kname(x));
@@ -1039,8 +1104,9 @@ static void setoptions(Kmodel* m,bool t,const char *c,SymArrayRef a,K x) {
     case KS: z=ks(kS(x)[i]); break;
     default: TORCH_ERROR(c,": unable to set options given ",kname(x)); break;
    }
-   setoption(m,t,s,k,y ? y : z); i++; if(z) r0(z);
+   setoption(m,t,s,k,y ? y : z); i++; if(z) r0(z),z=nullptr;
   }
+  if(t) checkopt("train", m->train); else checkopt("test", m->test);
  } catch(...) {
    if(t) m->train=tr; else m->test=te;  // restore previous options on error
    if(z) r0(z);                         // decrement ref if K value created here
@@ -1455,7 +1521,7 @@ static void recalcnorm(Kmodel *m,const Modulemap& p,const BNMap& b) {
  torch::NoGradGuard g;
  auto *k=m->kmodule(); auto& q=m->module(); bool a=trainflag(q,true);
  while(nextbatch(o,d))
-  d.z=mforward(k, o.hidden() && d.batch()>0 ? hiddenstate(d) : d.x);
+  d.z=mforward(k, o.hidden() && d.batch() > o.task() ? hiddenstate(d) : d.x);
  q.train(a);           // restore previous training mode
  putmomentum(q,p,b);   // restore previous batch norm momentum settings
 }

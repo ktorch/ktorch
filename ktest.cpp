@@ -13,6 +13,64 @@ namespace fnn=torch::nn::functional;
 //#include "c10d/NCCLUtils.hpp"
 //#include "torch/csrc/cuda/nccl.h"
 
+/*
+static K genmap() {
+ auto a=env().device; auto n=a.size(); I i=0; K k=ktn(KS,n),v=ktn(KJ,n);
+ for(auto& m:a)
+  kS(k)[i]=std::get<0>(m),kJ(v)[i++]=deviceseed(std::get<1>(m));
+ return xD(k,v);
+}
+*/
+
+static void adatest() {
+ auto x=torch::tensor({0.5, 2.0, 4.0}, torch::requires_grad());
+ auto y=torch::tensor({1.0, 2.0, 3.0});
+ //auto o=torch::optim::SGD(std::vector<torch::Tensor>{}, torch::optim::SGDOptions(0.1));
+ auto o=torch::optim::Adagrad(std::vector<torch::Tensor>{}, torch::optim::AdagradOptions(0.1));
+ auto& p=o.param_groups();
+ p[0].params().push_back(x);
+ auto l=torch::nn::functional::mse_loss(x,y);
+ l.backward();
+ o.step();
+}
+
+KAPI Adatest(K x) {
+ KTRY
+  adatest();
+  return (K)0;
+ KCATCH("AdaGrad test");
+}
+
+KAPI matches(K x,K y) {
+ KTRY
+  Tensor a,b;
+  TORCH_CHECK(xten(x,a), "1st arg not a tensor");
+  TORCH_CHECK(xten(y,b), "2nd arg not a tensor");
+  return kten(torch::stack({a.eq(b).sum(), torch::tensor(a.numel())}));
+ KCATCH("matches");
+}
+
+KAPI gen(K x) {
+ KTRY
+  Device d(DeviceType::CPU);
+  if(xempty(x)) {
+   TORCH_ERROR("nyi");
+  } else if(xdev(x,d)) {
+   //auto g=torch::make_generator<torch::CPUGeneratorImpl>();
+   const auto& c1=torch::globalContext().defaultGenerator(d).clone();
+   std::cerr << "default generator with seed: " << (J)c1.current_seed() << "\n";
+   auto c2=torch::globalContext().defaultGenerator(d).clone();
+   std::cerr << " cloned generator with seed: " << (J)c2.current_seed() << "\n";
+   const auto& g=torch::globalContext().defaultGenerator(d);
+   std::cerr << "generator defined: " << g.defined() << "\n";
+   //std::cerr << "generator seed: " << g.seed() << "\n";
+   return kten(g.get_state());
+  } else {
+   TORCH_ERROR("nyi");
+  }
+ KCATCH("gen");
+}
+
 KAPI nccl(K x) {
  KTRY
   Tensor a,b;
@@ -20,7 +78,18 @@ KAPI nccl(K x) {
   TORCH_CHECK(xten(x,1,b), "2nd arg must be a tensor");
   //return kb(torch::cuda::nccl::is_available({a,b}));
   return (K)0;
- KCATCH("gradcopy");
+ KCATCH("nccl");
+}
+
+KAPI gradtest(K x,K y) {
+ KTRY
+  Tensor a;
+  TORCH_CHECK(xten(x,a),"1st arg of tensor expected");
+  Tensor b=kput(y);
+  auto& g=a.mutable_grad();
+  std::cerr<< "gradient defined:" << g.defined() << "\n";
+  return (K)0;
+ KCATCH("gradtest");
 }
 
 KAPI gradcopy(K x) {
@@ -64,34 +133,14 @@ static bool xint(K x,I& i) {
 
 static bool xint(K x,J j,I& i) {return xind(x,j) && xint(kK(x)[j],i);}
 
-static unsigned gradhook1(const Tensor& t,int h,const std::string& f,S s) {
- return t.register_hook([h,f,s](const Tensor& x) {
-  K r;
-  if(h) {
-   r=k(h,(S)f.c_str(),ks(s),kget(x.flatten()),(K)0);
-  } else {
-   K g=kten(x);
-   r=k(0,(S)f.c_str(),ks(s),r1(g),(K)0);
-   TORCH_CHECK(xfree(g),"hook: unable to free gradient for parameter `",s); r0(g);
-  }
-  TORCH_CHECK(r, "hook: network error, gradient callback for parameter `",s);
-  if(h>=0) {
-   if(r->t == -128) {
-    std::string e(r->s); r0(r);
-    TORCH_ERROR("hook: gradient callback for parameter `",s,", ",e);
-   } else {
-    r0(r);
-   }
-  }
- }); 
-}
-
 static unsigned gradhook(const Tensor& t,int h,S f,S s) {
  return t.register_hook([h,f,s](const Tensor& x) {
   K r;
   if(h) {
    r=k(0, (S)"{[h;f;s;x] h(f;s;x)}", ki(h), ks(f), ks(s), kget(x.flatten()), (K)0);
-   //r=k(h,(S)f.c_str(),ks(s),kget(x.flatten()),(K)0);
+   //std::cerr << h << ", " << s << ",nan: " << x.isnan().any() << ", inf: " << x.isinf().any() << ", size " << x.sizes() << ", fn: " << f << "\n";
+   // r=k(h,f,ks(s),kget(x.flatten()),(K)0);
+   //r=k(h,f,ks(s),kget(x.flatten().zero_()),(K)0);
   } else {
    K g=kten(x);
    r=k(0,f,ks(s),r1(g),(K)0);

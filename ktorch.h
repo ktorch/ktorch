@@ -33,6 +33,7 @@ using TensorDict = torch::OrderedDict<std::string, Tensor>;
 using Module     = torch::nn::Module;
 using Moduleptr  = std::shared_ptr<Module>;
 using Modulemap  = torch::OrderedDict<std::string, Moduleptr>;
+using Generator  = torch::Generator;
 ACCESS_PRIVATE_FIELD(Module, c10::optional<std::string>, name_)
 ACCESS_PRIVATE_FIELD(Module, TensorDict, buffers_)
 ACCESS_PRIVATE_FIELD(Module, TensorDict, parameters_)
@@ -245,21 +246,23 @@ enum class Setting:uint8_t {
  norm,       openmp,             out,          outpad,         outsize,      
  p,          pad,                padflag,      padindex,       padmode,      
  parms,      ratio,              reduce,       rescale,        rows,         
- scale,      search,             shape,        shuffle,        size,         
+ scale,      search,             shape,        shuffle,        shufflecuda, shuffleseed, size,         
  slope,      smoothing,          sparse,       stackframe,     start,        
- std,        stride,             swap,         sync,           tensor,       
- threads,    threshold,          track,        train,          transpose,    
- trustclip,  trustmax,           trustmin,     unbiased,       upper,        
- value,      vdim,               weight,       zeroinf
+ std,        stride,             swap,         sync,           task,
+ tasks,      tensor,             threads,      threshold,      track,
+ train,      transpose,          trustclip,    trustmax,       trustmin,
+ unbiased,   upper,              value,        vdim,           weight,
+ zeroinf
 };
 
 enum class State:char {
- buffers, depth,     loss,     module, name, options, optlist, optimizer,
+ buffers, depth,     loss,     module, name, options, optimizer,
  parms,   parmgroup, pointer, size,   train, test
 };
 
 enum class Attr:char {
  undefined = 0,
+ ktype,                                                          // char
  bytes,  densedim, dim, elements,  itemsize, nnz, numel, offset, // long scalars
  ptr, ref, sparsedim, sptr, sref, tensorcount, weakref,
  device, dtype, gradfn, gradient, inputmodule, outputmodule,     // symbol
@@ -271,7 +274,7 @@ enum class Attr:char {
 };
  
 enum class Metric:char {
- batchloss, loss, accuracy, predict, output, hidden, hiddencell
+ batchloss, loss, accuracy, matches, predict, output, hidden, hiddencell
 };
 using Metrics = std::vector<Metric>;
 
@@ -346,14 +349,18 @@ struct TORCH_API Kdict : public Ktag {
 
 struct TORCH_API TrainOptions {
  using Doubles = std::array<double,2>;
- TORCH_ARG(int64_t, batchsize)  = 32;
- TORCH_ARG(bool,    droplast)   = false;
- TORCH_ARG(bool,    hidden)     = false;
- TORCH_ARG(bool,    shuffle)    = false;
- TORCH_ARG(bool,    tensor)     = false;
- TORCH_ARG(bool,    dictionary) = false;
- TORCH_ARG(bool,    sync)       = false;
- TORCH_ARG(bool,    clipgroup)  = false;
+ TORCH_ARG(int64_t, batchsize)    = 32;
+ TORCH_ARG(int64_t, task)         = 0;
+ TORCH_ARG(int64_t, tasks)        = 1;
+ TORCH_ARG(int64_t, shuffleseed)  = 0;
+ TORCH_ARG(bool,    droplast)     = false;
+ TORCH_ARG(bool,    hidden)       = false;
+ TORCH_ARG(bool,    shuffle)      = false;
+ TORCH_ARG(bool,    shufflecuda)  = false;
+ TORCH_ARG(bool,    tensor)       = false;
+ TORCH_ARG(bool,    dictionary)   = false;
+ TORCH_ARG(bool,    sync)         = false;
+ TORCH_ARG(bool,    clipgroup)    = false;
  TORCH_ARG(c10::optional<Doubles>, clipnorm);
  TORCH_ARG(c10::optional<double>,  clipvalue);
  TORCH_ARG(Metrics, metrics) = {Metric::loss};
@@ -361,6 +368,8 @@ struct TORCH_API TrainOptions {
 
 struct TORCH_API TestOptions {
  TORCH_ARG(int64_t, batchsize)  = 100;
+ TORCH_ARG(int64_t, task)       = 0;
+ TORCH_ARG(int64_t, tasks)      = 1;
  TORCH_ARG(bool,    droplast)   = false;
  TORCH_ARG(bool,    hidden)     = false;
  TORCH_ARG(bool,    tensor)     = false;
@@ -420,6 +429,7 @@ struct TORCH_API Data {
  Output z;                            // model output for latest batch
  Tensor l;                            // tensor loss for latest batch (if required)
  Tensor p;                            // permutation index if shuffled
+ Generator g;                         // generator (used for permutation index across tasks)
  MetricData m;                        // metrics stored in vector of vectors for each batch
 };
 
@@ -468,6 +478,8 @@ bool null(const char*);
 bool null(const J);
 bool match(const Scalar&,const Scalar&);
 K kscalar(const Scalar&);
+K resolvedict(K);
+K resolve(K);
 
 J xlen(K);
 J xlen(K,J);
@@ -488,17 +500,18 @@ S outputname(const Output&);
 
 S statekey(State);
 J statefind(State,K,bool r=false);
+S statesym(State,bool,K,J j=-1);
+K statedict(State,K,J j=-1);
+K statetable(State,K);
+
 J statedepth(K x,J j=-1);
 S statemodule(K x,J j=-1);
 S statename(K x,J j=-1);
-S stateoptimizer(K x,J j=-1);
 K stateoptions(K x,J j=-1);
-K stateoptlist(K x,J j=-1);
 K stateparms(K x,J j=-1);
 K statebuffers(K x,J j=-1);
 J stategroup(K x,J j=-1);
 K statesize(K x,J j=-1);
-K stategroups(K);
 K statecol(State,K,short t=nh);
 void stateparms(S,Module&,K,bool);
 
@@ -778,9 +791,8 @@ int64_t maxsize(const TensorVector&, int64_t d=0);
 int64_t maxsize(const TensorDict&,   int64_t d=0);
 int64_t checksize(const Input&,const Input&);
 int64_t fullsize(const Tensor&, int64_t d=0,int64_t n=-1);
-int64_t fullsize(TensorVector&, int64_t d=0,int64_t n=-1);
-int64_t fullsize(TensorDict&,   int64_t d=0,int64_t n=-1);
-int64_t fullsize(const Input&,  int64_t d=0,int64_t n=-1);
+int64_t fullsize(const TensorVector&, int64_t d=0,int64_t n=-1);
+int64_t fullsize(const TensorDict&,   int64_t d=0,int64_t n=-1);
 int64_t batches(int64_t w,int64_t n,bool b=false);
 void batch(const Input& x,int64_t i,int64_t w,int64_t d=0,int64_t n=-1);
 bool nextbatch(K,int64_t,int64_t);
@@ -844,8 +856,8 @@ size_t osize(const Optimizer&);
 J buffersize(Attr,Cast,const Optimizer&);
 K kopt(Cast,const Optptr&,const Moduleptr&);
 K optget(bool,bool,Cast,const Optimizer&,const Module&);
-K optdict(bool,Cast,const Optimizer&);
-K opthelp(Cast);
+K optsettings(bool,Cast,const Optimizer&);
+K optdefaults(Cast);
 void optfn(K);
 
 // model functions:
@@ -1095,29 +1107,32 @@ typedef struct Env {
  }};
 
 // training options, 1st flag true if training option, 2nd flag true if an evaluation option
- std::array<std::tuple<S,Setting,bool,bool>,11> train = {{
- std::make_tuple(cs("batchsize"),     Setting::batchsize,  true,  true),
- std::make_tuple(cs("clipgroup"),     Setting::clipgroup,  true,  false),
- std::make_tuple(cs("clipnorm"),      Setting::clipnorm,   true,  false),
- std::make_tuple(cs("clipvalue"),     Setting::clipvalue,  true,  false),
- std::make_tuple(cs("dictionary"),    Setting::dictionary, true,  true),
- std::make_tuple(cs("droplast"),      Setting::droplast,   true,  true),
- std::make_tuple(cs("hidden"),        Setting::hidden,     true,  true),
- std::make_tuple(cs("metrics"),       Setting::metrics,    true,  true),
- std::make_tuple(cs("shuffle"),       Setting::shuffle,    true,  false),
- std::make_tuple(cs("sync"),          Setting::sync,       true,  false),
- std::make_tuple(cs("tensor"),        Setting::tensor,     true,  true)
+ std::array<std::tuple<S,Setting,bool,bool>,15> train = {{
+ std::make_tuple(cs("batchsize"),     Setting::batchsize,   true,  true),
+ std::make_tuple(cs("clipgroup"),     Setting::clipgroup,   true,  false),
+ std::make_tuple(cs("clipnorm"),      Setting::clipnorm,    true,  false),
+ std::make_tuple(cs("clipvalue"),     Setting::clipvalue,   true,  false),
+ std::make_tuple(cs("dictionary"),    Setting::dictionary,  true,  true),
+ std::make_tuple(cs("droplast"),      Setting::droplast,    true,  true),
+ std::make_tuple(cs("hidden"),        Setting::hidden,      true,  true),
+ std::make_tuple(cs("metrics"),       Setting::metrics,     true,  true),
+ std::make_tuple(cs("shuffle"),       Setting::shuffle,     true,  false),
+ std::make_tuple(cs("shufflecuda"),   Setting::shufflecuda, true,  false),
+ std::make_tuple(cs("shuffleseed"),   Setting::shuffleseed, true,  false),
+ std::make_tuple(cs("sync"),          Setting::sync,        true,  false),
+ std::make_tuple(cs("task"),          Setting::task,        true,  true),
+ std::make_tuple(cs("tasks"),         Setting::tasks,       true,  true),
+ std::make_tuple(cs("tensor"),        Setting::tensor,      true,  true)
 }};
 
 // module state dictionary keys: map symbol -> enum
- std::array<std::tuple<S,State>,14> state = {{  
+ std::array<std::tuple<S,State>,13> state = {{  
   std::make_tuple(cs("buffers"),   State::buffers),
   std::make_tuple(cs("depth"),     State::depth),
   std::make_tuple(cs("loss"),      State::loss),
   std::make_tuple(cs("module"),    State::module),
   std::make_tuple(cs("name"),      State::name),
   std::make_tuple(cs("options"),   State::options),
-  std::make_tuple(cs("options"),   State::optlist),
   std::make_tuple(cs("optimizer"), State::optimizer),
   std::make_tuple(cs("parms"),     State::parms),
   std::make_tuple(cs("parmgroup"), State::parmgroup),
@@ -1181,7 +1196,7 @@ typedef struct Env {
   std::make_tuple(cs("unbiased"),   Setting::unbiased)
  }};
 
- std::array<std::tuple<S,Attr>,37> attr = {{            //attributes: map symbol -> enum
+ std::array<std::tuple<S,Attr>,38> attr = {{            //attributes: map symbol -> enum
   std::make_tuple(cs("bytes"),        Attr::bytes),
   std::make_tuple(cs("coalesced"),    Attr::coalesced),
   std::make_tuple(cs("contiguous"),   Attr::contiguous),
@@ -1199,6 +1214,7 @@ typedef struct Env {
   std::make_tuple(cs("gradient"),     Attr::gradient),
   std::make_tuple(cs("inputmodule"),  Attr::inputmodule),
   std::make_tuple(cs("itemsize"),     Attr::itemsize),
+  std::make_tuple(cs("ktype"),        Attr::ktype),
   std::make_tuple(cs("layout"),       Attr::layout),
   std::make_tuple(cs("leaf"),         Attr::leaf),
   std::make_tuple(cs("memory"),       Attr::memory),
@@ -1228,10 +1244,11 @@ typedef struct Env {
   std::make_tuple(cs("createfree"), false, true,  "free graph & create graph for higher order derivatives (unused?)")
  }};
 
- std::array<std::tuple<S,Metric>,7> metric = {{
+ std::array<std::tuple<S,Metric>,8> metric = {{
   std::make_tuple(cs("batchloss"),  Metric::batchloss),
   std::make_tuple(cs("loss"),       Metric::loss),
   std::make_tuple(cs("accuracy"),   Metric::accuracy),
+  std::make_tuple(cs("matches"),    Metric::matches),
   std::make_tuple(cs("predict"),    Metric::predict),
   std::make_tuple(cs("output"),     Metric::output),
   std::make_tuple(cs("hidden"),     Metric::hidden),

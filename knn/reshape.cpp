@@ -66,7 +66,7 @@ SizeOptions getsize(K x,J i,Cast c) {
 K getsize(bool a,const SizeOptions& o) {
  K x=KDICT;
  msetting(x, Setting::size, klist(o.size().size(),o.size().data()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------
@@ -93,7 +93,7 @@ K flatten(bool a,const torch::nn::FlattenOptions& o) {
  K x=KDICT; torch::nn::FlattenOptions d;
  if(a || d.start_dim() != o.start_dim()) msetting(x, Setting::start, kj(o.start_dim()));
  if(a || d.end_dim()   != o.end_dim())   msetting(x, Setting::end,   kj(o.end_dim()));
- return x;
+ return resolvedict(x);
 }
 
 // ----------------------------------------
@@ -120,7 +120,7 @@ K transpose(bool a,const TransposeOptions& o) {
  K x=KDICT;
  msetting(x, Setting::dim0, kj(o.dim0()));
  msetting(x, Setting::dim1,   kj(o.dim1()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

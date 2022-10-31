@@ -138,7 +138,7 @@ template<typename O> K embed(bool a,Cast c,const O& o,const Tensor& w) {
  if(a || o.sparse()             != d.sparse())             msetting(x, Setting::sparse,  kb(o.sparse()));
  embedget(a,true,x,c,Setting::lastoffset,o,d);  // embedding bag only
  embedget(a,true,x,c,Setting::padindex,o,d);    // embedding bag only
- return x;
+ return resolvedict(x);
 }
 
 } // knn namespace

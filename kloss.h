@@ -3,10 +3,10 @@
 namespace knn {
 
 namespace {
-  static inline at::Tensor apply_loss_reduction(const at::Tensor& unreduced, int64_t reduction) {
-    if (reduction == at::Reduction::Mean) {
+  static inline Tensor apply_loss_reduction(const Tensor& unreduced, int64_t reduction) {
+    if (reduction == torch::Reduction::Mean) {
       return unreduced.mean();
-    } else if (reduction == at::Reduction::Sum) {
+    } else if (reduction == torch::Reduction::Sum) {
       return unreduced.sum();
     }
     return unreduced;

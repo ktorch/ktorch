@@ -1,5 +1,10 @@
 #include "ktorch.h"
 
+using optint=c10::optional<int64_t>;
+using optstr=c10::optional<c10::string_view>;
+using optdim =torch::OptionalIntArrayRef;
+using optsize=torch::OptionalIntArrayRef;
+
 // -----------------------------------------------------------------------------------------
 // define function pointers, e.g. Ftt for function(tensor,tensor), G w'output
 // -----------------------------------------------------------------------------------------
@@ -410,8 +415,8 @@ KAPI Pnorm(K x) {
 // --------------------------------------------------------------------------
 static K kvar(K x,
               Tensor  (*f1)(const Tensor&,bool),
-              Tensor  (*f2)(const Tensor&,IntArrayRef dim,bool,bool),
-              Tensor& (*g)(Tensor&,const Tensor&,IntArrayRef,bool,bool),
+              Tensor  (*f2)(const Tensor&,optdim,bool,bool),
+              Tensor& (*g)(Tensor&,const Tensor&,optdim,bool,bool),
               const char *c) {
  KTRY
   IntArrayRef d; bool p=false,m=false,u=true,k=false; Tensor a,r;
@@ -438,7 +443,7 @@ static K kvar(K x,
 }
 
 KAPI Std(K x) {return kvar(x, torch::std, torch::std, torch::std_out, "std");}
-KAPI Var(K x) {return kvar(x, torch::var, torch::var, torch::var_out, "var");}
+KAPI Var(K x) {return kvar(x, torch::var, torch::var, torch::var_out, "variance");}
 
 // --------------------------------------------------------------------------
 // kvar - args for mean & stddev/variance: (x;dim;unbiased;keepdim)
@@ -447,7 +452,7 @@ KAPI Var(K x) {return kvar(x, torch::var, torch::var, torch::var_out, "var");}
 // --------------------------------------------------------------------------
 static K kvar(K x,
               Tuple (*f1)(const Tensor&,bool),
-              Tuple (*f2)(const Tensor&,IntArrayRef dim,bool,bool),
+              Tuple (*f2)(const Tensor&,optdim,bool,bool),
               const char *c) {
  KTRY
   IntArrayRef d; bool p=false,m=false,u=true,k=false; Tensor a;
@@ -481,11 +486,11 @@ KAPI Meanvar(K x) {return kvar(x, torch::var_mean, torch::var_mean, "meanvar");}
 // sum - return sum, optional dim(s), optional data type
 // ---------------------------------------------------------------------------
 static K kmean(K x,
-               Tensor  (*f)(        const Tensor&,IntArrayRef,bool,c10::optional<Dtype>),
-               Tensor& (*g)(Tensor&,const Tensor&,IntArrayRef,bool,c10::optional<Dtype>),
+               Tensor  (*f)(        const Tensor&,optdim,bool,c10::optional<Dtype>),
+               Tensor& (*g)(Tensor&,const Tensor&,optdim,bool,c10::optional<Dtype>),
                const char *c) {
  KTRY
-  bool p=false,k=false; IntArrayRef d; c10::optional<Dtype> t=c10::nullopt; Tensor a,r;
+  bool p=false,k=false; IntArrayRef i; c10::optional<Dtype> t=c10::nullopt; Tensor a,r;
   if(xten(x,a)) {
    p=true;
   } else if(xarray(x,5)) {
@@ -496,10 +501,11 @@ static K kmean(K x,
    if(n>1 && (xten(x,n-1,r))) n--;
    if(n>1 && xtype(x,n-1,t)) n--;
    if(n>1 && xbool(x,n-1,k)) n--;
-   if(n>1 && xsize(x,n-1,d)) n--;
+   if(n>1 && xsize(x,n-1,i)) n--;
    TORCH_CHECK(n==1, c,": unrecognized args, expecting up to 4, (input;dim;keepdim;output)");
    if(!(p=xten(x,0,a))) a=kput(x,0);
   }
+  optdim d=c10::nullopt; if(i.size()) d=i;
   if(r.defined())
    return g(r,a,d,k,t), (K)0;
   else
@@ -507,14 +513,16 @@ static K kmean(K x,
  KCATCH(c);
 }
 
-static Tensor kprod(const Tensor& x,IntArrayRef d,bool k,c10::optional<Dtype> t) {
- TORCH_CHECK(d.size()==0 || d.size()==1, "prod: product can only be calculated along a single dimension, given ",d.size());
- return d.size() ? torch::prod(x,d[0],k,t) : torch::prod(x,t);
+static Tensor kprod(const Tensor& x,optdim d,bool k,c10::optional<Dtype> t) {
+ auto n=d ? d.value().size() : 0;
+ TORCH_CHECK(n==0 || n==1, "prod: product can only be calculated along a single dimension, given ",n);
+ return d ? torch::prod(x,d.value()[0],k,t) : torch::prod(x,t);
 }
 
-static Tensor& kprod_out(Tensor& r,const Tensor& x,IntArrayRef d,bool k,c10::optional<Dtype> t) {
- TORCH_CHECK(d.size()==0 || d.size()==1, "prod: product can only be calculated along a single dimension, given ",d.size());
- return torch::prod_out(r,x,d.size() ? d[0] : -1,k,t);
+static Tensor& kprod_out(Tensor& r,const Tensor& x,optdim d,bool k,c10::optional<Dtype> t) {
+ auto n=d ? d.value().size() : 0;
+ TORCH_CHECK(n==0 || n==1, "prod: product can only be calculated along a single dimension, given ",n);
+ return torch::prod_out(r,x,n ? d.value()[0] : -1,k,t);
 }
 
 KAPI    Mean(K x) {return kmean(x, torch::mean,    torch::mean_out,    "mean");}
@@ -980,12 +988,6 @@ KAPI   Kaiser(K x) {return kwindow(x, 4, "kaiser");}
 // Fast Fourier Transform - utilities
 // fftnorm - check k sym for valid FFT norm string, error else
 // -------------------------------------------------------------------------------
-using optint=c10::optional<int64_t>;
-using optstr=c10::optional<c10::string_view>;
-// v1.12.0 introduced OptionalIntArrayRef
-// using optarr=c10::optional<IntArrayRef>;  
-using optarr=torch::OptionalIntArrayRef;
-
 static optstr fftnorm(K x) {
  static std::array<S,3> s={{cs("forward"),cs("backward"),cs("ortho")}};
  if(nullsym(x)) {
@@ -1059,9 +1061,9 @@ KAPI ihfft(K x) {return ffd1(x, torch::fft::ihfft, torch::fft_ihfft_out, "ihfft"
 // hfft2/ihfft2 - 2-d fft of a onesided Hermitian signal & inverse of real-valued fourier domain signal
 // ----------------------------------------------------------------------------------------------------
 static K ffd2(K x,
-              Tensor  (*f)(const Tensor&,optarr,IntArrayRef,optstr),
-              Tensor& (*g1)(Tensor&,const Tensor&,optarr,IntArrayRef,optstr),
-              const Tensor& (*g2)(const Tensor&,const Tensor&,optarr,IntArrayRef,optstr),
+              Tensor  (*f)(const Tensor&,optsize,IntArrayRef,optstr),
+              Tensor& (*g1)(Tensor&,const Tensor&,optsize,IntArrayRef,optstr),
+              const Tensor& (*g2)(const Tensor&,const Tensor&,optsize,IntArrayRef,optstr),
               const char* c) {
  KTRY
   bool p=false; IntArrayRef n,d; optstr s=c10::nullopt; Tensor a,r;
@@ -1079,7 +1081,7 @@ static K ffd2(K x,
    TORCH_CHECK(j==1, c,": unrecognized args, expecting up to 5, (input;size;dim;norm;output)");
    if(!(p=xten(x,0,a))) a=kput(x,0);
   }
-  optarr sz=c10::nullopt; if(n.size()) sz=n;
+  optsize sz=c10::nullopt; if(n.size()) sz=n;
   std::array<int64_t,2> dm={-2,-1}; if(!d.size()) d=dm;
   if(r.defined())
    return (g1 ? g1(r,a,sz,d,s) : g2(r,a,sz,d,s)), (K)0;
@@ -1103,9 +1105,9 @@ KAPI ihfft2(K x) {return ffd2(x, torch::fft::ihfft2, nullptr, torch::fft_ihfft2_
 // hfftn/ihfftn - n-dim fft of onesided Hermitian signal & inverse of real-valued fourier domain signal
 // ----------------------------------------------------------------------------------------------------
 static K ffdn(K x,
-              Tensor  (*f)(const Tensor&,optarr,optarr,optstr),
-              Tensor& (*g1)(Tensor&,const Tensor&,optarr,optarr,optstr),
-              const Tensor& (*g2)(const Tensor&,const Tensor&,optarr,optarr,optstr),
+              Tensor  (*f)(const Tensor&,optsize,optdim,optstr),
+              Tensor& (*g1)(Tensor&,const Tensor&,optsize,optdim,optstr),
+              const Tensor& (*g2)(const Tensor&,const Tensor&,optsize,optdim,optstr),
               const char* c) {
  KTRY
   bool p=false; IntArrayRef n,d; optstr s=c10::nullopt; Tensor a,r;
@@ -1123,7 +1125,7 @@ static K ffdn(K x,
    TORCH_CHECK(j==1, c,": unrecognized args, expecting up to 5, (input;size;dim;norm;output)");
    if(!(p=xten(x,0,a))) a=kput(x,0);
   }
-  optarr sz=c10::nullopt, dm=c10::nullopt; Ksize v;
+  optsize sz=c10::nullopt; optdim dm=c10::nullopt; Ksize v;
   if(n.size()) sz=n;
   if(d.size()) dm=d;
   if(r.defined())
@@ -1149,9 +1151,9 @@ KAPI ihfftn(K x) {return ffdn(x, torch::fft_ihfftn,  nullptr, torch::fft_ihfftn_
 // fftshift - reorders n-dimensional FFT output to have negative frequency terms first, via torch.roll
 // ifftshift -  inverse transform, from centered Fourier space back to centered spatial data
 // ---------------------------------------------------------------------------------------------------
-static K fshift(K x,Tensor (*f)(const Tensor&,optarr),const char* c) {
+static K fshift(K x,Tensor (*f)(const Tensor&,optdim),const char* c) {
  KTRY
-  bool p=false; optarr d=c10::nullopt; Tensor a;
+  bool p=false; optdim d=c10::nullopt; Tensor a;
   if(xten(x,a)) {
    p=true;
   } else if(xarray(x,2)) {
@@ -1776,25 +1778,60 @@ KAPI Qr(K x) {
 }
 
 // --------------------------------------------------------------------------------------
-// svd - singular value decomposition of a real matrix
+// svdsym - check symbol input for valid driver name
+// svd - singular value decomposition of a real matrix, returns/writes U,S,V(h)
+// svdvals - singular value decomposition, return values only
 // --------------------------------------------------------------------------------------
+static optstr svdsym(S s,const char *c) {
+ static std::array<S,3> d={{cs("gesvd"), cs("gesvda"), cs("gesvdj")}};
+ if(nullsym(s)) {
+  return c10::nullopt;
+ } else {
+  for(const auto a:d)
+   if(a == s) return c10::string_view((const char*)a);
+  TORCH_ERROR(c,": unrecognized driver `",s);
+ }
+}
+
 KAPI Svd(K x) {
  KTRY
-  bool p=false,f=true; Tensor a; TensorVector *v=nullptr;
+  bool p=false,f=true; S s; Tensor a; TensorVector *v=nullptr; optstr d=c10::nullopt;
+  TORCH_CHECK(!x->t, "svd: not implemented for ",kname(x));
+  if(xten(x,a)) {
+   p=true;
+  } else if(xarray(x,4)) {
+   a=kput(x);
+  } else {
+   J n=x->n;
+   TORCH_CHECK(n>0 && n<5, "svd: expecting 1-4 args, (x;full;driver;out vector), given ",x->n);
+   if(n>1 && (v=xvec(x,n-1))) n--;
+   if(n>1 && (xsym(x,n-1,s))) d=svdsym(s,"svd"), n--;
+   if(n>1 && xbool(x,n-1,f)) n--;
+   TORCH_CHECK(n==1, "svd: unrecognized args, expecting 1-4 args, (a;full;driver;out vector)");
+   if(!(p=xten(x,0,a))) a=kput(x,0);
+  }
+  return v ? koutput(*v,torch::linalg::svd(a,f,d)) : kresult(p,torch::linalg::svd(a,f,d));
+ KCATCH("svd");
+}
+
+KAPI Svdvals(K x) {
+ KTRY
+  bool p=false; S s; Tensor a,r; optstr d=c10::nullopt;
+  TORCH_CHECK(!x->t, "svdvals: not implemented for ",kname(x));
   if(xten(x,a)) {
    p=true;
   } else if(xarray(x,3)) {
    a=kput(x);
   } else {
    J n=x->n;
-   TORCH_CHECK(n>0 && n<4, "svd: expecting 1-3 args, (x;full;output), given ",x->n);
-   if(n>1 && (v=xvec(x,n-1))) n--;
-   if(n>1 && xbool(x,n-1,f)) n--;
-   TORCH_CHECK(n==1, "svd: unrecognized args, expecting 1-3 args, (x;full;output)");
+   TORCH_CHECK(n>0 && n<4, "svdvals: expecting 1-3 args, (x;driver;out), given ",x->n);
+   if(n>1 && (xten(x,n-1,r))) n--;
+   if(n>1 && (xsym(x,n-1,s))) d=svdsym(s,"svdvals"), n--;
+   TORCH_CHECK(n==1, "svdvals: unrecognized args, expecting 1-3 args, (a;driver;out)");
    if(!(p=xten(x,0,a))) a=kput(x,0);
   }
-  return v ? koutput(*v,torch::linalg_svd(a,f)) : kresult(p,torch::linalg_svd(a,f));
- KCATCH("svd");
+  return r.defined() ? (torch::linalg::svdvals_out(r,a,d), (K)0) : kresult(p,torch::linalg::svdvals(a,d));
+ KCATCH("svdvals");
 }
 
 // --------------------------------------------------------------------------------------
@@ -1806,12 +1843,15 @@ KAPI Svd(K x) {
 // --------------------------------------------------------------------------------------
 KAPI Solve(K x) {
  KTRY
-  Tensor a,b,r;
+  bool l=true; Tensor a,b,r;
   TORCH_CHECK(!x->t, "solve: not implemented for ",kname(x));
-  TORCH_CHECK(1<x->n && x->n <3, "solve: expects 2-3 args, (a;b;output), given ",x->n);
-  TORCH_CHECK(x->n==2 || (x->n==3 && xten(x,2,r)), "solve: unrecognized 3rd arg, expecting output tensor, given ",kname(x,2));
+  TORCH_CHECK(1<x->n && x->n<5, "solve: expects 2-4 args, (a;b;left;out), given ",x->n);
+  TORCH_CHECK(x->n==2 || 
+             (x->n==3 && (xbool(x,2,l) || xten(x,2,r))) ||
+             (x->n==4 &&  xbool(x,2,l) && xten(x,3,r)),
+             "solve: unrecognized arg(s), expecting 2-4 args, (a;b), (a;b;left), (a;b;out) or (a;b;left;out)");
   auto p=xtenarg(x,a,b);
-  return r.defined() ? (torch::linalg::solve_out(r,a,b), (K)0) : kresult(p, torch::linalg::solve(a,b));
+  return r.defined() ? (torch::linalg::solve_out(r,a,b,l), (K)0) : kresult(p, torch::linalg::solve(a,b,l));
  KCATCH("solve");
 }
 
@@ -1856,45 +1896,29 @@ KAPI Lstsq(K x) {
  KCATCH("lstsq");
 }
 
-// -----------------------------------------------------------------------------------
-// dcomp - handle args x, (x;out) for Cholesky, eigvals, svdvals decomposition
+// --------------------------------------------------------------------
 // chol - cholesky decomposition
-// svdvals - SVD decomposition, values only
-// -----------------------------------------------------------------------------------
-static K dcomp(K x,
-               Tensor   (*f)(const Tensor&),
-               Tensor  (*g1)(Tensor&,const Tensor&),
-               Tensor& (*g2)(Tensor&,const Tensor&),
-               const char *c) {
+// cholx - cholesky decomposition with additional flags and debug info
+// --------------------------------------------------------------------
+KAPI Chol(K x) {
  KTRY
-  TORCH_CHECK(!x->t, c,": not implemented for ",kname(x));
-  bool p=false; J n=x->n; Tensor a,r;
+  bool p=false,u=false; Tensor a,r;
+  TORCH_CHECK(!x->t, "solve: not implemented for ",kname(x));
   if(xten(x,a)) {
    p=true;
   } else if(xarray(x,2)) {
    a=kput(x);
   } else {
-   TORCH_CHECK(0<n && n<3, c,": expecting 1-2 args, (x;output), ",n," given");
-   if(n>1 && xten(x,n-1,r)) n--;
-   TORCH_CHECK(n==1, c,": unexpected arg(s), expecting 1-2 args, (x;output)");
-   if(!(p=xten(x,0,a))) a=kput(x,0);
+   TORCH_CHECK((x->n==2 && (xbool(x,1,u) || xten(x,1,r))) ||
+               (x->n==3 &&  xbool(x,1,u) && xten(x,2,r)),
+               "chol: unrecognized arg(s), expecting 1-3 args, a, (a;upper), (a;out) or (a;upper;out)");
+   p=xten(x,0,a);
+   if(!p) a=kput(x,0);
   }
-  if(r.defined()) {
-   if(g1) g1(r,a); else g2(r,a);
-   return (K)0;
-  } else {
-   return kresult(p, f(a));
-  }
- KCATCH(c);
+  return r.defined() ? (torch::linalg_cholesky_out(r,a,u), (K)0) : kresult(p, torch::linalg_cholesky(a,u));
+ KCATCH("chol");
 }
 
-// cholesky_out() result is defined as Tensor instead of Tensor& (?)
-KAPI    Chol(K x) {return dcomp(x, torch::linalg::cholesky, torch::linalg::cholesky_out, nullptr, "chol");}
-KAPI Svdvals(K x) {return dcomp(x, torch::linalg::svdvals,  nullptr, torch::linalg::svdvals_out,  "svdvals");}
-
-// --------------------------------------------------------------------------------
-// cholx - cholesky decomposition with additional flags and debug info
-// --------------------------------------------------------------------------------
 KAPI Cholx(K x) {
  KTRY
   TORCH_CHECK(!x->t, "cholx: not implemented for ",kname(x));

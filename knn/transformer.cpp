@@ -86,11 +86,11 @@ K codenorm(bool a,const AnyModule& m) {
 }
 
 K decoder(bool a,Cast c,const torch::nn::TransformerDecoderOptions& o) {
- K x=KDICT; msetting(x, Setting::decoderlayer, codelayer(a,c,o.decoder_layer()->options)); coder(a,x,o); return x;
+ K x=KDICT; msetting(x, Setting::decoderlayer, codelayer(a,c,o.decoder_layer()->options)); coder(a,x,o); return resolvedict(x);
 }
 
 K encoder(bool a,Cast c,const torch::nn::TransformerEncoderOptions& o) {
- K x=KDICT; msetting(x, Setting::encoderlayer, codelayer(a,c,o.encoder_layer()->options)); coder(a,x,o); return x;
+ K x=KDICT; msetting(x, Setting::encoderlayer, codelayer(a,c,o.encoder_layer()->options)); coder(a,x,o); return resolvedict(x);
 }
 
 // -------------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ K transformer(bool a,Cast c,const torch::nn::TransformerOptions& o) {
  } else { 
   msetting(x, Setting::decoder, customcoder(a,o.custom_decoder()));
  }
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

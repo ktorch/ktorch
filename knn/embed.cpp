@@ -50,7 +50,7 @@ K embedpos(bool a,const EmbedPositionOptions& o) {
  K x=KDICT;
  msetting(x, Setting::rows, kj(o.rows()));
  msetting(x, Setting::cols, kj(o.cols()));
- return x;
+ return resolvedict(x);
 }
 
 // -----------------------------------------------------------------------------
@@ -107,7 +107,7 @@ K embedseq(bool a,const EmbedSequenceOptions& o) {
  msetting(x, Setting::rows,   kj(o.rows()));
  msetting(x, Setting::cols,   kj(o.cols()));
  msetting(x, Setting::length, kj(o.length()));
- return x;
+ return resolvedict(x);
 }
 
 // --------------------------------------------------------------------------------------

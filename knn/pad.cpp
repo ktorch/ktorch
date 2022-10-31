@@ -63,7 +63,7 @@ K pad(bool a,const torch::nn::functional::PadFuncOptions& o) {
  msetting(x, Setting::pad, klist(o.pad().size(),o.pad().data()));
  if(a || o.mode().index() != d.mode().index()) msetting(x, Setting::mode,  ks(ESYM(o.mode())));
  if(a || o.value()        != d.value())        msetting(x, Setting::value, kf(o.value()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn

@@ -82,7 +82,7 @@ K squeeze(bool a,const SqueezeOptions& o) {
  K x=KDICT;
  if(o.dim().has_value()) msetting(x, Setting::dim,     kj(o.dim().value()));
  if(a || o.inplace())    msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 

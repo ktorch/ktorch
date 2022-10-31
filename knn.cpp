@@ -1630,8 +1630,8 @@ K moduleoptions(bool a,bool b,Cast c,const Module& m) {
 
   case Cast::attention:        return knn::attention(a,m.as<nn::MultiheadAttention>()->options);
   case Cast::selfattention:    return knn::selfattn(a,m.as<knn::SelfAttention>()->options);
-  case Cast::encoderlayer:     return knn::codelayer(a,c,m.as<nn::TransformerEncoderLayer>()->options);
-  case Cast::decoderlayer:     return knn::codelayer(a,c,m.as<nn::TransformerDecoderLayer>()->options);
+  case Cast::encoderlayer:     return resolvedict(knn::codelayer(a,c,m.as<nn::TransformerEncoderLayer>()->options));
+  case Cast::decoderlayer:     return resolvedict(knn::codelayer(a,c,m.as<nn::TransformerDecoderLayer>()->options));
   case Cast::encoder:          return knn::encoder(a,c,m.as<nn::TransformerEncoder>()->options);
   case Cast::decoder:          return knn::decoder(a,c,m.as<nn::TransformerDecoder>()->options);
   case Cast::transformer:      return knn::transformer(a,c,m.as<nn::Transformer>()->options);

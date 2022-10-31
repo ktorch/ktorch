@@ -1,4 +1,3 @@
-
 Training steps
 ==============
 
@@ -737,6 +736,12 @@ These options are only used for training:
 - ``shuffle`` - flag indicating that traing data is to be reshuffled at end of epoch, default is ``false``.
 - ``sync`` - do an explicit sync between GPU and CPU, defalut is ``false``. No sync is required, and execution in asynchronous mode should be faster, but there are exceptions, see PyTorch `issue <https://github.com/pytorch/pytorch/issues/63618>`_.
 
+These training options are only relevant for :ref:`distributed training <dist>`:
+
+- ``task`` - indicates task index, 0-n, for n+1 tasks (akin to "rank" in PyTorch's `init_process_group <https://pytorch.org/docs/stable/distributed.html#torch.distributed.init_process_group>`_).
+- ``tasks`` - total number of tasks, default is 1, can be set larger for distributed training (sometimes called "world size" in distributed training, e.g. `init_process_group <https://pytorch.org/docs/stable/distributed.html#torch.distributed.init_process_group>`_).
+- ``shufflecuda`` - set boolean flag ``true`` if all tasks are to be run on CUDA devices allowing for faster generation of the permutation index. Default is ``false`` which creates a CPU generator and random permutation on the CPU, then transfers the permutation index to the relevant device. With multiple tasks using the same dataset, a generator is created and seeded identically for all tasks and their devices; this must be on the CPU if any of the tasks are set to run on a non-CUDA device.
+- ``shuffleseed`` - initializes the `generator <https://pytorch.org/docs/stable/generated/torch.Generator.html>`_ with the same seed given for all tasks, so all tasks can use the same permutation index and select their own random, non-overlapping subsets.
 
 Get options
 ^^^^^^^^^^^

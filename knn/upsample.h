@@ -57,7 +57,7 @@ template<typename O> K interp(bool a,const O& o) {
          (d.align_corners() == o.align_corners() &&
           o.align_corners() && *o.align_corners() != *d.align_corners()))
   msetting(x, Setting::align, o.align_corners() ? kb(*o.align_corners()) : ktn(0,0));
- return x;
+ return resolvedict(x);
 }
 
 K    upsample(bool,const torch::nn::UpsampleOptions&);

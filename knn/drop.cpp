@@ -48,7 +48,7 @@ K drop(bool a,const torch::nn::DropoutOptions& o) {
  K x=KDICT; torch::nn::DropoutOptions d;
  if(a || o.p()       != d.p())       msetting(x, Setting::p,       kf(o.p()));
  if(a || o.inplace() != d.inplace()) msetting(x, Setting::inplace, kb(o.inplace()));
- return x;
+ return resolvedict(x);
 }
 
 DropPathOptions droppath(K x,J i,Cast c) {
@@ -68,7 +68,7 @@ DropPathOptions droppath(K x,J i,Cast c) {
 
 K droppath(bool a,const DropPathOptions& o) {
  K x=KDICT; msetting(x, Setting::p,kf(o.p()));
- return x;
+ return resolvedict(x);
 }
 
 } // namespace knn
