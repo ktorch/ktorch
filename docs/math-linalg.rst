@@ -149,6 +149,7 @@ chol
 where :math:`L` is a lower triangular matrix and
 :math:`L^{\text{H}}` is the conjugate transpose when :math:`L` is complex, and the transpose when :math:`L` is real-valued.
 
+.. function:: chol(x) -> Cholesky decomposition
 .. function:: chol(x;upper) -> Cholesky decomposition
 .. function:: chol(x;upper;output) -> null
 
@@ -182,6 +183,13 @@ cholx
 
 .. function:: cholx(x;upper;check) -> Cholesky decomposition and error codes
 .. function:: cholx(x;upper;check;output) -> null
+
+   | Allowable argument combinations:
+
+    - ``cholx(x)``
+    - ``cholx(x;upper)``
+    - ``cholx(x;upper;check)``
+    - any of the above combinations followed by a trailing output vector
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>` of shape :math:`(*, n, n)` where * is zero or more batch dimensions consisting of symmetric or Hermitian positive-definite matrices
    :param bool upper: default = ``false`` to return lower triangular output, set ``true`` for upper triangular output
@@ -642,11 +650,20 @@ When `m > n` (resp. `m < n`) we can drop the last `m - n` (resp. `n - m`) column
 where :math:`\operatorname{diag}(S) \in \mathbb{K}^{k \times k}`.
 In this case, :math:`U` and :math:`V` also have orthonormal columns.
 
-.. function:: svd(x;full) -> QR decomposition
-.. function:: svd(x;full;output) -> null
+.. function:: svd(x;full;driver) -> QR decomposition
+.. function:: svd(x;full;driver;output) -> null
+
+   | Allowable argument combinations:
+
+    - ``svd(x)``
+    - ``svd(x;full)``
+    - ``svd(x;driver)``
+    - ``svd(x;full;driver)``
+    - any of the above combinations followed by a trailing output vector
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param bool full: set ``true`` by default to compute the full SVD, set ``false`` to return the reduced SVD
+   :param sym driver: name of the cuSOLVER method, one of ```gesvd, `gesvda or `gesvda``, default is null
    :param vector output: an optional :doc:`vector <vectors>` to use for function output of :math:`U`, :math:`S` and :math:`V^{\text{H}}` matrices
    :return: Returns :math:`U`, :math:`S` and :math:`V^{\text{H}}` matrices as a 3-element tensor vector if tensor input given, else a k list. If an output vector given, these matrices are written to the supplied vector and null is returned.
 
@@ -666,9 +683,12 @@ svdvals
 `torch.linalg.svdvals <https://pytorch.org/docs/stable/generated/torch.linalg.svdvals.html>`_ is implemented as function :func:`svdvals`, which computes the singular values of a matrix or a set of matrices (see :ref:`svd <svd>` for more detail on the full SVD decomposition).
 
 .. function:: svdvals(x) -> singular values of QR decomposition
+.. function:: svdvals(x;driver) -> singular values of QR decomposition
 .. function:: svd(x;output) -> null
+.. function:: svd(x;driver;output) -> null
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
+   :param sym driver: name of the cuSOLVER method, one of ```gesvd, `gesvda or `gesvda``, default is null
    :param tensor output: an optional tensor :doc:`pointer <pointers>` to use for function output
    :return: Returns the singular values as a tensor if tensor input, else a k list. If an output tensr given, these values are written to the supplied tensor and null is returned.
 
@@ -691,10 +711,13 @@ solve
 which calculates the solution of a square system of linear equations, ``ax = b``
 
 .. function:: solve(a;b) -> x
+.. function:: solve(a;b;left) -> x
 .. function:: solve(a;b;output) -> null
+.. function:: solve(a;b;left;output) -> null
 
    :param array,tensor a: input array or tensor :doc:`pointer <pointers>` of shape ``(*, n, n)``, where * is zero or more batch dimensions.
    :param array,tensor b: input array or tensor :doc:`pointer <pointers>` of shape right-hand side values of shape ``(*, n)``, ``(*, n, k)``, ``(n)`` or ``(n, k)`` according to the rules described `here <https://pytorch.org/docs/stable/generated/torch.linalg.solve.html>`_.
+   :param bool left: default is ``true`` to solve the system :math:`AX = B`, set flag ``false`` to solve :math:`XA = B`.
    :param tensor output: an optional :doc:`tensor <pointers>` to use for function output
    :return: The solution ``x`` of a square system of linear equations, ``ax = b``,  as a tensor if any tensor input, else as an array.  If an output tensor given, solution is written to the tensor with null return.
 
