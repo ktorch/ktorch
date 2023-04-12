@@ -5,8 +5,38 @@ Devices
 =======
 
 PyTorch has the capability to create or move tensors, modules and optimizers onto CPU or GPU devices.
-Internally, PyTorch has a more varied set of devices than are allowed in the python or c++ interface;
-the main device choices are CPU or Nvidia GPU's with compute capability >= 3.7 as of version 1.9.0.
+Internally, PyTorch has a more varied set of devices than are generally used in the python or c++ interface;
+the main device choices are CPU or Nvidia GPU's with compute capability >= 3.7 as of version 2.0.0.
+
+Recent versions of PyTorch also support `MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_,
+with a subset of the operations and datatypes that are implemented for CPU and CUDA devices.
+Progress on MPS is detailed in this `tracking issue <https://github.com/pytorch/pytorch/issues/77764>`_.
+
+The k interface attempts to discover available devices during initialization;
+the available device(s) mapped to their random seeds can be displayed via the :func:`help` function.
+
+::
+
+   q)help`device  /macbook with M2 chip
+   cpu  | 6921113472458783870
+   mps  | -5399364027288748321
+   mps:0| -5399364027288748321
+
+   q)help`device  /linux with 2 nvidia gpus
+   cpu   | 6755511332966579566
+   cuda  | 6868070473537856
+   cuda:0| 6868070473537856
+   cuda:1| 7372682086670203
+
+   q)seed 123
+
+   q)help`device
+   cpu   | 123
+   cuda  | 123
+   cuda:0| 123
+   cuda:1| 123
+
+CUDA devices can be specified with an optional device index.
 
 Specifiying ```cuda`` without a device index implies the default CUDA device -- typically ```cuda:0``,
 but would mean ```cuda:1`` if the default CUDA device were switched to the second GPU.
@@ -28,9 +58,10 @@ Device
 
 .. function:: device() -> sym
 
-   | For any empty or null argument, returns ```cuda`` if any CUDA devices available, else ```cpu``.
+   | For any empty or null argument, returns ```cuda`` if any CUDA devices available, ```mps`` if an Apple MPS device found, else ```cpu``.
 
 .. function:: device(ptr) -> sym
+   :noindex:
 
    :param pointer ptr: a previously allocated :doc:`api-pointer <pointers>` to a PyTorch object, e.g. a tensor, module, etc.
    :return: sym indicating the specific device where object's memory resides.
@@ -68,6 +99,7 @@ Default CUDA device
    :return: Given an empty or null argument, returns the specific CUDA device that is used when the generic symbol ```cuda`` is specified.
 
 .. function:: cudadevice(device) -> null
+   :noindex:
 
    :param sym device: a specific cuda device with index specified, e.g. ```cuda:0``
    :return: null
@@ -96,6 +128,7 @@ Available CUDA devices
 
 .. function:: cudadevices() -> syms
 .. function:: cudadevice(::) -> long
+   :noindex:
 
    | For any empty list, the function returns a list of symbols of available CUDA devices, both specific and generic. For null argument, returns the number of CUDA devices.
 
@@ -120,6 +153,7 @@ This k interface function is designed to behave somewhat like
 
 .. function:: to(ptr;options) -> null
 .. function:: to(ptr;options;async) -> null
+   :noindex:
 
    :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor, vector, dictionary or module.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <tensor-attributes>`.
@@ -129,8 +163,9 @@ This k interface function is designed to behave somewhat like
 An alternate form uses an example tensor instead of specified options to define the target device and data type.
 
 .. function:: to(ptr;example) -> null
-
+   :noindex:
 .. function:: to(ptr;example;async) -> null
+   :noindex:
 
    :param tensor ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param tensor example: an :doc:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used.
@@ -179,6 +214,7 @@ For tensors only, :func:`copyto` will make a copy of the current tensor with new
 
 .. function:: copyto(ptr;options) -> new tensor pointer
 .. function:: copyto(ptr;options;async) -> new tensor pointer
+   :noindex:
 
    :param ptr ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param sym options: one or more symbols for device, data type and other :ref:`tensor attributes <tensor-attributes>`.
@@ -188,7 +224,9 @@ For tensors only, :func:`copyto` will make a copy of the current tensor with new
 An alternate form uses an example tensor instead of specified options to define the target device and data type.
 
 .. function:: copyto(ptr;example) -> ptr
+   :noindex:
 .. function:: copyto(ptr;example;async) -> ptr
+   :noindex:
 
    :param pointer ptr: a previously allocated :doc:`api-pointer <pointers>` to a tensor.
    :param pointer example: an :doc:`api-pointer <pointers>` to a previously allocated tensor whose device and datatype will be used to create the new copy of the input tensor.
@@ -216,7 +254,9 @@ The k api function :func:`sync` provides a similar capabilty:
 
 .. function:: sync() -> null
 .. function:: sync(device) -> null
+   :noindex:
 .. function:: sync(device index) -> null
+   :noindex:
 
    :param symbol device: A valid CUDA device, e.g. ```cuda`` or ```cuda:1``
    :param long index: A valid CUDA device index, e.g. ``1`` for ```cuda:1``
@@ -225,10 +265,15 @@ The k api function :func:`sync` provides a similar capabilty:
 In addition to using default device, device name/index, it is also possible to specify a tensor or collection of tensors, a module or a model as an argument to :func:`sync`.  For a collection of tensors, the first CUDA device found for the tensors is used for the synchronization.  For a module or module, the first paramater stored on a CUDA device is used to provide the device for the synchronize step.
 
 .. function:: sync(tensor) -> null
+   :noindex:
 .. function:: sync(vector) -> null
+   :noindex:
 .. function:: sync(dictionary) -> null
+   :noindex:
 .. function:: sync(module) -> null
+   :noindex:
 .. function:: sync(model) -> null
+   :noindex:
 
 ::
 

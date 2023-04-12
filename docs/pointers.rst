@@ -87,6 +87,7 @@ Pointers to PyTorch objects that are created via the k interface must be explici
 
 .. function:: free() -> null
 .. function:: free(ptr) -> null
+   :noindex:
 
    | Release allocated object stored in given pointer, or all allocated objects if empty or null argument.
 
@@ -145,6 +146,7 @@ In this example, a 4-byte float with 100,000,000 elements is created repeatedly 
 
 .. function:: free(list) -> null
 .. function:: free(dictionary) -> null
+   :noindex:
 
    | Release allocated objects stored in all pointers in the list or dictionary of pointers
 

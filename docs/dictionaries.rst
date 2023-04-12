@@ -26,6 +26,7 @@ Creating a dictionary
 An alternate form accepts symbol keys and values as separate arguments:
 
 .. function:: dict(keys;values) -> dictionary pointer
+   :noindex:
 
    :param sym keys: symbol keys to name the input values/tensors.
    :param array/tensor values: k arrays/tensor pointers laigned with the keys.
@@ -67,6 +68,7 @@ Retrieving dictionary values
 
 .. function:: dict(ptr) -> val
 .. function:: dict(ptr;key) -> val
+   :noindex:
 
    :param dictionary ptr: an :doc:`api-pointer <pointers>` to a previously created dictionary of tensors.
    :param sym key: optional symbol(s) to retrieve,
@@ -130,8 +132,8 @@ Retrieving tensor pointers
 Use the :func:`tensor` function to extract tensor pointers from a given dictionary and optional key(s).
 
 .. function:: tensor(dict) -> tensor pointers
-
 .. function:: tensor(dict;key) -> tensor pointer(s)
+   :noindex:
 
    :param dict-pointer vec: an :doc:`api-pointer <pointers>` to a previously created dictionary of tensors.
    :param sym key: a symbol or set of symbol keys to the dictionary of tensors.

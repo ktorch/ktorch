@@ -322,9 +322,6 @@ KAPI Fpow(K x) {return kpow(x, &Tensor::float_power_,  &Tensor::float_power_,
 
 // ---------------------------------------------------------------------
 // dist - p-norm of  a - b, with optional exponent p (default p=2)
-// fnorm - frobenius norm (tensor, dim(s), keepdim, output tensor)
-// nnorm - nuclear norm (tensor, keepdim, output tensor)
-// pnorm - p-norm (tensor, p, dim(s), keepdim, output tensor)
 // ---------------------------------------------------------------------
 KAPI Dist(K x) {
  KTRY
@@ -339,74 +336,79 @@ KAPI Dist(K x) {
  KCATCH("dist");
 }
 
-KAPI Fnorm(K x) {
+// ---------------------------------------------------------------------------
+// https://github.com/pytorch/pytorch/pull/76547
+// newer matrix norm routines, torch::frobenius_norm(a,d,k) deprecated
+// matrixnorm: get 1-5 args, input,dim,keepdim,datatype,output
+// fnorm,nnorm: frobenius & nuclear norms, call with ord set to 'fro' & 'nuc'
+// ---------------------------------------------------------------------------
+static K matrixnorm(K x,const char *s,c10::string_view v,IntArrayRef d={-2,-1}) {
  KTRY
-  bool b=false,k=false,p=false; IntArrayRef d={}; Tensor a,r;
-  if(xten(x,a)) {
-   b=true, p=true;
-  } else if(xarray(x,5)) {
-   b=true, a=kput(x);
-  } else {
-   J n=x->n;
-   TORCH_CHECK(n>0 && n<5, "fnorm: expecting 1-4 args, (input;dim;keepdim;output), given ",x->n);
-   if(n>1 && (xten(x,n-1,r))) n--;
-   if(n>1 && xbool(x,n-1,k)) n--;
-   if(n>1 && xsize(x,n-1,d)) n--;
-   TORCH_CHECK(n==1, "fnorm: unrecognized args, expecting up to 4, (input;dim;keepdim;output)");
-   if(!(p=xten(x,0,a))) a=kput(x,0);
-  }
-  if(r.defined())
-   return torch::frobenius_norm_out(r,a,d,k), (K)0;
-  else
-   return kresult(p, b ? torch::frobenius_norm(a) : torch::frobenius_norm(a,d,k));
- KCATCH("fnorm");
-}
-   
-KAPI Nnorm(K x) {
- KTRY
-  bool k=false,p=false; Tensor a,r;
+  bool k=false,p=false; Tensor a,r; c10::optional<Dtype> t=c10::nullopt;
   if(xten(x,a)) {
    p=true;
-  } else if(xarray(x,5)) {
+  } else if(x->t<0 || xarray(x,5)) {
    a=kput(x);
   } else {
-   J n=x->n;
-   TORCH_CHECK(n>0 && n<4, "nnorm: expecting 1-3 args, (input;keepdim;output), given ",x->n);
-   if(n>1 && (xten(x,n-1,r))) n--;
+   J n=xlen(x);
+   TORCH_CHECK(n>0 && n<6, s,": expecting 1-5 args, (input;dim;keepdim;dtype;output), given ",x->n);
+   if(n>1 &&  xten(x,n-1,r)) n--;
+   if(n>1 && xtype(x,n-1,t)) n--;
    if(n>1 && xbool(x,n-1,k)) n--;
-   TORCH_CHECK(n==1, "fnorm: unrecognized args, expecting up to 3, (input;keepdim;output)");
+   if(n>1 && xsize(x,n-1,d)) n--;
+   TORCH_CHECK(n==1, s,": unrecognized args, expecting up to 5, (input;dim;keepdim;dtype;output)");
    if(!(p=xten(x,0,a))) a=kput(x,0);
   }
   if(r.defined())
-   return torch::nuclear_norm_out(r,a,k), (K)0;
+   return torch::linalg_matrix_norm_out(r,a,v,d,k,t), (K)0;
   else
-   return kresult(p, torch::nuclear_norm(a,k));
-  KCATCH("nnorm");
+   return kresult(p, torch::linalg_matrix_norm(a,v,d,k,t));
+ KCATCH(s);
 }
 
-KAPI Pnorm(K x) {
+KAPI Fnorm(K x) {return matrixnorm(x, "fnorm", "fro");}
+KAPI Nnorm(K x) {return matrixnorm(x, "nnorm", "nuc");}
+
+// ---------------------------------------------------------------------------
+// normargs: get 1-6 args, input,ord (norm type),dim,keepdim,datatype & output
+// mnorm,vnorm: call matrix & vector norm routines with numeric 'ord' argument
+// https://github.com/pytorch/pytorch/pull/76547
+// ---------------------------------------------------------------------------
+static K normargs(K x,bool v,const char *s,IntArrayRef d={-2,-1}) {
  KTRY
-  bool b=false,k=false,z=false; IntArrayRef d={}; Scalar p=2; Tensor a,r;
+  bool k=false,o=false,p=false,z=false; double f=2; Tensor a,r; c10::optional<Dtype> t=c10::nullopt;
   if(xten(x,a)) {
-   b=true, z=true;
-  } else if(xarray(x,5)) {
-   a=kput(x), b=true;
+   p=true;
+  } else if(x->t<0 || xarray(x,6)) {
+   a=kput(x);
   } else {
-   J n=x->n;
-   TORCH_CHECK(n>0 && n<6, "pnorm: expecting 1-5 args, (input;p;dim;keepdim;output), given ",x->n);
-   if(n>1 && (xten(x,n-1,r))) n--;
+   J n=xlen(x);
+   TORCH_CHECK(n>0 && n<7, s,": expecting 1-6 args, (input;ord;dim;keepdim;dtype;output), given ",x->n);
+   if(n>1 &&  xten(x,n-1,r)) n--;
+   if(n>1 && xtype(x,n-1,t)) n--;
    if(n>1 && xbool(x,n-1,k)) n--;
-   if(n>1 && xsize(x,n-1,d)) n--;
-   if(n>1 && xnum(x,n-1,p)) n--;
-   TORCH_CHECK(n==1, "pnorm: unrecognized args, expecting up to 5, (input;p;dim;keepdim;output)");
-   if(!(z=xten(x,0,a))) a=kput(x,0);
+   if(n>1 && xsize(x,n-1,d)) n--,z=true;
+   if(n>1 && xdouble(x,n-1,f)) o=true,n--;  // ord arg (2nd positional arg) defined
+   TORCH_CHECK(n==1, s,": unrecognized args, expecting up to 6, (input;ord;dim;keepdim;dtype;output)");
+   if(!(p=xten(x,0,a))) a=kput(x,0);
   }
-  if(r.defined())
-   return torch::norm_out(r,a,p,d,k), (K)0;
-  else
-   return kresult(z, b ? torch::norm(a) : torch::norm(a,p,d,k));
- KCATCH("pnorm");
+  if(v) {
+   c10::OptionalIntArrayRef dm=c10::nullopt; if(z && d.size()) dm=d;
+   if(r.defined())
+    return torch::linalg_vector_norm_out(r,a,f,dm,k,t), (K)0;
+   else
+    return kresult(p, torch::linalg_vector_norm(a,f,dm,k,t));
+  } else {  // if no ord defined, use frobenius norm
+   if(r.defined())
+    return (o ? torch::linalg_matrix_norm_out(r,a,f,d,k,t) : torch::linalg_matrix_norm_out(r,a,"fro",d,k,t)), (K)0;
+   else
+    return kresult(p, o ? torch::linalg_matrix_norm(a,f,d,k,t) : torch::linalg_matrix_norm(a,"fro",d,k,t));
+  }
+ KCATCH(s);
 }
+
+KAPI Mnorm(K x) {return normargs(x, false, "mnorm");}
+KAPI Vnorm(K x) {return normargs(x, true,  "vnorm");}
 
 // --------------------------------------------------------------------------
 // kvar - process args for std dev/variance: (x;dims;unbiased;keepdim;output)
@@ -2336,6 +2338,7 @@ void mathfn(K x) {
  fn(x, "minimum",            KFN(Minimum),         1);
  fn(x, "mm",                 KFN(Mm),              1);
  fn(x, "mmt",                KFN(Mmt),             1);
+ fn(x, "mnorm",              KFN(Mnorm),           1);
  fn(x, "mode",               KFN(Mode),            1);
  fn(x, "msort",              KFN(Msort),           1);
  fn(x, "mtm",                KFN(Mtm),             1);
@@ -2355,7 +2358,6 @@ void mathfn(K x) {
  fn(x, "normal",             KFN(Normal),          1);
  fn(x, "householder",        KFN(Householder),     1);
  fn(x, "pinverse",           KFN(Pinverse),        1);
- fn(x, "pnorm",              KFN(Pnorm),           1);
  fn(x, "pow",                KFN(Pow),             1);
  fn(x, "posinf",             KFN(Posinf),          1);
  fn(x, "prod",               KFN(Prod),            1);
@@ -2397,5 +2399,6 @@ void mathfn(K x) {
  fn(x, "unique",             KFN(Unique),          1);
  fn(x, "uniquec",            KFN(Uniquec),         1);
  fn(x, "variance",           KFN(Var),             1);
+ fn(x, "vnorm",              KFN(Vnorm),           1);
  fn(x, "xor",                KFN(Xor),             1);
 }

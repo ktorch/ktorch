@@ -104,6 +104,7 @@ The same :func:`module` function that is used to define a module can be used to 
 
 .. function:: module(ptr) -> dictionary/table
 .. function:: module(ptr;flag) -> dictionary/table
+   :noindex:
 
    | Return a dictionary/table with module depth,type,name and options. An optional boolean flag indicates whether all options or only non-default options are to be returned.
 
@@ -481,6 +482,7 @@ The full definition and state of a module or set of modules is returned by the :
 
 .. function:: state(ptr) -> dictionary/table
 .. function:: state(ptr;flag) -> dictionary/table
+   :noindex:
 
    | Return a dictionary/table with module depth, type, name, options, parameters and buffers. An optional boolean flag indicates whether all options or only non-default options are to be returned.
 
@@ -735,6 +737,7 @@ The function :func:`to` is similar to the `Pytorch method module.to() <https://p
 
 .. function:: to(ptr;options) -> null
 .. function:: to(ptr;options;async-flag) -> null
+   :noindex:
 
    :param module ptr: An :doc:`api-pointer <pointers>` to the allocated module.
    :param symbol options: A symbol for device and/or data type, e.g. ```cuda`` or ```double`` or ```cuda`double``.
@@ -790,6 +793,7 @@ Function :func:`training` reports or resets the training mode of the given modul
 
 .. function:: training(module) -> boolean
 .. function:: training(module;flag) -> null
+   :noindex:
 
    :param module ptr: An :doc:`api-pointer <pointers>` to an allocated module.
    :param boolean flag: optional training flag, ``1b`` or ``0b``.  If supplied sets the training mode on/off.
@@ -818,7 +822,9 @@ The :func:`names` function returns the names of all child modules contained in t
 
 .. function:: names(module) -> symbols
 .. function:: names(module;childname) -> symbols
+   :noindex:
 .. function:: names(module;childindex) -> symbols
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -864,7 +870,9 @@ The :func:`childnames` function works similarly to the :func:`names` function ex
 
 .. function:: childnames(module) -> symbols
 .. function:: childnames(module;childname) -> symbols
+   :noindex:
 .. function:: childnames(module;childindex) -> symbols
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -891,7 +899,9 @@ The :func:`parmnames` function returns all parameter names for a module or the s
 
 .. function:: parmnames(module) -> symbols
 .. function:: parmnames(module;childname) -> symbols
+   :noindex:
 .. function:: parmnames(module;childindex) -> symbols
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -921,7 +931,9 @@ The :func:`buffernames` function returns all buffer names for a module or the su
 
 .. function:: buffernames(module) -> symbols
 .. function:: buffernames(module;childname) -> symbols
+   :noindex:
 .. function:: buffernames(module;childindex) -> symbols
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -973,6 +985,7 @@ The :func:`moduletypes` function maps module names to their types:
 
 .. function:: moduletypes(module) -> dictionary 
 .. function:: moduletypes(module;types) -> dictionary 
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol types: An optional scalar/list of module type(s).
@@ -1046,7 +1059,9 @@ The :ref:`modules() <modules>` function returns the full sub-tree of modules of 
 
 .. function:: modules(module) -> dictionary of modules
 .. function:: modules(module;childname) -> dictionary of modules in named child module
+   :noindex:
 .. function:: modules(module;childindex) -> dictionary of modules in indexed child module
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -1083,7 +1098,9 @@ The :ref:`children() <children>` function returns only the direct children of th
 
 .. function:: children(module) -> dictionary of direct child modules
 .. function:: children(module;childname) -> dictionary of direct children in named child module
+   :noindex:
 .. function:: children(module;childindex) -> dictionary of direct children in indexed child module
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module (optional)
@@ -1118,6 +1135,7 @@ The :func:`child` function returns a single module pointer.
 
 .. function:: child(module;childname) -> module of named child
 .. function:: child(module;childindex) -> module of indexed child
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :param symbol childname: the name of a child module
@@ -1209,6 +1227,7 @@ parms
 *****
 .. function:: parms(module) -> tensor dictionary
 .. function:: parms(module;child) -> tensor dictionary
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :return: A tensor dictionary of parameters in the given module.
@@ -1242,6 +1261,7 @@ buffers
 *******
 .. function:: buffers(module) -> tensor dictionary
 .. function:: buffers(module;child) -> tensor dictionary
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module.
    :return: A tensor dictionary of buffers in the given module.

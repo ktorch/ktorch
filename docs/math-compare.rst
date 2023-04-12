@@ -99,6 +99,7 @@ These `comparison <https://pytorch.org/docs/stable/torch.html#comparison-ops>`_ 
 
 .. function:: comparison(x;y) -> k array or tensor
 .. function:: comparison(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -180,6 +181,7 @@ fmax / fmin
 
 .. function:: fmax(x;y) -> tensor or k array with maximum values
 .. function:: fmax(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -188,6 +190,7 @@ fmax / fmin
 
 .. function:: fmin(x;y) -> tensor or k array with minimum values
 .. function:: fmin(x;y;output) -> null
+   :noindex:
 
    :param: Function :func:`fmin` uses the same parameters as :func:`fmax`
    :return: Returns tensor with the minimum element across the the two inputs, returns a k array if both inputs are k arrays. Null return if output tensor specified, minimum elements are written to output tensor.
@@ -216,6 +219,7 @@ maximum / minimum
 
 .. function:: maximum(x;y) -> tensor or k array with maximum values
 .. function:: maximum(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -224,6 +228,7 @@ maximum / minimum
 
 .. function:: minimum(x;y) -> tensor or k array with minimum values
 .. function:: minimum(x;y;output) -> null
+   :noindex:
 
    :param: Function :func:`minimum` uses the same parameters as :func:`maximum`
    :return: Returns tensor with the minimum element across the the two inputs, returns a k array if both inputs are k arrays. Null return if output tensor specified, minimum elements are written to output tensor. Any ``NaN`` encountered will be returned in the comparison.
@@ -252,6 +257,7 @@ sort
 
 .. function:: sort(x;dim;descend;stable) -> values and indices
 .. function:: sort(x;dim;descend;stable;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -327,6 +333,7 @@ Function  :func:`msort` sorts the elements of the input along the first dimensio
 
 .. function:: msort(x) -> sorted array or tensor
 .. function:: msort(x;output) -> null
+   :noindex:
 
    :param array,tensor x: required input array or tensor :doc:`pointer <pointers>`.
    :param pointer output: an optional :doc:`pointer <pointers>` to a previously allocated tensor to be used for output.
@@ -401,6 +408,7 @@ The sorting is done along the last dimension unless a different dimension is spe
 
 .. function:: topk(x;k;dim;largest;sorted) -> values and indices
 .. function:: topk(x;k;dim;largest;sorted;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -455,6 +463,7 @@ Function :func:`kthvalue` returns the k-th smallest value and index over the las
 
 .. function:: kthvalue(x;k;dim;keepdim) -> values and indices
 .. function:: kthvalue(x;k;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -508,6 +517,7 @@ Function :func:`In`, renamed from PyTorch's `isin <https://pytorch.org/docs/stab
 
 .. function:: In(x;y;unique;invert) -> boolean true for each element of x in y
 .. function:: In(x;y;unique;invert;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 

@@ -213,8 +213,8 @@ restore
 If :func:`batch` is used without specifying an index, i.e. if the function is called until a false return, then the batched tensor(s) will be restored to their full size(s). But if there is some error prior to processing all the batches, or if the :func:`batch` function is used with an index for the batch required, then the tensor(s) may need to be restored to their full size via the function :func:`restore`.
 
 .. function:: restore(ptr) -> size
-
 .. function:: restore(ptr;dim) -> size
+   :noindex:
 
    :param pointer ptr: An :doc:`api-pointer <pointers>` to an allocated tensor, vector of tensors or a tensor dictionary. For vector or dictionary, the tensors must all have the same size across the batching dimension.
    :param long dim: Optional batching dimension, default is zero.
@@ -309,6 +309,7 @@ The k api function behaves somewhat the same as the PyTorch `reshape <https://py
    :return: An :doc:`api-pointer <pointers>` to a new tensor with the given size. This tensor will share the underlying storage if possible, else will use a newly allocated underlying storage.
 
 .. function:: reshape(tensor;example) -> tensor 
+   :noindex:
 
    :param pointer tensor: An :doc:`api-pointer <pointers>` to an allocated tensor.
    :param pointer example: A tensor can be supplied as the 2nd argument; the example tensor's size will be used for the reshape.
@@ -369,6 +370,7 @@ The :func:`reshape` funciton will also accept and output k arrays, creating and 
 
 .. function:: reshape(input;size) -> k array
 .. function:: reshape(input;example tensor) -> k array
+   :noindex:
 
 ::
 
@@ -391,6 +393,7 @@ The :func:`resize` function accepts the same arguments as :func:`reshape` or :fu
    :return: Null. If the tensor's overall number of elements has been increased, the new elements will be unitialized.
 
 .. function:: resize(tensor;example) -> null
+   :noindex:
 
    :param pointer tensor: An :doc:`api-pointer <pointers>` to an allocated tensor.
    :param tensor example: A tensor can be supplied as the 2nd argument; the example tensor's size will be used for the resize.
@@ -430,6 +433,7 @@ The :func:`resize` will also accept and output k arrays, creating and freeing in
 
 .. function:: resize(input;size) -> k array
 .. function:: resize(input;example tensor) -> k array
+   :noindex:
 
    q)resize(1 2 3;4 4)  /new elements are uninitialized 
    1 2 3 53117040
@@ -456,6 +460,7 @@ The :func:`View` function accepts the same arguments as :func:`reshape` and :fun
    :return: An :doc:`api-pointer <pointers>` to a new tensor with the given size. This view will always share the underlying storage.
 
 .. function:: View(tensor;example) -> tensor
+   :noindex:
 
    :param pointer tensor: An :doc:`api-pointer <pointers>` to an allocated tensor.
    :param example tensor: A tensor can be supplied as the 2nd argument; the example tensor's size will be used for the new view.
@@ -495,6 +500,7 @@ The :func:`View` will also accept and output k arrays, creating and freeing inte
 
 .. function:: View(input;size) -> k array
 .. function:: View(input;example tensor) -> k array
+   :noindex:
 
 ::
 
@@ -570,8 +576,8 @@ Returns a new tensor that is a view of the original tensor with two dimensions s
 If no dimensions are given, the input tensor must be a 2-D array; the two dimensions will be swapped.
 
 .. function:: transpose(tensor) -> tensor pointer
-
 .. function:: transpose(tensor;inplace) -> tensor pointer or null
+   :noindex:
 
    :param tensor pointer: An :doc:`api-pointer <pointers>` to an allocated 2-D tensor.
    :param bool inplace: Flag set ``true`` if the transpose is to be done in place. Default is ``false``.
@@ -596,8 +602,9 @@ If no dimensions are given, the input tensor must be a 2-D array; the two dimens
    1b
 
 .. function:: transpose(tensor;dim1;dim2) -> tensor pointer
-
+   :noindex:
 .. function:: transpose(tensor;dim1;dim2;inplace) -> tensor pointer or null
+   :noindex:
 
    :param tensor pointer: An :doc:`api-pointer <pointers>` to an allocated n-dimensional tensor.
    :param long dim1: The first dimension to be transposed.
@@ -660,8 +667,8 @@ If no dimensions are given, the input tensor must be a 2-D array; the two dimens
 The :func:`transpose` function also accepts a multidimensional k array for transposing:
 
 .. function:: transpose(input) -> k array 
-
 .. function:: transpose(input;dim1;dim2) -> k array
+   :noindex:
 
 ::
 
@@ -734,6 +741,7 @@ Returns new tensor(s), detached from the current gradient calculation graph (see
 
 .. function:: detach(tensor) -> tensor pointer
 .. function:: detach(tensor;inplace) -> tensor pointer or null if inplace flag true
+   :noindex:
 
 ::
 
@@ -757,7 +765,9 @@ Returns new tensor(s), detached from the current gradient calculation graph (see
 :func:`detach` can also operate on a vector or dictionary of tensors, with optional indices/keys. The detach is done inplace.
 
 .. function:: detach(vector) -> null
+   :noindex:
 .. function:: detach(vector;ind) -> null
+   :noindex:
 
 ::
 
@@ -777,7 +787,9 @@ Returns new tensor(s), detached from the current gradient calculation graph (see
    0b `            
 
 .. function:: detach(dictionary) -> null
+   :noindex:
 .. function:: detach(dictionary;keys) -> null
+   :noindex:
 
 ::
 
@@ -821,6 +833,7 @@ Returns a new view of the input tensor with singleton dimensions expanded to a l
 An example tensor can also be given as the second argument, in which case the size of the example tensor will be used for the expansion.
 
 .. function:: expand(tensor;example) -> new tensor
+   :noindex:
 
    :param pointer tensor: An :doc:`api-pointer <pointers>` to an allocated tensor.
    :param pointer example: An :doc:`api-pointer <pointers>` to an allocated tensor whose size will be used for the expand argument.
@@ -840,6 +853,7 @@ An example tensor can also be given as the second argument, in which case the si
 The :func:`expand` function also accepts a k array as input:
 
 .. function:: expand(input;dims) -> k array 
+   :noindex:
 
 ::
 

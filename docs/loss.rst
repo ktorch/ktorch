@@ -79,6 +79,7 @@ The main k api function is :ref:`loss <lossinit>` which is used to create a loss
 
 .. function:: loss(name) -> loss module
 .. function:: loss(name; options..) -> loss module
+   :noindex:
 
    :param symbol name: e.g. ```ce`` or ```mse``
    :param list options: scalar or list of settings, either positional, named or both.
@@ -201,6 +202,7 @@ The same :func:`loss` function that is used to create a loss module can also be 
 
 .. function:: loss(module) -> k dictionary
 .. function:: loss(module;flag) ->  k dictionary
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to the created loss module.
    :param boolean flag: An optional flag, set true to return all options, false to only return non-default options. If not specified, the flag uses the :ref:`global setting <settings>` for :ref:`show all options <alloptions>`.
@@ -292,8 +294,8 @@ Functional form
 The loss modules are also implemented as functions which can be called directly with outputs, targets and options:
 
 .. function:: fn(output; target) -> tensor
-
 .. function:: fn(output; target; options..) -> tensor
+   :noindex:
 
    :param pointer input: an :doc:`api-pointer <pointers>` to a tensor, usually the output of a model.
    :param pointer output: an :doc:`api-pointer <pointers>` to a tensor of desired targets.
@@ -361,6 +363,7 @@ Some loss mudules/functions require more than the ouput/target pair:
 output & target along with tensors with output & target lengths.
 
 .. function:: loss(module; output; target; output lengths; target lengths) -> tensor
+   :noindex:
 
    :param pointer module: an :doc:`api-pointer <pointers>` to an allocated loss module.
    :param pointer output: an :doc:`api-pointer <pointers>` to a tensor model output.

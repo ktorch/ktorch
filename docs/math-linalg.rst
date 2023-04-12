@@ -87,6 +87,7 @@ mrank
 
 .. function:: mrank(matrix;atol;rtol;hermitian) -> rank
 .. function:: mrank(matrix;atol;rtol;hermitian;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -151,7 +152,9 @@ where :math:`L` is a lower triangular matrix and
 
 .. function:: chol(x) -> Cholesky decomposition
 .. function:: chol(x;upper) -> Cholesky decomposition
+   :noindex:
 .. function:: chol(x;upper;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>` of shape :math:`(*, n, n)` where * is zero or more batch dimensions consisting of symmetric or Hermitian positive-definite matrices
    :param bool upper: default=``false`` to return lower triangular output, set ``true`` for upper triangular output
@@ -183,6 +186,7 @@ cholx
 
 .. function:: cholx(x;upper;check) -> Cholesky decomposition and error codes
 .. function:: cholx(x;upper;check;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -247,6 +251,7 @@ the **eigenvalue decomposition** of a square matrix
 
 .. function:: eig(x) -> eigenvalues and eigenvectors
 .. function:: eig(x;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor :doc:`pointer <pointers>` to a square matrix or batches of square matrices
    :param vector output: an optional :doc:`vector <vectors>` to use for function output of eigenvalues and eigenvectors
@@ -274,6 +279,7 @@ eigvals
 
 .. function:: eigvals(x) -> eigenvalues
 .. function:: eigvals(x;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor :doc:`pointer <pointers>` to a square matrix or batches of square matrices
    :param vector output: an optional tensor :doc:`pointer <pointers>` to use for function output of eigenvalues
@@ -319,6 +325,7 @@ where :math:`Q^{\text{H}}` is the conjugate transpose when :math:`Q` is complex,
 
 .. function:: eigh(x;upper) -> eigenvalues and eigenvectors
 .. function:: eigh(x;upper;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor :doc:`pointer <pointers>` to a square matrix or batches of square matrices
    :param bool upper: an optional flag, set ``false`` by default to indicate only the lower tirangular part of the matrix is used, set ``true`` to use only the pper triangle
@@ -359,6 +366,7 @@ eigvalsh
 
 .. function:: eigvalsh(x) -> eigenvalues
 .. function:: eigvalsh(x;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor :doc:`pointer <pointers>` to a square symmetric or complex Hermitian matrix or batches of matrices
    :param bool upper: an optional flag, set ``false`` by default to indicate only the lower tirangular part of the matrix is used, set ``true`` to use only the pper triangle
@@ -412,6 +420,7 @@ The reduced QR decomposition agrees with the full QR decomposition when `n >= m`
 
 .. function:: qr(x;mode) -> QR decomposition
 .. function:: qr(x;mode;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param symbol mode: optional, if given, must be one of the following:
@@ -454,6 +463,7 @@ On CUDA, pivot can be set ``false`` to function returns the LU decomposition wit
 
 .. function:: lu(x;pivot) -> compact factorization and pivots
 .. function:: lu(x;pivot;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param bool pivot: set ``true`` by default but can be set ``false`` with ``CUDA`` tensors to attempt the LU decomposition without pivoting.
@@ -500,6 +510,7 @@ lux
 
 .. function:: lux(x;pivot;check) -> compact factorization with pivots and error codes
 .. function:: lux(x;pivot;check;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param bool pivot: set ``true`` by default but can be set ``false`` with ``CUDA`` tensors to attempt the LU decomposition without pivoting.
@@ -544,6 +555,7 @@ the original input matrix can be recreated by the matrix product of P x L x U.
 
 .. function:: lun(lu;dataflag;pivotflag) -> P, L, U matrix or matrices
 .. function:: lun(lu;dataflag;pivotflag;output) -> null
+   :noindex:
 
    :param array,vector lu: output from :func:`lu`, either a 2-element k list or tensor vector of the compact LU matrix and pivots 
    :param bool dataflag: set ``true`` by default, optional flag that can be set ``false`` to skip unpack of L & U matrices
@@ -554,7 +566,9 @@ the original input matrix can be recreated by the matrix product of P x L x U.
 An alternate form of the function takes two inputs: the compact LU matrix and the pivot information:
 
 .. function:: lun(matrix;pivot;dataflag;pivotflag) -> P, L, U matrix or matrices
+   :noindex:
 .. function:: lun(matrix;pivot;dataflag;pivotflag;output) -> null
+   :noindex:
 
    :param array,tensor matrix: the compact LU matrix or set of matrices from a previous :func:`lu` call
    :param array,tensor pivot: the pivot information from a previous :func:`lu` call
@@ -652,6 +666,7 @@ In this case, :math:`U` and :math:`V` also have orthonormal columns.
 
 .. function:: svd(x;full;driver) -> QR decomposition
 .. function:: svd(x;full;driver;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -684,8 +699,11 @@ svdvals
 
 .. function:: svdvals(x) -> singular values of QR decomposition
 .. function:: svdvals(x;driver) -> singular values of QR decomposition
+   :noindex:
 .. function:: svd(x;output) -> null
+   :noindex:
 .. function:: svd(x;driver;output) -> null
+   :noindex:
 
    :param array,tensor x: k array or tensor of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param sym driver: name of the cuSOLVER method, one of ```gesvd, `gesvda or `gesvda``, default is null
@@ -712,8 +730,11 @@ which calculates the solution of a square system of linear equations, ``ax = b``
 
 .. function:: solve(a;b) -> x
 .. function:: solve(a;b;left) -> x
+   :noindex:
 .. function:: solve(a;b;output) -> null
+   :noindex:
 .. function:: solve(a;b;left;output) -> null
+   :noindex:
 
    :param array,tensor a: input array or tensor :doc:`pointer <pointers>` of shape ``(*, n, n)``, where * is zero or more batch dimensions.
    :param array,tensor b: input array or tensor :doc:`pointer <pointers>` of shape right-hand side values of shape ``(*, n)``, ``(*, n, k)``, ``(n)`` or ``(n, k)`` according to the rules described `here <https://pytorch.org/docs/stable/generated/torch.linalg.solve.html>`_.
@@ -744,6 +765,7 @@ trisolve
 
 .. function:: trisolve(a;b;upper;left;unitriangular) -> x
 .. function:: trisolve(a;b;upper;left;unitriangular;output) -> null
+   :noindex:
 
    :param array,tensor a: input array or tensor :doc:`pointer <pointers>` of shape ``(*, n, n)`` or ``(*, k, k)``  if ``left = true``
    :param array,tensor b: input array or tensor :doc:`pointer <pointers>` of shape right-hand side values of shape ``(*, n, k)``
@@ -791,6 +813,7 @@ If :math:`u` is passed with the ``upper=true``, the result becomes:
 
 .. function:: cholsolve(b;u;upper) -> solution matrix or batch of matrices
 .. function:: cholsolve(b;u;upper;output) -> null
+   :noindex:
 
    :param array,tensor b: input array or tensor :doc:`pointer <pointers>` of size :math:`(*, m, k)`, where :math:`*` is zero or more batch dimensions
    :param array,tensor u: input array or tensor :doc:`pointer <pointers>` of Cholesky factors, size :math:`(*, m, m)`, where :math:`*` is zero or more batch dimensions
@@ -832,6 +855,7 @@ which calculates a solution to the least squares problem of a system of linear e
 
 .. function:: lstsq(a;b;rcond;method) -> vector of x,residuals,rank,singular values
 .. function:: lstsq(a;b;rcond;method;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -882,6 +906,7 @@ LU factorization of A from :func:`lu`.
 
 .. function:: lusolve(b;lu) -> solution x of Ax=b
 .. function:: lusolve(b;lu;output) -> null
+   :noindex:
 
    :param array,tensor b: the right hand side of :math:`Ax = b`, a an array or tensor of size :math:`(*, m, k)` where :math:`*` is zero or more batch dimensions
    :param array,vector lu: output from :func:`lu`, either a 2-element k list or tensor vector of the compact LU matrix and pivots 
@@ -891,7 +916,9 @@ LU factorization of A from :func:`lu`.
 An alternate form of the call:
 
 .. function:: lusolve(b;matrix;pivot) -> solution x of Ax=b
+   :noindex:
 .. function:: lusolve(b;matrix;pivot;output) -> null
+   :noindex:
 
    :param array,tensor b: the right hand side of :math:`Ax = b`, a an array or tensor of size `:math:`(*, m, k)` where `:math:`*` is zero or more batch dimensions
    :param array,tensor matrix: the compact LU matrix or set of matrices from a previous :func:`lu` call
@@ -930,6 +957,7 @@ inverse
 
 .. function:: inverse(matrix) -> k array
 .. function:: inverse(matrix;output) -> null
+   :noindex:
 
    :param array,tensor matrix: square input matrix or tensor :doc:`pointer <pointers>` to a matrix or batch of matrices
    :param tensor output: a :doc:`pointer <pointers>` to a previously allocated tensor to be used for output
@@ -967,6 +995,7 @@ pinverse
 
 .. function:: pinverse(input;atol;rtol;hermitian) -> rank
 .. function:: pinverse(input;atol;rtol;hermitian;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -1032,6 +1061,7 @@ triangular such that the returned tensor is
 
 .. function:: cholinverse(x;upper) -> inverse
 .. function:: cholinverse(x;upper;output) -> null
+   :noindex:
 
    :param array,tensor x: the input factorizations as k array or :doc:`tensor <pointers>` pointer of size :math:`(*, n,n)`, where :math:`*` is zero or more batch dimensions
    :param bool upper: default=``false`` for lower triangular input, set ``true`` for upper triangular input
@@ -1064,6 +1094,7 @@ power
 
 .. function:: power(matrix;n) -> nth power of square matrix
 .. function:: power(matrix;n;output) -> null
+   :noindex:
 
    :param matrix,tensor matrix: a k array or :doc:`pointer <pointers>` to a tensor of a square matrix or batches of matrices.
    :param long n: integer power
@@ -1119,6 +1150,7 @@ If ``x`` is a
 
 .. function:: bmm(x;y) -> matrix products
 .. function:: bmm(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>` to batches of matrices
    :param array,tensor y: a k array or tensor :doc:`pointer <pointers>` to the same number of matrices as in ``x``
@@ -1146,6 +1178,7 @@ cross
 
 .. function:: Cross(x;y;dim) -> cross product
 .. function:: Cross(x;y;dim;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>` 
    :param array,tensor y: a k array or tensor :doc:`pointer <pointers>` with the same number of elements as ``x``
@@ -1178,6 +1211,7 @@ dot
 
 .. function:: dot(x;y) -> matrix products
 .. function:: dot(x;y;output) -> null
+   :noindex:
 
    :param list,tensor x: a k list or 1-dimensional tensor :doc:`pointer <pointers>` 
    :param list,tensor y: a k list or 1-dimensional tensor :doc:`pointer <pointers>` with the same number of elements as ``x``
@@ -1200,6 +1234,7 @@ householder
 
 .. function:: householder(x;y) -> Householder product
 .. function:: householder(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>` of shape :math:`(*, m, n)` where :math:`*` is zero or more batch dimensions
    :param array,tensor y: a k array or tensor :doc:`pointer <pointers>` of shape :math:`(*, k)` where :math:`*` is zero or more batch dimensions
@@ -1223,6 +1258,7 @@ If both inputs are matrices, a matrix-matrix product is calculated. See the PyTo
 
 .. function:: matmul(x;y) -> matrix product
 .. function:: matmul(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: a k array or tensor :doc:`pointer <pointers>`
@@ -1260,6 +1296,7 @@ If ``x`` is a :math:`(n \times m)` matrix and ``y`` is a :math:`(m \times p)` ma
 
 .. function:: mm(x;y) -> matrix product
 .. function:: mm(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k matrix or tensor :doc:`pointer <pointers>`
    :param array,tensor y: a k matrix or tensor :doc:`pointer <pointers>`
@@ -1290,6 +1327,7 @@ Function :func:`mmt` is a k api function that implements :func:`mm`, but transpo
 
 .. function:: mmt(x;y) -> matrix product
 .. function:: mmt(x;y;output) -> null
+   :noindex:
 
 ::
 
@@ -1312,6 +1350,7 @@ Function :func:`mtm` is a k api function that implements :func:`mm`, but with th
 
 .. function:: mtm(x;y) -> matrix product
 .. function:: mtm(x;y;output) -> null
+   :noindex:
 
 ::
 
@@ -1360,6 +1399,7 @@ If ``x`` is a :math:`(n \times m)` matrix/tensor, ``y`` is a 1-dimensional  list
 
 .. function:: mv(x;y) -> matrix-vector product
 .. function:: mv(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k matrix or 2-dimensional tensor :doc:`pointer <pointers>`
    :param array,tensor y: a k list or 1-dimensional tensor :doc:`pointer <pointers>`
@@ -1387,6 +1427,7 @@ If ``x`` is a list of size :math:`n` and ``y`` is a list of size :math:`m`, then
 
 .. function:: outer(x;y) -> outer product
 .. function:: outer(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: a k list or 1-dimensional tensor :doc:`pointer <pointers>`
    :param array,tensor y: a k list or 1-dimensional tensor :doc:`pointer <pointers>`
@@ -1439,6 +1480,7 @@ and the result will be a :math:`(n \times p)` array or tensor.
 
 .. function:: addbmm(x;y;z;beta;alpha) -> sum of batch of matrix-matrix multiplications
 .. function:: addbmm(x;y;z;beta;alpha;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -1485,6 +1527,7 @@ and the result will be a :math:`(n \times p)` matrix.
 
 .. function:: addmm(x;y;z;beta;alpha) ->  sum of matrix-matrix multiplication with additional input
 .. function:: addmm(x;y;z;beta;alpha;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -1549,6 +1592,7 @@ If :math:`y` is a matrix of size :math:`n \times m` and :math:`z` is a vector of
 
 .. function:: addmv(x;y;z;beta;alpha) ->  sum of matrix-vector multiplication with additional input
 .. function:: addmv(x;y;z;beta;alpha;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -1596,6 +1640,7 @@ If :math:`y` is a vector of size :math:`n` and :math:`z` is a vector of size :ma
 
 .. function:: addr(x;y;z;beta;alpha) ->  sum of matrix-matrix multiplication with additional input
 .. function:: addr(x;y;z;beta;alpha;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -1653,6 +1698,7 @@ with a :math:`(b \times n \times p)` array/tensor  and the result will be a :mat
 
 .. function:: baddbmm(x;y;z;beta;alpha) -> sum of batch of matrix-matrix multiplications
 .. function:: baddbmm(x;y;z;beta;alpha;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 

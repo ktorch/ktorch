@@ -865,7 +865,7 @@ template<typename O> static K getmetrics(const O& o,Data& d) {
     auto s=v[i].sum(0);
     v[i] = m==Metric::accuracy ? 100.0*s[0].div(s[1]) : s;
    } else if(m==Metric::loss) {
-    v[i] = v[i].sum().to(torch::kDouble) / d.batches();
+    v[i] = v[i].sum() / d.batches();
    }
    i++;
   }

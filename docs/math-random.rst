@@ -21,6 +21,7 @@ value :math:`1` according to the :math:`\text{i}^{th}` probability value given i
 
 .. function:: bernoulli(x) -> Bernoulli values
 .. function:: bernoulli(x;output) -> null
+   :noindex:
 
    :param array,tensor x: a k array or tensor of floating point numbers between 0 and 1 indicating the probability of drawing a 1
    :param tensor output: an optional output tensor, may be of integral type
@@ -60,6 +61,7 @@ which returns an array or tensor where each row contains indices sampled from th
 
 .. function:: multinomial(x;n;replace) -> indices
 .. function:: multinomial(x;n;replace;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 

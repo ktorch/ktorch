@@ -18,6 +18,7 @@ fft
 
 .. function:: fft(x;size;dim;norm) -> 1-dimensional Fast Fourier transform
 .. function:: fft(x;size;dim;norm;output) -> null
+   :noindex:
 
 
    | Allowable argument combinations:
@@ -69,6 +70,7 @@ ifft
 
 .. function:: ifft(x;size;dim;norm) -> inverse discrete transform
 .. function:: ifft(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft`. If using k array(s) as input, a complex tensor must first be constructed from the k arrays of real and imaginary parts.
 
@@ -120,6 +122,7 @@ rfft
 
 .. function:: rfft(x;size;dim;norm) -> real transform
 .. function:: rfft(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft`
 
@@ -140,6 +143,7 @@ irfft
 
 .. function:: irfft(x;size;dim;norm) -> inverse of real transform
 .. function:: irfft(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft`
 
@@ -172,6 +176,7 @@ hfft
 
 .. function:: hfft(x;size;dim;norm) -> discrete transform of Hermitian signal
 .. function:: hfft(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft`
 
@@ -197,6 +202,7 @@ ihfft
 
 .. function:: ihfft(x;size;dim;norm) -> inverse of transform of Hermitian
 .. function:: ihfft(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft`
 
@@ -230,6 +236,7 @@ fft2
 
 .. function:: fft2(x;size;dim;norm) -> 1-dimensional Fast Fourier transform
 .. function:: fft2(x;size;dim;norm;output) -> null
+   :noindex:
 
 
    | Allowable argument combinations:
@@ -266,10 +273,11 @@ fft2
 ifft2
 ^^^^^
 
-`torch.fft.ifft2 <https://pytorch.org/docs/stable/generated/torch.fft.ifft.html>`_, the 2-d inverse discrete transform, is implemented with :func:`ifft2`.
+`torch.fft.ifft2 <https://pytorch.org/docs/stable/generated/torch.fft.ifft2.html>`_, the 2-d inverse discrete transform, is implemented with :func:`ifft2`.
 
 .. function:: ifft2(x;size;dim;norm) -> inverse discrete transform
 .. function:: ifft2(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft2`. If using k array(s) as input, a complex tensor must first be constructed from the k arrays of real and imaginary parts.
 
@@ -291,6 +299,7 @@ rfft2
 
 .. function:: rfft2(x;size;dim;norm) -> real transform
 .. function:: rfft2(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft2`
 
@@ -312,6 +321,7 @@ irfft2
 
 .. function:: irfft2(x;size;dim;norm) -> inverse of real transform
 .. function:: irfft2(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft2`
 
@@ -334,6 +344,7 @@ hfft2
 
 .. function:: hfft2(x;size;dim;norm) -> discrete transform of Hermitian signal
 .. function:: hfft2(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft2`
 
@@ -354,6 +365,7 @@ ihfft2
 
 .. function:: ihfft2(x;size;dim;norm) -> inverse of transform of Hermitian
 .. function:: ihfft2(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fft2`
 
@@ -383,6 +395,7 @@ fftn
 
 .. function:: fftn(x;size;dim;norm) -> 1-dimensional Fast Fourier transform
 .. function:: fftn(x;size;dim;norm;output) -> null
+   :noindex:
 
 
    | Allowable argument combinations:
@@ -416,10 +429,11 @@ fftn
 ifftn
 ^^^^^
 
-`torch.fft.ifftn <https://pytorch.org/docs/stable/generated/torch.fft.ifft.html>`_, the N-dim inverse discrete transform, is implemented with :func:`ifftn`.
+`torch.fft.ifftn <https://pytorch.org/docs/stable/generated/torch.fft.ifftn.html>`_, the N-dim inverse discrete transform, is implemented with :func:`ifftn`.
 
 .. function:: ifftn(x;size;dim;norm) -> inverse discrete transform
 .. function:: ifftn(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fftn`. If using k array(s) as input, a complex tensor must first be constructed from the k arrays of real and imaginary parts.
 
@@ -442,6 +456,7 @@ rfftn
 
 .. function:: rfftn(x;size;dim;norm) -> real transform
 .. function:: rfftn(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fftn`
 
@@ -467,6 +482,7 @@ irfftn
 
 .. function:: irfftn(x;size;dim;norm) -> inverse of real transform
 .. function:: irfftn(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fftn`
 
@@ -494,6 +510,7 @@ hfftn
 
 .. function:: hfftn(x;size;dim;norm) -> discrete transform of Hermitian signal
 .. function:: hfftn(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fftn`
 
@@ -514,6 +531,7 @@ ihfftn
 
 .. function:: ihfftn(x;size;dim;norm) -> inverse of transform of Hermitian
 .. function:: ihfftn(x;size;dim;norm;output) -> null
+   :noindex:
 
    | Same allowable argument combinations as :func:`fftn`
 
@@ -546,6 +564,7 @@ fftfreq
 
 .. function:: fftfreq(length;scale;options) -> sample frequencies of given length
 .. function:: fftfreq(length;scale;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -580,6 +599,7 @@ rfftfreq
 
 .. function:: rfftfreq(length;scale;options) -> sample frequencies of given length
 .. function:: rfftfreq(length;scale;output) -> null
+   :noindex:
 
    | Allowable argument combinations are the same as for :func:`fftfreq`
 

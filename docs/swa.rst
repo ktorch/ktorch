@@ -31,6 +31,7 @@ Copy parameters
 The same :func:`copyparms` functions can be used to copy parameters back into the module:
 
 .. function:: copyparms(module; dictionary) -> k boolean dictionary 
+   :noindex:
 
    :param pointer module: An :doc:`api-pointer <pointers>` to an allocated module, model or optimizer.
    :param pointer dictionary: An :doc:`api-pointer <pointers>` to a dictionary of parameter tensors.

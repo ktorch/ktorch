@@ -48,8 +48,8 @@ Syntax
 The initialization functions have a common syntax and accept a tensor or a collection of tensors, along with other arguments that typically override mean, standard deviation or some other property of the underlying distribution:
 
 .. function:: fn(tensors) -> null
-
 .. function:: fn(tensors; options..) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing tensor or vector/dictionary of tensors.
    :param scalar options: typically numeric scalars, with symbol scalars used for Kaiming initialization.
@@ -83,8 +83,8 @@ Tensor/vector indices
 Numeric indices (longs) can be used with a non-scalar tensor or a vector of tensors:
 
 .. function:: fn(tensors; indices) -> null
-
 .. function:: fn(tensors; indices; options..) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing tensor or vector of tensors.
    :param long indices: a single index or set of indices into the first dimension of a tensor or a vector of tensors.
@@ -149,8 +149,8 @@ Tensor names
 Tensor names can be used to index a subset of a dictionary of tensors. Parameter or buffer names must be supplied if a module or model is given as the leading argument:
 
 .. function:: fn(tensors; names) -> null
-
 .. function:: fn(tensors; names; options..) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing dictionary, module, model or optimizer.
    :param symbol names: keys into the given dictionary or names of parameters/buffers in the supplied module.
@@ -192,7 +192,9 @@ The Kaiming initialization functions, :func:`knormal` and :func:`kuniform` accep
 .. function:: kuniform(tensors) -> null
 
 .. function:: knormal(tensors; nonlinearity; fanmode; slope) -> null
+   :noindex:
 .. function:: kuniform(tensors; nonlinearity; fanmode; slope) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing tensor, vector or dictionary of tensors.
    :param symbol nonlinearity: name of the non-linear function, e.g. ```relu`` or ```leakyrelu``, used to calculate standard deviation (normal distribution) or bounds (uniform distribution).
@@ -224,6 +226,7 @@ The Kaiming initialization functions may also be used with indices as the 2nd ar
 
 .. function:: knormal(tensors; indices) -> null
 .. function:: knormal(tensors; indices; options..) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing tensor or vector of tensors; if tensor, indices select on 1st dimension.
    :param long indices: the index or indices into the vector or 1st dimension of a given tensor, enlist scalar index to avoid confusion with other numeric argument.
@@ -247,6 +250,7 @@ The Kaiming initialization functions are also used with parameter/buffer names a
 
 .. function:: knormal(tensors; names) -> null
 .. function:: knormal(tensors; names; options..) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to an existing dictionary or module.
    :param symbol names: the name or names of dictionary tensors or module parameters/buffers, scalar names can be enlisted to avoid confusion with other scalar symbol arguments.
@@ -291,8 +295,8 @@ Using k arrays
 The initialization routines also accept k arrays as input, returning k arrays after the initialization is applied:
 
 .. function:: fn(input) -> output
-
 .. function:: fn(input; options..) -> output
+   :noindex:
 
    :param k-array input: a scalar, list or n-dim array 
    :param scalar options: typically numeric scalars, with symbol scalars used for Kaiming initialization.
@@ -335,6 +339,7 @@ Return the recommended gain value for the given nonlinearity function; this is t
 
 .. function:: gain(nonlinearity) -> value
 .. function:: gain(nonlinearity; factor) -> value
+   :noindex:
 
    :param symbol nonlinearity: name of the non-linear function, e.g. ```relu``, ```leakyrelu``, ```linear``, etc.
    :param double factor: optional parameter or factor, e.g.  negative slope for ```leakyrelu``.

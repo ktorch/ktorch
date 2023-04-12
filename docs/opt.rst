@@ -24,6 +24,7 @@ along with the parameters to be optimized, then a set of optimizer-specific sett
 
 .. function:: opt(name; parameters; options..) -> optimizer
 .. function:: opt(name; group; parameters; options..) -> optimizer
+   :noindex:
 
    :param symbol name: e.g. ```adamw`` or ```sgd``
    :param long group: optional :ref:`parameter group <optgroups>` number.
@@ -245,6 +246,7 @@ In this kind of call the created optimizer is used as the 1st argument rather th
 
 .. function:: opt(optimizer) -> dictionary
 .. function:: opt(optimizer;all) -> dictionary
+   :noindex:
 
    :param pointer optimizer: an :doc:`api-pointer <pointers>` to an allocated optimizer.
    :param boolean all: an optional flag set true to return all options and set false to return only non-default options. If not specified, the flag uses the :ref:`global setting <settings>` for :ref:`show all options <alloptions>`.
@@ -473,6 +475,7 @@ The k-api :ref:`state() <optstate>` function attempts to link any available modu
 
 .. function:: state(optimizer) -> dictionary
 .. function:: state(optimizer;all) -> dictionary
+   :noindex:
 
    :param pointer optimizer: an :doc:`api-pointer <pointers>` to an allocated optimizer.
    :param boolean all: an optional flag set true to return all options and set false to return only non-default options. If not specified, the flag uses the :ref:`global setting <settings>` for :ref:`show all options <alloptions>`.
@@ -723,6 +726,7 @@ The :ref:`lr() <lr>` function is a simpler way to query and set only the learnin
 
 .. function:: lr(optimizer) -> learning rates
 .. function:: lr(optimizer;rates) -> null
+   :noindex:
 
    :param pointer optimizer: an :doc:`api-pointer <pointers>` to an allocated optimizer.
    :param long rates: an optional scalar or vector of rates (one per parameter group).

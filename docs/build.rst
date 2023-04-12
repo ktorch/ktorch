@@ -4,22 +4,44 @@ Building ktorch
 ===============
 
 The ktorch library has been built on Linux and MacOS; it has not been tested on Windows.
-(Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in July 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
+(Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
-The k interface is built with the latest version of PyTorch as of late October 2022, labeled ``Stable(1.13.0)``.
+The k interface is built with the latest version of PyTorch as of March 2023, labeled ``Stable(2.0.0)``.
 
-The zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
+For Linux, the zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 200 megabytes for CPU-only.
-Each platform (Linux, MacOS, Windows) has additional choices for CPU-only/GPU version.
+Each platform has additional choices for CPU-only/GPU versions (more :ref:`here <abi>` on pre c++11 and post c++11 ABI versions).
+
+For MacOS, the libtorch zip file distributed by PyTorch is for Intel CPU-only;
+it is also  possible to compile the libtorch libraries to incude a CUDA setup on Mac
+or to use the new M1/M2 chips with
+`MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_.
+
+See `this section <libtorch>` on how build the PyTorch c++ libraries from source before building the k interface.
+
+Below is a brief  summary of retrieval steps for a Linux machine with Nvidia GPU(s):
 
 .. figure:: linux.cuda.png
    :scale: 40 %
-   :alt: libtorch.zip files for linux and CUDA 11.3
+   :alt: libtorch.zip files for Linux and CUDA 11.7
+   :target: https://pytorch.org/get-started/locally/
 
-Once the zip file is downloaded and unzipped, the next step is to download the ktorch source code.
+Download and unzip the file for CUDA 11.7 with the pre-c++11  ABI:
 
-Get the code via git clone:
+::
+
+   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.0%2Bcu117.zip
+   > ls -lh libtorch-sha*.zip
+   -rw-rw-r-- 1 t t 1.8G Mar 14 11:26 libtorch-shared-with-deps-2.0.0+cu117.zip
+
+   > unzip libtorch-shared-with-deps-2.0.0+cu117.zip 
+   Archive:  libtorch-shared-with-deps-2.0.0+cu117.zip
+      creating: libtorch/
+      creating: libtorch/lib/
+      ..
+
+Download the ktorch source code via git clone:
 
 ::
 
@@ -40,36 +62,41 @@ Or download as a zip file:
      inflating: ktorch-master/Makefile  
      ..
 
-(see sample :ref:`builds <builds>` for :ref:`macos <buildmac>` and :ref:`linux <buildlinux>`)
+Assuming the libtorch libraries are in ~/libtorch and the ktorch source in ~/ktorch:
+::
+
+   > make
+
+(see sample :ref:`builds <builds>` for mac :ref:`on intel <buildmac1>`, :ref:`with M1/M2 chips <buildmac2>` and :ref:`linux <buildlinux>` for more detail)
 
 .. index:: Makefile
 
 PyTorch zip files
 *****************
 
-The libtorch.zip files from PyTorch are saved by version: when version 1.13.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
+The libtorch.zip files from PyTorch are saved by version: when version 2.0.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
 
 - Linux CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-1.13.0%2Bcpu.zip
-   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcpu.zip
-
-- Linux CUDA 11.6
-   - https://download.pytorch.org/libtorch/cu116/libtorch-shared-with-deps-1.13.0%2Bcu116.zip
-   - https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.0.0%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip
 
 - Linux CUDA 11.7
-   - https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-1.13.0%2Bcu117.zip
-   - https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu117.zip
+   - https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.0%2Bcu117.zip
+   - https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu117.zip
+
+- Linux CUDA 11.8
+   - https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.0%2Bcu118.zip
+   - https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu118.zip
 
 - MacOS CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.13.0.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.0.zip
 
 - Release Notes
    - https://github.com/pytorch/pytorch/releases
-   - https://github.com/pytorch/pytorch/releases/tag/v1.13.0
+   - https://github.com/pytorch/pytorch/releases/tag/v2.0.0
 
 - Source
-   - https://github.com/pytorch/pytorch/archive/refs/tags/v1.13.0.zip
+   - https://github.com/pytorch/pytorch/archive/refs/tags/v2.0.0.zip
 
 Makefile
 ********
@@ -89,38 +116,13 @@ The c++ compiler defaults to ``clang``. To run with GCC:
 TORCH
 ^^^^^
 
-TORCH has the location of the libraries for PyTorch. Default is set to ~/libtorch.
+TORCH has the location of the c++ libraries and include files for PyTorch. Default is set to ~/libtorch.
 
 ::
 
    make TORCH=/customdir/libtorch
 
-It may also be possible to build ``ktorch.so`` using libraries already installed with an existing 1.13.0 python version of PyTorch.
-
-
-::
-
-   # find the dir for pytorch 1.13.0 libraries in mini conda
-   find ~/miniconda3/lib  -name libtorch.so 
-   /home/t/miniconda3/lib/python3.8/site-packages/torch/lib/libtorch.so
-
-   cd ~/ktorch
-
-   make TORCH=/home/t/miniconda3/lib/python3.8/site-packages/torch
-   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 \
-          -D_GLIBCXX_USE_CXX11_ABI=0 \
-         -I /home/t/miniconda3/lib/python3.8/site-packages/torch/include \
-         -I /home/t/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include \
-         -c -o ktorch.o ktorch.cpp
-   ..
-   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o \
-         knn/upsample.o knn/embed.o knn/callback.o knn/fold.o knn/norm.o knn/fork.o \
-         knn/onehot.o knn/act.o knn/attention.o knn/seq.o knn/transform.o knn/recur.o \
-         knn/reshape.o knn/pad.o knn/linear.o knn/squeeze.o knn/conv.o knn/drop.o \
-         knn/select.o knn/nbeats.o knn/fns.o knn/residual.o knn/distance.o \
-         knn/transformer.o knn/util.o kopt/lamb.o \
-         -shared -L/home/t/miniconda3/lib/python3.8/site-packages/torch/lib -l torch \
-         -Wl,-rpath /home/t/miniconda3/lib/python3.8/site-packages/torch/lib
+.. _abi:
 
 ABI
 ^^^
@@ -171,30 +173,69 @@ Source files
 - `private.h <https://github.com/ktorch/ktorch/blob/master/private.h>`_ - macros to gain access to private class elements, from `martong <https://github.com/martong/access_private>`_.
 - `stb_image_write.h <https://github.com/ktorch/ktorch/blob/master/stb_image_write.h>`_ - minimal code to write .png files, from `stb <https://github.com/nothings/stb/blob/master/stb_image_write.h>`_.
 
+.. _libtorch:
+
+Build libtorch from source
+**************************
+
+To customize the PyTorch c++ libraries or to build to a different setup than supplied by PyTorch,
+it is also possible to build the libraries from source.
+
+For a mac with the new M2 chip and `MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_,
+installing some prerequisites:
+
+::
+
+   brew install cmake
+
+   conda install -c anaconda yaml
+   conda install pyyaml
+
+Then download the source code for PyTorch as of release ``2.0.0``:
+
+::
+
+   git clone -b v2.0.0 --recurse-submodule https://github.com/pytorch/pytorch.git
+
+   > mkdir pytorch-build
+   > cd pytorch-build
+
+   > cmake -DUSE_MPS=ON -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=../pytorch-install ../pytorch
+   > cmake --build . --target install
+
+Once the build completes, the libraries are in the directory: ``pytorch-install`` and can be used to build the k interface:
+
+::
+
+   > cd ~/ktorch
+   > make TORCH=/Users/t/pytorch-install
+
+More notes on building the PyTorch c++ libraries via ``cmake`` as well as via ``python`` are available `here <https://github.com/pytorch/pytorch/blob/master/docs/libtorch.rst>`__.
+
 .. _builds:
 
 Sample builds
 *************
 
-.. _buildmac:
+.. _buildmac1:
 
-MacOS, CPU only
-^^^^^^^^^^^^^^^
+MacOS, Intel CPU
+^^^^^^^^^^^^^^^^
 
-First step, get the CPU-only version of libtorch 1.13.0 for MacOS:
+First step, get the CPU-only version of libtorch ``2.0.0`` for MacOS:
 
 ::
 
    > cd ~
-   > wget --quiet https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.13.0.zip
+   > wget -q https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.0.zip
 
-   > ls -lh libtorch-macos-1.13.0.zip 
-   -rw-r--r--  1 t  staff   149M Oct 26 16:40 libtorch-macos-1.13.0.zip
+   > ls -lh libtorch-macos-2.0.0.zip 
+   -rw-r--r--  1 t  staff   156M Mar 14 11:20 libtorch-macos-2.0.0.zip
 
    > rm -rf ~/libtorch  # erase any previous version
 
-   > unzip libtorch-macos-1.13.0.zip 
-   Archive:  libtorch-macos-1.13.0.zip
+   > unzip libtorch-macos-2.0.0.zip 
+   Archive:  libtorch-macos-2.0.0.zip
       creating: libtorch/
       creating: libtorch/bin/
      inflating: libtorch/build-hash     
@@ -218,38 +259,36 @@ Build using make:
 
    > cd ktorch
 
-   > time make CXX=g++
-   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/libtorch/include -I /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
-   g++ -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/libtorch/include -I /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   > time make
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/libtorch/include -I /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/libtorch/include -I /Users/t/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
    ..
-   g++ -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/libtorch/lib -l torch -l torch_cpu -Wl,-rpath /Users/t/libtorch/lib
+   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/libtorch/lib -l torch -Wl,-rpath /Users/t/libtorch/lib
 
-   real	7m3.792s
-   user	6m31.210s
-   sys	0m18.625s
+   real	6m53.927s
+   user	6m33.005s
+   sys	0m15.860s
 
-
-Faster compile (around 1-2 minutes instead of 6-7 minutes) is possible with the -j option:
+Faster compile (1-2 minutes) is possible with the -j option:
 
 ::
 
    > make -s clean
-
-   > time make -sj CXX=g++
+   > time make -sj
 
    real	1m42.412s
    user	10m11.067s
    sys	0m22.923s
 
    > ls -lh ./ktorch.so
-   -rwxr-xr-x  1 t  staff   4.3M Oct 31 09:22 ./ktorch.so*
+   -rwxr-xr-x  1 t  staff   4.3M Apr 10 09:34 ./ktorch.so*
 
 Check if the ``ktorch.so`` library can be loaded from within a k session:
 
 ::
 
    > q
-   KDB+ 4.0 2021.07.12 Copyright (C) 1993-2021 Kx Systems
+   KDB+ 4.0 2022.10.26 Copyright (C) 1993-2022 Kx Systems
    m64/ 8(16)core 32768MB
 
    q).nn:(`ktorch 2:`fns,1)[]   / define interface functions in .nn
@@ -257,9 +296,10 @@ Check if the ``ktorch.so`` library can be loaded from within a k session:
    q).nn.setting[]
    mkl               | 1b   /Intel's MKL libraries are available
    openmp            | 0b
-   threads           | 1
-   interopthreads    | 1
-   cuda              | 0b   /no GPU libraries with CPU-only libtorch
+   threads           | 4
+   interopthreads    | 4
+   mps               | 0b
+   cuda              | 0b
    magma             | 0b
    cudnn             | 0b
    cudnnversion      | 0N
@@ -278,22 +318,22 @@ Checking the configuration:
    q).nn.config[]
    PyTorch built with:
      - GCC 4.2
-     - C++ Version: 201402
-     - clang 12.0.0
-     - Intel(R) Math Kernel Library Version 2020.0.1 Product Build 20200208 for Intel(R) 64 architecture applications
-     - Intel(R) MKL-DNN v2.6.0 (Git Hash 52b5f107dd9cf10910aaa19cb47f3abf9b349815)
+     - C++ Version: 201703
+     - clang 13.1.6
+     - Intel(R) oneAPI Math Kernel Library Version 2022.2-Product Build 20220801 for Intel(R) 64 architecture applications
+     - Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
      - LAPACK is enabled (usually provided by MKL)
      - NNPACK is enabled
      - CPU capability usage: NO AVX
-     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_12.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO -DUSE_COREML_DELEGATE -O2 -fPIC -Wno-narrowing -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wvla-extension -Wno-range-loop-analysis -Wno-pass-failed -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wconstant-conversion -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-c++14-extensions -Wno-constexpr-not-const -Wno-missing-braces -Wunused-lambda-capture -Wunused-local-typedef -Qunused-arguments -fcolor-diagnostics -fdiagnostics-color=always -fno-math-errno -fno-trapping-math -Werror=format -Wno-unused-private-field -Wno-missing-braces -Wno-c++14-extensions -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX512=1, TORCH_VERSION=1.13.0, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=OFF, USE_ROCM=OFF, 
-
+     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_13.3.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DUSE_COREML_DELEGATE -O2 -fPIC -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=braced-scalar-init -Werror=range-loop-construct -Werror=bool-operation -Winconsistent-missing-override -Wnarrowing -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wvla-extension -Wno-range-loop-analysis -Wno-pass-failed -Wsuggest-override -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wconstant-conversion -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-constexpr-not-const -Wno-missing-braces -Wunused-lambda-capture -Wunused-local-typedef -Qunused-arguments -fcolor-diagnostics -fdiagnostics-color=always -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -DUSE_MPS -fno-objc-arc -Wno-unguarded-availability-new -Wno-unused-private-field -Wno-missing-braces -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX512=1, TORCH_DISABLE_GPU_ASSERTS=OFF, TORCH_VERSION=2.0.0, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=OFF, USE_ROCM=OFF, 
+   
    ATen/Parallel:
 	   at::get_num_threads() : 4
 	   at::get_num_interop_threads() : 4
    OpenMP not found
-   Intel(R) Math Kernel Library Version 2020.0.1 Product Build 20200208 for Intel(R) 64 architecture applications
+   Intel(R) oneAPI Math Kernel Library Version 2022.2-Product Build 20220801 for Intel(R) 64 architecture applications
 	   mkl_get_max_threads() : 1
-   Intel(R) MKL-DNN v2.6.0 (Git Hash 52b5f107dd9cf10910aaa19cb47f3abf9b349815)
+   Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
    std::thread::hardware_concurrency() : 8
    Environment variables:
 	   OMP_NUM_THREADS : [not set]
@@ -315,7 +355,7 @@ Once the library is built, it can be tested with some examples:
    > git clone https://github.com/ktorch/examples.git
   
    > q examples/start/spirals.q
-   KDB+ 4.0 2021.07.12 Copyright (C) 1993-2021 Kx Systems
+   KDB+ 4.0 2022.10.26 Copyright (C) 1993-2022 Kx Systems
    m64/ 8(16)core 32768MB
 
                                         
@@ -339,27 +379,122 @@ Once the library is built, it can be tested with some examples:
                     1   1 1 1 1 1          
             1 1 1 1 1 1 1 1 1 1            
                   1 1 1 1 1                
-   683 1360
+   1456 1360
    Accuracy on training data: 99.93333%
    Accuracy using new sample: 99.9%
 
+.. _buildmac2:
+
+MacOS, M1/M2
+^^^^^^^^^^^^
+
+As of release ``2.0.0``, PyTorch does not release the c++ libraries compiled for Apple's new M1 & M2 chips.
+It is necessary to :ref:`build these libraries from source <libtorch>` or link to the c++ libraries that are part of a python installation for Mac.
+
+Once the libtorch c++ libraries are built, clone the k api repository.
+
+::
+
+   > cd ~
+   > git clone https://github.com/ktorch/ktorch.git
+   Cloning into 'ktorch'...
+
+Assuming the libtorch c++ libraries and include files are in the default dir, ``~/pytorch-install``:
+
+::
+
+   > make TORCH=/Users/t/pytorch-install
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/pytorch-install/include -I /Users/t/pytorch-install/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/pytorch-install/include -I /Users/t/pytorch-install/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   ..
+   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/pytorch-install/lib -l torch -Wl,-rpath /Users/t/pytorch-install/lib
+
+Instead of building the libtorch c++ libraries, an alternate method is to use the libraries distributed as part of the PyTorch installation of the python interface.
+For example, using the conda install from `PyTorch <https://pytorch.org/get-started/locally/>`_:
+
+::
+
+   conda install pytorch torchvision torchaudio -c pytorch
+
+After the install, search for the main library:
+
+::
+
+   > find ~/miniconda3/lib -name libtorch.dylib
+   /Users/t/miniconda3/lib/python3.10/site-packages/torch/lib/libtorch.dylib
+
+Using the c++ libraries and include files that were included as part of the python install:
+
+::
+
+   make TORCH=/Users/t/miniconda3/lib/python3.10/site-packages/torch
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
+   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
+   ..
+   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/miniconda3/lib/python3.10/site-packages/torch/lib -l torch -Wl,-rpath /Users/t/miniconda3/lib/python3.10/site-packages/torch/lib
+
+   ls -lh ktorch.so
+   -rwxr-xr-x  1 t  staff   4.0M Apr 11 12:10 ktorch.so
+
+Build time is around 2 minutes on a macbook pro with the M2 max chip; down to about 25 seconds with the parallel compilation flag, e.g. make -j ..
+
+Loading the api functions into q:
+
+::
+
+   q){key[x]set'get x}(`ktorch 2:`fns,1)[];  /define interface fns in root
+
+   q)setting[]
+   mkl               | 0b
+   openmp            | 0b
+   threads           | 12
+   interopthreads    | 12
+   mps               | 1b
+   cuda              | 0b
+   magma             | 0b
+   cudnn             | 0b
+   cudnnversion      | 0N
+   cudadevices       | 0
+   ..
+
+   q)help`device  /display devices and initial random seed
+   cpu  | 7993899427782217949
+   mps  | 6228276533503624572
+   mps:0| 6228276533503624572
+
+::
+
+   q)x:tensor(`randn; 4096 1024)
+   q)y:tensor(`randn; 1024 4096)
+   q)r:tensor()
+
+   q)\ts:10 use[r]mm(x;y)
+   196 1184
+
+   q){to(x;`mps)}'[(x;y;r)];  /move to metal performance shaders
+
+   q)\ts use[r]mm(x;y)    /first use overhead
+   55 1184
+   q)\ts:10 use[r]mm(x;y)
+   3 1184
+
 .. _buildlinux:
 
-Linux, CUDA 11.6
+Linux, CUDA 11.7
 ^^^^^^^^^^^^^^^^
 
-Build in ``/tmp``, using the libtorch zip file for linux, version 1.13.0, CUDA 11.6 with newer c++ ABI.
+Build in ``/tmp``, using the libtorch zip file for Linux, version ``2.0.0``, CUDA 11.7 with the newer c++ ABI.
 
 ::
 
    > cd /tmp
    > rm -rf libtorch
-   > wget --quiet https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
+   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu117.zip
 
-   > ls -lh libtorch-cxx11-abi-shared-with-deps-1.13.0+cu116.zip 
-   -rw-rw-r-- 1 t t 2.0G Oct 26 16:44 libtorch-cxx11-abi-shared-with-deps-1.13.0+cu116.zip
+   > ls -lh libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip 
+   -rw-rw-r-- 1 t t 1.9G Mar 14 11:25 libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip
 
-   > unzip -q libtorch-cxx11-abi-shared-with-deps-1.13.0+cu116.zip
+   > unzip -q libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip 
    > ls libtorch
    bin/  build-hash  build-version  include/  lib/  share/
 
@@ -367,25 +502,8 @@ Get the ktorch repository as a zip file:
 
 ::
 
-   > wget --quiet https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
-   > ls -lh master.zip
-   -rw-rw-r-- 1 t t 533K Oct 31 13:49 master.zip
-
-   > unzip -l master.zip | head
-   Archive:  master.zip
-   74baa28a81569b1313bd20bb7bef16b60c56b358
-     Length      Date    Time    Name
-   ---------  ---------- -----   ----
-           0  2022-10-31 09:06   ktorch-master/
-        1069  2022-10-31 09:06   ktorch-master/LICENSE
-        2201  2022-10-31 09:06   ktorch-master/Makefile
-         467  2022-10-31 09:06   ktorch-master/README.md
-           0  2022-10-31 09:06   ktorch-master/docs/
-          58  2022-10-31 09:06   ktorch-master/docs/.readthedocs.yaml
-
+   > wget -q https://github.com/ktorch/ktorch/archive/refs/heads/master.zip
    > unzip -q master.zip
-   > ls ktorch-master
-   docs/  k.h  kloss.cpp  kloss.h	kmath.cpp  kmodel.cpp  knn/  knn.cpp  knn.h  kopt/  kopt.cpp  kopt.h  ktensor.cpp  ktest.cpp  ktorch.cpp  ktorch.h  LICENSE  Makefile  private.h  README.md  stb_image_write.h
 
 Build with the ABI flag set on and the TORCH location pointing to the ``/tmp/torchlib`` directory, using ``clang``, the default compiler:
 
@@ -397,23 +515,22 @@ Build with the ABI flag set on and the TORCH location pointing to the ``/tmp/tor
    clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -I /tmp/libtorch/include -I /tmp/libtorch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
    clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -D_GLIBCXX_USE_CXX11_ABI=1 -I /tmp/libtorch/include -I /tmp/libtorch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
    ..
-   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/upsample.o knn/embed.o knn/callback.o knn/fold.o knn/norm.o knn/fork.o knn/onehot.o knn/act.o knn/attention.o knn/seq.o knn/transform.o knn/recur.o knn/reshape.o knn/pad.o knn/linear.o knn/squeeze.o knn/conv.o knn/drop.o knn/select.o knn/nbeats.o knn/fns.o knn/residual.o knn/distance.o knn/transformer.o knn/util.o kopt/lamb.o -shared -L/tmp/libtorch/lib -l torch -Wl,-rpath /tmp/libtorch/lib
+   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -shared -L/tmp/libtorch/lib -l torch -Wl,-rpath /tmp/libtorch/lib
 
-   real	5m9.309s
-   user	4m59.954s
-   sys	0m8.698s
+   real	5m55.095s
+   user	5m42.950s
+   sys	0m12.081s
 
 The build can be faster with parallel compilation if ordered output isn't required:
 
 ::
 
    > make -s clean
-
    > time make -sj ABI=1 TORCH=/tmp/libtorch
 
-   real	1m5.826s
-   user	8m28.047s
-   sys	0m13.033s
+   real	1m9.112s
+   user	9m50.856s
+   sys	0m17.043s
 
 Load in a k session, check version and settings:
 
@@ -423,49 +540,50 @@ Load in a k session, check version and settings:
    /tmp/ktorch-master
 
    > ls -lh ktorch.so
-   -rwxrwxr-x 1 t t 5.7M Oct 31 14:01 ktorch.so*
+   -rwxrwxr-x 1 t t 5.6M Apr 11 05:23 ktorch.so*
    
-   > mv ktorch.so ktorchtmp.so  #avoid confusion w'any ktorch.so
+   > mv ktorch.so ktorchtmp.so  #avoid confusion w'any other existing ktorch.so
 
    > q
-   KDB+ 4.0 2021.07.12 Copyright (C) 1993-2021 Kx Systems
-   l64/ 12(16)core 64033MB 
+   KDB+ 4.0 2022.10.26 Copyright (C) 1993-2022 Kx Systems
+   l64/ 12(24)core 64025MB
+
 
    q){key[x]set'x}(`ktorchtmp 2:`fns,1)[]; /define api fns in root
 
    q)version[]
-   1.13
+   2f
 
    q)version()
-   "1.13.0"
+   "2.0.0"
 
    q)setting[]
    mkl               | 1b
    openmp            | 1b
    threads           | 6
    interopthreads    | 6
+   mps               | 0b
    cuda              | 1b
    magma             | 1b
    cudnn             | 1b
-   cudnnversion      | 8302
+   cudnnversion      | 8500
    cudadevices       | 2
    ..
 
    q)config[]
    PyTorch built with:
-     - GCC 7.5
-     - C++ Version: 201402
-     - Intel(R) Math Kernel Library Version 2020.0.0 Product Build 20191122 for Intel(R) 64 architecture applications
-     - Intel(R) MKL-DNN v2.6.0 (Git Hash 52b5f107dd9cf10910aaa19cb47f3abf9b349815)
+     - GCC 9.3
+     - C++ Version: 201703
+     - Intel(R) oneAPI Math Kernel Library Version 2021.4-Product Build 20210904 for Intel(R) 64 architecture applications
+     - Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
      - OpenMP 201511 (a.k.a. OpenMP 4.5)
      - LAPACK is enabled (usually provided by MKL)
      - NNPACK is enabled
      - CPU capability usage: AVX2
-     - CUDA Runtime 11.6
+     - CUDA Runtime 11.7
      ..
 
-
-Check matrix multiply on GPU if avail:
+Check matrix multiply on GPU if available:
 
 ::
 
@@ -477,14 +595,14 @@ Check matrix multiply on GPU if avail:
 
    q)\ts r:mm(a;b)
    208 1200
-   q)\ts r:mm(a;b)
-   1 1200
+   q)\ts use[r]mm(a;b)
+   1 1184
 
    q)to(a;`cpu)  /move tensors to cpu
    q)to(b;`cpu)
 
    q)\ts use[r]mm(a;b)
-   130 1184
+   112 1184
 
    q)x:tensor a  /run q's matrix multiply
    q)y:tensor b
@@ -514,26 +632,7 @@ From the above Linux build example in ``/tmp``:
    > ldd ktorchtmp.so
    	linux-vdso.so.1 (0x00007ffc93564000)
    	libtorch.so => /tmp/libtorch/lib/libtorch.so (0x00007f8b44703000)
-   	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f8b444d1000)
-   	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8b442df000)
-   	/lib64/ld-linux-x86-64.so.2 (0x00007f8b44dc4000)
-   	libtorch_cuda.so => /tmp/libtorch/lib/libtorch_cuda.so (0x00007f8b440dd000)
-   	libtorch_cuda_cpp.so => /tmp/libtorch/lib/libtorch_cuda_cpp.so (0x00007f8b2dede000)
-   	libtorch_cpu.so => /tmp/libtorch/lib/libtorch_cpu.so (0x00007f8b13d1b000)
-   	libtorch_cuda_cu.so => /tmp/libtorch/lib/libtorch_cuda_cu.so (0x00007f8ae7c2b000)
-   	libc10_cuda.so => /tmp/libtorch/lib/libc10_cuda.so (0x00007f8ae7930000)
-   	libcudart-45da57e3.so.11.0 => /tmp/libtorch/lib/libcudart-45da57e3.so.11.0 (0x00007f8ae7688000)
-   	libnvToolsExt-847d78f2.so.1 => /tmp/libtorch/lib/libnvToolsExt-847d78f2.so.1 (0x00007f8ae747d000)
-   	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f8ae745a000)
-   	libc10.so => /tmp/libtorch/lib/libc10.so (0x00007f8ae71b9000)
-   	libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f8ae71b1000)
-   	librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x00007f8ae71a7000)
-   	libcudnn.so.8 => /tmp/libtorch/lib/libcudnn.so.8 (0x00007f8ae6f7f000)
-   	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f8ae6b72000)
-   	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f8ae6a23000)
-   	libgomp-52f2fd74.so.1 => /tmp/libtorch/lib/libgomp-52f2fd74.so.1 (0x00007f8ae67f0000)
-   	libcublas-2854e16e.so.11 => /tmp/libtorch/lib/libcublas-2854e16e.so.11 (0x00007f8add06c000)
-   	libcublasLt-b015978e.so.11 => /tmp/libtorch/lib/libcublasLt-b015978e.so.11 (0x00007f8ac8006000)
+   	..
 
 
 If the location of the ``libtorch/lib`` subdirectory is changed or in a different place on the deployment machine,
@@ -546,20 +645,13 @@ then the environment variable LD_LIBRARY_PATH can be used to point to a new loca
    > ldd ktorchtmp.so
    	linux-vdso.so.1 (0x00007fff349ed000)
    	libtorch.so => not found
-   	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f72e6f34000)
-   	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f72e6d42000)
-   	/lib64/ld-linux-x86-64.so.2 (0x00007f72e7625000)
+   	..
 
    > export LD_LIBRARY_PATH=/tmp/torch/lib
 
    > ldd ktorchtmp.so
    	linux-vdso.so.1 (0x00007fff40dff000)
    	libtorch.so => /tmp/torch/lib/libtorch.so (0x00007f0a0a3a1000)
-   	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f0a0a16f000)
-   	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f0a09f7d000)
-   	/lib64/ld-linux-x86-64.so.2 (0x00007f0a0aa62000)
-   	libtorch_cuda.so => /tmp/torch/lib/libtorch_cuda.so (0x00007f0a09d7b000)
-   	libtorch_cuda_cpp.so => /tmp/torch/lib/libtorch_cuda_cpp.so (0x00007f09f3b7c000)
         ..
 
 Location of ktorch.so

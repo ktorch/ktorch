@@ -45,10 +45,10 @@ ACCESS_PRIVATE_FIELD(Module, Modulemap,  children_)
 # pragma GCC diagnostic pop
 #endif
 
-#define TORCH_ERROR(...)                                                      \
-  do {                                                                        \
-    C10_EXPAND_MSVC_WORKAROUND(TORCH_CHECK(false, ::c10::str(__VA_ARGS__)));  \
-  } while (false)
+#define TORCH_ERROR(...)                                                    \
+ do {                                                                       \
+  C10_EXPAND_MSVC_WORKAROUND(TORCH_CHECK(false, ::c10::str(__VA_ARGS__)));  \
+ } while (false)
 
 #define KFN(f) reinterpret_cast<void *>(f)
 #define KERR(e) krr((S)e)
@@ -242,7 +242,7 @@ enum class Setting:uint8_t {
  lambda,     lastoffset,         layernorm,    layers,         length,       
  log,        lower,              lr,           lrdecay,        magma,        
  margin,     max,                maxnorm,      mean,           metrics,      
- min,        mkl,                mode,         momentum,       nesterov,     
+ min,        mkl,                mode,         mps,            momentum,       nesterov,     
  norm,       openmp,             out,          outpad,         outsize,      
  p,          pad,                padflag,      padindex,       padmode,      
  parms,      ratio,              reduce,       rescale,        rows,         
@@ -279,7 +279,7 @@ enum class Metric:char {
 using Metrics = std::vector<Metric>;
 
 enum class Help:char {
- undefined=0, backward, dtype, ktype 
+ undefined=0, backward, device, dtype, ktype 
 };
 
 enum class Enum {  // enums to match pytorch variants
@@ -996,11 +996,12 @@ typedef struct Env {
  LossAttrs   loss=lossattrs();
  Callbacks cb=callbacks();
 
- std::array<std::tuple<S,Setting>,15> cset = {{            // configuration settings
+ std::array<std::tuple<S,Setting>,16> cset = {{            // configuration settings
  std::make_tuple(cs("mkl"),                Setting::mkl),
  std::make_tuple(cs("openmp"),             Setting::openmp),
  std::make_tuple(cs("threads"),            Setting::threads),
  std::make_tuple(cs("interopthreads"),     Setting::interopthreads),
+ std::make_tuple(cs("mps"),                Setting::mps),
  std::make_tuple(cs("cuda"),               Setting::cuda),
  std::make_tuple(cs("magma"),              Setting::magma),
  std::make_tuple(cs("cudnn"),              Setting::cudnn),
@@ -1255,8 +1256,9 @@ typedef struct Env {
   std::make_tuple(cs("hiddencell"), Metric::hiddencell)
  }};
 
- std::array<std::tuple<S,Help>,5> helptopic = {{
+ std::array<std::tuple<S,Help>,4> helptopic = {{
   std::make_tuple(cs("backward"),  Help::backward),
+  std::make_tuple(cs("device"),    Help::device),
   std::make_tuple(cs("dtype"),     Help::dtype),
   std::make_tuple(cs("ktype"),     Help::ktype),
  }};

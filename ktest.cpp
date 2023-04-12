@@ -13,14 +13,33 @@ namespace fnn=torch::nn::functional;
 //#include "c10d/NCCLUtils.hpp"
 //#include "torch/csrc/cuda/nccl.h"
 
-/*
-static K genmap() {
- auto a=env().device; auto n=a.size(); I i=0; K k=ktn(KS,n),v=ktn(KJ,n);
- for(auto& m:a)
-  kS(k)[i]=std::get<0>(m),kJ(v)[i++]=deviceseed(std::get<1>(m));
- return xD(k,v);
+using ParmMap=torch::OrderedDict<std::string, std::vector<Tensor>>;  // no. of gradients x no. of workers, e.g. 31 x 2
+
+ParmMap buildmap(std::vector<Moduleptr> x) {
+ ParmMap m;
+ for(const auto& a:x) {
+  for(auto& p:a->named_parameters()) {
+   if(auto *v=m.find(p.key()))
+    v->push_back(p.value());
+   else
+    m.insert(p.key(), {p.value()});
+  }
+ }
+ return m;
 }
-*/
+
+ParmMap buildmap(const Module& l) {
+ ParmMap m;
+ for(const auto& a:l.children()) {
+  for(auto& p:a->named_parameters()) {
+   if(auto *v=m.find(p.key()))
+    v->push_back(p.value());
+   else
+    m.insert(p.key(), {p.value()});
+  }
+ }
+ return m;
+}
 
 static void adatest() {
  auto x=torch::tensor({0.5, 2.0, 4.0}, torch::requires_grad());
@@ -139,7 +158,11 @@ static unsigned gradhook(const Tensor& t,int h,S f,S s) {
   if(h) {
    r=k(0, (S)"{[h;f;s;x] h(f;s;x)}", ki(h), ks(f), ks(s), kget(x.flatten()), (K)0);
    //std::cerr << h << ", " << s << ",nan: " << x.isnan().any() << ", inf: " << x.isinf().any() << ", size " << x.sizes() << ", fn: " << f << "\n";
-   // r=k(h,f,ks(s),kget(x.flatten()),(K)0);
+/*
+   K a=ks(s),z=kget(x.flatten());
+   r=k(h,f,a,z,(K)0);
+*/
+   //r=k(h,f,ks(s),kget(x.flatten()),(K)0);
    //r=k(h,f,ks(s),kget(x.flatten().zero_()),(K)0);
   } else {
    K g=kten(x);

@@ -50,7 +50,9 @@ The functions all have the same calling syntax:
 
 .. function:: pointwise(x) -> k array
 .. function:: pointwise(x;output) -> null
+   :noindex:
 .. function:: pointwise(x;null) -> null
+   :noindex:
 
    :param array,tensor x: required input array or tensor :doc:`pointer <pointers>`.
    :param pointer output: an optional :doc:`pointer <pointers>` to a previously allocated tensor to be used for output. A k unary null is interpreted as an in-place operation.
@@ -105,6 +107,7 @@ The following pointwise functions accept two separate arguments and an optional 
 
 .. function:: pointwise(x;y) -> k array or tensor
 .. function:: pointwise(x;y;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -154,6 +157,7 @@ Supports `broadcastable <https://pytorch.org/docs/stable/notes/broadcasting.html
 
 .. function:: add(x;y;multiplier) -> x + multiplier * y
 .. function:: add(x;y;multiplier;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -205,6 +209,7 @@ The shapes of ``x``, ``y`` and ``z`` must be `broadcastable <https://pytorch.org
 
 .. function:: addcdiv(x;y;z;multiplier) -> result of addition and division
 .. function:: addcdiv(x;y;z;multiplier;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -260,6 +265,7 @@ The shapes of ``x``, ``y`` and ``z`` must be `broadcastable <https://pytorch.org
 
 .. function:: addcmul(x;y;z;multiplier) -> result of addition and division
 .. function:: addcmul(x;y;z;multiplier;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st required input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: 2nd required input array or tensor :doc:`pointer <pointers>`
@@ -316,6 +322,7 @@ If `lo` is null, there is no lower bound, and if `hi` is null there is no upper 
 
 .. function:: clamp(x;lo;hi) -> input limited to min of lo and max of hi
 .. function:: clamp(x;lo;hi;output) -> null
+   :noindex:
 
    :param array,tensor x:
    :param numeric lo: the minimum limit to be returned, can be set to a null scalar value, e.g. ``0N`` or ``0n`` to have no effect
@@ -348,12 +355,13 @@ which returns a linear interpolation of two inputs based on a scalar or array/te
     \text{x}_i + \text{wt}_i \times (\text{y}_i - \text{x}_i)
 
 The shapes of :attr:`x` and :attr:`y` must be
-`broadcastable <https://pytorch.org/docs/stable/notes/broadcasting.html#broadcasting-semantics>`_.
+`broadcastable <https://pytorch.org/docs/stable/notes/broadcasting.html>`_.
 If :attr:`wt` is not a scalar, then
-the shapes of :attr:`wt`, :attr:`x`, and :attr:`y` must be `broadcastable <https://pytorch.org/docs/stable/notes/broadcasting.html#broadcasting-semantics>`_.
+the shapes of :attr:`wt`, :attr:`x`, and :attr:`y` must be `broadcastable <https://pytorch.org/docs/stable/notes/broadcasting.html>`_.
 
 .. function:: lerp(x;y;wt) -> interpolated output
 .. function:: lerp(x;y;wt;output) -> null
+   :noindex:
 
    :param array,tensor x: 1st input, as k array or tensor
    :param array,tensor y: 2nd input, as k array or tensor
@@ -401,6 +409,7 @@ All elements must be greater than :math:`\frac{p - 1}{2}`, otherwise an error wo
 
 .. function:: mvlgamma(x;p) -> multivariate log-gamma
 .. function:: mvlgamma(x;p;output) -> null
+   :noindex:
 
    :param array,tensor x: input k array or tensor
    :param long p: the number of dimensions

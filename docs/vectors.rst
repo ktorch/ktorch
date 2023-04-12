@@ -63,6 +63,7 @@ Retrieving vector values
    :return: arrays for each tensor in the given vector.
 
 .. function:: vector(ptr;ind) -> val
+   :noindex:
 
    :param vector ptr: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
    :param long ind: long index or set of indices.
@@ -128,8 +129,8 @@ Retrieving tensor pointers
 Use the ``tensor()`` function to extract pointers from a given vector and optional indices.
 
 .. function:: tensor(vec) -> tensors
-
 .. function:: tensor(vec;ind) -> tensors
+   :noindex:
 
    :param vector-pointer vec: an :doc:`api-pointer <pointers>` to a previously created vector of tensors.
    :param long ind: an optional long index or list of indices into the vector

@@ -1393,7 +1393,9 @@ The forward calculation accepts 1-3 tensors:
 
 .. function:: forward(module; input) -> attention scores
 .. function:: forward(module; input; mask) -> attention scores
+   :noindex:
 .. function:: forward(module; input; mask; padmask) -> attention scores
+   :noindex:
 
    :param module ptr: An :doc:`api-pointer <pointers>` to the allocated module.
    :param tensor input: Tensor or k array, ``batch size x sequence length x embedding dimension``.

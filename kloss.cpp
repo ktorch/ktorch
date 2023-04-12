@@ -868,25 +868,27 @@ Tensor losscalc(Kmodel *m,const Output& x,const Input &y) {
  return losscalc(m->kloss(), lossinput(m->kmodule(),x), y);
 }
 
-// ---------------------------------------------------------------------------
-// mixeddevices - return true if cpu & cuda, set first CUDA device encountered
-// changedevice - move tensor to cuda device if mix of both
+// ----------------------------------------------------------------------
+// mixeddevices - true if tensors on both cpu & non-cpu,
+//                set first non-cpu device encountered, 
+//                e.g. cpu target & cuda prediction
+// changedevice - move cpu tensor(s) to non-cpu device (when mix of both)
 // lossarg - parse tensor args given module and outputs & targets
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------
 static bool mixeddevices(const TensorVector& v,Device& d) {
  bool a=false,b=false;
  for(const auto&t:v)
-  if(!a && t.is_cuda())  // if first CUDA device encountered
-   a=true, d=t.device(); // set CUDA flag true and set device
-  else if(t.is_cpu())    // else if CPU
-   b=true;               // set flag for CPU
- return a && b;          // return true if a mix of a devices: cuda & cpu
+  if(!(a || t.is_cpu()))  // if first non-cpu device encountered
+   a=true, d=t.device();  // set non-cpu flag true and set device
+  else if(t.is_cpu())     // else if CPU
+   b=true;                // set flag for CPU
+ return a && b;           // return if a mix of cpu and non-cpu devices
 }
 
 TensorVector changedevice(const TensorVector& a,Device& d) {
  size_t i=0; TensorVector v(a.size());
  for(const auto& t:a)
-  v[i]=t.is_cpu() ? t.to(d) : t;
+  v[i++]=t.is_cpu() ? t.to(d) : t;
  return v;
 }
 

@@ -378,8 +378,8 @@ options
 ^^^^^^^
 
 .. function:: options() -> dictionary of symbols
-
 .. function:: options(ptr) -> dictionary of symbols
+   :noindex:
 
     | For empty or null arg, returns a dictionary of default attributes for tensor creation. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns a dictionary or list of dictionaries of the attribute values for the tensor(s).
 
@@ -414,8 +414,8 @@ device
 ^^^^^^
 
 .. function:: device() -> symbol scalar
-
 .. function:: device(ptr) -> symbol scalar / list / dictionary
+   :noindex:
 
    | For a null or empty arg, returns default CUDA device if any GPU's available, else ```cpu``.  Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the devices(s). See also the :doc:`section on devices types <devices>` for more on querying for a CUDA device.
 
@@ -440,8 +440,8 @@ dtype
 ^^^^^
 
 .. function:: dtype() -> symbol
-
 .. function:: dtype(ptr) -> symbol scalar / list / dictionary
+   :noindex:
 
    | For a null or empty arg, returns the default data type, e.g. ```float``. Given an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors, returns sym(s) for the data type(s). See also the :ref:`section on data types <dtype>` for more on setting default data type.
 
@@ -520,6 +520,7 @@ More notes on the new memory format `here <https://pytorch.org/tutorials/interme
    | Returns true if the tensor is contiguous in memory in C order.
 
 .. function:: contiguous(ptr;memory-format) -> boolean scalar / list / dictionary
+   :noindex:
 
    :param api-pointer ptr: an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
    :param sym memory-format: optional symbol indicating memory format, e.g. ```contiguous`` or ```channel2d``.

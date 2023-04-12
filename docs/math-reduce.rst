@@ -15,11 +15,11 @@ PyTorch `reduction <https://pytorch.org/docs/stable/torch.html#reduction-ops>`_ 
  - `torch.dist <https://pytorch.org/docs/stable/generated/torch.dist.html>`_ implemented as :func:`dist`
  - `torch.logsumexp <https://pytorch.org/docs/stable/generated/torch.logsumexp.html>`_ implemented as :func:`logsumexp`
  - `torch.mean <https://pytorch.org/docs/stable/generated/torch.mean.html>`_ implemented as :func:`mean`
+ - `torch.linalg.matrix_norm <https://pytorch.org/docs/stable/generated/torch.linalg.matrix_norm.html>`_ implemented as :func:`fnorm`, :func:`mnorm` and :func:`nnorm`
  - `torch.nanmean <https://pytorch.org/docs/stable/generated/torch.nanmean.html>`_ implemented as :func:`nanmean`
  - `torch.median <https://pytorch.org/docs/stable/generated/torch.median.html>`_ implemented as :func:`median`
  - `torch.nanmedian <https://pytorch.org/docs/stable/generated/torch.nanmedian.html>`_ implemented as :func:`nanmedian`
  - `torch.mode <https://pytorch.org/docs/stable/generated/torch.mode.html>`_ implemented as :func:`mode`
- - `torch.norm <https://pytorch.org/docs/stable/generated/torch.norm.html>`_ implemented as separate :ref:`norm calculations <normfns>`: :func:`fnorm`, :func:`nnorm` and :func:`pnorm`.
  - `torch.nansum <https://pytorch.org/docs/stable/generated/torch.nansum.html>`_ implemented as :func:`nansum`
  - `torch.prod <https://pytorch.org/docs/stable/generated/torch.prod.html>`_ implemented as :func:`prod`
  - `torch.std <https://pytorch.org/docs/stable/generated/torch.std.html>`_ implemented as :func:`std`
@@ -29,6 +29,7 @@ PyTorch `reduction <https://pytorch.org/docs/stable/torch.html#reduction-ops>`_ 
  - `torch.unique_consecutive <https://pytorch.org/docs/stable/generated/torch.unique_consecutive.html>`_ implemented as :func:`uniquec`
  - `torch.var <https://pytorch.org/docs/stable/generated/torch.var.html>`_ implemented as :func:`variance`
  - `torch.var_mean <https://pytorch.org/docs/stable/generated/torch.var_mean.html>`_ implemented as :func:`meanvar`
+ - `torch.linalg.vector_norm <https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html>`_ implemented as :func:`vnorm`
 
 Any / All
 ^^^^^^^^^
@@ -38,6 +39,7 @@ Any / All
 
 .. function:: Any(x;dim;keepdim) -> any ``true`` across optional dimension
 .. function:: Any(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -57,6 +59,7 @@ Function :func:`All` has the same syntax:
 
 .. function:: All(x;dim;keepdim) -> any ``true`` across optional dimension
 .. function:: All(x;dim;keepdim;output) -> null
+   :noindex:
 
    :param: Function :func:`All` uses the same parameters as :func:`Any`
    :return: Returns a single boolean if input given without additional dimension, else a list or higher dimension array/tensor depending on setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
@@ -101,6 +104,7 @@ Function :func:`amax` returns maximum value(s), with the option of specifying a 
 
 .. function:: amax(x;dim;keepdim) -> maximum values across specified dimension
 .. function:: amax(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -120,6 +124,7 @@ Function :func:`amin` has the same syntax:
 
 .. function:: amin(x;dim;keepdim) -> minimum values across specified dimension
 .. function:: amin(x;dim;keepdim;output) -> null
+   :noindex:
 
    :param: Function :func:`amin` uses the same parameters as :func:`amax`
    :return: Returns a single minimum if an array or tensor given without additional dimension, else a list or higher dimension array/tensor depending on setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
@@ -153,6 +158,7 @@ PyTorch `aminmax <https://pytorch.org/docs/stable/generated/torch.aminmax.html>`
 
 .. function:: aminmax(x;dim;keepdim) -> minimum and maximum values
 .. function:: aminmax(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -202,6 +208,7 @@ Function :func:`argmax` returns indices of maximum value(s), with the option of 
 
 .. function:: argmax(x;dim;keepdim) -> indices of maximum values across specified dimension
 .. function:: argmax(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -221,6 +228,7 @@ Function :func:`argmin` returns indices of minimum value(s), with the same synta
 
 .. function:: argmin(x;dim;keepdim) -> indices of minimum values across specified dimension
 .. function:: argmin(x;dim;keepdim;output) -> null
+   :noindex:
 
    :param: Function :func:`argmin` uses the same parameters as :func:`argmax`
    :return: Returns a single index of minimum if an array or tensor given without additional dimension; the index is into a flattened 1-d list made from the array. If a dimension is given, returns a list or higher dimension array/tensor depending on setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
@@ -255,7 +263,9 @@ Max / Min
 
 .. function:: Max(x) -> k array or tensor of maximum value
 .. function:: Max(x;dim;keepdim) -> maximum values and indices
+   :noindex:
 .. function:: Max(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -275,7 +285,9 @@ Max / Min
 
 .. function:: Min(x) -> k array or tensor of minimum value
 .. function:: Min(x;dim;keepdim) -> minimum values and indices
+   :noindex:
 .. function:: Min(x;dim;keepdim;output) -> null
+   :noindex:
 
    :param: Function :func:`Min` uses the same parameters as :func:`Max`
    :return: Returns minimum values of given input along with the indices where the values occur along the supplied dimension. Returns a single minimum if a single tensor supplied without additional arguments.  If a vector supplied as final argument, writes minimum values and indices to the vector and returns null.
@@ -342,6 +354,7 @@ mean / nanmean
 
 .. function:: mean(x;dim;keepdim;dtype) -> mean, overall or over given dimensions
 .. function:: mean(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -357,6 +370,7 @@ mean / nanmean
    :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
    :param longs dim: the optional dimension(s) along which to calculate the mean
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input for the mean
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: a tensor `pointer <pointers>` to contain the means.
    :return: Returns overall mean or means along specified dimension(s).  If an output tensor supplied as final argument, writes mean(s) to the tensor and returns null.
 
@@ -364,6 +378,7 @@ mean / nanmean
 
 .. function:: nanmean(x;dim;keepdim;dtype) -> mean, overall or over given dimensions
 .. function:: nanmean(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
 ::
 
@@ -407,7 +422,9 @@ median / nanmedian
 
 .. function:: median(x) -> overall median
 .. function:: median(x;dim;keepdim) -> median values and indices over final or given dimensions
+   :noindex:
 .. function:: median(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -428,7 +445,9 @@ median / nanmedian
 
 .. function:: nanmedian(x) -> overall median
 .. function:: nanmedian(x;dim;keepdim) -> median values and indices over final or given dimensions
+   :noindex:
 .. function:: nanmedian(x;dim;keepdim;output) -> null
+   :noindex:
 
 ::
 
@@ -468,6 +487,7 @@ mode
 
 .. function:: mode(x;dim;keepdim) -> mode values and indices over final or given dimensions
 .. function:: mode(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -511,6 +531,7 @@ The PyTorch `std <https://pytorch.org/docs/stable/generated/torch.std.html>`_ fu
 
 .. function:: std(x;dim;unbiased;keepdim) -> standard deviation
 .. function:: std(x;dim;unbiased;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -535,6 +556,7 @@ PyTorch's `var <https://pytorch.org/docs/stable/generated/torch.var.html>`_ func
 
 .. function:: variance(x;dim;unbiased;keepdim) -> standard deviation
 .. function:: variance(x;dim;unbiased;keepdim;output) -> null
+   :noindex:
 
 The arguments and calling syntax are the same as for the :func:`std` k api function.
 
@@ -639,6 +661,7 @@ prod
 
 .. function:: prod(x;dim;keepdim;dtype) -> overall product or product over given dimension
 .. function:: prod(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -654,6 +677,7 @@ prod
    :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
    :param long dim: the optional dimension along which to calculate the product
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input for the product
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: a tensor `pointer <pointers>` to contain the product
    :return: Returns overall product or product along specified dimension.  If an output tensor supplied as final argument, writes the product to the tensor and returns null.
 
@@ -685,6 +709,7 @@ sum / nansum
 
 .. function:: sum(x;dim;keepdim;dtype) -> sum, overall or over given dimensions
 .. function:: sum(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -700,6 +725,7 @@ sum / nansum
    :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
    :param longs dim: the optional dimension(s) along which to sum
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input for the sum(s)
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: a tensor `pointer <pointers>` to contain the sum(s).
    :return: Returns overall sum or sums along specified dimension(s).  If an output tensor supplied as final argument, writes sum(s) to the tensor and returns null.
 
@@ -707,6 +733,7 @@ sum / nansum
 
 .. function:: nansum(x;dim;keepdim;dtype) -> sum, overall or over given dimensions
 .. function:: nansum(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
 ::
 
@@ -844,6 +871,7 @@ The PyTorch `dist <https://pytorch.org/docs/stable/generated/torch.dist.html>`_ 
 
 .. function:: dist(x;y) -> norm of x minus y
 .. function:: dist(x;y;p) -> p-norm of x minus y
+   :noindex:
 
    :param array,tensor x: first input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: second input array or tensor :doc:`pointer <pointers>`
@@ -876,6 +904,7 @@ logsumexp
 
 .. function:: logsumexp(x;dim;keepdim) -> log of summed exponentials
 .. function:: logsumexp(x;dim;keepdim;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -928,145 +957,250 @@ logsumexp
 Norm calculations
 ^^^^^^^^^^^^^^^^^
 
-The PyTorch `norm <https://pytorch.org/docs/stable/generated/torch.norm.html>`_ function is implemented as separate c++ functions :func:`fnorm`, :func:`nnorm` and :func:`pnorm`.
+PyTorch reworked norm calculations (some implementation details `here <https://github.com/pytorch/pytorch/pull/76547>`_) to focus on two routines:
+`torch.linalg.matrix_norm <https://pytorch.org/docs/stable/generated/torch.linalg.matrix_norm.html>`_ and
+`torch.linalg.vector_norm <https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html>`_.
+Separate routines for `frobenius` and `nuclear` norms are now part of 
+`torch.linalg.matrix_norm <https://pytorch.org/docs/stable/generated/torch.linalg.matrix_norm.html>`_, using
+the ``ord`` argument set to strings `"fro"` or `"nuc"`.  The ``ord`` parameter is allowed both as a string and a number in the python function;
+the k interface implements the frobenius and nuclear norms as separate functions :func:`fnorm` and :func:`nnorm`.
+The remaining calls to vector or matrix norm routines -- with numeric ``ord`` values -- are implemented as k interface functions 
+:func:`mnorm` and :func:`vnorm`.
 
 fnorm
 *****
 
 Function :func:`fnorm` calculates the Frobenius norm of a matrix or set of matrices, defined as the square root of the sum of squared elements of the matrix.
+This function calls the Pytorch matrix norm routine with the ``ord`` parameter set to the string "fro".
 
-.. function:: fnorm(x;dim;keepdim) -> Frobenius norm
-.. function:: fnorm(x;dim;keepdim;output) -> null
+.. function:: fnorm(x;dim;keepdim;dtype) -> Frobenius norm
+.. function:: fnorm(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
     - ``fnorm(x)``
     - ``fnorm(x;dim)``
     - ``fnorm(x;dim;keepdim)``
+    - ``fnorm(x;dim;keepdim;dtype)``
     - ``fnorm(x;keepdim)``
+    - ``fnorm(x;keepdim;dtype)``
+    - ``fnorm(x;dim;dtype)``
+    - ``fnorm(x;dtype)``
     - any of the above combinations followed by a trailing output tensor
 
-   :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
-   :param longs dim: the optional dimension(s) along which to calculate the norm
+   :param array,tensor x: input array or tensor :doc:`pointer <pointers>` of at least two dimensions
+   :param longs dim: by default, the norm is calculated across the final two dimensions, ``dim`` can be used to specify a different pair of dimensions
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: an optional tensor :doc:`pointer <pointers>` to use for function output
+   :return: Returns Frobenius norm(s) as tensor if tensor input else k array, with additional dimension(s), depending on the setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
 
 ::
 
-   q)x:2 2#1 2 3 4.0
+   q)x:2 2#1 2 3 4e
    q)fnorm x
-   5.477226
+   5.477226e
+   q)fnorm(x;`double)
+   q)5.477226
 
    q)sqrt sum raze x*x
    5.477226
 
-   q)x:3 2 2#1 2 3 4.0
-   q)fnorm(x;1 2)
-   5.477226 5.477226 5.477226
+   q)x:3 2 2#1 2 3 4e
+   q)fnorm x
+   5.477226 5.477226 5.477226e
 
-   q)r:tensor 0#0n
-   q)fnorm(x;1 2;r)
+   q)r:tensor 3 1 1#0n
+   q)fnorm(x;-2 -1;1b;`double;r)  /dim expressed as 2nd to last & last
    q)tensor r
-   5.477226 5.477226 5.477226
+   5.477226
+   5.477226
+   5.477226
 
-   q)x:tensor x
-   q)y:fnorm(x;1 2;1b)
-   q)tensor y
-   5.477226
-   5.477226
-   5.477226
+   q)size r
+   3 1 1
 
 nnorm
 *****
 
 Function :func:`nnorm` calculates the nuclear norm of a matrix, i.e. the trace norm, the sum of singular values of a matrix.
+This function calls the Pytorch matrix norm routine with the ``ord`` parameter set to the string "nuc".
+(See examples above for :func:`fnorm` to see other parameter combinations.)
 
-.. function:: nnorm(x;keepdim) -> nuclear norm
-.. function:: nnorm(x;keepdim;output) -> null
-
+.. function:: nnorm(x;dim;keepdim;dtype) -> nuclear norm
+.. function:: nnorm(x;dim;keepdim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
     - ``nnorm(x)``
+    - ``nnorm(x;dim)``
+    - ``nnorm(x;dim;keepdim)``
+    - ``nnorm(x;dim;keepdim;dtype)``
     - ``nnorm(x;keepdim)``
+    - ``nnorm(x;keepdim;dtype)``
+    - ``nnorm(x;dim;dtype)``
+    - ``nnorm(x;dtype)``
     - any of the above combinations followed by a trailing output tensor
 
-   :param array,tensor x: 2-d array or tensor :doc:`pointer <pointers>` input
+   :param array,tensor x: input array or tensor :doc:`pointer <pointers>` of at least two dimensions
+   :param longs dim: by default, the norm is calculated across the final two dimensions, ``dim`` can be used to specify a different pair of dimensions
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: an optional tensor :doc:`pointer <pointers>` to use for function output
+   :return: Returns nuclear norm(s) as tensor if tensor input else k array, with additional dimension(s), depending on the setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
 
 ::
 
-   q)x:2 2#1 2 3 4.0
+
+   q)x:2 2#1 2 3 4e
 
    q)nnorm x
-   5.830952
+   5.830952e
 
-   q)sums svd[x]1     /singular values from SVD 
-   5.464986 5.830952
+   q)svd[x]1             /use svd to get singular values
+   q)5.464985 0.3659661e
+   q)sum svd[x]1
+   q)5.830951e
 
-   q)r:tensor 0#0n  /output tensor, keepdim
-   q)nnorm(x;1b;r)
+   q)r:tensor 0e
+   q)nnorm(x;r)
    q)tensor r
-   5.830952
-   q)size r
-   1 1
+   5.830952e
 
-pnorm
+mnorm
 *****
 
-.. function:: pnorm(x;p;dim;keepdim) -> p-norm
-.. function:: pnorm(x;p;dim;keepdim;output) -> null
+Pytorch `torch.linalg.matrix_norm <https://pytorch.org/docs/stable/generated/torch.linalg.matrix_norm.html>`_ is implemented as :func:`mnorm`,
+which calculates a the norm for a given matrix or for a series of matrices given in a higher dimension array or tensor.
+This function is used when the ``ord`` parameter is a scalar double (see :func:`fnorm` and :func:`nnorm` for the implementations of ``ord`` as a string).
 
-   | Allowable argument combinations:
+.. function:: mnorm(x;ord;dim;keepdim;dtype) -> matrix norm
+.. function:: mnorm(x;ord;dim;keepdim;dtype;output) -> null
+   :noindex:
 
-    - ``pnorm(x)``
-    - ``pnorm(x;p)``
-    - ``pnorm(x;p;dim)``
-    - ``pnorm(x;p;dim;keepdim)``
-    - ``pnorm(x;dim)``
-    - ``pnorm(x;dim;keepdim)``
+   | Some of the allowable argument combinations:
+
+    - ``mnorm(x)``
+    - ``mnorm(x;ord)``
+    - ``mnorm(x;ord;keepdim;dtype)``
+    - ``mnorm(x;dim)``
+    - ``mnorm(x;keepdim)``
+    - ``mnorm(x;dim;dtype)``
+    - ``mnorm(x;dtype)``
+    - ``mnorm(x;ord;dtype)``
     - any of the above combinations followed by a trailing output tensor
 
-   :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
-   :param double p: the optional order of the norm, default is 2.0. ``p=0w`` returns max absolute value of the elements, ``p=-0w`` calculates the min absolute value of the elements.
-   :param longs dim: the optional dimension(s) along which to calculate the norm
+   :param array,tensor x: input array or tensor :doc:`pointer <pointers>` of at least two dimensions
+   :param double ord: defines the kind of matrix norm to calculate, see table below. If no ``ord`` supplied, calculates the Frobenius norm
+   :param longs dim: by default, the norm is calculated across the final two dimensions, ``dim`` can be used to specify a different pair of dimensions
    :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
    :param tensor output: an optional tensor :doc:`pointer <pointers>` to use for function output
-   :return: Calculates the norm over the full input or the dimension(s) indicated, returns tensor if tensor input, else array returned. If output tensor given as final argument, result is written to this tensor and null return.
+   :return: Returns matrix norm(s) as tensor if tensor input else k array, with additional dimension(s), depending on the setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
+
+:attr:`ord` defines the matrix norm that is computed:
+
+======================   ========================================================
+:attr:`ord`              matrix norm
+======================   ========================================================
+`+inf`  (0w)             `max(sum(abs(x), dim=1))`
+`-inf` (-0w)             `min(sum(abs(x), dim=1))`
+`1.0`                    `max(sum(abs(x), dim=0))`
+`-1.0`                   `min(sum(abs(x), dim=0))`
+`2.0`                    largest singular value
+`-2.0`                   smallest singular value
+======================   ========================================================
 
 .. note::
 
-   Since both ``p`` and a single dimension are possible arguments, ``p`` must be given as a double to distinguish from a single dimension argument.
+   Since both ``ord`` and dimension are possible arguments, ``ord`` must be given as a double to distinguish from a long integer dimension argument.
 
 ::
 
-   q)x:2 2#1 2 3 4.0
+   q)show x:"e"$2 3#til 6
+   0 1 2
+   3 4 5
 
-   q)pnorm x
-   5.477226
+   q)mnorm(x;1.0)
+   7e
+   q)max sum x
+   7e
 
-   q)sqrt sum raze x*x
-   5.477226
+   q)mnorm(x;1.0;-1 -2)
+   12e
+   q)max sum flip x
+   12e
 
-   q)pnorm(x;-0w)
-   1f
-   q)pnorm(x;0w)
-   4f
-   q)(min;max)@\:abs raze x
-   1 4f
+   q)mnorm(x;-1.0;-1 -2)
+   3e
+   q)min sum flip x
+   3e
 
-   q)pnorm(x;1.0) /taxicab norm
-   10f
-   q)sum raze abs x
-   10f
+vnorm
+*****
 
-   q)pnorm(x;1) /2nd arg interpreted as dimension
-   2.236068 5
-   q)sqrt sum each x*x
-   2.236068 5
+Pytorch `torch.linalg.vector_norm <https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html>`_ is implemented as :func:`vnorm`,
+which computes the vector norm over the entire input or over the dimensions given in the ``dim`` parameter.
 
-   q)pnorm((x;10*x;100*x);1 2)
-   5.477226 54.77226 547.7226
+.. function:: vnorm(x;ord;dim;keepdim;dtype) -> vector norm
+.. function:: vnorm(x;ord;dim;keepdim;dtype;output) -> null
+   :noindex:
 
+   | Some of the allowable argument combinations:
 
+    - ``vnorm(x)``
+    - ``vnorm(x;ord)``
+    - ``vnorm(x;ord;keepdim;dtype)``
+    - ``vnorm(x;dim)``
+    - ``vnorm(x;keepdim)``
+    - ``vnorm(x;dim;dtype)``
+    - ``vnorm(x;dtype)``
+    - ``vnorm(x;ord;dtype)``
+    - any of the above combinations followed by a trailing output tensor
+
+   :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
+   :param double ord: defines the kind of vector norm to calculate, see table below. If no `ord` defined, defaults to ``2.0``
+   :param long dim: by default, the norm is calculated across all values, ``dim`` can be used to specify dimension(s) to calculate across
+   :param bool keepdim: default ``false``, set ``true`` to preserve the dimension of the input
+   :param symbol dtype: optional data type, e.g. ``double``, to use to convert input before calculations
+   :param tensor output: an optional tensor :doc:`pointer <pointers>` to use for function output
+   :return: Returns vector norm(s) as tensor if tensor input else k array, with additional dimension(s), depending on the setting of the ``keepdim`` flag.  If ``output`` tensor supplied, result is written to given tensor, null return.
+
+======================   ===============================
+:attr:`ord`              vector norm
+======================   ===============================
+`2.0` (default)          `2`-norm (see below)
+`+inf` (0w)              `max(abs(x))`
+`-inf` (-0w)             `min(abs(x))`
+`0.0`                    `sum(x != 0)`
+other `int` or `float`   `sum(abs(x)^{ord})^{(1 / ord)}`
+======================   ===============================
+
+.. note::
+
+   Since both ``ord`` and dimension are possible arguments, ``ord`` must be given as a double to distinguish from a long integer dimension argument.
+
+::
+
+   q)x:tensor(`arange;-4;5;`float)
+   q)return vnorm x
+   7.745967e
+
+   q)show tensor x
+   -4 -3 -2 -1 0 1 2 3 4e
+   q){sqrt sum x*x}tensor x
+   7.745967
+
+   q)return vnorm(x;`double)
+   7.745967
+
+   q)use[x]reshape(x;3 3)
+   q)return vnorm(x;-1;1b)
+   5.385165
+   1.414214
+   5.385165
+
+   q){sqrt sum x*x}'[tensor x]
+   5.385165 1.414214 5.385165

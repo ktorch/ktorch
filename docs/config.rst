@@ -5,56 +5,88 @@ Given a successful build of the ``ktorch.so`` interface library, it's possible t
 
 .. function:: config() -> strings
 .. function:: config(::) -> (null)
+   :noindex:
 
 	| Returns a list of strings containing the configuration output, or with null argument (as opposed to an empty list), prints the configuration to stderr
 
 
-On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as follows for PyTorch version 1.10.1:
+On a linux machine with dual Nvidia GTX 1080 gpu's, ``config`` output looks as follows for PyTorch version 2.0.0:
 
 ::
 
    q)config()                  / return strings
    "PyTorch built with:"
-   "  - GCC 7.3"
-   "  - C++ Version: 201402"
-   "  - Intel(R) Math Kernel Library Version 2020.0.0 Product Build 20191122 for..
-   "  - Intel(R) MKL-DNN v2.2.3 (Git Hash 7336ca9f055cf1bfa13efb658fe15dc9b41f07..
+   "  - GCC 9.3"
+   "  - C++ Version: 201703"
+   "  - Intel(R) oneAPI Math Kernel Library Version 2022.2-Product Build 2022080..
+   "  - Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c08..
    "  - OpenMP 201511 (a.k.a. OpenMP 4.5)"
    "  - LAPACK is enabled (usually provided by MKL)"
    "  - NNPACK is enabled"
    "  - CPU capability usage: AVX2"
-   "  - CUDA Runtime 11.3"
+   "  - CUDA Runtime 11.7"
+   "  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;ar..
+   "  - CuDNN 8.5"
+   "  - Magma 2.6.1"
+   "  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CUDA_VERSION=11.7, CU..
+   ..
 
    q)config[]                 / print to stderr
    PyTorch built with:
-     - GCC 7.3
-     - C++ Version: 201402
-     - Intel(R) Math Kernel Library Version 2020.0.0 Product Build 20191122 for Intel(R) 64 architecture applications
-     - Intel(R) MKL-DNN v2.2.3 (Git Hash 7336ca9f055cf1bfa13efb658fe15dc9b41f0740)
+     - GCC 9.3
+     - C++ Version: 201703
+     - Intel(R) oneAPI Math Kernel Library Version 2022.2-Product Build 20220804 for Intel(R) 64 architecture applications
+     - Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
      - OpenMP 201511 (a.k.a. OpenMP 4.5)
      - LAPACK is enabled (usually provided by MKL)
      - NNPACK is enabled
      - CPU capability usage: AVX2
-     - CUDA Runtime 11.3
+     - CUDA Runtime 11.7
      - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86
-     - CuDNN 8.2
-     - Magma 2.5.2
-     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CUDA_VERSION=11.3, CUDNN_VERSION=8.2.0, CXX_COMPILER=/opt/rh/devtoolset-7/root/usr/bin/c++, CXX_FLAGS=-Wno-deprecated-declarations -Wno-deprecated -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -fopenmp -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO -O2 -fPIC -Wno-narrowing -Wall -Wextra -Werror=return-type -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-unused-result -Wno-unused-local-typedefs -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-stringop-overflow -Wno-psabi -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -fdiagnostics-color=always -faligned-new -Wno-unused-but-set-variable -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_VERSION=1.10.1, USE_CUDA=ON, USE_CUDNN=ON, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=ON, USE_NNPACK=ON, USE_OPENMP=ON, 
+     - CuDNN 8.5
+     - Magma 2.6.1
+     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CUDA_VERSION=11.7, CUDNN_VERSION=8.5.0, CXX_COMPILER=/opt/rh/devtoolset-9/root/usr/bin/c++, CXX_FLAGS=-Wno-deprecated-declarations -D_GLIBCXX_USE_CXX11_ABI=0 -fabi-version=11 -Wno-deprecated -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOROCTRACER -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -O2 -fPIC -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=bool-operation -Wnarrowing -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-stringop-overflow -Wno-psabi -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -fdiagnostics-color=always -faligned-new -Wno-unused-but-set-variable -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_DISABLE_GPU_ASSERTS=ON, TORCH_VERSION=2.0.0, USE_CUDA=ON, USE_CUDNN=ON, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=ON, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, 
    
    ATen/Parallel:
-   	at::get_num_threads() : 6
-   	at::get_num_interop_threads() : 6
+	   at::get_num_threads() : 6
+	   at::get_num_interop_threads() : 6
    OpenMP 201511 (a.k.a. OpenMP 4.5)
-   	omp_get_max_threads() : 6
-   Intel(R) Math Kernel Library Version 2020.0.0 Product Build 20191122 for Intel(R) 64 architecture applications
-   	mkl_get_max_threads() : 6
-   Intel(R) MKL-DNN v2.2.3 (Git Hash 7336ca9f055cf1bfa13efb658fe15dc9b41f0740)
+	   omp_get_max_threads() : 6
+   Intel(R) oneAPI Math Kernel Library Version 2022.2-Product Build 20220804 for Intel(R) 64 architecture applications
+	   mkl_get_max_threads() : 6
+   Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
    std::thread::hardware_concurrency() : 12
    Environment variables:
-   	OMP_NUM_THREADS : [not set]
-   	MKL_NUM_THREADS : [not set]
+	   OMP_NUM_THREADS : [not set]
+	   MKL_NUM_THREADS : [not set]
    ATen parallel backend: OpenMP
-   
+
+The configuration on a macbook with the M2 chip:
+
+::
+
+   q)config[]
+   PyTorch built with:
+     - GCC 4.2
+     - C++ Version: 201703
+     - clang 13.1.6
+     - LAPACK is enabled (usually provided by MKL)
+     - NNPACK is enabled
+     - CPU capability usage: NO AVX
+     - Build settings: BLAS_INFO=accelerate, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_13.3.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DUSE_COREML_DELEGATE -O2 -fPIC -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=braced-scalar-init -Werror=range-loop-construct -Werror=bool-operation -Winconsistent-missing-override -Wnarrowing -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wvla-extension -Wno-range-loop-analysis -Wno-pass-failed -Wsuggest-override -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wconstant-conversion -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-constexpr-not-const -Wno-missing-braces -Wunused-lambda-capture -Wunused-local-typedef -Qunused-arguments -fcolor-diagnostics -fdiagnostics-color=always -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -DUSE_MPS -fno-objc-arc -Wno-unguarded-availability-new -Wno-unused-private-field -Wno-missing-braces -Wno-constexpr-not-const, LAPACK_INFO=accelerate, TORCH_DISABLE_GPU_ASSERTS=OFF, TORCH_VERSION=2.0.0, USE_CUDA=0, USE_CUDNN=OFF, USE_EIGEN_FOR_BLAS=ON, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=OFF, USE_MKLDNN=OFF, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=OFF, USE_ROCM=OFF, 
+
+   ATen/Parallel:
+	   at::get_num_threads() : 12
+	   at::get_num_interop_threads() : 12
+   OpenMP not found
+   MKL not found
+   MKLDNN not found
+   std::thread::hardware_concurrency() : 12
+   Environment variables:
+	   OMP_NUM_THREADS : [not set]
+	   MKL_NUM_THREADS : [not set]
+   ATen parallel backend: native thread pool
+
 .. _settings:
 
 .. index::  settings; k session settings
@@ -66,8 +98,11 @@ After reviewing the basic configuration that went into the build of ``libtorch``
 
 .. function:: setting() -> dictionary
 .. function:: setting(sym) -> value
+   :noindex:
 .. function:: setting(sym;bool) -> null
+   :noindex:
 .. function:: setting(sym;long) -> null
+   :noindex:
 
 	| Calling the function with null or an empty list returns a dictionary of setting names and values. Specifying a single symbol returns the current setting. Specifying a symbol and boolean or long scalar will reset the session setting if changes are possible for that setting.
 
@@ -78,10 +113,11 @@ After reviewing the basic configuration that went into the build of ``libtorch``
    openmp            | 1b
    threads           | 6
    interopthreads    | 6
+   mps               | 0b
    cuda              | 1b
    magma             | 1b
    cudnn             | 1b
-   cudnnversion      | 8200
+   cudnnversion      | 8500
    cudadevices       | 2
    benchmark         | 0b
    deterministic     | 0
@@ -159,6 +195,30 @@ and `tuning the number of threads <https://pytorch.org/docs/stable/notes/cpu_thr
    q)setting`threads,8   / 8 threads begins to slow things down
    q)\ts:100 mm(x;y;z)
    437 1120
+
+.. index::  settings; MPS
+
+MPS
+^^^
+
+The read-only setting ```mps`` indicates if `Apple's Metal Performance Shaders <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_ are available.
+
+On a macbook pro with the M2 max chip:
+
+::
+
+   q)setting[]
+   mkl               | 0b
+   openmp            | 0b
+   threads           | 12
+   interopthreads    | 12
+   mps               | 1b 
+   cuda              | 0b
+   magma             | 0b
+   cudnn             | 0b
+   cudnnversion      | 0N
+   cudadevices       | 0
+   ..
 
 .. index::  settings; CUDA
 
@@ -378,6 +438,7 @@ Returns the version of the libtorch libraries from PyTorch. Return numeric versi
 
 .. function:: version() -> string
 .. function:: version(::) -> double
+   :noindex:
 
 ::
 

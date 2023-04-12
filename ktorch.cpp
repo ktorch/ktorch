@@ -1795,7 +1795,7 @@ KAPI cudadevice(K x) {
 }
 
 static K defaultdevice() {
- auto d=Device(env().cuda ? DeviceType::CUDA : DeviceType::CPU);
+ auto d=Device(env().cuda ? DeviceType::CUDA : (torch::globalContext().hasMPS() ? DeviceType::MPS : DeviceType::CPU));
  for(const auto& c:env().device)
   if(std::get<1>(c)==d) return ks(std::get<0>(c));
  return KERR("unable to get default device");
@@ -1938,8 +1938,11 @@ static K getsetting(Setting s) {
  switch(s) {
   case Setting::mkl:                return kb(torch::hasMKL());
   case Setting::openmp:             return kb(torch::hasOpenMP());
-  case Setting::threads:            return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
-  case Setting::interopthreads:     return kj(torch::hasOpenMP() ? torch::get_num_interop_threads() : 1);
+  case Setting::threads:            return kj(torch::get_num_threads());
+//case Setting::threads:            return kj(torch::hasOpenMP() ? torch::get_num_threads() : 1);
+  case Setting::interopthreads:     return kj(torch::get_num_interop_threads());
+//case Setting::interopthreads:     return kj(torch::hasOpenMP() ? torch::get_num_interop_threads() : 1);
+  case Setting::mps:                return kb(torch::globalContext().hasMPS());
   case Setting::cuda:               return kb(torch::cuda::is_available());
   case Setting::magma:              return kb(torch::hasMAGMA());
   case Setting::cudnn:              return kb(torch::cuda::cudnn_is_available());
@@ -2350,7 +2353,7 @@ static K modulehelp(bool b) {  // true to return table of modules, else table of
 }
 
 static K modulehelp(bool b,Cast c,K d) {
- for(const auto& z:moduleref(b))
+ for(const auto& z:moduleref(b)) {
   if(std::get<1>(z)==c) {
     K v=knk(7,
      ks(std::get<0>(z)),           // module symbol
@@ -2362,6 +2365,7 @@ static K modulehelp(bool b,Cast c,K d) {
      d ? d : (b ? modexample(c) : lossexample(c))); // options or example if none given
     return xD(modulekeys(),v);
    }
+  }
   TORCH_ERROR("help: unable to resolve module enumeration: ",(I)c);
 }
 
@@ -2435,6 +2439,7 @@ static S helptopic(Help h) {
 static K helpsym(void) {
  K k=ktn(KS,0), v=ktn(0,0);
  js(&k, helptopic(Help::backward));  jk(&v, kp((S)"backward calculation modes"));
+ js(&k, helptopic(Help::device));    jk(&v, kp((S)"PyTorch device mapped to random seed"));
  js(&k, helptopic(Help::dtype));     jk(&v, kp((S)"PyTorch tensor types mapped to k types"));
  js(&k, helptopic(Help::ktype));     jk(&v, kp((S)"k types mapped to PyTorch tensor types"));
  js(&k, mapclass(Class::loss));      jk(&v, kp((S)"loss types, module options & forward args"));
@@ -2464,6 +2469,7 @@ K khelp(K x,bool h,const char *e) {
    } else if((t=helptopic(s)) != Help::undefined) {
     switch(t) {
      case Help::backward: return backmode();
+     case Help::device:   return seedmap();
      case Help::dtype:    return dtypes();
      case Help::ktype:    return ktypes();
      default: TORCH_ERROR("help topic: ",s," not implemented");
@@ -2575,10 +2581,15 @@ static void kinit() {
  d.emplace_back(cs("cpu"),Device(DeviceType::CPU));     //build map from sym->device
  if(e.cuda) {
   d.emplace_back(cs("cuda"),Device(DeviceType::CUDA));  //current CUDA device, `cuda
-  for(I i=0; i<e.cuda; ++i) {
-   sprintf(c,"cuda:%d",i);                              //device 0-n, e.g. `cuda:0
+  for(I i=0; i<e.cuda; ++i) {                           //device 0-n, e.g. `cuda:0
+   TORCH_CHECK(sizeof(c)>snprintf(c,sizeof(c),"cuda:%d",i), "buffer too small for `cuda:",i,"`");
    d.emplace_back(ss(c),Device(DeviceType::CUDA,i));
   }
+ }
+ if(torch::globalContext().hasMPS()) {
+  d.emplace_back(cs("mps"),Device(DeviceType::MPS));    //Mac Metal Performance Shading
+  TORCH_CHECK(sizeof(c)>snprintf(c,sizeof(c),"mps:%d",0), "buffer too small for `mps:0`");
+  d.emplace_back(ss(c),Device(DeviceType::MPS,0));
  }
 }
 

@@ -37,8 +37,8 @@ These symbols can be specified in any order to set the properties of a tensor, e
 The :func:`options` function will display the defaults usually in effect if no argument given.  Early versions of PyTorch allowed default attributes to be reset, but current versions only allow the default data type to be changed.
 
 .. function:: options() -> k dictionary
-
 .. function:: options(ptr) -> k dictionary
+   :noindex:
 
    | Dictionary of default attributes for tensor creation (empty arg) or values of the attributes for given tensor
 
@@ -46,7 +46,9 @@ The :func:`dtype` function will get/set the default data type or return the data
 
 .. function:: dtype() -> sym
 .. function:: dtype(sym) -> null
+   :noindex:
 .. function:: dtype(ptr) -> sym
+   :noindex:
 
    | With an empty argument, :func:`dtype` returns the default data type, with a sym data type, it sets the default data type and with a tensor :doc:`pointer <pointers>`, the function returns the tensor's datatype.
    
@@ -109,7 +111,9 @@ The api function ``tensor`` is used to create tensors from k values and retrieve
    | Return a k value from an :doc:`api-pointer <pointers>` to a previously allocated tensor
 
 .. function:: tensor(value) -> tensor pointer
+   :noindex:
 .. function:: tensor(value;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor from k value.
 
@@ -285,8 +289,11 @@ The ``tensor`` function can also be used to retrieve values from a previously cr
 
 .. function:: tensor(ptr) -> value
 .. function:: tensor(ptr;ind) -> value
+   :noindex:
 .. function:: tensor(ptr;dim;ind) -> value
+   :noindex:
 .. function:: tensor(ptr;flag;dim;ind) -> value
+   :noindex:
 
    | Return a k value from an :doc:`api-pointer <pointers>` to a previously allocated tensor
 
@@ -384,8 +391,8 @@ Return tensor filled with `zeros <https://pytorch.org/docs/stable/torch.html#tor
 and uninitialized (`empty <https://pytorch.org/docs/stable/torch.html#torch.empty>`_).
 
 .. function:: tensor(mode;size) -> tensor pointer
-
 .. function:: tensor(mode;size;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode, size  and optional attribute(s).
 
@@ -398,8 +405,8 @@ Alternate form using an input tensor to supply size, i.e. size will be derived f
 similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/stable/torch.html#torch.ones_like>`_.
 
 .. function:: tensor(mode;in-tensor) -> tensor pointer
-
 .. function:: tensor(mode;in-tensor;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
@@ -411,6 +418,7 @@ similar to PyTorch creation function `torch.ones_like <https://pytorch.org/docs/
 Alternate form using an output tensor instead of options that control data type, device, etc.
 
 .. function:: tensor(mode;size;out-tensor) -> null
+   :noindex:
 
    :param sym mode: one of ```zeros``, ```ones``, ```empty``.
    :param long size: scalar/list specifiying size of array.
@@ -443,6 +451,7 @@ Creating tensor with single value: `full <https://pytorch.org/docs/stable/torch.
 
 .. function:: tensor(mode;size;value) -> tensor pointer
 .. function:: tensor(mode;size;value;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode = ```full``, size, fill value  and optional attribute(s).
 
@@ -495,6 +504,7 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 
 .. function:: tensor(mode;size) -> tensor pointer
 .. function:: tensor(mode;size;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode, size  and optional attribute(s).
 
@@ -506,7 +516,9 @@ Parameters and function calls are as above for mode of ```zeros``, ```ones`` and
 Alternate form using an input tensor to supply size, i.e. size will be derived from the input tensor,
 
 .. function:: tensor(mode;in-tensor) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;in-tensor;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode and input tensor whose size will be used to create new tensor, along with optional tensor attribute(s). 
 
@@ -518,6 +530,7 @@ Alternate form using an input tensor to supply size, i.e. size will be derived f
 Alternate form using an output tensor instead of options that control data type, device, etc.
 
 .. function:: tensor(mode;size;out-tensor) -> null
+   :noindex:
 
    :param sym mode: one of ```rand`` or ```randn``.
    :param long size: scalar/list specifiying size of array.
@@ -544,7 +557,9 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
 
 .. function:: tensor(mode;high;size) -> tensor pointer
 .. function:: tensor(mode;low;high;size) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;low;high;size;options) -> tensor pointer
+   :noindex:
 
    | Create a tensor given mode, range and size, along with optional tensor attributes.
 
@@ -558,8 +573,11 @@ Called by specifying low, high and size, or high and size (low defaults to zero)
 An alternate form where an input tensor is supplied to provide the size of the created tensor. Tensor creation options will default to those of the input tensor unless explicitly supplied in the final argument:
 
 .. function:: tensor(mode;in-tensor;high) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;in-tensor;low;high) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;in-tensor;low;high;options) -> tensor pointer
+   :noindex:
 
    :param ptr in-tensor: an :doc:`api-pointer <pointers>` to a previously allocated tensor -- its size will determine size of newly created tensor. Device, data type and layout also default to those of the input tensor but can be overwritten by explicit options given in last argument.
    :return: An :doc:`api-pointer <pointers>` to the allocated tensor.
@@ -567,7 +585,9 @@ An alternate form where an input tensor is supplied to provide the size of the c
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;high;size;out-tensor) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;low;high;size;out-tensor) -> tensor pointer
+   :noindex:
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -609,6 +629,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 
 .. function:: tensor(mode;n) -> tensor pointer
 .. function:: tensor(mode;n;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
@@ -618,6 +639,7 @@ Returns `random permutations <https://pytorch.org/docs/stable/generated/torch.ra
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;n;out-tensor) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```randperm``.
    :param long n: return random permutation of integers from 0-n-1 given n.
@@ -652,8 +674,11 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 
 .. function:: tensor(mode;end) -> tensor pointer
 .. function:: tensor(mode;start;end) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;start;end;step) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;start;end;step;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```arange`` or ```range``.
    :param long start: starting value for the set of points, default is 0 for mode of ```arange``, must be given for ```range``.
@@ -665,6 +690,7 @@ return a 1-dimensional tensor of size (end-start)/step size, with start defaulti
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;step;out-tensor) -> tensor pointer
+   :noindex:
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -696,7 +722,9 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
 
 .. function:: tensor(mode;start;end;steps) -> tensor pointer
 .. function:: tensor(mode;start;end;steps;base) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;start;end;steps;base;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```linspace`` or ```logspace``.
    :param long start: starting value for the set of points.
@@ -709,6 +737,7 @@ create 1-dimensional tensors evenly spaced from ``start`` to ``end``, inclusive 
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;start;end;steps;base;out-tensor) -> tensor pointer
+   :noindex:
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to size given and attributes of the output tensor.
@@ -741,7 +770,9 @@ in PyTorch returns a 2-dimensional tensor with ones on the diagonal and zeros el
 
 .. function:: tensor(mode;n) -> tensor pointer
 .. function:: tensor(mode;n;m) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;n;m;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```eye``.
    :param long n: number of rows in the matrix.
@@ -752,7 +783,9 @@ in PyTorch returns a 2-dimensional tensor with ones on the diagonal and zeros el
 The function call can also use a final argument of a previously allocated tensor as an output tensor:
 
 .. function:: tensor(mode;n;out-tensor) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;n;m;out-tensor) -> tensor pointer
+   :noindex:
 
    :param ptr out-tensor: an :doc:`api-pointer <pointers>` to a previously allocated output tensor.
    :return: null return, resets values according to rows or rows and columns given and attributes of the output tensor.
@@ -782,8 +815,8 @@ Complex tensor
 A tensor of complex numbers can be created by supplying the real and imaginary parts, along with optional attributes. See :ref:`section on complex tensors <complex>` for other methods and details on complex tensors.  The tensor creation method below is meant to match PyTorch's `torch.complex <https://pytorch.org/docs/stable/generated/torch.complex.html>`_ function.
 
 .. function:: tensor(mode;real;imag) -> tensor pointer
-
 .. function:: tensor(mode;real;imag;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```complex``.
    :param numeric real: real part of the complex tensor as a k value.
@@ -817,12 +850,13 @@ A tensor of complex numbers can be created by supplying the real and imaginary p
 An alternate form of the above function call uses a single k value to create the complex tensor, with real and imaginary values across the first or last dimension of the given array.
 
 .. function:: tensor(mode;value) -> tensor pointer
-
+   :noindex:
 .. function:: tensor(mode;value;flag) -> tensor pointer
-
+   :noindex:
 .. function:: tensor(mode;value;options) -> tensor pointer
-
+   :noindex:
 .. function:: tensor(mode;value;flag;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```complex``.
    :param numeric value: real & imaginary part of the complex tensor as a k value.
@@ -867,8 +901,11 @@ A sparse tensor can be created by supplying indices and values, along with optio
 
 .. function:: tensor(mode;ind;val) -> tensor pointer
 .. function:: tensor(mode;ind;val;options) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;ind;val;size) -> tensor pointer
+   :noindex:
 .. function:: tensor(mode;ind;val;size;options) -> tensor pointer
+   :noindex:
 
    :param sym mode: ```sparse``.
    :param long ind: 2-d array of indices, each row corresponds to sparse dimension, each column for the non-zero values.

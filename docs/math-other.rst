@@ -57,6 +57,7 @@ cumprod
 
 .. function:: cumprod(x;dim;dtype) -> cumulative products
 .. function:: cumprod(x;dim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -104,6 +105,7 @@ Function :func:`cumsum` takes the same arguments as :func:`cumprod` and returns 
 
 .. function:: cumsum(x;dim;dtype) -> cumulative sums
 .. function:: cumsum(x;dim;dtype;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -126,7 +128,9 @@ diag
 
 .. function:: diag(input) -> extracted diagonal or created square matrix
 .. function:: diag(input;offset) -> extracted diagonal or created square matrix
+   :noindex:
 .. function:: diag(input;offset;output) -> null
+   :noindex:
 
    :param array,tensor input: input list/array or tensor :doc:`pointer <pointers>`
    :param long offset: the optional offset from which to extract or place the diagonal, default=0
@@ -168,6 +172,7 @@ diagflat
 
 .. function:: diagflat(input) -> square matrix
 .. function:: diagflat(input;offset) -> square matrix
+   :noindex:
 
    :param array,tensor input: input list/array or tensor :doc:`pointer <pointers>`
    :param long offset: the optional offset for placing the diagonal, default=0
@@ -337,6 +342,7 @@ Elements lower than min and higher than max are ignored.
 
 .. function:: histc(input;bins;low;high) -> counts
 .. function:: histc(input;bins;low;high;output) -> null
+   :noindex:
 
    | Allowable argument combinations:
 
@@ -383,6 +389,7 @@ renorm
 
 .. function:: renorm(input;p;dim;maxnorm) -> renormalized input
 .. function:: renorm(input;p;dim;maxnorm;output) -> null
+   :noindex:
 
    :param array,tensor input: input array or tensor :doc:`pointer <pointers>` of at least 2 dimensions
    :param double p:  the power for the norm computation
@@ -414,7 +421,7 @@ roll
 to roll the input along the given dimension(s).
 If dimensions are not specified, the input will be flattened before rolling and then restored to the original shape.
 
-.. function:: renorm(input;shifts;dims) -> rolled input
+.. function:: roll(input;shifts;dims) -> rolled input
 
    :param array,tensor input: input array or tensor :doc:`pointer <pointers>`
    :param long shift: the number of places by which the elements of the input are shifted. For multiple shifts, ``dim`` must specifiy corresponding dimensions.
@@ -456,6 +463,7 @@ tensordot
 
 .. function:: tensordot(x;y;dim) -> product
 .. function:: tensordot(x;y;dim1;dim2) -> product
+   :noindex:
 
    :param array,tensor x: input array or tensor :doc:`pointer <pointers>`
    :param array,tensor y: input array or tensor :doc:`pointer <pointers>`
@@ -522,7 +530,9 @@ which resets all but the lower triangular part of the input matrix (2-D tensor) 
 
 .. function:: tril(input) -> input with zeros for values not part of lower triangle
 .. function:: tril(input;offset) -> input with zeros for values not part of lower triangle as of offset
+   :noindex:
 .. function:: tril(input;offset;output) -> null
+   :noindex:
 
    :param array,tensor input: input or tensor :doc:`pointer <pointers>` of 2-d matrix or batches of 2-d matrices
    :param long offset: the optional offset from which to determine the lower triangle, default=0
@@ -575,7 +585,9 @@ which resets all but the upper triangular part of the input matrix (2-D tensor) 
 
 .. function:: triu(input) -> input with zeros for values not part of upper triangle
 .. function:: triu(input;offset) -> input with zeros for values not part of upper triangle as of offset
+   :noindex:
 .. function:: triu(input;offset;output) -> null
+   :noindex:
 
    :param array,tensor input: input or tensor :doc:`pointer <pointers>` of 2-d matrix or batches of 2-d matrices
    :param long offset: the optional offset from which to determine the upper triangle, default=0

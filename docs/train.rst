@@ -358,8 +358,11 @@ Tensor
 
 .. function:: backward(tensor) -> null
 .. function:: backward(tensor;mode) -> null
+   :noindex:
 .. function:: backward(tensor;gradtensor) -> null
+   :noindex:
 .. function:: backward(tensor;gradtensor;mode) -> null
+   :noindex:
 
    :param pointer tensor: an :doc:`api-pointer <pointers>` to a tensor, vector or dictionary of tensors.
    :param pointer gradtensor: an :doc:`api-pointer <pointers>` to tensor(s) or k arrays for each non-scalar tensor given in 1st arg.
@@ -430,6 +433,7 @@ it is possible to perform all the following calculations, either separately, or 
 
 .. function:: backward(model) -> loss scalar
 .. function:: backward(model;inputs;targets) -> loss scalar
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param tensor inputs: tensor(s) or k array(s) with model inputs, e.g. images for vision models, sequences for transformers, etc.
@@ -566,8 +570,11 @@ Clip norm
 
 .. function:: clip(tensors;maxnorm) -> previous norm
 .. function:: clip(tensors;maxnorm;normtype) -> previous norm
+   :noindex:
 .. function:: clip(tensors;maxnorm;groupflag) -> previous norm
+   :noindex:
 .. function:: clip(tensors;maxnorm;normtype;groupflag) -> previous norm
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to a previously created tensor, vector or dictionary of tensors, or any of: module, optimizer or model.
    :param double maxnorm: maximum norm of the gradients of the supplied tensors.
@@ -634,6 +641,7 @@ step
 
 .. function:: step(optimizer) -> null
 .. function:: step(model) -> null
+   :noindex:
 
    :param pointer optimizer: an :doc:`pointer <pointers>` to a previously created :ref:`optimizer <optimizer>`.
    :param pointer model: a :doc:`pointer <pointers>` to a previously created :ref:`model <model>`.
@@ -671,6 +679,7 @@ If the model has defined gradient clipping, this is also performed after the bac
 
 .. function:: backstep(model) -> loss scalar
 .. function:: backstep(model;inputs;targets) -> loss scalar
+   :noindex:
 
    :param pointer model: a :doc:`pointer <pointers>` to a previously created :ref:`model <model>`.
    :param tensor inputs: tensor(s) or k array(s) with model inputs, e.g. images for vision models, sequences for transformers, etc.
@@ -748,6 +757,7 @@ Get options
 
 .. function:: train(model) -> k dictionary of all option names and values
 .. function:: train(model;names) -> k value or dictionary of given option names and thier corresponding values
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param symbol names: a single symbol or list of symbols, e.g. ```shuffle`` or ```batchsize`shuffle``.
@@ -783,6 +793,7 @@ Set options
    :return: options matching dictionary keys are reset to mapped values, null return.
 
 .. function:: train(model;names;values) -> null
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param symbol names: a single symbol or list of symbols, e.g. ```shuffle`` or ```batchsize`shuffle``.
@@ -853,6 +864,7 @@ The :func:`train` and :func:`test` functions are also used to specify inputs and
 
 .. function:: train(model;inputs;targets) -> number of batches
 .. function:: test(model;inputs;targets) -> number of batches
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param tensor inputs: input(s) can be a single tensor or a set of tensor(s) or k arrays.
@@ -1125,7 +1137,9 @@ the known labels or classes of the inputs used to compare model outputs to compu
    :return: Returns the data defined for training/testing targets as k array(s), one per tensor.
 
 .. function:: target(model;targets) -> number of batches
+   :noindex:
 .. function:: testtarget(model;targets) -> number of batches
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :return: Defines the targets for training/testing and returns the number of batches given target size(s) and ``batchsize`` setting.
@@ -1138,6 +1152,7 @@ shuffle
 
 .. function:: shuffle(tensors) -> null
 .. function:: shuffle(tensors;dim) -> null
+   :noindex:
 
    :param pointer tensors: an :doc:`api-pointer <pointers>` to a previously created tensor, vector or dictionary of tensors, or a model
    :param long dim: the dimension where the reordering will be applied, default is ``0`` (models currently only implemented to shuffle across 1st dimension).
@@ -1276,8 +1291,8 @@ The model batching will restore the full size of the underlying tensors once the
 i.e. when the call to the batching function returns ``false``, the tensors are reset to their full size.
 But if the batching is stopped before the final batch, it may be necessary to restore the tensors to their full size explicitly.
 
-.. function:: restore(model) -> full size of training tensors along first dimension
-.. function:: testbatch(model) -> full size of test tensors along first dimension
+.. function:: restore(model) -> restore full size of training tensors along first dimension
+.. function:: testrestore(model) -> restore full size of test tensors along first dimension
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :return: Resets any subset of training/testing data and restores all data tensors to full size, returning size of first dimension.
@@ -1374,6 +1389,7 @@ run
 An alternate form allows for specification of inputs and targets:
 
 .. function:: run(model;inputs;targets) -> metrics
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param tensor inputs: tensor(s) or k array(s) with model inputs, e.g. images for vision models, sequences for transformers, etc.
@@ -1421,6 +1437,7 @@ test data will fit in available memory for each batch.
 An alternate form allows for specification of inputs and targets:
 
 .. function:: testrun(model;inputs;targets) -> metrics
+   :noindex:
 
    :param pointer model: an :doc:`api-pointer <pointers>` to a previously created :ref:`model <model>`.
    :param tensor inputs: tensor(s) or k array(s) with model inputs, e.g. images for vision models, sequences for transformers, etc.
