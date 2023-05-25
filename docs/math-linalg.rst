@@ -953,7 +953,7 @@ Inverses
 
 inverse
 ^^^^^^^
-`torch.linalg.inv <https://pytorch.org/docs/stable/generated/torch.inv.html>`_ is implemented by :func:`inverse`.
+`torch.linalg.inv <https://pytorch.org/docs/2.0/generated/torch.linalg.inv.html>`_ is implemented by :func:`inverse`.
 
 .. function:: inverse(matrix) -> k array
 .. function:: inverse(matrix;output) -> null

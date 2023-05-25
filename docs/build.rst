@@ -7,7 +7,7 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
-The k interface is built with the latest version of PyTorch as of March 2023, labeled ``Stable(2.0.0)``.
+The k interface is built with the latest version of PyTorch as of May 2023, labeled ``Stable(2.0.1)``.
 
 For Linux, the zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 200 megabytes for CPU-only.
@@ -31,12 +31,12 @@ Download and unzip the file for CUDA 11.7 with the pre-c++11  ABI:
 
 ::
 
-   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.0%2Bcu117.zip
-   > ls -lh libtorch-sha*.zip
-   -rw-rw-r-- 1 t t 1.8G Mar 14 11:26 libtorch-shared-with-deps-2.0.0+cu117.zip
+   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.1%2Bcu117.zip
+   > ls -lh libtorch-shared-with-deps-2.0.1+cu117.zip
+   -rw-rw-r-- 1 t t 1.8G May  5 09:45 libtorch-shared-with-deps-2.0.1+cu117.zip
 
-   > unzip libtorch-shared-with-deps-2.0.0+cu117.zip 
-   Archive:  libtorch-shared-with-deps-2.0.0+cu117.zip
+   > unzip libtorch-shared-with-deps-2.0.1+cu117.zip 
+   Archive:  libtorch-shared-with-deps-2.0.1+cu117.zip
       creating: libtorch/
       creating: libtorch/lib/
       ..
@@ -74,29 +74,29 @@ Assuming the libtorch libraries are in ~/libtorch and the ktorch source in ~/kto
 PyTorch zip files
 *****************
 
-The libtorch.zip files from PyTorch are saved by version: when version 2.0.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
+The libtorch.zip files from PyTorch are saved by version: when version 2.0.1 is no longer the latest version, it is still possible to retrieve the version-specific files:
 
 - Linux CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.0.0%2Bcpu.zip
-   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.0.1%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcpu.zip
 
 - Linux CUDA 11.7
-   - https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.0%2Bcu117.zip
-   - https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu117.zip
+   - https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.1%2Bcu117.zip
+   - https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcu117.zip
 
 - Linux CUDA 11.8
-   - https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.0%2Bcu118.zip
-   - https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu118.zip
+   - https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.1%2Bcu118.zip
+   - https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcu118.zip
 
 - MacOS CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.0.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.1.zip
 
 - Release Notes
    - https://github.com/pytorch/pytorch/releases
-   - https://github.com/pytorch/pytorch/releases/tag/v2.0.0
+   - https://github.com/pytorch/pytorch/releases/tag/v2.0.1
 
 - Source
-   - https://github.com/pytorch/pytorch/archive/refs/tags/v2.0.0.zip
+   - https://github.com/pytorch/pytorch/archive/refs/tags/v2.0.1.zip
 
 Makefile
 ********
@@ -187,15 +187,13 @@ installing some prerequisites:
 ::
 
    brew install cmake
+   pip install pyyaml
 
-   conda install -c anaconda yaml
-   conda install pyyaml
-
-Then download the source code for PyTorch as of release ``2.0.0``:
+Then download the source code for PyTorch as of release ``2.0.1``:
 
 ::
 
-   git clone -b v2.0.0 --recurse-submodule https://github.com/pytorch/pytorch.git
+   > git clone -b v2.0.1 --recurse-submodule https://github.com/pytorch/pytorch.git
 
    > mkdir pytorch-build
    > cd pytorch-build
@@ -222,20 +220,20 @@ Sample builds
 MacOS, Intel CPU
 ^^^^^^^^^^^^^^^^
 
-First step, get the CPU-only version of libtorch ``2.0.0`` for MacOS:
+First step, get the CPU-only version of libtorch ``2.0.1`` for MacOS:
 
 ::
 
    > cd ~
-   > wget -q https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.0.zip
+   > wget -q https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.1.zip
 
-   > ls -lh libtorch-macos-2.0.0.zip 
-   -rw-r--r--  1 t  staff   156M Mar 14 11:20 libtorch-macos-2.0.0.zip
+   > ls -lh libtorch-macos-2.0.1.zip 
+   -rw-r--r--  1 t  staff   160M May  5 09:44 libtorch-macos-2.0.1.zip
 
    > rm -rf ~/libtorch  # erase any previous version
 
-   > unzip libtorch-macos-2.0.0.zip 
-   Archive:  libtorch-macos-2.0.0.zip
+   > unzip libtorch-macos-2.0.1.zip 
+   Archive:  libtorch-macos-2.0.1.zip
       creating: libtorch/
       creating: libtorch/bin/
      inflating: libtorch/build-hash     
@@ -265,9 +263,9 @@ Build using make:
    ..
    clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/libtorch/lib -l torch -Wl,-rpath /Users/t/libtorch/lib
 
-   real	6m53.927s
-   user	6m33.005s
-   sys	0m15.860s
+   real	6m32.023s
+   user	6m18.607s
+   sys	0m12.748s
 
 Faster compile (1-2 minutes) is possible with the -j option:
 
@@ -281,7 +279,7 @@ Faster compile (1-2 minutes) is possible with the -j option:
    sys	0m22.923s
 
    > ls -lh ./ktorch.so
-   -rwxr-xr-x  1 t  staff   4.3M Apr 10 09:34 ./ktorch.so*
+   -rwxr-xr-x  1 t  staff   4.3M May 22 15:11 ktorch.so*
 
 Check if the ``ktorch.so`` library can be loaded from within a k session:
 
@@ -324,8 +322,8 @@ Checking the configuration:
      - Intel(R) MKL-DNN v2.7.3 (Git Hash 6dbeffbae1f23cbbeae17adb7b5b13f1f37c080e)
      - LAPACK is enabled (usually provided by MKL)
      - NNPACK is enabled
-     - CPU capability usage: NO AVX
-     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_13.3.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DUSE_COREML_DELEGATE -O2 -fPIC -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=braced-scalar-init -Werror=range-loop-construct -Werror=bool-operation -Winconsistent-missing-override -Wnarrowing -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wvla-extension -Wno-range-loop-analysis -Wno-pass-failed -Wsuggest-override -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wconstant-conversion -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-constexpr-not-const -Wno-missing-braces -Wunused-lambda-capture -Wunused-local-typedef -Qunused-arguments -fcolor-diagnostics -fdiagnostics-color=always -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -DUSE_MPS -fno-objc-arc -Wno-unguarded-availability-new -Wno-unused-private-field -Wno-missing-braces -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX512=1, TORCH_DISABLE_GPU_ASSERTS=OFF, TORCH_VERSION=2.0.0, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=OFF, USE_ROCM=OFF, 
+     - CPU capability usage: AVX2
+     - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CXX_COMPILER=/Applications/Xcode_13.3.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++, CXX_FLAGS= -Wno-deprecated -fvisibility-inlines-hidden -Wno-deprecated-declarations -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DUSE_FBGEMM -DUSE_QNNPACK -DUSE_PYTORCH_QNNPACK -DUSE_XNNPACK -DUSE_PYTORCH_METAL_EXPORT -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DUSE_COREML_DELEGATE -O2 -fPIC -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=braced-scalar-init -Werror=range-loop-construct -Werror=bool-operation -Winconsistent-missing-override -Wnarrowing -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wunused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wvla-extension -Wno-range-loop-analysis -Wno-pass-failed -Wsuggest-override -Wno-error=pedantic -Wno-error=redundant-decls -Wno-error=old-style-cast -Wconstant-conversion -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-constexpr-not-const -Wno-missing-braces -Wunused-lambda-capture -Wunused-local-typedef -Qunused-arguments -fcolor-diagnostics -fdiagnostics-color=always -fno-math-errno -fno-trapping-math -Werror=format -Werror=cast-function-type -DUSE_MPS -fno-objc-arc -Wno-unguarded-availability-new -Wno-unused-private-field -Wno-missing-braces -Wno-constexpr-not-const, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_DISABLE_GPU_ASSERTS=OFF, TORCH_VERSION=2.0.1, USE_CUDA=OFF, USE_CUDNN=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=OFF, USE_ROCM=OFF, 
    
    ATen/Parallel:
 	   at::get_num_threads() : 4
@@ -388,7 +386,7 @@ Once the library is built, it can be tested with some examples:
 MacOS, M1/M2
 ^^^^^^^^^^^^
 
-As of release ``2.0.0``, PyTorch does not release the c++ libraries compiled for Apple's new M1 & M2 chips.
+As of release ``2.0.1``, PyTorch does not release the c++ libraries compiled for Apple's new M1 & M2 chips.
 It is necessary to :ref:`build these libraries from source <libtorch>` or link to the c++ libraries that are part of a python installation for Mac.
 
 Once the libtorch c++ libraries are built, clone the k api repository.
@@ -399,7 +397,7 @@ Once the libtorch c++ libraries are built, clone the k api repository.
    > git clone https://github.com/ktorch/ktorch.git
    Cloning into 'ktorch'...
 
-Assuming the libtorch c++ libraries and include files are in the default dir, ``~/pytorch-install``:
+Assuming the libtorch c++ libraries and include files are in the default install dir, ``~/pytorch-install``:
 
 ::
 
@@ -414,7 +412,7 @@ For example, using the conda install from `PyTorch <https://pytorch.org/get-star
 
 ::
 
-   conda install pytorch torchvision torchaudio -c pytorch
+   > conda install pytorch torchvision torchaudio -c pytorch
 
 After the install, search for the main library:
 
@@ -423,20 +421,41 @@ After the install, search for the main library:
    > find ~/miniconda3/lib -name libtorch.dylib
    /Users/t/miniconda3/lib/python3.10/site-packages/torch/lib/libtorch.dylib
 
-Using the c++ libraries and include files that were included as part of the python install:
+
+Using the c++ libraries and include files that were included as part of the python install via conda:
 
 ::
 
-   make TORCH=/Users/t/miniconda3/lib/python3.10/site-packages/torch
+   > make TORCH=/Users/t/miniconda3/lib/python3.10/site-packages/torch
    clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include/torch/csrc/api/include   -c -o ktorch.o ktorch.cpp
-   clang -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3 -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include -I /Users/t/miniconda3/lib/python3.10/site-packages/torch/include/torch/csrc/api/include   -c -o ktensor.o ktensor.cpp
    ..
-   clang -o ktorch.so ktorch.o ktensor.o kmath.o knn.o kloss.o kopt.o kmodel.o ktest.o knn/act.o knn/attention.o knn/callback.o knn/conv.o knn/distance.o knn/drop.o knn/embed.o knn/fns.o knn/fold.o knn/fork.o knn/linear.o knn/nbeats.o knn/norm.o knn/onehot.o knn/pad.o knn/recur.o knn/reshape.o knn/residual.o knn/select.o knn/seq.o knn/squeeze.o knn/transform.o knn/transformer.o knn/upsample.o knn/util.o kopt/lamb.o -undefined dynamic_lookup -shared -L/Users/t/miniconda3/lib/python3.10/site-packages/torch/lib -l torch -Wl,-rpath /Users/t/miniconda3/lib/python3.10/site-packages/torch/lib
-
-   ls -lh ktorch.so
-   -rwxr-xr-x  1 t  staff   4.0M Apr 11 12:10 ktorch.so
 
 Build time is around 2 minutes on a macbook pro with the M2 max chip; down to about 25 seconds with the parallel compilation flag, e.g. make -j ..
+
+Using pip instead of conda:
+
+::
+
+   > pip3 install torch torchvision torchaudio
+
+   > pip3 show torch|grep ^Location:
+   Location: /opt/homebrew/lib/python3.11/site-packages
+
+   > make -sj TORCH=/opt/homebrew/lib/python3.11/site-packages/torch
+
+   > ls -lh ktorch.so
+   -rwxr-xr-x  1 t  staff   4.0M May 25 08:55 ktorch.so*
+
+   > otool -L ktorch.so
+   ktorch.so:
+   	ktorch.so (compatibility version 0.0.0, current version 0.0.0)
+   	@rpath/libtorch.dylib (compatibility version 0.0.0, current version 0.0.0)
+   	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.100.3)
+
+   > otool -l ktorch.so |grep LC_RPATH -A 2
+             cmd LC_RPATH
+         cmdsize 72
+            path /opt/homebrew/lib/python3.11/site-packages/torch/lib (offset 12)
 
 Loading the api functions into q:
 
@@ -483,18 +502,18 @@ Loading the api functions into q:
 Linux, CUDA 11.7
 ^^^^^^^^^^^^^^^^
 
-Build in ``/tmp``, using the libtorch zip file for Linux, version ``2.0.0``, CUDA 11.7 with the newer c++ ABI.
+Build in ``/tmp``, using the libtorch zip file for Linux, version ``2.0.1``, CUDA 11.7 with the newer c++ ABI.
 
 ::
 
    > cd /tmp
    > rm -rf libtorch
-   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu117.zip
+   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcu117.zip
 
-   > ls -lh libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip 
-   -rw-rw-r-- 1 t t 1.9G Mar 14 11:25 libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip
+   > ls -lh libtorch-cxx11-abi-shared-with-deps-2.0.1+cu117.zip 
+   -rw-rw-r-- 1 t t 1.9G May  5 09:45 libtorch-cxx11-abi-shared-with-deps-2.0.1+cu117.zip
 
-   > unzip -q libtorch-cxx11-abi-shared-with-deps-2.0.0+cu117.zip 
+   > unzip -q libtorch-cxx11-abi-shared-with-deps-2.0.1+cu117.zip 
    > ls libtorch
    bin/  build-hash  build-version  include/  lib/  share/
 
@@ -540,7 +559,7 @@ Load in a k session, check version and settings:
    /tmp/ktorch-master
 
    > ls -lh ktorch.so
-   -rwxrwxr-x 1 t t 5.6M Apr 11 05:23 ktorch.so*
+   -rwxrwxr-x 1 t t 5.6M May 23 06:40 ktorch.so*
    
    > mv ktorch.so ktorchtmp.so  #avoid confusion w'any other existing ktorch.so
 
@@ -552,10 +571,10 @@ Load in a k session, check version and settings:
    q){key[x]set'x}(`ktorchtmp 2:`fns,1)[]; /define api fns in root
 
    q)version[]
-   2f
+   2.0001
 
    q)version()
-   "2.0.0"
+   "2.0.1"
 
    q)setting[]
    mkl               | 1b
@@ -630,8 +649,8 @@ From the above Linux build example in ``/tmp``:
 
 
    > ldd ktorchtmp.so
-   	linux-vdso.so.1 (0x00007ffc93564000)
-   	libtorch.so => /tmp/libtorch/lib/libtorch.so (0x00007f8b44703000)
+	linux-vdso.so.1 (0x00007ffd33fda000)
+	libtorch.so => /tmp/libtorch/lib/libtorch.so (0x00007ff5a5600000)
    	..
 
 
@@ -643,15 +662,15 @@ then the environment variable LD_LIBRARY_PATH can be used to point to a new loca
    > mv /tmp/libtorch /tmp/torch
 
    > ldd ktorchtmp.so
-   	linux-vdso.so.1 (0x00007fff349ed000)
-   	libtorch.so => not found
+	linux-vdso.so.1 (0x00007ffc48b03000)
+	libtorch.so => not found
    	..
 
    > export LD_LIBRARY_PATH=/tmp/torch/lib
 
    > ldd ktorchtmp.so
-   	linux-vdso.so.1 (0x00007fff40dff000)
-   	libtorch.so => /tmp/torch/lib/libtorch.so (0x00007f0a0a3a1000)
+	linux-vdso.so.1 (0x00007ffe67bbf000)
+	libtorch.so => /tmp/torch/lib/libtorch.so (0x00007f3a14200000)
         ..
 
 Location of ktorch.so

@@ -6,7 +6,7 @@ Devices
 
 PyTorch has the capability to create or move tensors, modules and optimizers onto CPU or GPU devices.
 Internally, PyTorch has a more varied set of devices than are generally used in the python or c++ interface;
-the main device choices are CPU or Nvidia GPU's with compute capability >= 3.7 as of version 2.0.0.
+the main device choices are CPU or Nvidia GPU's with compute capability >= 3.7 as of version 2.0.1.
 
 Recent versions of PyTorch also support `MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_,
 with a subset of the operations and datatypes that are implemented for CPU and CUDA devices.

@@ -732,7 +732,7 @@ The following options are used for both training and testing modes:
    - ``accuracy`` - returns the percentage of the model predictions that are correct.
    - ``predict`` - returns model predictions.
    - ``output`` - returns model output.
-   - ``hidden`` - returns model hidden state (see recurrent models, `RNN <https://pytorch.org/docs/stable/generated/torch.nn.RNN.html>`_ and `GRU <https://pytorch.org/docs/stable/generated/torch.nn.quantized.dynamic.GRU.html>`_).
+   - ``hidden`` - returns model hidden state (see recurrent models, `RNN <https://pytorch.org/docs/stable/generated/torch.nn.RNN.html>`_ and `GRU <https://pytorch.org/docs/stable/generated/torch.nn.GRU.html>`_).
    - ``hiddencell`` - returns 2nd part of hidden state (see `LSTM <https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html>`_).
 
 .. _model-train:

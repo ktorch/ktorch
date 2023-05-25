@@ -1234,8 +1234,9 @@ droppath
 
 The c++ module is defined in `knn/drop.h <https://github.com/ktorch/ktorch/blob/master/knn/drop.h>`_, `drop.cpp <https://github.com/ktorch/ktorch/blob/master/knn/drop.cpp>`_.
 
-A popular PyTorch implementation is found `here <https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/drop.py>`_, part of
-`Pytorch Image Models (timm) <https://timm.fast.ai/>`_.
+A popular PyTorch implementation is found 
+`here <https://github.com/huggingface/pytorch-image-models/blob/main/timm/layers/drop.py>`_,
+part of `Pytorch Image Models (timm) <https://timm.fast.ai/>`_.
 
 ::
 
