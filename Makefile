@@ -3,7 +3,7 @@ TORCH := $(HOME)/libtorch
 ABI := 0
 OS := $(shell uname)
 CPPFLAGS := -I $(TORCH)/include -I $(TORCH)/include/torch/csrc/api/include 
-CXXFLAGS := -std=c++14 -std=gnu++14 -pedantic -Wall -Wfatal-errors -fPIC -O3
+CXXFLAGS := -std=c++17 -std=gnu++17 -pedantic -Wall -Wfatal-errors -fPIC -O3
 LDFLAGS := -shared -L$(TORCH)/lib
 
 # workaround for bug w'gcc (https://github.com/pytorch/pytorch/issues/60341)

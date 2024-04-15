@@ -835,7 +835,7 @@ KAPI cudamem(K x) {
 }
 
 KAPI enumtest(K x) {
-  c10::variant<
+  std::variant<
     torch::enumtype::kLinear,
     torch::enumtype::kConv1D,
     torch::enumtype::kConv2D,

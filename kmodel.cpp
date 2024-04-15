@@ -205,13 +205,13 @@ static Device firstdevice(Ktag *g) {
 // tensorinput/vectorinput/dictinput - add tensor/vector/dictionary to input
 // -------------------------------------------------------------------------
 static void tensorinput(Input& x,const Tensor& y,const char *z) {
- if(c10::get_if<Empty>(&x)) {
+ if(std::get_if<Empty>(&x)) {
   x=y;
- } else if(auto a=c10::get_if<Tensor>(&x)) {
+ } else if(auto a=std::get_if<Tensor>(&x)) {
   x=TensorVector({*a,y});
- } else if(auto a=c10::get_if<TensorVector>(&x)) {
+ } else if(auto a=std::get_if<TensorVector>(&x)) {
   a->emplace_back(y);
- } else if(c10::get_if<TensorDict>(&x)) {
+ } else if(std::get_if<TensorDict>(&x)) {
   TORCH_ERROR(z,": unable to merge tensor with previously specified dictionary");
  } else {
   TORCH_ERROR(z,": unrecognized input state");
@@ -219,13 +219,13 @@ static void tensorinput(Input& x,const Tensor& y,const char *z) {
 }
 
 static void vectorinput(Input& x,const TensorVector& y,const char *z) {
- if(c10::get_if<Empty>(&x)) {
+ if(std::get_if<Empty>(&x)) {
   x=y;
- } else if(auto a=c10::get_if<Tensor>(&x)) {
+ } else if(auto a=std::get_if<Tensor>(&x)) {
   TensorVector v({*a}); v.insert(v.end(),y.begin(),y.end()); x=v;
- } else if(auto a=c10::get_if<TensorVector>(&x)) {
+ } else if(auto a=std::get_if<TensorVector>(&x)) {
   a->insert(a->end(),y.begin(),y.end());
- } else if(c10::get_if<TensorDict>(&x)) {
+ } else if(std::get_if<TensorDict>(&x)) {
   TORCH_ERROR(z,": unable to merge dictionary with previously specified tensor(s)");
  } else {
   TORCH_ERROR(z,": unrecognized input state");
@@ -233,11 +233,11 @@ static void vectorinput(Input& x,const TensorVector& y,const char *z) {
 }
 
 static void dictinput(Input& x,const TensorDict& y,const char *z) {
- if(c10::get_if<Empty>(&x)) {
+ if(std::get_if<Empty>(&x)) {
   x=y;
- } else if(c10::get_if<Tensor>(&x) || c10::get_if<TensorVector>(&x)) {
+ } else if(std::get_if<Tensor>(&x) || std::get_if<TensorVector>(&x)) {
   TORCH_ERROR(z,": unable to merge dictionary with previously specified tensor(s)");
- } else if(auto a=c10::get_if<TensorDict>(&x)) {
+ } else if(auto a=std::get_if<TensorDict>(&x)) {
   a->update(y);
  } else {
   TORCH_ERROR(z,": unrecognized input state");
@@ -418,7 +418,7 @@ KAPI backward(K a) {
 // fullsize -- undo any batching on input(s) & target(s)
 // ----------------------------------------------------------------------------
 static int64_t fullinput(const Input& x,int64_t d,int64_t n) {
- return c10::visit(
+ return std::visit(
   c10::overloaded(
    [&](const auto& x)  {return fullsize(x,d,n);},
    [&](const Empty& x) {return int64_t(0);}
@@ -453,7 +453,7 @@ static void reindex(TensorDict& x,const Tensor& i,int64_t d=0) {
 }
 
 static void reindex(Input& x,const Tensor& i,int64_t d=0) {
- c10::visit(
+ std::visit(
   c10::overloaded(
    [&](Tensor& x)       {reindex(x,i,d);},
    [&](TensorVector& x) {reindex(x,i,d);},
@@ -670,7 +670,7 @@ KAPI  testinit(K x) {return batchinit(x, false, "testinit");}
 // matches - return count where prediction matches target and overall count
 // ---------------------------------------------------------------------------
 static Tensor output(Kmodel *m,const Output& x) {
- return c10::visit(
+ return std::visit(
   c10::overloaded(
    [&](const Tensor& x)       -> Tensor {return x;},
    [&](const TensorVector& x) -> Tensor {TORCH_CHECK(x.size(), "unable to retrieve model output from empty vector of tensors"); return x[0];},
@@ -681,13 +681,13 @@ static Tensor output(Kmodel *m,const Output& x) {
 }
 
 static Tensor hidden(Metric m,const Output& x) {
- if(auto a=c10::get_if<TensorVector>(&x)) {
+ if(auto a=std::get_if<TensorVector>(&x)) {
   if(a->size()>1 && m==Metric::hidden)          return (*a)[1];
   else if(a->size()>2 && m==Metric::hiddencell) return (*a)[2];
   else TORCH_ERROR("metric: unable to retrieve ",metric(m)," from vector of tensors with ",a->size()," element(s)");
- } else if(auto a=c10::get_if<Tuple>(&x)) {
+ } else if(auto a=std::get_if<Tuple>(&x)) {
   return std::get<1>(*a);
- } else if(auto a=c10::get_if<Nested>(&x)) {
+ } else if(auto a=std::get_if<Nested>(&x)) {
   return m==Metric::hidden ? std::get<0>(std::get<1>(*a)) : std::get<1>(std::get<1>(*a));
  } else {
   TORCH_ERROR("metric: unable to retrieve ",metric(m)," from ",outputname(x)," output");
@@ -695,7 +695,7 @@ static Tensor hidden(Metric m,const Output& x) {
 }
 
 static Tensor matches(Kmodel *m,const Tensor& yhat,const Input &y) {
- if(auto a=c10::get_if<Tensor>(&y)) {
+ if(auto a=std::get_if<Tensor>(&y)) {
   return torch::stack({a->eq(yhat).sum(),
                        torch::tensor(a->numel(),torch::device(a->device()))}).view({1,2});
  } else {
@@ -756,7 +756,7 @@ static void metrics(Kmodel *m,const Metrics& k,int64_t n,Data& d) {
 // hiddenstate - combine previous hidden state w'input for model forward calc
 // ---------------------------------------------------------------------------
 TensorVector hiddenstate (Data& d) {
- return c10::visit(
+ return std::visit(
   c10::overloaded (
    [](const Tensor& x,const TensorVector& y) {
     switch(y.size()) {
@@ -1212,9 +1212,9 @@ KAPI testtarget(K x) {return modelinput(x, false, false, "testtarget");}
 // ----------------------------------------------------------------------------------
 static auto inputsize(const Input& x) {
  Tensor t;
- if       (auto a=c10::get_if<Tensor>(&x)) {       t=*a;
- } else if(auto a=c10::get_if<TensorVector>(&x)) { if(a->size()) t=a->front();
- } else if(auto a=c10::get_if<TensorDict>(&x))   { if(a->size()) t=a->front().value();
+ if       (auto a=std::get_if<Tensor>(&x)) {       t=*a;
+ } else if(auto a=std::get_if<TensorVector>(&x)) { if(a->size()) t=a->front();
+ } else if(auto a=std::get_if<TensorDict>(&x))   { if(a->size()) t=a->front().value();
  }
  return t.defined() ? (t.dim() ? t.size(0) : 1) : 0;
 }
@@ -1851,11 +1851,11 @@ static K kfreeze(K x,bool g,const char *c) {
     } else {
      Input in=Empty(); modelarg(kK(x)[2],c,nullptr,in);
      if(xsym(x,1)) {
-      auto *v=c10::get_if<Tensor>(&in);
+      auto *v=std::get_if<Tensor>(&in);
       TORCH_CHECK(v, c,": given single parameter name, expected single tensor or array value, given ",inputname(in));
       kfreeze(g,c,p,s,{*v});
      } else {
-      auto *v=c10::get_if<TensorVector>(&in);
+      auto *v=std::get_if<TensorVector>(&in);
       TORCH_CHECK(v, c,": given parameter list, expected vector of tensor values, given ",inputname(in));
       TORCH_CHECK(s.size()==v->size(), c,": ",s.size(),"-element list of names but ",v->size(),"-element list of values");
       kfreeze(g,c,p,s,*v);

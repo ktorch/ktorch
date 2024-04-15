@@ -109,7 +109,8 @@ Tensor Lamb::step(LossClosure closure)  {
       }
       auto grad = p.grad();
       TORCH_CHECK(!grad.is_sparse(), "lamb: sparse gradients not implemented");
-      auto param_state = state_.find(c10::guts::to_string(p.unsafeGetTensorImpl()));
+      //auto param_state = state_.find(c10::guts::to_string(p.unsafeGetTensorImpl()));
+      auto param_state = state_.find(p.unsafeGetTensorImpl());
       auto& options = static_cast<LambOptions&>(group.options());
 
       // State initialization
@@ -118,10 +119,10 @@ Tensor Lamb::step(LossClosure closure)  {
         state->step(0);
         state->exp_avg(torch::zeros_like(p, MemoryFormat::Preserve));
         state->exp_avg_sq(torch::zeros_like(p, MemoryFormat::Preserve));
-        state_[c10::guts::to_string(p.unsafeGetTensorImpl())] = std::move(state);
+        state_[p.unsafeGetTensorImpl()] = std::move(state);
       }
 
-      auto& state = static_cast<LambParamState&>(*state_[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+      auto& state = static_cast<LambParamState&>(*state_[p.unsafeGetTensorImpl()]);
       auto& exp_avg = state.exp_avg();
       auto& exp_avg_sq = state.exp_avg_sq();
 

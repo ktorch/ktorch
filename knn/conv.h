@@ -105,14 +105,14 @@ template<size_t D> torch::nn::ConvTransposeOptions<D> convtran(K x,J i,Cast c) {
 }
 
 template<size_t D> void convpad(K x,bool a,const torch::nn::detail::conv_padding_t<D>& d,const torch::nn::detail::conv_padding_t<D>& o) {
- if(auto p=c10::get_if<ExpandingArray<D>>(&o)) {
-  auto pd=c10::get_if<ExpandingArray<D>>(&d);
+ if(auto p=std::get_if<ExpandingArray<D>>(&o)) {
+  auto pd=std::get_if<ExpandingArray<D>>(&d);
   if(a || !pd || **pd != **p)
    msetting(x, Setting::pad, KEX((*p)));
  } else if(a || d.index() != o.index()) {
-  if(c10::get_if<torch::enumtype::kSame>(&o)) {
+  if(std::get_if<torch::enumtype::kSame>(&o)) {
    msetting(x, Setting::pad, ks(emap(Enum::same)));
-  } else if(c10::get_if<torch::enumtype::kValid>(&o)) {
+  } else if(std::get_if<torch::enumtype::kValid>(&o)) {
    msetting(x, Setting::pad, ks(emap(Enum::valid)));
   } else {
    TORCH_ERROR("unrecognized convolution padding");

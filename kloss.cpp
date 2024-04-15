@@ -154,8 +154,8 @@ static Tensor ltensor(const Pairs& p,Cast c) {
 //  reduction arg uses variant, using functions below to translate sym -> variant value
 //  (can simplify once KL loss removes "batchmean" reduction)
 // -----------------------------------------------------------------------------------------------
-using Reduce1=c10::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum>;
-using Reduce2=c10::variant<torch::enumtype::kNone, torch::enumtype::kBatchMean, torch::enumtype::kSum, torch::enumtype::kMean>;
+using Reduce1=std::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum>;
+using Reduce2=std::variant<torch::enumtype::kNone, torch::enumtype::kBatchMean, torch::enumtype::kSum, torch::enumtype::kMean>;
 
 static void reduce(Reduce1& r,Cast c,S s) {
  switch(emap(s)) {
@@ -223,7 +223,7 @@ static nn::SmoothL1LossOptions beta(K x,J i,Cast c) {
 
 static K beta(bool a,const nn::SmoothL1LossOptions& o) {
  K x=KDICT; const nn::SmoothL1LossOptions d;
- if(a || d.beta() != o.beta()) OPTION(x, beta, kf(o.beta()));
+ if(a || d.beta() != o.beta()) OPTION(x, beta, kf(o.beta().has_value() ? o.beta().value() : nf));
  reduce(a,x,o,d);
  return resolvedict(x);
 }
@@ -826,7 +826,7 @@ Tensor losscalc(Kmodule *l,const Tensor& x,const Tensor& y,const Tensor& nx,cons
 // losscalc using variant inputs derived from k api arguments
 // ---------------------------------------------------------------------------
 static Tensor losscalc(Kmodule *l,const Input& x,const Input &y) {
- return c10::visit(
+ return std::visit(
   c10::overloaded (
    [&l](const Tensor& x,const Tensor& y) {return losscalc(l,x,y);},
    [&l](const Tensor& x,const TensorVector& y) {
@@ -853,7 +853,7 @@ static Tensor losscalc(Kmodule *l,const Input& x,const Input &y) {
 // losscalc - w'variant output from model's forward calc & supplied target(s)
 // ---------------------------------------------------------------------------
 static Input lossinput(Kmodule *m,const Output& x) {
- return c10::visit(
+ return std::visit(
   c10::overloaded (
    [](const Tensor& x)       {return x;},
    [](const Tuple&  x)       {return std::get<0>(x);},
@@ -894,7 +894,7 @@ TensorVector changedevice(const TensorVector& a,Device& d) {
 
 static K lossarg(Kmodule *l,K a) {
  Input x=modelarg(a,1,"loss");
- if(auto vp=c10::get_if<TensorVector>(&x)) {
+ if(auto vp=std::get_if<TensorVector>(&x)) {
   Device d(DeviceType::CPU);
   const auto& v=mixeddevices(*vp,d) ? changedevice(*vp,d) : *vp;
   switch(v.size()) {

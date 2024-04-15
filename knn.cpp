@@ -878,11 +878,11 @@ Output mforward(Kmodule *m,const Input& x) {
  const auto& f=m->f; const auto& a=f.a(); Cast c=m->c,i=f.in(); auto n=f.n(); auto an=a.size();
  TORCH_CHECK(f.f(), msym(c),": no forward calculation defined");
  TORCH_CHECK(an, msym(c),": unable to run forward calculation, no argument types defined");
- if(auto *p=c10::get_if<Tensor>(&x)) {
+ if(auto *p=std::get_if<Tensor>(&x)) {
   TORCH_CHECK(n==1, msym(i),": ",n," args required for forward calculation, single tensor supplied");
   TORCH_CHECK(a.front()==Arg::tensor, msym(i),": argument of ",argname(a.front())," expected, but tensor supplied");
   return tforward(c,m,*p);
- } else if(auto *p=c10::get_if<TensorVector>(&x)) {
+ } else if(auto *p=std::get_if<TensorVector>(&x)) {
   return vforward(m,*p);
  } else {
   TORCH_ERROR(msym(i),": forward(",argstring(a),") not implemented given ",inputname(x));

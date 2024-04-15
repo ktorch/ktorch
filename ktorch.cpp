@@ -1474,7 +1474,7 @@ c10::optional<Device> firstdevice(const TensorDict& a) {
 
 c10::optional<Device> firstdevice(const Input& x) {
  using Dev=c10::optional<Device>;
- return c10::visit(
+ return std::visit(
   c10::overloaded(
    [&](const auto& x)  -> Dev {return firstdevice(x);},
    [&](const Empty& x) -> Dev {return c10::nullopt;}
@@ -2582,13 +2582,13 @@ static void kinit() {
  if(e.cuda) {
   d.emplace_back(cs("cuda"),Device(DeviceType::CUDA));  //current CUDA device, `cuda
   for(I i=0; i<e.cuda; ++i) {                           //device 0-n, e.g. `cuda:0
-   TORCH_CHECK(sizeof(c)>snprintf(c,sizeof(c),"cuda:%d",i), "buffer too small for `cuda:",i,"`");
+   TORCH_CHECK(sizeof(c)>(size_t)snprintf(c,sizeof(c),"cuda:%d",i), "buffer too small for `cuda:",i,"`");
    d.emplace_back(ss(c),Device(DeviceType::CUDA,i));
   }
  }
  if(torch::globalContext().hasMPS()) {
   d.emplace_back(cs("mps"),Device(DeviceType::MPS));    //Mac Metal Performance Shading
-  TORCH_CHECK(sizeof(c)>snprintf(c,sizeof(c),"mps:%d",0), "buffer too small for `mps:0`");
+  TORCH_CHECK(sizeof(c)>(size_t)snprintf(c,sizeof(c),"mps:%d",0), "buffer too small for `mps:0`");
   d.emplace_back(ss(c),Device(DeviceType::MPS,0));
  }
 }

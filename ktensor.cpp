@@ -203,40 +203,40 @@ K kget(const Nested& t) {
 }
 
 K kget(const Input& x) {
- if       (auto a=c10::get_if<Tensor>(&x)) {       return kget(*a);
- } else if(auto a=c10::get_if<TensorVector>(&x)) { return kget(*a);
- } else if(auto a=c10::get_if<TensorDict>(&x))   { return kget(*a);
- } else if(       c10::get_if<Empty>(&x))        { return knull();
+ if       (auto a=std::get_if<Tensor>(&x)) {       return kget(*a);
+ } else if(auto a=std::get_if<TensorVector>(&x)) { return kget(*a);
+ } else if(auto a=std::get_if<TensorDict>(&x))   { return kget(*a);
+ } else if(       std::get_if<Empty>(&x))        { return knull();
  } else { TORCH_ERROR("unrecognized input");
  }
 }
 
 K kget(const Output& x) {
- if       (auto a=c10::get_if<Tensor>(&x)) {       return kget(*a);
- } else if(auto a=c10::get_if<TensorVector>(&x)) { return kget(*a);
- } else if(auto a=c10::get_if<Tuple>(&x)) {        return kget(*a);
- } else if(auto a=c10::get_if<Nested>(&x)) {       return kget(*a);
+ if       (auto a=std::get_if<Tensor>(&x)) {       return kget(*a);
+ } else if(auto a=std::get_if<TensorVector>(&x)) { return kget(*a);
+ } else if(auto a=std::get_if<Tuple>(&x)) {        return kget(*a);
+ } else if(auto a=std::get_if<Nested>(&x)) {       return kget(*a);
  } else { TORCH_ERROR("unrecognized output");
  }
 }
 
 K kin(const Input& x) {
- if       (auto a=c10::get_if<Tensor>(&x)) {       return kten(*a);
- } else if(auto a=c10::get_if<TensorVector>(&x)) { return kvec(*a);
- } else if(auto a=c10::get_if<TensorDict>(&x))   { return kdict(*a);
- } else if(       c10::get_if<Empty>(&x))        { return knull();
+ if       (auto a=std::get_if<Tensor>(&x)) {       return kten(*a);
+ } else if(auto a=std::get_if<TensorVector>(&x)) { return kvec(*a);
+ } else if(auto a=std::get_if<TensorDict>(&x))   { return kdict(*a);
+ } else if(       std::get_if<Empty>(&x))        { return knull();
  } else { TORCH_ERROR("unrecognized input");
  }
 }
 
 K kout(const Output& o) {
- if(auto a=c10::get_if<Tensor>(&o)) {
+ if(auto a=std::get_if<Tensor>(&o)) {
   return kten(*a);
- } else if(auto a=c10::get_if<TensorVector>(&o)) {
+ } else if(auto a=std::get_if<TensorVector>(&o)) {
   return kvec(*a);
- } else if(auto a=c10::get_if<Tuple>(&o)) {
+ } else if(auto a=std::get_if<Tuple>(&o)) {
   return kvec({std::get<0>(*a),std::get<1>(*a)});
- } else if(auto a=c10::get_if<Nested>(&o)) {
+ } else if(auto a=std::get_if<Nested>(&o)) {
   return kvec({std::get<0>(*a), std::get<0>(std::get<1>(*a)), std::get<1>(std::get<1>(*a))});
  } else {
   TORCH_ERROR("unrecognized output from forward calculation");
@@ -1397,7 +1397,7 @@ int64_t maxsize(const TensorDict& x,int64_t d) {
 
 static int64_t checksize(const Input &x,int64_t n,int64_t d=0);
 static int64_t checksize(const Input &x,int64_t n,int64_t d) {
- c10::visit(
+ std::visit(
   c10::overloaded(
    [&](const Tensor& x)       {auto m=maxsize(x,d); TORCH_CHECK(!n || m==n, "tensor size mismatch, ",n," vs ",m); n=m;},
    [&](const TensorVector& x) {for(const auto& t:x) n=checksize(t,n,d);},
@@ -1457,10 +1457,10 @@ void batch(const Tensor& t,int64_t i,int64_t w,int64_t d,int64_t n) {
 }
 
 void batch(const Input& x,int64_t i,int64_t w,int64_t d,int64_t n) {
- if       (auto a=c10::get_if<Tensor>(&x))       { batch(*a,i,w,d,n);
- } else if(auto a=c10::get_if<TensorVector>(&x)) { for(auto &t:*a) batch(t,i,w,d,n);
- } else if(auto a=c10::get_if<TensorDict>(&x))   { for(auto &t:a->items()) batch(t.value(),i,w,d,n);
- } else if(       c10::get_if<Empty>(&x))        {
+ if       (auto a=std::get_if<Tensor>(&x))       { batch(*a,i,w,d,n);
+ } else if(auto a=std::get_if<TensorVector>(&x)) { for(auto &t:*a) batch(t,i,w,d,n);
+ } else if(auto a=std::get_if<TensorDict>(&x))   { for(auto &t:a->items()) batch(t.value(),i,w,d,n);
+ } else if(       std::get_if<Empty>(&x))        {
  } else { TORCH_ERROR("unrecognized input, unable to select batch");
  }
 }

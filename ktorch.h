@@ -80,7 +80,7 @@ ACCESS_PRIVATE_FIELD(Module, Modulemap,  children_)
 #define Ksize torch::SmallVector<int64_t,8>
 #define cs(x) ss((S)x)
 #define KEX(x) kexpand(x.size(),(*x).data())  // k list from ExpandingArray
-#define ESYM(v) c10::visit(esym(), v)
+#define ESYM(v) std::visit(esym(), v)
 
 using Ktype=signed char;
 using Device=torch::Device;
@@ -113,8 +113,8 @@ using Tuple       = std::tuple<Tensor,Tensor>;
 using Tuple3      = std::tuple<Tensor,Tensor,Tensor>;
 using Tuple4      = std::tuple<Tensor,Tensor,Tensor,Tensor>;
 using Nested      = std::tuple<Tensor,Tuple>;
-using Input       = c10::variant<Tensor,TensorVector,TensorDict,Empty>; 
-using Output      = c10::variant<Tensor,Tuple,Nested,TensorVector>;
+using Input       = std::variant<Tensor,TensorVector,TensorDict,Empty>; 
+using Output      = std::variant<Tensor,Tuple,Nested,TensorVector>;
 using MetricData  = std::vector<TensorVector>;
 
 using Optimizer   = torch::optim::Optimizer;
@@ -960,14 +960,14 @@ typedef struct Env {
   std::make_tuple(cs("buffer"),     Cast::buffer)          
  }};
 
- std::array<S,c10::variant_size_v<Input>> in = {{
+ std::array<S,std::variant_size_v<Input>> in = {{
   cs("tensor"),
   cs("vector"),
   cs("dictionary"),
   cs("empty")
  }};
 
- std::array<S,c10::variant_size_v<Output>> out = {{
+ std::array<S,std::variant_size_v<Output>> out = {{
   cs("tensor"),
   cs("tuple"),
   cs("nested"),

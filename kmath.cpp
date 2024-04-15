@@ -1,6 +1,7 @@
 #include "ktorch.h"
 
 using optint=c10::optional<int64_t>;
+using symint=c10::optional<c10::SymInt>;
 using optstr=c10::optional<c10::string_view>;
 using optdim =torch::OptionalIntArrayRef;
 using optsize=torch::OptionalIntArrayRef;
@@ -1021,7 +1022,7 @@ static bool fftnorm(K x,J i,optstr& s) {
 // hfft/ihfft - 1-d fft of a onesided Hermitian signal and inverse of real-valued fourier domain signal
 // ----------------------------------------------------------------------------------------------------
 static K ffd1(K x,
-              Tensor  (*f)(const Tensor&,optint,int64_t,optstr),
+              Tensor  (*f)(const Tensor&,symint,int64_t,optstr),
               Tensor& (*g)(Tensor&,const Tensor&,optint,int64_t,optstr),
               const char* c) {
  KTRY

@@ -18,12 +18,12 @@ namespace {
 // move batch weight to optional 3rd argument of forward call
 // ------------------------------------------------------------------------------------------
 struct TORCH_API BCELossOptions {
-  typedef c10::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum> reduction_t;
+  typedef std::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum> reduction_t;
   TORCH_ARG(reduction_t, reduction) = torch::kMean;
 };
 
 struct TORCH_API BCEWithLogitsLossOptions {
-  typedef c10::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum> reduction_t;
+  typedef std::variant<torch::enumtype::kNone, torch::enumtype::kMean, torch::enumtype::kSum> reduction_t;
   TORCH_ARG(Tensor, pos_weight) = {};
   TORCH_ARG(reduction_t, reduction) = torch::kMean;
 };

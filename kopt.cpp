@@ -253,7 +253,8 @@ static K adaget(const AdagradParamState& s) {
  return x;
 }
 
-static void adaput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void adaput(K x,const Device& d,const std::string& k,Optimizer& o) {
+static void adaput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<AdagradParamState>();
  if((v=findbuffer(x,"step",-KJ))) s->step(v->j);
  if((v=findbuffer(x,"sum")))      s->sum(kput(v).to(d));
@@ -320,13 +321,14 @@ template<typename S> static K adamget(const S& s) { //template for adam/adamw
  return x;
 }
 
-template<typename S>static void adamput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//template<typename S>static void adamput(K x,const Device& d,const std::string& k,Optimizer& o) {
+template<typename S>static void adamput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<S>();
  if((v=findbuffer(x,"step",-KJ)))       s->step(v->j);
  if((v=findbuffer(x,"exp_avg")))        s->exp_avg(kput(v).to(d));
  if((v=findbuffer(x,"exp_avg_sq")))     s->exp_avg_sq(kput(v).to(d));
  if((v=findbuffer(x,"max_exp_avg_sq"))) s->max_exp_avg_sq(kput(v).to(d));
- o.state()[k]=std::move(s);
+ //o.state()[k]=std::move(s);
 }
 
 template<typename S> static J adamsize(Attr a,const S& s) {
@@ -400,7 +402,8 @@ static K lambget(const LambParamState& s) {
  return x;
 }
 
-static void lambput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void lambput(K x,const Device& d,const std::string& k,Optimizer& o) {
+static void lambput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<LambParamState>();
  if((v=findbuffer(x,"step",-KJ)))   s->step(v->j);
  if((v=findbuffer(x,"exp_avg")))    s->exp_avg(kput(v).to(d));
@@ -480,7 +483,8 @@ static K lbget(const LBFGSParamState& s) {
  return x;
 }
 
-static void lbput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void lbput(K x,const Device& d,const std::string& k,Optimizer& o) {
+static void lbput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<LBFGSParamState>();
  if((v=findbuffer(x,"func_evals",-KJ)))   s->func_evals(v->j);
  if((v=findbuffer(x,"n_iter",-KJ)))       s->n_iter(v->j);
@@ -571,7 +575,8 @@ static K rmsget(const RMSpropParamState& s) {
  return x;
 }
 
-static void rmsput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void rmsput(K x,const Device& d,const std::string& k,Optimizer& o) {
+static void rmsput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<RMSpropParamState>();
  if((v=findbuffer(x,"step",-KJ)))        s->step(v->j);
  if((v=findbuffer(x,"square_avg")))      s->square_avg(kput(v).to(d));
@@ -634,7 +639,8 @@ static K sgdget(const SGDParamState& s) {
  return x;
 }
 
-static void sgdput(K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void sgdput(K x,const Device& d,const std::string& k,Optimizer& o) {
+static void sgdput(K x,const Device& d,void *k,Optimizer& o) {
  K v; auto s=std::make_unique<SGDParamState>();
  if((v=findbuffer(x,"momentum_buffer"))) s->momentum_buffer(kput(v).to(d));
  o.state()[k]=std::move(s);
@@ -873,8 +879,9 @@ static K getparms(bool b,Cast c,const Optimizer& o,const Module& m) {
     kS(nm)[i]=parmsym(p,m);
     kK(sz)[i]=tensorsize(p,Attr::size);
     if(b) {
-     auto k=c10::guts::to_string(t);
-     kK(bf)[i]=s.count(k) ? getparms(c, *s.at(k)) : KDICT;
+     //auto k=c10::guts::to_string(t);
+     //kK(bf)[i]=s.count(k) ? getparms(c, *s.at(k)) : KDICT;
+     kK(bf)[i]=s.count(t) ? getparms(c, *s.at(t)) : KDICT;
     }
     i++;
   }
@@ -1281,7 +1288,8 @@ static Optptr putgroups(Cast c,K x) {
  return o;
 }
 
-static void putbuffers(Cast c,K x,const Device& d,const std::string& k,Optimizer& o) {
+//static void putbuffers(Cast c,K x,const Device& d,const std::string& k,Optimizer& o) {
+static void putbuffers(Cast c,K x,const Device& d,void *k,Optimizer& o) {
  switch(c) {
   case Cast::adagrad: adaput(x,d,k,o); break;
   case Cast::adam:    adamput<AdamParamState>(x,d,k,o); break;
@@ -1301,7 +1309,8 @@ static void putparms(Cast c,K x,Optimizer& o,const Module& m) {
   std::string nm=nullsym(s1) ? "tensor" : s1; nm+=" parameter `"; nm+=s2;
   TORCH_CHECK(-1<j && j<(J)g.size(), "opt: group[",j,"] for ",nm, " is invalid, ",g.size()," group(s) defined");
   TORCH_CHECK(p.contains(s2), "opt: unable to find ",nm);
-  const auto& t=p[s2]; const auto& k=c10::guts::to_string(t.unsafeGetTensorImpl());
+  //const auto& t=p[s2]; const auto& k=c10::guts::to_string(t.unsafeGetTensorImpl());
+  const auto& t=p[s2]; const auto& k=t.unsafeGetTensorImpl();
   TORCH_CHECK(s.count(k)==0, "opt: ",nm," is repeated");
   TORCH_CHECK(xsize(statesize(x,i),sz), "opt: unable to get size of ",nm);
   TORCH_CHECK(t.sizes()==sz, "opt: size mismatch for ",nm,", expected ",sz,", given ",t.sizes());

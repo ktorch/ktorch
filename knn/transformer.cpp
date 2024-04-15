@@ -18,9 +18,9 @@ torch::nn::activation_t codefn(Cast c,S s) {
 }
 
 S codefn(Cast c,const torch::nn::activation_t& f) {
- if(c10::get_if<torch::enumtype::kReLU>(&f)) {
+ if(std::get_if<torch::enumtype::kReLU>(&f)) {
   return std::get<0>(env().enums[(size_t)Enum::relu]);
- } else if(c10::get_if<torch::enumtype::kGELU>(&f)) {
+ } else if(std::get_if<torch::enumtype::kGELU>(&f)) {
   return std::get<0>(env().enums[(size_t)Enum::gelu]);
  } else {
   TORCH_ERROR(msym(c),": unable to extract custom activation function");
