@@ -18,7 +18,7 @@ it is also  possible to compile the libtorch libraries to incude a CUDA setup on
 or to use the new M1/M2 chips with
 `MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_.
 
-See `this section <libtorch>` on how build the PyTorch c++ libraries from source before building the k interface.
+See :ref:`this section <libtorch>` on how build the PyTorch c++ libraries from source before building the k interface.
 
 Below is a brief  summary of retrieval steps for a Linux machine with Nvidia GPU(s):
 
@@ -189,11 +189,11 @@ installing some prerequisites:
    brew install cmake
    pip install pyyaml
 
-Then download the source code for PyTorch as of release ``2.0.1``:
+Then download the source code for PyTorch as of release ``2.2.2``:
 
 ::
 
-   > git clone -b v2.0.1 --recurse-submodule https://github.com/pytorch/pytorch.git
+   > git clone -b v2.2.2 --recurse-submodule https://github.com/pytorch/pytorch.git
 
    > mkdir pytorch-build
    > cd pytorch-build
@@ -220,7 +220,7 @@ Sample builds
 MacOS, Intel CPU
 ^^^^^^^^^^^^^^^^
 
-First step, get the CPU-only version of libtorch ``2.0.1`` for MacOS:
+First step, get the CPU-only version of libtorch ``2.2.2`` for MacOS:
 
 ::
 
