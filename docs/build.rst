@@ -7,7 +7,7 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
-The k interface is built with the latest version of PyTorch as of May 2023, labeled ``Stable(2.0.1)``.
+The k interface is built with the latest version of PyTorch as of Apr 2024, labeled ``Stable(2.2.2)``.
 
 For Linux, the zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 200 megabytes for CPU-only.
@@ -24,19 +24,19 @@ Below is a brief  summary of retrieval steps for a Linux machine with Nvidia GPU
 
 .. figure:: linux.cuda.png
    :scale: 40 %
-   :alt: libtorch.zip files for Linux and CUDA 11.7
+   :alt: libtorch.zip files for Linux and CUDA 11.8
    :target: https://pytorch.org/get-started/locally/
 
-Download and unzip the file for CUDA 11.7 with the pre-c++11  ABI:
+Download and unzip the file for CUDA 11.8 with the pre-c++11  ABI:
 
 ::
 
    > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.1%2Bcu117.zip
-   > ls -lh libtorch-shared-with-deps-2.0.1+cu117.zip
-   -rw-rw-r-- 1 t t 1.8G May  5 09:45 libtorch-shared-with-deps-2.0.1+cu117.zip
+   > ls -lh libtorch-shared-with-deps-2.2.2+cu118.zip 
+   -rw-rw-r-- 1 t t 2.4G Mar 26 18:33 libtorch-shared-with-deps-2.2.2+cu118.zip
 
-   > unzip libtorch-shared-with-deps-2.0.1+cu117.zip 
-   Archive:  libtorch-shared-with-deps-2.0.1+cu117.zip
+   > unzip libtorch-shared-with-deps-2.2.2+cu118.zip 
+   Archive:  libtorch-shared-with-deps-2.2.2+cu118.zip
       creating: libtorch/
       creating: libtorch/lib/
       ..

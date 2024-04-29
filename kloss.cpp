@@ -203,17 +203,19 @@ template<typename O> static K reduce(bool a,const O& o,const O d) {K x=KDICT; re
 // ----------------------------------------------------------------------------
 // beta - get/set beta & reduction options for smooth L1 loss
 // ----------------------------------------------------------------------------
+static std::optional<double> beta(F x) { if(x==x) return x; else return c10::nullopt; }
+
 static nn::SmoothL1LossOptions beta(K x,J i,Cast c) {
  Pairs p; J n=xargc(x,i,p); S s=nullptr; nn::SmoothL1LossOptions o;
  if(n && xsym(x,i+n-1,s)) n--;
  for(J j=0;j<n;++j)
   switch(j) {
-   case 0: o.beta(ldouble(x,i+j,c,Setting::beta)); break;
+   case 0: o.beta(beta(ldouble(x,i+j,c,Setting::beta))); break;
    default: lpos(x,c,i+j); break;
   }
  while(xpair(p))
   switch(lset(p.k)) {
-   case Setting::beta:  o.beta(ldouble(p,c)); break;
+   case Setting::beta:  o.beta(beta(ldouble(p,c))); break;
    case Setting::reduce: s=lsym(p,c); break;
    default: lpair(c,p); break;
   }
