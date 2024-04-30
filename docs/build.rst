@@ -7,39 +7,41 @@ The ktorch library has been built on Linux and MacOS; it has not been tested on 
 (Windows is beginning to get more support with `Microsoft becoming the maintainer of the Windows version in 2020 <https://pytorch.org/blog/microsoft-becomes-maintainer-of-the-windows-version-of-pytorch/>`_.)
 
 The first step is to `download the relevant zip file from PyTorch <https://pytorch.org/get-started/locally/>`_.
-The k interface is built with the latest version of PyTorch as of Apr 2024, labeled ``Stable(2.2.2)``.
+The k interface is built with the latest version of PyTorch as of Apr 2024, labeled ``Stable(2.3.0)``.
 
 For Linux, the zip file contains all the necessary libraries and include files; there is no need to install CUDA or Intel MKL as these components are included.
 The zip file is large, around 2 gigabytes for versions which include libraries for working with GPU's and around 200 megabytes for CPU-only.
 Each platform has additional choices for CPU-only/GPU versions (more :ref:`here <abi>` on pre c++11 and post c++11 ABI versions).
 
-For MacOS, the libtorch zip file distributed by PyTorch is for Intel CPU-only;
-it is also  possible to compile the libtorch libraries to incude a CUDA setup on Mac
-or to use the new M1/M2 chips with
-`MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_.
-
+For MacOS, the libtorch zip file distributed by PyTorch is for Apple's M1/M2/M3 chips.
+It is also  possible to compile the libtorch libraries to incude a CUDA setup on Mac or use Intel CPU.
 See :ref:`this section <libtorch>` on how build the PyTorch c++ libraries from source before building the k interface.
 
-Below is a brief  summary of retrieval steps for a Linux machine with Nvidia GPU(s):
+Below is a brief summary of retrieval steps for a Linux machine with Nvidia GPU(s):
 
 .. figure:: linux.cuda.png
    :scale: 40 %
    :alt: libtorch.zip files for Linux and CUDA 11.8
    :target: https://pytorch.org/get-started/locally/
 
-Download and unzip the file for CUDA 11.8 with the pre-c++11  ABI:
+Download and unzip the file for CUDA 11.8 with the pre-c++11 ABI:
 
 ::
 
-   > wget -q https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.1%2Bcu117.zip
-   > ls -lh libtorch-shared-with-deps-2.2.2+cu118.zip 
-   -rw-rw-r-- 1 t t 2.4G Mar 26 18:33 libtorch-shared-with-deps-2.2.2+cu118.zip
+   > wget -q https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.3.0%2Bcu118.zip
+   > ls -lh libtorch-shared-with-deps-2.3.0+cu118.zip 
+   -rw-rw-r-- 1 t t 2.5G Apr 23 10:12 libtorch-shared-with-deps-2.3.0+cu118.zip
 
-   > unzip libtorch-shared-with-deps-2.2.2+cu118.zip 
-   Archive:  libtorch-shared-with-deps-2.2.2+cu118.zip
+   > unzip libtorch-shared-with-deps-2.3.0+cu118.zip
+   Archive:  libtorch-shared-with-deps-2.3.0+cu118.zip
       creating: libtorch/
       creating: libtorch/lib/
-      ..
+     inflating: libtorch/lib/libasmjit.a  
+     inflating: libtorch/lib/libbackend_with_compiler.so  
+     inflating: libtorch/lib/libbenchmark.a  
+     inflating: libtorch/lib/libbenchmark_main.a  
+     inflating: libtorch/lib/libc10_cuda.so  
+     ..
 
 Download the ktorch source code via git clone:
 
@@ -74,26 +76,26 @@ Assuming the libtorch libraries are in ~/libtorch and the ktorch source in ~/kto
 PyTorch zip files
 *****************
 
-The libtorch.zip files from PyTorch are saved by version: when version 2.0.1 is no longer the latest version, it is still possible to retrieve the version-specific files:
+The libtorch.zip files from PyTorch are saved by version: when version 2.3.0 is no longer the latest version, it is still possible to retrieve the version-specific files:
 
 - Linux CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.0.1%2Bcpu.zip
-   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcpu.zip
-
-- Linux CUDA 11.7
-   - https://download.pytorch.org/libtorch/cu117/libtorch-shared-with-deps-2.0.1%2Bcu117.zip
-   - https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcu117.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.3.0%2Bcpu.zip
+   - https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.3.0%2Bcpu.zip
 
 - Linux CUDA 11.8
-   - https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.1%2Bcu118.zip
-   - https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.0.1%2Bcu118.zip
+   - https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.3.0%2Bcu118.zip
+   - https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.3.0%2Bcu118.zip
 
-- MacOS CPU
-   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.1.zip
+- Linux CUDA 12.1
+   - https://download.pytorch.org/libtorch/cu121/libtorch-shared-with-deps-2.3.0%2Bcu121.zip
+   - https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.3.0%2Bcu121.zip
+
+- MacOS M1/M2/M3
+   - https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.3.0.zip
 
 - Release Notes
    - https://github.com/pytorch/pytorch/releases
-   - https://github.com/pytorch/pytorch/releases/tag/v2.0.1
+   - https://github.com/pytorch/pytorch/releases/tag/v2.3.0
 
 - Source
    - https://github.com/pytorch/pytorch/archive/refs/tags/v2.0.1.zip
@@ -131,16 +133,15 @@ In Linux, there's a choice of ABI (application binary interface). Changes in the
 `a newer ABI <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>`_.  The supplied libtorch zip files from PyTorch come in two versions,
 one for the ABI prior to the changes for the C++11 standard, and one with the new ABI.
 
-For example, for Linux, version 1.13.0, with support for CUDA 11.6, the zip files are listed as:
+For example, for Linux, version 2.3.0, with support for CUDA 11.8, the zip files are listed as:
 
 ::
 
    Download here (Pre-cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu116/libtorch-shared-with-deps-1.13.0%2Bcu116.zip
-
+   https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.3.0%2Bcu118.zip
 
    Download here (cxx11 ABI):
-   https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
+   https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.3.0%2Bcu118.zip
 
 
 
@@ -181,19 +182,21 @@ Build libtorch from source
 To customize the PyTorch c++ libraries or to build to a different setup than supplied by PyTorch,
 it is also possible to build the libraries from source.
 
-For a mac with the new M2 chip and `MPS (Metal Performance Shaders) <https://pytorch.org/blog/introducing-accelerated-pytorch-training-on-mac/>`_,
-installing some prerequisites:
+For a mac with an Intel chip,
+since `PyTorch no longer distributes binaries for x86_64 <https://dev-discuss.pytorch.org/t/pytorch-macos-x86-builds-deprecation-starting-january-2024/1690>`_  it's necessary to build libtorch from source.
+
+Installing some prerequisites for macOS:
 
 ::
 
    brew install cmake
    pip install pyyaml
 
-Then download the source code for PyTorch as of release ``2.2.2``:
+Then download the source code for PyTorch as of release ``2.3.0``:
 
 ::
 
-   > git clone -b v2.2.2 --recurse-submodule https://github.com/pytorch/pytorch.git
+   > git clone -b v2.3.0 --recurse-submodule https://github.com/pytorch/pytorch.git
 
    > mkdir pytorch-build
    > cd pytorch-build
@@ -225,15 +228,15 @@ First step, get the CPU-only version of libtorch ``2.2.2`` for MacOS:
 ::
 
    > cd ~
-   > wget -q https://download.pytorch.org/libtorch/cpu/libtorch-macos-2.0.1.zip
+   > wget -q https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.3.0.zip
 
-   > ls -lh libtorch-macos-2.0.1.zip 
-   -rw-r--r--  1 t  staff   160M May  5 09:44 libtorch-macos-2.0.1.zip
+   > ls -lh libtorch-macos-arm64-2.3.0.zip
+   -rw-r--r--  1 t  staff    57M Apr 23 10:09 libtorch-macos-arm64-2.3.0.zip
 
    > rm -rf ~/libtorch  # erase any previous version
 
-   > unzip libtorch-macos-2.0.1.zip 
-   Archive:  libtorch-macos-2.0.1.zip
+   > unzip libtorch-macos-arm64-2.3.0.zip
+   Archive:  libtorch-macos-arm64-2.3.0.zip
       creating: libtorch/
       creating: libtorch/bin/
      inflating: libtorch/build-hash     
