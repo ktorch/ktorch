@@ -183,7 +183,7 @@ To customize the PyTorch c++ libraries or to build to a different setup than sup
 it is also possible to build the libraries from source.
 
 For a mac with an Intel chip,
-since `PyTorch no longer distributes binaries for x86_64 <https://dev-discuss.pytorch.org/t/pytorch-macos-x86-builds-deprecation-starting-january-2024/1690>`_  it's necessary to build libtorch from source.
+since `PyTorch no longer distributes binaries for x86_64 <https://dev-discuss.pytorch.org/t/pytorch-macos-x86-builds-deprecation-starting-january-2024/1690>`_,  it's necessary to build libtorch from source.
 
 Installing some prerequisites for macOS:
 
